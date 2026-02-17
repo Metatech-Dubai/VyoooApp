@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "177333950751",
+    "project_id": "vyooov1",
+    "storage_bucket": "vyooov1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:177333950751:android:3ab0a9e0e049269a72f82a",
+        "android_client_info": {
+          "package_name": "com.vyooo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBgU1_X6RUr9FND84pq4qu5Vv4m8JVr9l4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
