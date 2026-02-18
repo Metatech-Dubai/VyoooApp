@@ -1,5 +1,10 @@
+import 'dart:io' show Platform;
+
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import 'core/subscription/subscription_controller.dart';
 import 'core/theme/app_padding.dart';
 import 'core/theme/app_theme.dart';
 import 'core/wrappers/auth_wrapper.dart';
@@ -19,7 +24,24 @@ void main() async {
     debugPrint(st.toString());
   }
 
-  runApp(VyoooApp(firebaseInitialized: firebaseInitialized));
+  final subscriptionController = SubscriptionController();
+  try {
+    // Use iOS key on iOS, Android key on Android (RevenueCat gives one per platform).
+    final revenueCatKey = Platform.isIOS
+        ? 'appl_vPZwqxiBnbyvgMUEvKURLKzCRpj' // iOS public API key
+        : 'goog_XXXXXXXXXXXX'; // Replace with your Android public API key when needed
+    await subscriptionController.init(revenueCatKey);
+  } catch (e, st) {
+    debugPrint('RevenueCat initialization failed: $e');
+    debugPrint(st.toString());
+  }
+
+  runApp(
+    ChangeNotifierProvider<SubscriptionController>.value(
+      value: subscriptionController,
+      child: VyoooApp(firebaseInitialized: firebaseInitialized),
+    ),
+  );
 }
 
 class VyoooApp extends StatelessWidget {
