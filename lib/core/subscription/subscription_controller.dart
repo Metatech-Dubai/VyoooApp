@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
+import '../config/app_config.dart';
 import 'membership_tier.dart';
 import 'subscription_service.dart';
 
@@ -13,6 +14,11 @@ class SubscriptionController extends ChangeNotifier {
   Future<void> init(String publicKey) async {
     await _service.init(publicKey);
     await refreshStatus();
+  }
+
+  /// Safe fetch for paywall; never throws.
+  Future<Offerings?> fetchOfferings() async {
+    return await _service.fetchOfferings();
   }
 
   Future<void> refreshStatus() async {
@@ -66,4 +72,9 @@ class SubscriptionController extends ChangeNotifier {
   bool get isStandard => currentTier == MembershipTier.standard;
   bool get isSubscriber => currentTier == MembershipTier.subscriber;
   bool get isCreator => currentTier == MembershipTier.creator;
+
+  /// Standard → locked; Subscriber & Creator → unlocked.
+  /// When [AppConfig.devBypassVRAccess] is true, always unlocked for testing.
+  bool get hasVRAccess =>
+      AppConfig.devBypassVRAccess || isSubscriber || isCreator;
 }

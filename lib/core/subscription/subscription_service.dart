@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 
 import 'membership_tier.dart';
@@ -11,6 +12,20 @@ class SubscriptionService {
     );
   }
 
+  /// Safe fetch: never throws. Returns null if offerings unavailable.
+  Future<Offerings?> fetchOfferings() async {
+    try {
+      final offerings = await Purchases.getOfferings();
+      return offerings;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('RevenueCat offerings unavailable: $e');
+      }
+      return null;
+    }
+  }
+
+  @Deprecated('Use fetchOfferings() for safe null return')
   Future<Offerings> getOfferings() async {
     return await Purchases.getOfferings();
   }

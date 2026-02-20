@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// Standard interaction button used across the app (reels, stories, posts, etc).
-/// Vertical layout: icon above count text.
+/// Vertical layout: icon above count text. Use [count] empty for icon-only (e.g. Crown, More).
 class AppInteractionButton extends StatelessWidget {
   const AppInteractionButton({
     super.key,
@@ -11,6 +11,7 @@ class AppInteractionButton extends StatelessWidget {
     this.onTap,
     this.activeColor = const Color(0xFFD10057),
     this.defaultColor = Colors.white,
+    this.iconColor,
   });
 
   final IconData icon;
@@ -19,6 +20,8 @@ class AppInteractionButton extends StatelessWidget {
   final VoidCallback? onTap;
   final Color activeColor;
   final Color defaultColor;
+  /// Override icon color (e.g. yellow for Crown). If null, uses active/default.
+  final Color? iconColor;
 
   static const double iconSize = 28;
   static const double textSize = 12;
@@ -26,25 +29,24 @@ class AppInteractionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final color = iconColor ?? (isActive ? activeColor : defaultColor);
     return GestureDetector(
       onTap: onTap,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(
-            icon,
-            size: iconSize,
-            color: isActive ? activeColor : defaultColor,
-          ),
-          const SizedBox(height: spacing),
-          Text(
-            count,
-            style: TextStyle(
-              fontSize: textSize,
-              color: isActive ? activeColor : defaultColor,
-              fontWeight: FontWeight.w500,
+          Icon(icon, size: iconSize, color: color),
+          if (count.isNotEmpty) ...[
+            const SizedBox(height: spacing),
+            Text(
+              count,
+              style: TextStyle(
+                fontSize: textSize,
+                color: color,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

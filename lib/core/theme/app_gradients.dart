@@ -60,6 +60,17 @@ class AppGradients {
     ],
   );
 
+  /// Subscription plan cards (dark purple to pink).
+  static const LinearGradient subscriptionCardGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFF21002B),
+      Color(0xFF490038),
+      Color(0xFFDE106B),
+    ],
+  );
+
   static const LinearGradient feedGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -67,6 +78,48 @@ class AppGradients {
       Color(0xFF14001F),
       Color(0xFF2A002B),
       Color(0xFF490038),
+    ],
+  );
+
+  /// VR locked view bottom card (dark translucent).
+  static const LinearGradient vrPaymentCardGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xE614001F),
+      Color(0xF021002B),
+      Color(0xF0490038),
+    ],
+  );
+
+  /// Story avatar ring (pink gradient border).
+  static const LinearGradient storyRingGradient = LinearGradient(
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+    colors: [
+      Color(0xFFD10057),
+      Color(0xFFFF6B9D),
+    ],
+  );
+
+  /// Pink primary button (e.g. Get started).
+  static const LinearGradient vrGetStartedButtonGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [
+      Color(0xFFDE106B),
+      Color(0xFFF81945),
+    ],
+  );
+
+  /// Download prompt "Subscribe Now" button (gold to orange-brown).
+  static const LinearGradient subscribeNowButtonGradient = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [
+      Color(0xFFE8C547),
+      Color(0xFFD4A84B),
+      Color(0xFFB8862E),
     ],
   );
 }

@@ -1,12 +1,27 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
+import 'package:provider/provider.dart';
 
 import '../../core/controllers/reels_controller.dart';
 import '../../core/services/reels_service.dart';
+import '../../core/subscription/subscription_controller.dart';
 import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_feed_header.dart';
 import '../../core/widgets/app_interaction_button.dart';
+import '../../features/comments/widgets/comments_bottom_sheet.dart';
 import '../../features/home/widgets/following_header_stories.dart';
+import '../../features/reel/widgets/download_subscription_sheet.dart';
+import '../../features/reel/widgets/manage_content_preferences_sheet.dart';
+import '../../features/reel/widgets/not_interested_sheet.dart';
+import '../../features/reel/widgets/playback_speed_sheet.dart';
+import '../../features/reel/widgets/reel_more_options_sheet.dart';
+import '../../features/reel/widgets/video_quality_sheet.dart';
+import '../../features/reel/widgets/why_seeing_this_sheet.dart';
+import '../../features/share/widgets/share_bottom_sheet.dart';
+import '../../features/vr/vr_screen.dart';
 import '../../widgets/reel_item_widget.dart';
 
 enum HomeTab { trending, vr, following, forYou }
@@ -111,6 +126,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   final Map<String, bool> _likedReels = {};
   final Map<String, bool> _savedReels = {};
 
+  // Playback and quality (from three-dots menu)
+  String _playbackSpeedId = '1';
+  String _playbackSpeedLabel = '1x (Normal)';
+  String _qualityId = 'auto';
+  String _qualityLabel = 'Auto (1080p HD)';
+
   @override
   void initState() {
     super.initState();
@@ -165,28 +186,34 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     setState(() => _savedReels[reelId] = newState);
   }
 
-  Future<void> _onShare(String reelId) async {
-    await _reelsController.shareReel(reelId: reelId);
+  void _onShare(String reelId) {
+    final reel = _currentIndex < _currentReels.length ? _currentReels[_currentIndex] : null;
+    showShareBottomSheet(
+      context,
+      reelId: reelId,
+      authorName: reel?['username'] as String?,
+      thumbnailUrl: reel?['thumbnailUrl'] as String?,
+      onShareViaNative: () => _reelsController.shareReel(reelId: reelId),
+      onCopyLink: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Link copied to clipboard'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
+    );
   }
 
   void _onComment(String reelId) {
-    // TODO: Open comment bottom sheet
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        height: 400,
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A0020),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: const Center(
-          child: Text(
-            'Comments',
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-        ),
-      ),
+    showCommentsBottomSheet(
+      context,
+      reelId: reelId,
+      onReply: (_) => _showSnackBar('Reply'),
+      onLike: (_) => _showSnackBar('Liked'),
+      onViewReplies: (_) => _showSnackBar('View replies'),
     );
   }
 
@@ -195,9 +222,13 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       currentTab = tab;
       _currentIndex = 0;
     });
-    _pageController.jumpToPage(0);
-    if (tab == HomeTab.following) {
-      // First reel auto-plays; story row already shown by build
+    // PageView is only in the tree when tab != VR. Schedule jump after build.
+    if (tab != HomeTab.vr) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && currentTab == tab && _pageController.hasClients) {
+          _pageController.jumpToPage(0);
+        }
+      });
     }
   }
 
@@ -211,17 +242,33 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final isVrTab = currentTab == HomeTab.vr;
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          _buildReelsFeed(),
+          if (isVrTab) _buildVrContent() else _buildReelsFeed(),
           _buildHeader(),
           if (currentTab == HomeTab.following) _buildStoryRow(),
-          _buildInteractionButtons(),
-          _buildBottomUserInfo(),
-          if (_showControls) _buildControlsOverlay(),
+          if (!isVrTab) ...[
+            _buildInteractionButtons(),
+            _buildBottomUserInfo(),
+            if (_showControls) _buildControlsOverlay(),
+          ],
         ],
+      ),
+    );
+  }
+
+  Widget _buildVrContent() {
+    return Positioned.fill(
+      child: Consumer<SubscriptionController>(
+        builder: (context, subscriptionController, _) {
+          if (!subscriptionController.hasVRAccess) {
+            return const VrLockedView();
+          }
+          return const VrGridView();
+        },
       ),
     );
   }
@@ -273,74 +320,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       left: 0,
       right: 0,
       child: SafeArea(
-        child: Padding(
-          padding: AppPadding.screenHorizontal.copyWith(top: AppSpacing.md, bottom: AppSpacing.md),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _buildLogo(),
-              Flexible(child: _buildTabMenu()),
-            ],
-          ),
+        child: AppFeedHeader(
+          selectedIndex: currentTab.index,
+          onTabSelected: (index) => _onTabChanged(HomeTab.values[index]),
         ),
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return SizedBox(
-      height: 32,
-      child: Image.asset(
-        'assets/BrandLogo/Vyooo logo (2).png',
-        fit: BoxFit.contain,
-        errorBuilder: (_, __, ___) => const Text(
-          'VyooO',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 22,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTabMenu() {
-    const tabs = [
-      (HomeTab.trending, 'Trending'),
-      (HomeTab.vr, 'VR'),
-      (HomeTab.following, 'Following'),
-      (HomeTab.forYou, 'For You'),
-    ];
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: tabs.map((e) {
-          final tab = e.$1;
-          final label = e.$2;
-          final isSelected = currentTab == tab;
-          return GestureDetector(
-            onTap: () => _onTabChanged(tab),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-            margin: const EdgeInsets.only(left: AppSpacing.sm),
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: AppSpacing.sm),
-            decoration: BoxDecoration(
-              color: isSelected ? Colors.white.withValues(alpha: 0.2) : Colors.transparent,
-              borderRadius: AppRadius.pillRadius,
-            ),
-              child: Text(
-                label,
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.6),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
       ),
     );
   }
@@ -354,12 +337,18 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     return Positioned(
       right: 16,
-      bottom: 12, // just above nav bar (body ends at top of nav)
+      bottom: 12,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           AppInteractionButton(
-            icon: Icons.visibility,
+            icon: FontAwesomeIcons.crown,
+            count: '',
+            iconColor: const Color(0xFFFFD700),
+          ),
+          SizedBox(height: AppSpacing.lg),
+          AppInteractionButton(
+            icon: Icons.visibility_outlined,
             count: _formatCount(reel['views'] as int),
           ),
           SizedBox(height: AppSpacing.lg),
@@ -371,7 +360,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           ),
           SizedBox(height: AppSpacing.lg),
           AppInteractionButton(
-            icon: Icons.comment,
+            icon: Icons.chat_bubble_outline,
             count: _formatCount(reel['comments'] as int),
             onTap: () => _onComment(reelId),
           ),
@@ -384,13 +373,81 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           ),
           SizedBox(height: AppSpacing.lg),
           AppInteractionButton(
-            icon: Icons.share,
+            icon: Icons.send_outlined,
             count: _formatCount(reel['shares'] as int),
             onTap: () => _onShare(reelId),
+          ),
+          SizedBox(height: AppSpacing.lg),
+          AppInteractionButton(
+            icon: Icons.more_horiz,
+            count: '',
+            onTap: () => _onMoreOptions(reelId),
           ),
         ],
       ),
     );
+  }
+
+  void _onMoreOptions(String reelId) {
+    showReelMoreOptionsSheet(
+      context,
+      reelId: reelId,
+      playbackSpeed: _playbackSpeedLabel,
+      quality: _qualityLabel,
+      onDownload: _onDownloadTapped,
+      onReport: () => _showSnackBar('Report submitted'),
+      onNotInterested: () => showNotInterestedSheet(context),
+      onCaptions: () => _showSnackBar('Captions'),
+      onPlaybackSpeed: _openPlaybackSpeedSheet,
+      onQuality: _openVideoQualitySheet,
+      onManagePreferences: () => showManageContentPreferencesSheet(context),
+      onWhyThisPost: () => showWhySeeingThisSheet(context),
+    );
+  }
+
+  void _onDownloadTapped() {
+    final subscriptionController = context.read<SubscriptionController>();
+    if (subscriptionController.isSubscriber || subscriptionController.isCreator) {
+      _showSnackBar('Download started');
+    } else {
+      showDownloadSubscriptionSheet(context);
+    }
+  }
+
+  void _openPlaybackSpeedSheet() {
+    showPlaybackSpeedSheet(
+      context,
+      selectedId: _playbackSpeedId,
+      onSelected: (id, label) {
+        setState(() {
+          _playbackSpeedId = id;
+          _playbackSpeedLabel = label;
+        });
+        _showSnackBar('Playback speed: $label');
+      },
+    );
+  }
+
+  void _openVideoQualitySheet() {
+    showVideoQualitySheet(
+      context,
+      selectedId: _qualityId,
+      onSelected: (id, label) {
+        setState(() {
+          _qualityId = id;
+          _qualityLabel = id == 'auto' ? 'Auto (1080p HD)' : label;
+        });
+        _showSnackBar('Quality: ${_qualityLabel}');
+      },
+    );
+  }
+
+  void _showSnackBar(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
+      );
+    }
   }
 
   Widget _buildBottomUserInfo() {
@@ -465,35 +522,51 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Widget _buildControlsOverlay() {
+    final playing = _currentIndex < _currentReels.length && _isVideoPlaying();
     return Center(
       child: AnimatedOpacity(
         opacity: _showControls ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 200),
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.sm),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.4),
-            borderRadius: AppRadius.buttonRadius,
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                _currentIndex < _currentReels.length && _isVideoPlaying()
-                    ? Icons.pause
-                    : Icons.play_arrow,
-                color: Colors.white,
-                size: 32,
-              ),
-              const SizedBox(width: 16),
-              const Icon(
-                Icons.volume_up,
-                color: Colors.white,
-                size: 28,
-              ),
-            ],
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildControlCircle(
+              icon: playing ? Icons.pause : Icons.play_arrow,
+              onTap: _onVideoTap,
+            ),
+            const SizedBox(width: 20),
+            _buildControlCircle(
+              icon: Icons.volume_off_rounded,
+              onTap: () {
+                // TODO: Toggle mute; wire to player
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Mute'),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              },
+            ),
+          ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildControlCircle({
+    required IconData icon,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 52,
+        height: 52,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.25),
+        ),
+        child: Icon(icon, color: Colors.white, size: 28),
       ),
     );
   }

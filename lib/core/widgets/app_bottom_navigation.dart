@@ -129,30 +129,48 @@ class _NavIconItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final isSelected = index == currentIndex;
     final asset = isSelected ? selectedAsset : unselectedAsset;
+    final isHome = index == 0;
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
         onTap(index);
       },
       behavior: HitTestBehavior.opaque,
-      child: AnimatedScale(
-        scale: isSelected ? 1.1 : 1.0,
-        duration: AppBottomNavigation._animationDuration,
-        child: SizedBox(
-          width: AppBottomNavigation._iconSize,
-          height: AppBottomNavigation._iconSize,
-          child: Image.asset(
-            asset,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.circle_outlined,
-              size: AppBottomNavigation._iconSize,
-              color: isSelected
-                  ? AppBottomNavigation._selectedColor
-                  : AppBottomNavigation._unselectedColor,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedScale(
+            scale: isSelected ? 1.1 : 1.0,
+            duration: AppBottomNavigation._animationDuration,
+            child: SizedBox(
+              width: AppBottomNavigation._iconSize,
+              height: AppBottomNavigation._iconSize,
+              child: Image.asset(
+                asset,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) => Icon(
+                  Icons.circle_outlined,
+                  size: AppBottomNavigation._iconSize,
+                  color: isSelected
+                      ? AppBottomNavigation._selectedColor
+                      : AppBottomNavigation._unselectedColor,
+                ),
+              ),
             ),
           ),
-        ),
+          if (isHome && isSelected) ...[
+            const SizedBox(height: 4),
+            Container(
+              width: 24,
+              height: 3,
+              decoration: BoxDecoration(
+                color: AppBottomNavigation._primaryPink,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
