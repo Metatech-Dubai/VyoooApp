@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../config/app_config.dart';
 import '../models/app_user_model.dart';
 import '../services/user_service.dart';
 import '../../screens/auth/create_account_screen.dart';
 import '../../screens/auth/create_username_screen.dart';
+import '../../screens/debug/tier_picker_screen.dart';
 import 'main_nav_wrapper.dart';
 
 /// Flow guard: routes to Register, Onboarding, or Home based on Firebase Auth + Firestore user doc.
@@ -83,6 +86,16 @@ class _UserDocGateState extends State<_UserDocGate> {
           return const CreateUsernameScreen();
         }
         if (appUser.onboardingCompleted) {
+          if (kDebugMode || AppConfig.enableSubscriptionTierTesting) {
+            return TierPickerScreen(
+              onContinue: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const MainNavWrapper()),
+                  (route) => false,
+                );
+              },
+            );
+          }
           return const MainNavWrapper();
         }
         return const CreateUsernameScreen();

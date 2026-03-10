@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import '../subscription/subscription_controller.dart';
 import '../widgets/app_bottom_navigation.dart';
 import '../../screens/home/home_reels_screen.dart';
 import '../../screens/search/search_screen.dart';
 import '../../screens/upload/upload_screen.dart';
 import '../../screens/notifications/notification_screen.dart';
 import '../../screens/profile/profile_screen.dart';
+import '../../features/subscription/subscription_screen.dart';
 
-/// Main app shell: IndexedStack (0 Home, 1 Search, 2 Upload, 3 Notifications, 4 Profile) + single bottom nav.
-/// Navigation is by index only; no push on tab tap. State persists per tab.
+/// Main app shell: IndexedStack (0 Home, 1 Search, 2 placeholder, 3 Notifications, 4 Profile) + single bottom nav.
+/// Plus (index 2): subscribers → push Upload screen; standard users → push Membership screen.
 class MainNavWrapper extends StatefulWidget {
   const MainNavWrapper({super.key});
 
@@ -22,10 +25,27 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
   static const List<Widget> _screens = [
     HomeReelsScreen(),
     SearchScreen(),
-    UploadScreen(),
+    Placeholder(), // Plus opens Upload or Membership via push; no tab content.
     NotificationScreen(),
     ProfileScreen(),
   ];
+
+  void _onNavTap(BuildContext context, int index) {
+    if (index == 2) {
+      final canUpload = context.read<SubscriptionController>().canUploadContent;
+      if (canUpload) {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const UploadScreen()),
+        );
+      } else {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => const SubscriptionScreen()),
+        );
+      }
+      return;
+    }
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +56,7 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
       ),
       bottomNavigationBar: AppBottomNavigation(
         currentIndex: _currentIndex,
-        onTap: (index) => setState(() => _currentIndex = index),
+        onTap: (index) => _onNavTap(context, index),
         profileImageUrl: null,
       ),
     );

@@ -1,15 +1,70 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/app_config.dart';
 import 'membership_tier.dart';
 import 'subscription_service.dart';
 
+/// Central subscription state. Use [currentTier] or the boolean getters to differentiate UI/features.
+///
+/// **How to differentiate by tier:**
+/// - [currentTier] → MembershipTier.none | standard | subscriber | creator
+/// - [planDisplayName] → "Free" | "Standard" | "Subscriber" | "Creator" (for labels)
+/// - [hasAccess] → any paid plan (≠ none)
+/// - [isStandard] / [isSubscriber] / [isCreator] → exact tier
+/// - [hasVRAccess] → VR unlocked (Subscriber/Creator, or dev bypass)
+/// - [canMonetize] / [canOfferSubscriptions] → Creator only
+/// - [canUploadContent] / [hasVerification] → Subscriber or Creator
+///
+/// In widgets: `context.watch<SubscriptionController>()` or `context.read<SubscriptionController>()`.
 class SubscriptionController extends ChangeNotifier {
   final SubscriptionService _service = SubscriptionService();
 
+  static const String _keyDebugTier = 'debug_subscription_tier';
+
   MembershipTier currentTier = MembershipTier.none;
+  MembershipTier? _testTierOverride;
   bool isLoading = false;
+
+  /// In debug mode (or when [AppConfig.enableSubscriptionTierTesting]), load saved test tier and apply. Call after [init] in main().
+  Future<void> loadTestTierOverride() async {
+    if (!kDebugMode && !AppConfig.enableSubscriptionTierTesting) return;
+    final prefs = await SharedPreferences.getInstance();
+    final name = prefs.getString(_keyDebugTier);
+    if (name == null) return;
+    final tier = _tierFromString(name);
+    if (tier != null) {
+      _testTierOverride = tier;
+      currentTier = tier;
+      notifyListeners();
+    }
+  }
+
+  /// Set tier for testing (debug or when [AppConfig.enableSubscriptionTierTesting]). Persists so it survives app restart.
+  Future<void> setTestTier(MembershipTier? tier) async {
+    if (!kDebugMode && !AppConfig.enableSubscriptionTierTesting) return;
+    _testTierOverride = tier;
+    if (tier != null) {
+      currentTier = tier;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_keyDebugTier, tier.name);
+    } else {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_keyDebugTier);
+      final info = await _service.getCustomerInfo();
+      currentTier = _service.getTier(info);
+    }
+    notifyListeners();
+  }
+
+  static MembershipTier? _tierFromString(String name) {
+    for (final t in MembershipTier.values) {
+      if (t.name == name) return t;
+    }
+    return null;
+  }
 
   Future<void> init(String publicKey) async {
     await _service.init(publicKey);
@@ -22,6 +77,11 @@ class SubscriptionController extends ChangeNotifier {
   }
 
   Future<void> refreshStatus() async {
+    if ((kDebugMode || AppConfig.enableSubscriptionTierTesting) && _testTierOverride != null) {
+      currentTier = _testTierOverride!;
+      notifyListeners();
+      return;
+    }
     final info = await _service.getCustomerInfo();
     currentTier = _service.getTier(info);
     notifyListeners();
@@ -72,6 +132,35 @@ class SubscriptionController extends ChangeNotifier {
   bool get isStandard => currentTier == MembershipTier.standard;
   bool get isSubscriber => currentTier == MembershipTier.subscriber;
   bool get isCreator => currentTier == MembershipTier.creator;
+
+  /// Human-readable plan name for UI (e.g. Account screen, settings).
+  String get planDisplayName {
+    switch (currentTier) {
+      case MembershipTier.none:
+        return 'Free';
+      case MembershipTier.standard:
+        return 'Standard';
+      case MembershipTier.subscriber:
+        return 'Subscriber';
+      case MembershipTier.creator:
+        return 'Creator';
+    }
+  }
+
+  /// True if user has any paid plan (Standard, Subscriber, or Creator).
+  bool get isPaid => currentTier != MembershipTier.none;
+
+  /// True if user can monetize content (Creator only in typical setup).
+  bool get canMonetize => isCreator;
+
+  /// True if user can offer subscriptions to their audience (Creator only).
+  bool get canOfferSubscriptions => isCreator;
+
+  /// True if user can upload content (Subscriber & Creator).
+  bool get canUploadContent => isSubscriber || isCreator;
+
+  /// True if user has verification badge (Subscriber & Creator).
+  bool get hasVerification => isSubscriber || isCreator;
 
   /// Standard → locked; Subscriber & Creator → unlocked.
   /// When [AppConfig.devBypassVRAccess] is true, always unlocked for testing.

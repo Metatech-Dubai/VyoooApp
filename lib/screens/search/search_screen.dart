@@ -7,6 +7,7 @@ import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/vr/vr_player_screen.dart';
+import '../content/vr_detail_screen.dart';
 import '../profile/user_profile_screen.dart';
 
 /// Search tab: search bar, Live/VR/Users tabs, Ongoing Now & Recommended sections.
@@ -252,6 +253,7 @@ class _SearchScreenState extends State<SearchScreen>
             followerCount: user.followerCount,
             followingCount: 0,
             bio: '',
+            isCreator: true,
           ),
         ),
       ),
@@ -699,11 +701,22 @@ class _VRSearchResultGridCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: () {
-        final url = item.videoUrl ?? VrPlayerScreen.testVideoUrls[0];
         Navigator.of(context).push(
           MaterialPageRoute<void>(
-            builder: (_) => VrPlayerScreen(title: item.title, videoUrl: url),
+            builder: (_) => VRDetailScreen(
+              payload: VRDetailPayload(
+                title: item.title,
+                videoUrl: item.videoUrl,
+                thumbnailUrl: item.thumbnailUrl,
+                creatorName: item.creatorName,
+                creatorHandle: item.creatorHandle,
+                avatarUrl: item.avatarUrl,
+                description: 'It\'s the silence that is more beauti...',
+                likeCount: 100000,
+              ),
+            ),
           ),
         );
       },

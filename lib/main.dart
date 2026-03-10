@@ -1,9 +1,11 @@
 import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'core/config/app_config.dart';
 import 'core/subscription/subscription_controller.dart';
 import 'core/theme/app_padding.dart';
 import 'core/theme/app_theme.dart';
@@ -31,6 +33,9 @@ void main() async {
         ? 'appl_vPZwqxiBnbyvgMUEvKURLKzCRpj' // iOS public API key
         : 'goog_XXXXXXXXXXXX'; // Replace with your Android public API key when needed
     await subscriptionController.init(revenueCatKey);
+    if (kDebugMode || AppConfig.enableSubscriptionTierTesting) {
+      await subscriptionController.loadTestTierOverride();
+    }
   } catch (e, st) {
     debugPrint('RevenueCat initialization failed: $e');
     debugPrint(st.toString());

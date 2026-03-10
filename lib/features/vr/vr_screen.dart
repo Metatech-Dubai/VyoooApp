@@ -7,6 +7,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_feed_header.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../screens/content/vr_detail_screen.dart';
 import '../subscription/subscription_screen.dart';
 import 'vr_player_screen.dart';
 
@@ -238,12 +239,17 @@ class VrGridView extends StatelessWidget {
         itemBuilder: (context, index) {
           final videoUrl = _testVideoUrls[index % _testVideoUrls.length];
           return GestureDetector(
+            behavior: HitTestBehavior.opaque,
             onTap: () {
               Navigator.of(context).push(
                 MaterialPageRoute<void>(
-                  builder: (_) => VrPlayerScreen(
-                    title: 'VR ${index + 1}',
-                    videoUrl: videoUrl,
+                  builder: (_) => VRDetailScreen(
+                    payload: VRDetailPayload(
+                      title: 'VR ${index + 1}',
+                      videoUrl: videoUrl,
+                      thumbnailUrl: _thumbnailUrls[index],
+                      likeCount: 100000,
+                    ),
                   ),
                 ),
               );

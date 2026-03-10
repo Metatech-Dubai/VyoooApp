@@ -14,11 +14,12 @@ class SubscriptionUIModel {
 }
 
 /// Mock plans for development when RevenueCat offerings are empty or [AppConfig.useMockSubscriptions] is true.
+/// Three plans only: Standard, Subscriber, Creator (no Free plan).
 const mockSubscriptionPlans = [
   SubscriptionUIModel(
     id: 'standard',
     title: 'Standard',
-    price: 'Free',
+    price: '\$0/M',
   ),
   SubscriptionUIModel(
     id: 'subscriber',

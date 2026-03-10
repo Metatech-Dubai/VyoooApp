@@ -8,6 +8,10 @@ abstract final class AppConfig {
   /// Set to false before production so VR is gated by Subscriber/Creator.
   static const bool devBypassVRAccess = true;
 
+  /// When true, the tier picker dialog is shown at app start (even in release APK) so you can
+  /// test Standard / Subscriber / Creator without real purchases. Set to false for production.
+  static const bool enableSubscriptionTierTesting = true;
+
   /// When true and [pexelsApiKey] is set, reels feed falls back to Pexels when Firestore is empty.
   /// Get a free API key at https://www.pexels.com/api/
   static const bool usePexelsFeed = true;

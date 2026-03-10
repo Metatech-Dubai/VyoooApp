@@ -12,6 +12,11 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
+import '../content/live_stream_screen.dart';
+import '../content/post_feed_screen.dart';
+import '../content/vr_detail_screen.dart';
+import '../music/music_library_screen.dart';
+import 'edit_profile_screen.dart';
 import 'followers_following_screen.dart';
 import '../settings/settings_screen.dart';
 
@@ -29,6 +34,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   bool get wantKeepAlive => true;
 
   static const List<String> _tabs = ['Posts', 'VR', 'Streams'];
+  static const int _savedTabIndex = 3;
   int _selectedTabIndex = 0;
 
   Future<void> _logout(BuildContext context) async {
@@ -211,6 +217,19 @@ class _ProfileScreenState extends State<ProfileScreen>
               },
             ),
             ListTile(
+              leading: Icon(Icons.music_note_rounded, color: Colors.white.withValues(alpha: 0.8)),
+              title: Text(
+                'Music library',
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 16),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(builder: (_) => const MusicLibraryScreen()),
+                );
+              },
+            ),
+            ListTile(
               leading: Icon(Icons.upload_rounded, color: Colors.white.withValues(alpha: 0.8)),
               title: Text(
                 'Upload Stream videos',
@@ -254,7 +273,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     super.build(context);
     final uid = AuthService().currentUser?.uid;
-    final hasAccess = context.watch<SubscriptionController>().hasAccess;
+    final subscriptionController = context.watch<SubscriptionController>();
+    final canUploadContent = subscriptionController.canUploadContent;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -279,7 +299,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   future: UserService().getUser(uid),
                   builder: (context, snapshot) {
                     final user = snapshot.data;
-                    return _buildProfileBody(context, user: user, hasAccess: hasAccess);
+                    return _buildProfileBody(context, user: user, canUploadContent: canUploadContent);
                   },
                 ),
         ),
@@ -291,11 +311,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     return _buildProfileBody(
       context,
       user: null,
-      hasAccess: context.watch<SubscriptionController>().hasAccess,
+      canUploadContent: context.watch<SubscriptionController>().canUploadContent,
     );
   }
 
-  Widget _buildProfileBody(BuildContext context, {AppUserModel? user, required bool hasAccess}) {
+  Widget _buildProfileBody(BuildContext context, {AppUserModel? user, required bool canUploadContent}) {
     final username = user?.username?.isNotEmpty == true
         ? '@${user!.username}'
         : (AuthService().currentUser?.email ?? 'Profile');
@@ -389,7 +409,22 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Row(
                   children: [
                     Expanded(
-                      child: _PinkButton(label: 'Edit Profile', onPressed: () {}),
+                      child: _PinkButton(
+                        label: 'Edit Profile',
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => EditProfileScreen(
+                                initialName: 'Matt Rife',
+                                initialUsername: user?.username ?? 'mattrife_x',
+                                initialBio: 'In the right place, at the right time',
+                                initialMusic: 'Zulfein • Mehul Mahesh, DJ A...',
+                                avatarUrl: user?.profileImage,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
@@ -404,57 +439,232 @@ class _ProfileScreenState extends State<ProfileScreen>
             ),
           ),
         ),
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _selectedTabIndex == 0
-              ? (hasAccess ? _buildEmptyPostsPrompt() : _buildBecomeMemberPrompt(context))
-              : _buildEmptyTabPlaceholder(),
-        ),
+        ..._buildProfileContentSlivers(context, canUploadContent),
       ],
     );
   }
 
+  List<Widget> _buildProfileContentSlivers(BuildContext context, bool canUploadContent) {
+    if (!canUploadContent) {
+      if (_selectedTabIndex == 0) {
+        return [SliverFillRemaining(hasScrollBody: false, child: _buildBecomeMemberPrompt(context))];
+      }
+      if (_selectedTabIndex == _savedTabIndex) {
+        return [SliverFillRemaining(hasScrollBody: false, child: _buildEmptySavedPlaceholder())];
+      }
+      return [SliverFillRemaining(hasScrollBody: false, child: _buildEmptyTabPlaceholder())];
+    }
+    if (_selectedTabIndex == _savedTabIndex) {
+      return _buildSavedGridSlivers();
+    }
+    switch (_selectedTabIndex) {
+      case 0:
+        return _buildPostsGridSlivers();
+      case 1:
+        return _buildVRGridSlivers();
+      case 2:
+        return _buildStreamsListSlivers();
+      default:
+        return [SliverFillRemaining(hasScrollBody: false, child: _buildEmptyPostsPrompt())];
+    }
+  }
+
+  List<Widget> _buildSavedGridSlivers() {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+            childAspectRatio: 1,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: Image.network(_profileMockSavedUrls[index], fit: BoxFit.cover),
+            ),
+            childCount: _profileMockSavedUrls.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildPostsGridSlivers() {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+            childAspectRatio: 1,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) => GestureDetector(
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  builder: (_) => PostFeedScreen(
+                    payload: PostFeedPayload(
+                      initialIndex: index,
+                      creatorName: 'Matt Rife',
+                      creatorHandle: '@mattrife_x',
+                      avatarUrl: AuthService().currentUser?.photoURL ?? 'https://i.pravatar.cc/80?img=33',
+                      isVerified: true,
+                    ),
+                  ),
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: Image.network(_profileMockPostUrls[index], fit: BoxFit.cover),
+              ),
+            ),
+            childCount: _profileMockPostUrls.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildVRGridSlivers() {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        sliver: SliverGrid(
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            mainAxisSpacing: 12,
+            crossAxisSpacing: 12,
+            childAspectRatio: 0.65,
+          ),
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final item = _profileMockVRItems[index];
+              return _ProfileVRCard(
+                item: item,
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => VRDetailScreen(
+                      payload: VRDetailPayload(
+                        creatorName: item.creatorName,
+                        creatorHandle: item.creatorHandle,
+                        avatarUrl: item.avatarUrl,
+                        thumbnailUrl: item.thumbnailUrl,
+                        likeCount: item.viewCount * 1000,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            childCount: _profileMockVRItems.length,
+          ),
+        ),
+      ),
+    ];
+  }
+
+  List<Widget> _buildStreamsListSlivers() {
+    return [
+      SliverPadding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+        sliver: SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              if (index.isOdd) return const SizedBox(height: AppSpacing.md);
+              final itemIndex = index ~/ 2;
+              final item = _profileMockStreamItems[itemIndex];
+              return SizedBox(
+                height: 200,
+                child: _ProfileStreamCard(
+                  item: item,
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => LiveStreamScreen(
+                        payload: LiveStreamPayload(
+                          streamTitle: item.title,
+                          streamDescription: item.subtitle,
+                          thumbnailUrl: item.thumbnailUrl,
+                          likeCount: item.viewCount,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+            childCount: _profileMockStreamItems.length * 2 - 1,
+          ),
+        ),
+      ),
+    ];
+  }
+
   Widget _buildTabs() {
     return Row(
-      children: List.generate(_tabs.length, (index) {
-        final isSelected = index == _selectedTabIndex;
-        return Expanded(
-          child: Padding(
-            padding: EdgeInsets.only(right: index < _tabs.length - 1 ? AppSpacing.xs : 0),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () => setState(() => _selectedTabIndex = index),
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: isSelected
-                        ? const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [Color(0xFFDE106B), Color(0xFFF81945)],
-                          )
-                        : null,
-                    color: isSelected ? null : Colors.white.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                  ),
-                  child: Center(
-                    child: Text(
-                      _tabs[index],
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+      children: [
+        ...List.generate(_tabs.length, (index) {
+          final isSelected = index == _selectedTabIndex;
+          return Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(right: index < _tabs.length - 1 ? AppSpacing.xs : 0),
+              child: Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () => setState(() => _selectedTabIndex = index),
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: isSelected
+                          ? const LinearGradient(
+                              begin: Alignment.centerLeft,
+                              end: Alignment.centerRight,
+                              colors: [Color(0xFFDE106B), Color(0xFFF81945)],
+                            )
+                          : null,
+                      color: isSelected ? null : Colors.white.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Center(
+                      child: Text(
+                        _tabs[index],
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
                 ),
               ),
             ),
+          );
+        }),
+        const SizedBox(width: AppSpacing.sm),
+        Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => setState(() => _selectedTabIndex = _savedTabIndex),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.all(8),
+              child: Icon(
+                _selectedTabIndex == _savedTabIndex ? Icons.star_rounded : Icons.star_outline_rounded,
+                color: _selectedTabIndex == _savedTabIndex
+                    ? const Color(0xFFF81945)
+                    : Colors.white.withValues(alpha: 0.8),
+                size: 22,
+              ),
+            ),
           ),
-        );
-      }),
+        ),
+      ],
     );
   }
 
@@ -486,70 +696,95 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget _buildBecomeMemberPrompt(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            'Ready to post? Become a Member!',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 18,
-              fontWeight: FontWeight.w700,
-            ),
-            textAlign: TextAlign.center,
+      child: Center(
+        child: Container(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.08),
+            borderRadius: BorderRadius.circular(AppRadius.input * 1.5),
           ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            'Become our member to start posting your content. Unlock full access and showcase your creativity today and you can also "monetize your content"',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Container(
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-                colors: [Color(0xFFE8C547), Color(0xFFD4A84B), Color(0xFFB8862E)],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 36,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
+                ),
               ),
-              borderRadius: BorderRadius.circular(AppRadius.pill),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const SubscriptionScreen(),
+              Text.rich(
+                TextSpan(
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.95),
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  children: const [
+                    TextSpan(text: 'Ready to post? '),
+                    TextSpan(
+                      text: 'Become a Member!',
+                      style: TextStyle(fontWeight: FontWeight.w800),
                     ),
-                  );
-                },
-                borderRadius: BorderRadius.circular(AppRadius.pill),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(FontAwesomeIcons.dollarSign, size: 16, color: Colors.white.withValues(alpha: 0.95)),
-                      const SizedBox(width: 8),
-                      const Text(
-                        'Become Member',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
+                  ],
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                'Become our member to start posting your content. Unlock full access and showcase your creativity today and you can also "monetize your content"',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const SubscriptionScreen(),
                       ),
-                    ],
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(AppRadius.pill),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                        colors: [Color(0xFFE8C547), Color(0xFFD4A84B), Color(0xFFB8862E)],
+                      ),
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(FontAwesomeIcons.crown, size: 18, color: Colors.white.withValues(alpha: 0.95)),
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Become Member',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -559,6 +794,367 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Text(
         'No content yet',
         style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
+      ),
+    );
+  }
+
+  Widget _buildEmptySavedPlaceholder() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bookmark_border_rounded, size: 48, color: Colors.white.withValues(alpha: 0.5)),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'No saved items yet',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Mock data for profile Posts/VR/Streams (design only; Cloudflare integration later).
+const List<String> _profileMockPostUrls = [
+  'https://picsum.photos/400/400?random=p1',
+  'https://picsum.photos/400/400?random=p2',
+  'https://picsum.photos/400/400?random=p3',
+  'https://picsum.photos/400/400?random=p4',
+  'https://picsum.photos/400/400?random=p5',
+  'https://picsum.photos/400/400?random=p6',
+  'https://picsum.photos/400/400?random=p7',
+  'https://picsum.photos/400/400?random=p8',
+  'https://picsum.photos/400/400?random=p9',
+];
+
+// Mock saved items (same grid design as Posts).
+const List<String> _profileMockSavedUrls = [
+  'https://picsum.photos/400/400?random=s1',
+  'https://picsum.photos/400/400?random=s2',
+  'https://picsum.photos/400/400?random=s3',
+  'https://picsum.photos/400/400?random=s4',
+  'https://picsum.photos/400/400?random=s5',
+  'https://picsum.photos/400/400?random=s6',
+  'https://picsum.photos/400/400?random=s7',
+  'https://picsum.photos/400/400?random=s8',
+  'https://picsum.photos/400/400?random=s9',
+  'https://picsum.photos/400/400?random=s10',
+  'https://picsum.photos/400/400?random=s11',
+];
+
+class _ProfileVRItem {
+  const _ProfileVRItem({
+    required this.thumbnailUrl,
+    required this.creatorName,
+    required this.creatorHandle,
+    required this.avatarUrl,
+    this.viewCount = 102,
+    this.isVerified = false,
+  });
+  final String thumbnailUrl;
+  final String creatorName;
+  final String creatorHandle;
+  final String avatarUrl;
+  final int viewCount;
+  final bool isVerified;
+}
+
+final List<_ProfileVRItem> _profileMockVRItems = [
+  _ProfileVRItem(
+    thumbnailUrl: 'https://picsum.photos/400/600?random=vr1',
+    creatorName: 'Sofia Vergara',
+    creatorHandle: '@Soffv33',
+    avatarUrl: 'https://i.pravatar.cc/80?img=32',
+    viewCount: 102,
+  ),
+  _ProfileVRItem(
+    thumbnailUrl: 'https://picsum.photos/400/600?random=vr2',
+    creatorName: 'Selena Gomet',
+    creatorHandle: '@GometnoComet',
+    avatarUrl: 'https://i.pravatar.cc/80?img=28',
+    viewCount: 102,
+    isVerified: true,
+  ),
+  _ProfileVRItem(
+    thumbnailUrl: 'https://picsum.photos/400/600?random=vr3',
+    creatorName: 'Caroline Hade',
+    creatorHandle: '@Carryhune',
+    avatarUrl: 'https://i.pravatar.cc/80?img=41',
+    viewCount: 102,
+  ),
+  _ProfileVRItem(
+    thumbnailUrl: 'https://picsum.photos/400/600?random=vr4',
+    creatorName: 'Alena Joy',
+    creatorHandle: '@alenajoyt23',
+    avatarUrl: 'https://i.pravatar.cc/80?img=38',
+    viewCount: 102,
+  ),
+];
+
+class _ProfileStreamItem {
+  const _ProfileStreamItem({
+    required this.thumbnailUrl,
+    required this.title,
+    required this.subtitle,
+    this.isLive = false,
+    this.viewCount = 22500,
+  });
+  final String thumbnailUrl;
+  final String title;
+  final String subtitle;
+  final bool isLive;
+  final int viewCount;
+}
+
+final List<_ProfileStreamItem> _profileMockStreamItems = [
+  _ProfileStreamItem(
+    thumbnailUrl: 'https://picsum.photos/400/240?random=live1',
+    title: 'Slaughter to Prevail - K.O.D. live Drumcam fro...',
+    subtitle: 'Streaming now',
+    isLive: true,
+    viewCount: 22500,
+  ),
+  _ProfileStreamItem(
+    thumbnailUrl: 'https://picsum.photos/400/240?random=live2',
+    title: 'Live Show @standupcomedy roasting our very...',
+    subtitle: 'Streamed 2 months ago',
+    isLive: false,
+    viewCount: 22500,
+  ),
+  _ProfileStreamItem(
+    thumbnailUrl: 'https://picsum.photos/400/240?random=vr5',
+    title: 'Hot air balloon 360°',
+    subtitle: 'Streamed 1 week ago',
+    isLive: false,
+    viewCount: 102,
+  ),
+];
+
+class _ProfileVRCard extends StatelessWidget {
+  const _ProfileVRCard({required this.item, this.onTap});
+
+  final _ProfileVRItem item;
+  final VoidCallback? onTap;
+
+  static String _formatCount(int n) {
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(item.thumbnailUrl, fit: BoxFit.cover),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.25),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.85),
+                  ],
+                  stops: const [0.0, 0.35, 1.0],
+                ),
+              ),
+            ),
+            Positioned(
+              top: AppSpacing.sm,
+              left: AppSpacing.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'VR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.visibility_outlined, size: 12, color: Colors.white.withValues(alpha: 0.9)),
+                  const SizedBox(width: 2),
+                  Text(
+                    _formatCount(item.viewCount),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: AppSpacing.sm,
+              right: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.grey.shade700,
+                    backgroundImage: NetworkImage(item.avatarUrl),
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Flexible(
+                              child: Text(
+                                item.creatorName,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                                maxLines: 1,
+                              ),
+                            ),
+                            if (item.isVerified) ...[
+                              const SizedBox(width: 4),
+                              Icon(Icons.check_circle_rounded, size: 14, color: AppColors.deleteRed),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          item.creatorHandle,
+                          style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileStreamCard extends StatelessWidget {
+  const _ProfileStreamCard({required this.item, this.onTap});
+
+  final _ProfileStreamItem item;
+  final VoidCallback? onTap;
+
+  static String _formatCount(int n) {
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
+    return '$n';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            Image.network(item.thumbnailUrl, fit: BoxFit.cover),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.8),
+                  ],
+                  stops: const [0.0, 0.4, 1.0],
+                ),
+              ),
+            ),
+            if (item.isLive)
+              Positioned(
+                top: AppSpacing.sm,
+                left: AppSpacing.sm,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.deleteRed,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'LIVE',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            Positioned(
+              top: AppSpacing.sm,
+              right: AppSpacing.sm,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.visibility_outlined, size: 12, color: Colors.white.withValues(alpha: 0.9)),
+                  const SizedBox(width: 2),
+                  Text(
+                    _formatCount(item.viewCount),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+            Positioned(
+              left: AppSpacing.sm,
+              right: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    item.subtitle,
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

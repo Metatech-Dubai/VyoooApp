@@ -8,7 +8,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import 'create_account_screen.dart';
 import 'find_account_screen.dart';
-import 'verify_code_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -26,13 +25,6 @@ class _SignInScreenState extends State<SignInScreen> {
   String? _errorMessage;
 
   final AuthService _auth = AuthService();
-
-  String get _maskedEmailForVerify {
-    final u = _usernameController.text.trim();
-    if (u.isEmpty) return '***@email.com';
-    if (u.length <= 3) return '${u}******@email.com';
-    return '${u.substring(0, 3)}******@email.com';
-  }
 
   bool get _canLogin =>
       _usernameController.text.trim().isNotEmpty &&
@@ -58,14 +50,8 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (result.success) {
-      Navigator.of(context).push(
-        MaterialPageRoute(
-          builder: (context) => VerifyCodeScreen(
-            maskedEmail: _maskedEmailForVerify,
-            isLoginFlow: true,
-          ),
-        ),
-      );
+      // Skip OTP verification: pop back to root so AuthWrapper shows main app.
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } else {
       setState(() => _errorMessage = result.message ?? 'Login failed');
     }

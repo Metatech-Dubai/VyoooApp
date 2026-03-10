@@ -6,6 +6,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/wrappers/auth_wrapper.dart';
+import '../account/account_screen.dart';
 
 /// Settings screen for standard user: list with icons, PREMIUM tags, Logout in red.
 class SettingsScreen extends StatelessWidget {
@@ -46,7 +47,11 @@ class SettingsScreen extends StatelessWidget {
                           _SettingsTile(
                             icon: Icons.person_outline_rounded,
                             label: 'Account',
-                            onTap: () {},
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(builder: (_) => const AccountScreen()),
+                              );
+                            },
                           ),
                           _divider(),
                           _SettingsTile(
