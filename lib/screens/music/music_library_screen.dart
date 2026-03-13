@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/mock/mock_music_data.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';

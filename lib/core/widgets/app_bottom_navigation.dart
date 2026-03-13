@@ -16,7 +16,7 @@ class _NavAssets {
   static const notificationUnselected = '$_base/NotificationUnSelected.png';
 }
 
-/// Custom bottom navigation. No BottomNavigationBar — gradient + overlay, parent controls index via onTap.
+/// Custom bottom navigation. No BottomNavigationBar — gradient background, parent controls index via onTap.
 /// Index: 0 Home, 1 Search, 2 Create (+), 3 Notifications, 4 Profile.
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
@@ -30,164 +30,100 @@ class AppBottomNavigation extends StatelessWidget {
   final void Function(int) onTap;
   final String? profileImageUrl;
 
-  static const double _height = 66; // 20% smaller (was 83)
-  static const double _iconSize = 17; // +20% from 14
-  static const double _profileSize = 23; // +20% from 19
-  static const double _createButtonSize = 29; // +20% from 24
-  static const Duration _animationDuration = Duration(milliseconds: 150);
-
-  static const Color _selectedColor = Colors.white;
-  static final Color _unselectedColor = Colors.white.withValues(alpha: 0.5);
-  static final Color _createBorderColor = Colors.white.withValues(alpha: 0.6);
-  static const Color _primaryPink = Color(0xFFDE106B);
+  static const double _barHeight = 64;
+  static const double _iconSize = 26;
+  static const double _profileSize = 36;
+  static const double _addButtonSize = 32;
+  static const double _addButtonRadius = 8;
+  static const Duration _animDuration = Duration(milliseconds: 150);
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      height: _height,
+      height: _barHeight,
       decoration: const BoxDecoration(
         gradient: AppGradients.feedGradient,
       ),
-      child: SizedBox(
-        height: _height,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Center(
-              child: _NavIconItem(
-                selectedAsset: _NavAssets.homeSelected,
-                unselectedAsset: _NavAssets.homeUnselected,
-                index: 0,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-            ),
-            Center(
-              child: _NavIconItem(
-                selectedAsset: _NavAssets.searchSelected,
-                unselectedAsset: _NavAssets.searchUnselected,
-                index: 1,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-            ),
-            Center(
-              child: _CreateButton(
-                onTap: () => onTap(2),
-                isSelected: currentIndex == 2,
-              ),
-            ),
-            Center(
-              child: _NavIconItem(
-                selectedAsset: _NavAssets.notificationSelected,
-                unselectedAsset: _NavAssets.notificationUnselected,
-                index: 3,
-                currentIndex: currentIndex,
-                onTap: onTap,
-              ),
-            ),
-                Center(
-                  child: _ProfileNavItem(
-                    index: 4,
-                    currentIndex: currentIndex,
-                    onTap: onTap,
-                    imageUrl: profileImageUrl,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Nav item that displays custom asset icons (selected / unselected).
-class _NavIconItem extends StatelessWidget {
-  const _NavIconItem({
-    required this.selectedAsset,
-    required this.unselectedAsset,
-    required this.index,
-    required this.currentIndex,
-    required this.onTap,
-  });
-
-  final String selectedAsset;
-  final String unselectedAsset;
-  final int index;
-  final int currentIndex;
-  final void Function(int) onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final isSelected = index == currentIndex;
-    final asset = isSelected ? selectedAsset : unselectedAsset;
-    final isHome = index == 0;
-    return GestureDetector(
-      onTap: () {
-        HapticFeedback.lightImpact();
-        onTap(index);
-      },
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AnimatedScale(
-            scale: isSelected ? 1.1 : 1.0,
-            duration: AppBottomNavigation._animationDuration,
-            child: SizedBox(
-              width: AppBottomNavigation._iconSize,
-              height: AppBottomNavigation._iconSize,
-              child: Image.asset(
-                asset,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => Icon(
-                  Icons.circle_outlined,
-                  size: AppBottomNavigation._iconSize,
-                  color: isSelected
-                      ? AppBottomNavigation._selectedColor
-                      : AppBottomNavigation._unselectedColor,
-                ),
-              ),
-            ),
+          _NavItem(
+            selectedAsset: _NavAssets.homeSelected,
+            unselectedAsset: _NavAssets.homeUnselected,
+            fallbackIcon: Icons.home_rounded,
+            index: 0,
+            currentIndex: currentIndex,
+            onTap: onTap,
+            iconSize: _iconSize,
+            animDuration: _animDuration,
           ),
-          if (isHome && isSelected) ...[
-            const SizedBox(height: 4),
-            Container(
-              width: 24,
-              height: 3,
-              decoration: BoxDecoration(
-                color: AppBottomNavigation._primaryPink,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-          ],
+          _NavItem(
+            selectedAsset: _NavAssets.searchSelected,
+            unselectedAsset: _NavAssets.searchUnselected,
+            fallbackIcon: Icons.search_rounded,
+            index: 1,
+            currentIndex: currentIndex,
+            onTap: onTap,
+            iconSize: _iconSize,
+            animDuration: _animDuration,
+          ),
+          _AddButton(
+            selectedAsset: _NavAssets.addSelected,
+            unselectedAsset: _NavAssets.addUnselected,
+            isSelected: currentIndex == 2,
+            size: _addButtonSize,
+            radius: _addButtonRadius,
+            iconSize: _iconSize,
+            onTap: () {
+              HapticFeedback.lightImpact();
+              onTap(2);
+            },
+          ),
+          _NavItem(
+            selectedAsset: _NavAssets.notificationSelected,
+            unselectedAsset: _NavAssets.notificationUnselected,
+            fallbackIcon: Icons.notifications_outlined,
+            index: 3,
+            currentIndex: currentIndex,
+            onTap: onTap,
+            iconSize: _iconSize,
+            animDuration: _animDuration,
+          ),
+          _ProfileItem(
+            index: 4,
+            currentIndex: currentIndex,
+            onTap: onTap,
+            imageUrl: profileImageUrl,
+            size: _profileSize,
+            animDuration: _animDuration,
+          ),
         ],
       ),
     );
   }
 }
 
-class _ProfileNavItem extends StatelessWidget {
-  const _ProfileNavItem({
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.selectedAsset,
+    required this.unselectedAsset,
+    required this.fallbackIcon,
     required this.index,
     required this.currentIndex,
     required this.onTap,
-    this.imageUrl,
+    required this.iconSize,
+    required this.animDuration,
   });
 
+  final String selectedAsset;
+  final String unselectedAsset;
+  final IconData fallbackIcon;
   final int index;
   final int currentIndex;
   final void Function(int) onTap;
-  final String? imageUrl;
+  final double iconSize;
+  final Duration animDuration;
 
   @override
   Widget build(BuildContext context) {
@@ -198,85 +134,159 @@ class _ProfileNavItem extends StatelessWidget {
         onTap(index);
       },
       behavior: HitTestBehavior.opaque,
-      child: AnimatedScale(
-        scale: isSelected ? 1.1 : 1.0,
-        duration: AppBottomNavigation._animationDuration,
-        child: Container(
-          width: AppBottomNavigation._profileSize,
-          height: AppBottomNavigation._profileSize,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: (imageUrl == null || imageUrl!.isEmpty)
-                ? Colors.white.withValues(alpha: 0.08)
-                : null,
-            border: isSelected
-                ? Border.all(color: Colors.white, width: 2)
-                : null,
-            image: (imageUrl != null && imageUrl!.isNotEmpty)
-                ? DecorationImage(
-                    image: NetworkImage(imageUrl!),
-                    fit: BoxFit.cover,
-                  )
-                : null,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(
+          child: AnimatedScale(
+            scale: isSelected ? 1.12 : 1.0,
+            duration: animDuration,
+            child: SizedBox(
+              width: iconSize,
+              height: iconSize,
+              child: Image.asset(
+                isSelected ? selectedAsset : unselectedAsset,
+                fit: BoxFit.contain,
+                color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.55),
+                colorBlendMode: BlendMode.modulate,
+                errorBuilder: (ctx, err, stack) => Icon(
+                  fallbackIcon,
+                  size: iconSize,
+                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.55),
+                ),
+              ),
+            ),
           ),
-          child: (imageUrl == null || imageUrl!.isEmpty)
-              ? Center(
-                  child: Icon(
-                    Icons.person_rounded,
-                    size: AppBottomNavigation._iconSize,
-                    color: isSelected
-                        ? AppBottomNavigation._selectedColor
-                        : AppBottomNavigation._unselectedColor,
-                  ),
-                )
-              : null,
         ),
       ),
     );
   }
 }
 
-class _CreateButton extends StatelessWidget {
-  const _CreateButton({
-    required this.onTap,
+class _AddButton extends StatelessWidget {
+  const _AddButton({
+    required this.selectedAsset,
+    required this.unselectedAsset,
     required this.isSelected,
+    required this.size,
+    required this.radius,
+    required this.iconSize,
+    required this.onTap,
   });
 
-  final VoidCallback onTap;
+  final String selectedAsset;
+  final String unselectedAsset;
   final bool isSelected;
+  final double size;
+  final double radius;
+  final double iconSize;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final asset = isSelected
-        ? _NavAssets.addSelected
-        : _NavAssets.addUnselected;
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(
+          child: Container(
+            width: size,
+            height: size,
+            decoration: BoxDecoration(
+              color: isSelected ? Colors.white.withValues(alpha: 0.15) : Colors.transparent,
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.7),
+                width: 1.5,
+              ),
+            ),
+            child: Center(
+              child: Image.asset(
+                isSelected ? selectedAsset : unselectedAsset,
+                width: iconSize - 4,
+                height: iconSize - 4,
+                fit: BoxFit.contain,
+                color: Colors.white,
+                colorBlendMode: BlendMode.modulate,
+                errorBuilder: (ctx, err, stack) => Icon(
+                  Icons.add_rounded,
+                  size: iconSize - 4,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileItem extends StatelessWidget {
+  const _ProfileItem({
+    required this.index,
+    required this.currentIndex,
+    required this.onTap,
+    required this.size,
+    required this.animDuration,
+    this.imageUrl,
+  });
+
+  final int index;
+  final int currentIndex;
+  final void Function(int) onTap;
+  final double size;
+  final Duration animDuration;
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = index == currentIndex;
+    final hasImage = imageUrl != null && imageUrl!.isNotEmpty;
+
     return GestureDetector(
       onTap: () {
         HapticFeedback.lightImpact();
-        onTap();
+        onTap(index);
       },
       behavior: HitTestBehavior.opaque,
-      child: Container(
-        width: AppBottomNavigation._createButtonSize,
-        height: AppBottomNavigation._createButtonSize,
-        decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: AppBottomNavigation._createBorderColor,
-          ),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.all(4),
-          child: Image.asset(
-            asset,
-            fit: BoxFit.contain,
-            errorBuilder: (_, __, ___) => Icon(
-              Icons.add_rounded,
-              size: AppBottomNavigation._iconSize,
-              color: isSelected
-                  ? AppBottomNavigation._primaryPink
-                  : Colors.white,
+      child: SizedBox(
+        width: 48,
+        height: 48,
+        child: Center(
+          child: AnimatedScale(
+            scale: isSelected ? 1.08 : 1.0,
+            duration: animDuration,
+            child: Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.35),
+                  width: isSelected ? 2 : 1.5,
+                ),
+                color: hasImage ? null : Colors.white.withValues(alpha: 0.1),
+                image: hasImage
+                    ? DecorationImage(
+                        image: NetworkImage(imageUrl!),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
+              ),
+              child: hasImage
+                  ? null
+                  : Icon(
+                      Icons.person_rounded,
+                      size: size * 0.55,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.55),
+                    ),
             ),
           ),
         ),

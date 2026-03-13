@@ -141,15 +141,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        _UserStatChip(label: 'POSTS', value: _formatCount(p.postCount)),
+                        _UserStatChip(label: 'Posts', value: _formatCount(p.postCount)),
                         const SizedBox(width: AppSpacing.sm),
                         _UserStatChip(
-                          label: 'FOLLOWERS',
-                          value: _formatCount(p.followerCount),
+                          label: 'Following',
+                          value: _formatCount(p.followingCount),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute<void>(
                               builder: (_) => FollowersFollowingScreen(
-                                initialTab: 0,
+                                initialTab: 1,
                                 followerCount: p.followerCount,
                                 followingCount: p.followingCount,
                               ),
@@ -158,12 +158,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         ),
                         const SizedBox(width: AppSpacing.sm),
                         _UserStatChip(
-                          label: 'FOLLOWING',
-                          value: _formatCount(p.followingCount),
+                          label: 'Followers',
+                          value: _formatCount(p.followerCount),
                           onTap: () => Navigator.of(context).push(
                             MaterialPageRoute<void>(
                               builder: (_) => FollowersFollowingScreen(
-                                initialTab: 1,
+                                initialTab: 0,
                                 followerCount: p.followerCount,
                                 followingCount: p.followingCount,
                               ),

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 
@@ -96,7 +95,7 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
                     const SizedBox(height: AppSpacing.lg),
                     _buildActionIcon(Icons.share_rounded, null),
                     const SizedBox(height: AppSpacing.lg),
-                    _buildActionIcon(Icons.star_outline_rounded, null),
+                    _buildActionIcon(Icons.bookmark_border_rounded, null),
                   ],
                 ),
               ),

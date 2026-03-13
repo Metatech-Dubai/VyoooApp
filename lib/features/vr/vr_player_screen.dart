@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
-import '../../core/theme/app_gradients.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// VR player for testing: plays a video fullscreen. Replace with real VR/streaming later.

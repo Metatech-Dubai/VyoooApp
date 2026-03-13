@@ -377,7 +377,7 @@ class _SelectedBadge extends StatelessWidget {
       top: 6,
       right: 6,
       child: DecoratedBox(
-        decoration: BoxDecoration(color: Colors.green, shape: BoxShape.circle),
+        decoration: BoxDecoration(color: Color(0xFFDE106B), shape: BoxShape.circle),
         child: Padding(
           padding: EdgeInsets.all(2),
           child: Icon(Icons.check, color: Colors.white, size: 16),

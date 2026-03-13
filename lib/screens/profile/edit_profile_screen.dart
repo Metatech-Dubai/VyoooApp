@@ -3,7 +3,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../services/image_picker_service.dart';
@@ -46,7 +45,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   /// Picked local file path after Edit picture → crop → Save.
   String? _pickedImagePath;
 
-  static const int _bioMaxLength = 140;
+  static const int _bioMaxLength = 150;
 
   @override
   void initState() {

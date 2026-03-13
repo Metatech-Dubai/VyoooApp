@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import 'package:provider/provider.dart';
 
 import '../../core/controllers/reels_controller.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/subscription/subscription_controller.dart';
-import '../../core/theme/app_padding.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_feed_header.dart';
 import '../../core/widgets/app_interaction_button.dart';
@@ -29,7 +26,14 @@ enum HomeTab { trending, vr, following, forYou }
 /// Main home screen: vertical reels feed with interactions.
 /// Default tab: For You. Tab switch is internal state only (no new route).
 class HomeReelsScreen extends StatefulWidget {
-  const HomeReelsScreen({super.key});
+  const HomeReelsScreen({
+    super.key,
+    this.isActive = true,
+  });
+
+  /// Whether the Home tab is the currently visible bottom-nav tab.
+  /// When false, reels should pause even if their page is selected.
+  final bool isActive;
 
   @override
   State<HomeReelsScreen> createState() => _HomeReelsScreenState();
@@ -307,7 +311,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           onTap: _onVideoTap,
           child: ReelItemWidget(
             videoUrl: reel['videoUrl'] as String,
-            isVisible: index == _currentIndex,
+            // Only play when this page is visible AND the home tab is active.
+            isVisible: widget.isActive && index == _currentIndex,
           ),
         );
       },
@@ -342,12 +347,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           AppInteractionButton(
-            icon: FontAwesomeIcons.crown,
-            count: '',
-            iconColor: const Color(0xFFFFD700),
-          ),
-          SizedBox(height: AppSpacing.lg),
-          AppInteractionButton(
             icon: Icons.visibility_outlined,
             count: _formatCount(reel['views'] as int),
           ),
@@ -366,7 +365,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           ),
           SizedBox(height: AppSpacing.lg),
           AppInteractionButton(
-            icon: isSaved ? Icons.star : Icons.star_border,
+            icon: isSaved ? Icons.bookmark : Icons.bookmark_border,
             count: _formatCount(reel['saves'] as int),
             isActive: isSaved,
             onTap: () => _onSave(reelId, isSaved),

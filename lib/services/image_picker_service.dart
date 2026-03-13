@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 
 /// Abstraction for picking images. Keeps UI free of picker logic.

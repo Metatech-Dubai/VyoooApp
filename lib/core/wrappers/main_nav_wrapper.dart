@@ -22,14 +22,6 @@ class MainNavWrapper extends StatefulWidget {
 class _MainNavWrapperState extends State<MainNavWrapper> {
   int _currentIndex = 0;
 
-  static const List<Widget> _screens = [
-    HomeReelsScreen(),
-    SearchScreen(),
-    Placeholder(), // Plus opens Upload or Membership via push; no tab content.
-    NotificationScreen(),
-    ProfileScreen(),
-  ];
-
   void _onNavTap(BuildContext context, int index) {
     if (index == 2) {
       final canUpload = context.read<SubscriptionController>().canUploadContent;
@@ -49,10 +41,18 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
 
   @override
   Widget build(BuildContext context) {
+    final screens = <Widget>[
+      HomeReelsScreen(isActive: _currentIndex == 0),
+      const SearchScreen(),
+      const Placeholder(), // Plus opens Upload or Membership via push; no tab content.
+      const NotificationScreen(),
+      const ProfileScreen(),
+    ];
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,
-        children: _screens,
+        children: screens,
       ),
       bottomNavigationBar: AppBottomNavigation(
         currentIndex: _currentIndex,

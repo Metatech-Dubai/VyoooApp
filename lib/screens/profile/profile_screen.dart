@@ -374,42 +374,54 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _StatChip(label: 'POSTS', value: '0'),
+                    _StatChip(label: 'Posts', value: '1,038'),
                     const SizedBox(width: AppSpacing.sm),
                     _StatChip(
-                      label: 'FOLLOWERS',
-                      value: '1',
+                      label: 'Following',
+                      value: '10,906',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const FollowersFollowingScreen(
-                            initialTab: 0,
-                            followerCount: 1,
-                            followingCount: 10,
+                            initialTab: 1,
+                            followerCount: 2437,
+                            followingCount: 10906,
                           ),
                         ),
                       ),
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     _StatChip(
-                      label: 'FOLLOWING',
-                      value: '10',
+                      label: 'Followers',
+                      value: '2,437',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const FollowersFollowingScreen(
-                            initialTab: 1,
-                            followerCount: 1,
-                            followingCount: 10,
+                            initialTab: 0,
+                            followerCount: 2437,
+                            followingCount: 10906,
                           ),
                         ),
                       ),
                     ),
                   ],
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Text(
+                    'In the right place, at the right time',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 13,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
                 const SizedBox(height: AppSpacing.lg),
                 Row(
                   children: [
                     Expanded(
-                      child: _PinkButton(
+                      child: _OutlineButton(
                         label: 'Edit Profile',
                         onPressed: () {
                           Navigator.of(context).push(
@@ -428,7 +440,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                     const SizedBox(width: AppSpacing.sm),
                     Expanded(
-                      child: _GreenButton(label: 'Share', onPressed: () {}),
+                      child: _OutlineButton(label: 'Share', onPressed: () {}),
                     ),
                   ],
                 ),
@@ -1208,8 +1220,9 @@ class _StatChip extends StatelessWidget {
   }
 }
 
-class _PinkButton extends StatelessWidget {
-  const _PinkButton({required this.label, required this.onPressed});
+/// Dark semi-transparent pill button — matches Figma "Edit Profile" / "Share" style.
+class _OutlineButton extends StatelessWidget {
+  const _OutlineButton({required this.label, required this.onPressed});
 
   final String label;
   final VoidCallback onPressed;
@@ -1217,14 +1230,19 @@ class _PinkButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: AppColors.pink,
+      color: Colors.transparent,
       borderRadius: BorderRadius.circular(AppRadius.pill),
       child: InkWell(
         onTap: onPressed,
         borderRadius: BorderRadius.circular(AppRadius.pill),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 11),
           alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+          ),
           child: Text(
             label,
             style: const TextStyle(
@@ -1232,44 +1250,6 @@ class _PinkButton extends StatelessWidget {
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _GreenButton extends StatelessWidget {
-  const _GreenButton({required this.label, required this.onPressed});
-
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.whatsappGreen,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          alignment: Alignment.center,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(Icons.share_rounded, color: Colors.white, size: 18),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
           ),
         ),
       ),

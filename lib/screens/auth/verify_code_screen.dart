@@ -4,7 +4,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import 'create_username_screen.dart';
-import '../home/home_screen.dart';
 
 class _BackspaceIntent extends Intent {
   const _BackspaceIntent();

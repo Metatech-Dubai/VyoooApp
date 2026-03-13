@@ -3,14 +3,13 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/constants/app_colors.dart';
 import '../../core/widgets/app_gradient_background.dart';
-import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/vr/vr_player_screen.dart';
 import '../content/vr_detail_screen.dart';
 import '../profile/user_profile_screen.dart';
 
-/// Search tab: search bar, Live/VR/Users tabs, Ongoing Now & Recommended sections.
+/// Search tab: search bar, Live/VR/Camera tabs, Ongoing Now & Recommended sections.
 /// Matches Figma: search field + # button, pink gradient active tab, live cards.
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -36,7 +35,7 @@ class _SearchScreenState extends State<SearchScreen>
     'Travel vlogs',
   ].toList();
 
-  static const List<String> _tabs = ['Live', 'VR', 'Users'];
+  static const List<String> _tabs = ['Live', 'VR', 'Camera'];
 
   @override
   void initState() {

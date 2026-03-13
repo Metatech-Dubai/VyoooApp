@@ -971,23 +971,16 @@ class _FollowingButton extends StatelessWidget {
       );
     }
     return Material(
-      color: AppColors.deleteRed,
+      color: AppColors.pink,
       borderRadius: BorderRadius.circular(AppRadius.pill),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Follow',
-                style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(width: 6),
-              Icon(Icons.close, size: 14, color: Colors.white.withValues(alpha: 0.9)),
-            ],
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          child: Text(
+            'Follow',
+            style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ),
       ),
