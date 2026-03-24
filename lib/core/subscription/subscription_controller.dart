@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:purchases_flutter/purchases_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -26,6 +27,7 @@ class SubscriptionController extends ChangeNotifier {
   MembershipTier currentTier = MembershipTier.none;
   MembershipTier? _testTierOverride;
   bool isLoading = false;
+  String? purchaseError; // non-null if last purchase failed (not cancelled)
 
   /// In debug mode (or when [AppConfig.enableSubscriptionTierTesting]), load saved test tier and apply. Call after [init] in main().
   Future<void> loadTestTierOverride() async {
@@ -87,41 +89,37 @@ class SubscriptionController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> purchaseStandard(Package package) async {
+  /// Returns true if purchase succeeded, false if user cancelled, throws on real error.
+  Future<bool> purchase(Package package) async {
+    purchaseError = null;
     isLoading = true;
     notifyListeners();
     try {
       await _service.purchase(package);
       await refreshStatus();
+      return true;
+    } on PlatformException catch (e) {
+      final code = PurchasesErrorHelper.getErrorCode(e);
+      if (code == PurchasesErrorCode.purchaseCancelledError) {
+        return false; // user cancelled — silent
+      }
+      purchaseError = e.message ?? e.code;
+      notifyListeners();
+      rethrow;
+    } catch (e) {
+      purchaseError = e.toString();
+      notifyListeners();
+      rethrow;
     } finally {
       isLoading = false;
       notifyListeners();
     }
   }
 
-  Future<void> purchaseSubscriber(Package package) async {
-    isLoading = true;
-    notifyListeners();
-    try {
-      await _service.purchase(package);
-      await refreshStatus();
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> purchaseCreator(Package package) async {
-    isLoading = true;
-    notifyListeners();
-    try {
-      await _service.purchase(package);
-      await refreshStatus();
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
-  }
+  // Keep these for backwards compatibility
+  Future<void> purchaseStandard(Package package) async => purchase(package);
+  Future<void> purchaseSubscriber(Package package) async => purchase(package);
+  Future<void> purchaseCreator(Package package) async => purchase(package);
 
   Future<void> restorePurchases() async {
     await _service.restore();

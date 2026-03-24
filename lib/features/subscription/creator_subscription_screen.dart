@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
+import '../../core/constants/app_colors.dart';
+
 class CreatorSubscriptionScreen extends StatefulWidget {
   const CreatorSubscriptionScreen({
     super.key,
@@ -8,6 +10,7 @@ class CreatorSubscriptionScreen extends StatefulWidget {
     required this.handle,
     required this.avatarUrl,
     this.isVerified = false,
+    this.monthlyPrice = 14.99,
   });
 
   final String name;
@@ -15,12 +18,40 @@ class CreatorSubscriptionScreen extends StatefulWidget {
   final String avatarUrl;
   final bool isVerified;
 
+  /// Monthly base price. 3-month and yearly are derived from this.
+  final double monthlyPrice;
+
   @override
-  State<CreatorSubscriptionScreen> createState() => _CreatorSubscriptionScreenState();
+  State<CreatorSubscriptionScreen> createState() =>
+      _CreatorSubscriptionScreenState();
 }
 
-class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
+class _CreatorSubscriptionScreenState
+    extends State<CreatorSubscriptionScreen> {
   int _selectedIndex = 2; // Default to 'Yearly' (Best value)
+  bool _loading = false;
+
+  String get _monthlyStr =>
+      '\$${widget.monthlyPrice.toStringAsFixed(2)}/M';
+  String get _threeMonthStr =>
+      '\$${(widget.monthlyPrice * 0.80).toStringAsFixed(2)}/M';
+  String get _yearlyStr =>
+      '\$${(widget.monthlyPrice * 0.567).toStringAsFixed(2)}/M';
+
+  Future<void> _onSubscribe() async {
+    setState(() => _loading = true);
+    // TODO: wire up RevenueCat purchase for creator subscription product
+    await Future.delayed(const Duration(seconds: 1));
+    if (!mounted) return;
+    setState(() => _loading = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Subscribed to ${widget.name}! 🎉'),
+        backgroundColor: AppColors.pink,
+      ),
+    );
+    Navigator.of(context).pop();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,14 +74,15 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header
+              // Top bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
                 child: Row(
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                          color: Colors.white, size: 20),
                     ),
                     const Text(
                       'Subscription',
@@ -70,77 +102,83 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 16),
-                      // Creator Profile
-                      Center(
-                        child: Column(
-                          children: [
-                            CircleAvatar(
-                              radius: 44,
-                              backgroundImage: widget.avatarUrl.isNotEmpty 
-                                ? NetworkImage(widget.avatarUrl) 
-                                : null,
-                              backgroundColor: Colors.grey[800],
-                            ),
-                            const SizedBox(height: 16),
-                            Text(
-                              'Subscribe to',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 13,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  widget.name,
-                                  style: const TextStyle(
+                      // Creator avatar
+                      CircleAvatar(
+                        radius: 44,
+                        backgroundColor: Colors.white12,
+                        backgroundImage: widget.avatarUrl.isNotEmpty
+                            ? NetworkImage(widget.avatarUrl)
+                            : null,
+                        child: widget.avatarUrl.isEmpty
+                            ? Text(
+                                widget.name.isNotEmpty
+                                    ? widget.name[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                                if (widget.isVerified) ...[
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.check_circle_rounded, color: Color(0xFFEF4444), size: 18),
-                                ],
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              widget.handle,
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
+                                    fontSize: 30,
+                                    fontWeight: FontWeight.w700),
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        'Subscribe to',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.5),
+                          fontSize: 13,
                         ),
                       ),
-                      
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            widget.handle,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 14,
+                            ),
+                          ),
+                          if (widget.isVerified) ...[
+                            const SizedBox(width: 4),
+                            const Icon(Icons.check_circle_rounded,
+                                color: AppColors.pink, size: 16),
+                          ],
+                        ],
+                      ),
 
-                      // Subscription Options
+                      const SizedBox(height: 36),
+
+                      // Subscription options
                       _SubscriptionOption(
                         title: 'Monthly',
-                        price: '\$14.99/M',
+                        price: _monthlyStr,
                         isSelected: _selectedIndex == 0,
                         onTap: () => setState(() => _selectedIndex = 0),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _SubscriptionOption(
                         title: '3 Months',
-                        price: '\$11.99/M',
+                        price: _threeMonthStr,
                         badge: 'Popular',
                         badgeColor: const Color(0xFF22C55E),
                         isSelected: _selectedIndex == 1,
                         onTap: () => setState(() => _selectedIndex = 1),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       _SubscriptionOption(
                         title: 'Yearly',
-                        price: '\$8.50/M',
+                        price: _yearlyStr,
                         badge: 'Best value',
                         badgeColor: const Color(0xFFFACC15),
                         isSelected: _selectedIndex == 2,
@@ -149,30 +187,58 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
 
                       const SizedBox(height: 24),
 
-                      // Benefits Section
+                      // Benefits card
                       _BenefitsCard(),
-                      
+
                       const SizedBox(height: 32),
                     ],
                   ),
                 ),
               ),
 
-              // Bottom Area
-              _SubscribeButton(),
-              const SizedBox(height: 12),
+              // Subscribe button + legal
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+                child: GestureDetector(
+                  onTap: _loading ? null : _onSubscribe,
+                  child: Container(
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: _loading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2.5,
+                                color: Color(0xFFDE106B)),
+                          )
+                        : const Text(
+                            'Subscribe',
+                            style: TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 child: Text(
                   'By tapping Subscribe, you will be charged and your subscription will auto-renew for the same price and package length until you cancel via settings, and you agree to our Terms.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
+                    color: Colors.white.withValues(alpha: 0.4),
                     fontSize: 10,
+                    height: 1.5,
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -180,6 +246,8 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
     );
   }
 }
+
+// ── Subscription option row ───────────────────────────────────────────────────
 
 class _SubscriptionOption extends StatelessWidget {
   const _SubscriptionOption({
@@ -202,36 +270,42 @@ class _SubscriptionOption extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
+          color: isSelected
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
-          border: isSelected 
-            ? Border.all(color: const Color(0xFFDE106B), width: 2)
-            : Border.all(color: Colors.white.withOpacity(0.1), width: 1),
-          boxShadow: isSelected ? [
-            BoxShadow(
-              color: const Color(0xFFDE106B).withOpacity(0.4),
-              blurRadius: 12,
-              spreadRadius: 0,
-            )
-          ] : null,
+          border: isSelected
+              ? Border.all(color: const Color(0xFFDE106B), width: 1.5)
+              : Border.all(
+                  color: Colors.white.withValues(alpha: 0.12), width: 1),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFFDE106B).withValues(alpha: 0.3),
+                    blurRadius: 12,
+                  )
+                ]
+              : null,
         ),
         child: Row(
           children: [
             Text(
               title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: isSelected ? 1.0 : 0.75),
+                fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(width: 8),
-            if (badge != null)
+            if (badge != null) ...[
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(
                   color: badgeColor,
                   borderRadius: BorderRadius.circular(4),
@@ -245,12 +319,13 @@ class _SubscriptionOption extends StatelessWidget {
                   ),
                 ),
               ),
+            ],
             const Spacer(),
             Text(
               price,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: isSelected ? 1.0 : 0.75),
+                fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
             ),
@@ -260,6 +335,8 @@ class _SubscriptionOption extends StatelessWidget {
     );
   }
 }
+
+// ── Benefits card ─────────────────────────────────────────────────────────────
 
 class _BenefitsCard extends StatelessWidget {
   @override
@@ -271,39 +348,49 @@ class _BenefitsCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(16, 28, 16, 16),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withOpacity(0.15)),
-            color: Colors.white.withOpacity(0.02),
+            border:
+                Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            color: Colors.white.withValues(alpha: 0.03),
           ),
-          child: Column(
+          child: const Column(
             children: [
               _BenefitItem(
+                icon: FontAwesomeIcons.crown,
                 title: 'Subscriber badge',
-                subtitle: 'Match and chat with people anywhere in the world.',
+                subtitle:
+                    'Match and chat with people anywhere in the world.',
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _BenefitItem(
+                icon: FontAwesomeIcons.star,
                 title: 'Exclusive Content',
-                subtitle: 'Match and chat with people anywhere in the world.',
+                subtitle:
+                    'Match and chat with people anywhere in the world.',
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: 16),
               _BenefitItem(
+                icon: FontAwesomeIcons.ban,
                 title: 'Ad-Free',
-                subtitle: 'Match and chat with people anywhere in the world.',
+                subtitle:
+                    'Match and chat with people anywhere in the world.',
               ),
             ],
           ),
         ),
+        // Floating label
         Positioned(
-          top: -12,
+          top: -13,
           left: 0,
           right: 0,
           child: Center(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: Colors.black,
+                color: const Color(0xFF1A0020),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.5)),
+                border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: const Text(
                 'Included with Subscription',
@@ -322,7 +409,13 @@ class _BenefitsCard extends StatelessWidget {
 }
 
 class _BenefitItem extends StatelessWidget {
-  const _BenefitItem({required this.title, required this.subtitle});
+  const _BenefitItem({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+  });
+
+  final IconData icon;
   final String title;
   final String subtitle;
 
@@ -331,10 +424,7 @@ class _BenefitItem extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(top: 2),
-          child: FaIcon(FontAwesomeIcons.crown, color: Color(0xFFDE106B), size: 14),
-        ),
+        FaIcon(icon, color: AppColors.pink, size: 15),
         const SizedBox(width: 12),
         Expanded(
           child: Column(
@@ -344,15 +434,15 @@ class _BenefitItem extends StatelessWidget {
                 title,
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 15,
+                  fontSize: 14,
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 3),
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   fontSize: 12,
                   height: 1.4,
                 ),
@@ -361,31 +451,6 @@ class _BenefitItem extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SubscribeButton extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      child: Container(
-        height: 52,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(8),
-        ),
-        alignment: Alignment.center,
-        child: const Text(
-          'Subscribe',
-          style: TextStyle(
-            color: Colors.black,
-            fontSize: 18,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-      ),
     );
   }
 }

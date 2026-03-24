@@ -2,15 +2,15 @@
 abstract final class AppConfig {
   /// When true, subscription screen uses mock plans and upgrade shows "Mock mode active".
   /// When false, uses RevenueCat offerings and real purchase.
-  static const bool useMockSubscriptions = true;
+  static const bool useMockSubscriptions = false;
 
   /// When true, VR grid is unlocked for testing without a subscription.
   /// Set to false before production so VR is gated by Subscriber/Creator.
-  static const bool devBypassVRAccess = true;
+  static const bool devBypassVRAccess = false;
 
   /// When true, the tier picker dialog is shown at app start (even in release APK) so you can
   /// test Standard / Subscriber / Creator without real purchases. Set to false for production.
-  static const bool enableSubscriptionTierTesting = true;
+  static const bool enableSubscriptionTierTesting = false;
 
   /// When true and [pexelsApiKey] is set, reels feed falls back to Pexels when Firestore is empty.
   /// Get a free API key at https://www.pexels.com/api/

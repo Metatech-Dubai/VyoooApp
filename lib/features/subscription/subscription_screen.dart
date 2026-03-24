@@ -25,6 +25,41 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
     _loadOfferings();
   }
 
+  Future<void> _handlePurchase(
+    SubscriptionController controller, {
+    required int selectedIndex,
+    Package? standardPkg,
+    Package? subscriberPkg,
+    Package? creatorPkg,
+  }) async {
+    final pkg = selectedIndex == 0
+        ? standardPkg
+        : selectedIndex == 1
+            ? subscriberPkg
+            : creatorPkg;
+    if (pkg == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Plans not available yet. Try again shortly.')),
+      );
+      return;
+    }
+    try {
+      final purchased = await controller.purchase(pkg);
+      if (!mounted) return;
+      if (purchased) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Subscription activated! Welcome 🎉')),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(controller.purchaseError ?? 'Purchase failed. Please try again.')),
+      );
+    }
+  }
+
   Future<void> _loadOfferings() async {
     setState(() => _fetchingOfferings = true);
     final controller = context.read<SubscriptionController>();
@@ -168,15 +203,14 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   const SizedBox(height: 16),
                   _UpgradeButton(
                     selectedIndex: _selectedIndex,
-                    onPressed: () {
-                      if (_selectedIndex == 0 && standardPkg != null) {
-                        controller.purchaseStandard(standardPkg);
-                      } else if (_selectedIndex == 1 && subscriberPkg != null) {
-                        controller.purchaseSubscriber(subscriberPkg);
-                      } else if (_selectedIndex == 2 && creatorPkg != null) {
-                        controller.purchaseCreator(creatorPkg);
-                      }
-                    },
+                    isLoading: isLoading,
+                    onPressed: () => _handlePurchase(
+                      controller,
+                      selectedIndex: _selectedIndex,
+                      standardPkg: standardPkg,
+                      subscriberPkg: subscriberPkg,
+                      creatorPkg: creatorPkg,
+                    ),
                   ),
 
                   // Legal text
@@ -485,42 +519,34 @@ class _FeatureRow extends StatelessWidget {
 }
 
 class _UpgradeButton extends StatelessWidget {
-  const _UpgradeButton({required this.selectedIndex, required this.onPressed});
+  const _UpgradeButton({required this.selectedIndex, required this.onPressed, this.isLoading = false});
 
   final int selectedIndex;
   final VoidCallback onPressed;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: GestureDetector(
-        onTap: onPressed,
+        onTap: isLoading ? null : onPressed,
         child: Container(
           height: 48,
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(8),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const FaIcon(
-                FontAwesomeIcons.crown,
-                color: Color(0xFFDE106B),
-                size: 18,
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'Upgrade',
-                style: TextStyle(
-                  color: Colors.black,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
+          child: isLoading
+              ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2.5, color: Color(0xFFDE106B))))
+              : const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    FaIcon(FontAwesomeIcons.crown, color: Color(0xFFDE106B), size: 18),
+                    SizedBox(width: 8),
+                    Text('Upgrade', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.w700)),
+                  ],
                 ),
-              ),
-            ],
-          ),
         ),
       ),
     );
