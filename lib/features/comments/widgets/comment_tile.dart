@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../models/comment.dart';
 
@@ -71,21 +70,20 @@ class CommentTile extends StatelessWidget {
                             comment.username,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontWeight: FontWeight.w700,
-                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
                             ),
-                            overflow: TextOverflow.ellipsis,
                           ),
                           if (comment.isVerified) ...[
-                            const SizedBox(width: 4),
+                            const SizedBox(width: 6),
                             const _VerifiedBadge(),
                           ],
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 12),
                           Text(
                             comment.timeAgo,
                             style: TextStyle(
-                              color: Colors.white.withOpacity(0.4),
-                              fontSize: 12,
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 13,
                               fontWeight: FontWeight.w400,
                             ),
                           ),
@@ -99,8 +97,9 @@ class CommentTile extends StatelessWidget {
                   comment.text,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 14,
-                    height: 1.35,
+                    fontSize: 16,
+                    height: 1.4,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
                 SizedBox(height: AppSpacing.xs),
@@ -111,14 +110,14 @@ class CommentTile extends StatelessWidget {
                       child: Text(
                         'Reply',
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.5),
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          color: Colors.white.withValues(alpha: 0.6),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
                         ),
                       ),
                     ),
                     if (comment.replyCount > 0) ...[
-                      SizedBox(width: AppSpacing.md),
+                      const SizedBox(width: 24),
                       GestureDetector(
                         onTap: onViewReplies,
                         child: Row(
@@ -127,16 +126,16 @@ class CommentTile extends StatelessWidget {
                             Text(
                               'View more replies (${comment.replyCount})',
                               style: TextStyle(
-                                color: Colors.white.withOpacity(0.5),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
+                                color: Colors.white.withValues(alpha: 0.6),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
                               ),
                             ),
-                            SizedBox(width: 2),
+                            const SizedBox(width: 4),
                             Icon(
                               Icons.keyboard_arrow_down,
                               size: 16,
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: Colors.white.withValues(alpha: 0.6),
                             ),
                           ],
                         ),
@@ -152,34 +151,32 @@ class CommentTile extends StatelessWidget {
             GestureDetector(
               onTap: onDelete,
               child: const Icon(
-                Icons.delete_outlined,
-                size: 22,
-                color: AppColors.deleteRed,
+                Icons.delete, // Use solid delete icon
+                size: 20,
+                color: Color(0xFFEF4444), // Design matching red
               ),
             )
           else
             GestureDetector(
               onTap: onLike,
-              child: Row(
+              child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Icon(
                     comment.isLiked ? Icons.favorite : Icons.favorite_border,
                     size: 18,
                     color: comment.isLiked
-                        ? AppColors.pink
+                        ? const Color(0xFFEF4444)
                         : Colors.white.withValues(alpha: 0.6),
                   ),
-                  if (comment.likeCount > 0) ...[
-                    const SizedBox(width: 4),
-                    Text(
-                      '${comment.likeCount}',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 12,
-                      ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${comment.likeCount}',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
                     ),
-                  ],
+                  ),
                 ],
               ),
             ),

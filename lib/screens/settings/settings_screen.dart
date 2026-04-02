@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../core/constants/app_colors.dart';
+
 import '../../core/services/auth_service.dart';
-import '../../core/theme/app_radius.dart';
+
 import '../../core/theme/app_spacing.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../account/account_screen.dart';
@@ -15,26 +15,26 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildAppBar(context),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF0D020D),
-                      Color(0xFF2D072D),
-                      Color(0xFF4D0B3D),
-                      Color(0xFF7D124D),
-                    ],
-                  ),
-                ),
+      backgroundColor: const Color(0xFF14001F),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF3B0026),
+              Color(0xFF14001F),
+              Color(0xFF000000),
+            ],
+            stops: [0.0, 0.4, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildAppBar(context),
+              Expanded(
                 child: ListView(
                   padding: const EdgeInsets.symmetric(
                     horizontal: AppSpacing.md,
@@ -43,9 +43,11 @@ class SettingsScreen extends StatelessWidget {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(AppRadius.input),
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                       ),
+                      padding: const EdgeInsets.symmetric(vertical: 8),
                       child: Column(
                         children: [
                           _SettingsTile(
@@ -59,52 +61,44 @@ class SettingsScreen extends StatelessWidget {
                               );
                             },
                           ),
-                          _divider(),
                           _SettingsTile(
                             icon: FontAwesomeIcons.crown,
                             label: 'Subscriptions',
                             isPremium: true,
                             onTap: () {},
                           ),
-                          _divider(),
                           _SettingsTile(
                             icon: Icons.account_balance_wallet_outlined,
                             label: 'VyooO Payout',
                             isPremium: true,
                             onTap: () {},
                           ),
-                          _divider(),
                           _SettingsTile(
                             icon: Icons.download_rounded,
                             label: 'Downloaded Videos',
-                            isPremium: true,
                             onTap: () {},
                           ),
-                          _divider(),
                           _SettingsTile(
-                            icon: Icons.notifications_outlined,
+                            icon: Icons.notifications_none_rounded,
                             label: 'Notifications',
                             onTap: () {},
                           ),
-                          _divider(),
                           _SettingsTile(
-                            icon: Icons.support_agent_rounded,
+                            icon: Icons.headphones_outlined,
                             label: 'Contact Support',
                             onTap: () {},
                           ),
-                          _divider(),
                           _SettingsTile(
-                            icon: Icons.report_problem_outlined,
+                            icon: Icons.chat_bubble_outline_rounded,
                             label: 'Report Problem',
                             onTap: () {},
                           ),
-                          _divider(),
                           _SettingsTile(
                             icon: Icons.info_outline_rounded,
                             label: 'About',
                             onTap: () {},
                           ),
-                          _divider(),
+                          const SizedBox(height: 8),
                           _SettingsTile(
                             icon: Icons.logout_rounded,
                             label: 'Logout',
@@ -117,8 +111,8 @@ class SettingsScreen extends StatelessWidget {
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -126,11 +120,9 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSpacing.sm,
-        vertical: AppSpacing.sm,
-      ),
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -139,40 +131,27 @@ class SettingsScreen extends StatelessWidget {
               color: Colors.white,
               size: 32,
             ),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
           ),
-          const Expanded(
-            child: Text(
-              'Settings',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+          const Text(
+            'Settings',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
           ),
           const Text(
             'VyooO',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
-    );
-  }
-
-  Widget _divider() {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      color: Colors.white.withValues(alpha: 0.1),
-      indent: 56,
-      endIndent: AppSpacing.md,
     );
   }
 
@@ -203,65 +182,70 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isLogout ? AppColors.deleteRed : Colors.white;
-    final labelColor = isLogout ? AppColors.deleteRed : Colors.white;
+    final color = isLogout ? const Color(0xFFF81945) : Colors.white.withValues(alpha: 0.85);
+    final labelColor = isLogout ? const Color(0xFFF81945) : Colors.white;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.input),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: 14,
-          ),
-          child: Row(
-            children: [
-              Icon(
-                icon,
-                size: 22,
-                color: color.withValues(alpha: isLogout ? 1.0 : 0.9),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: labelColor.withValues(alpha: isLogout ? 1.0 : 0.95),
-                    fontSize: 16,
-                    fontWeight: isLogout ? FontWeight.w500 : FontWeight.w400,
-                  ),
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 16,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              size: 24,
+              color: color,
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                label,
+                style: TextStyle(
+                  color: labelColor,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w500,
+                  letterSpacing: -0.3,
                 ),
               ),
-              if (isPremium) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.lightGold,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text(
-                    'PREMIUM',
-                    style: TextStyle(
-                      color: Colors.black,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w700,
+            ),
+            if (isPremium) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFACC15),
+                  borderRadius: BorderRadius.circular(10),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFACC15).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
                     ),
+                  ],
+                ),
+                child: const Text(
+                  'PREMIUM',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(width: AppSpacing.sm),
-              ],
-              Icon(
-                Icons.chevron_right_rounded,
-                size: 24,
-                color: color.withValues(alpha: isLogout ? 1.0 : 0.6),
               ),
+              const SizedBox(width: 8),
             ],
-          ),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 22,
+              color: Colors.white.withValues(alpha: 0.4),
+            ),
+          ],
         ),
       ),
     );

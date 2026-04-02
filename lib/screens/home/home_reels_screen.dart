@@ -402,7 +402,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     return Positioned(
       right: 12,
-      bottom: 24,
+      bottom: 60, // Adjusted to sit above bottom safe area/nav
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -410,35 +410,35 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             icon: Icons.visibility_outlined,
             count: _formatCount(reel['views'] as int),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           AppInteractionButton(
             icon: isLiked ? Icons.favorite : Icons.favorite_border,
             count: _formatCount(reel['likes'] as int),
             isActive: isLiked,
-            activeColor: const Color(0xFFEF4444), // Accurate red/pink
+            activeColor: const Color(0xFFEF4444),
             onTap: () => _onLike(reelId, isLiked),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           AppInteractionButton(
             icon: Icons.chat_bubble_outline,
             count: _formatCount(reel['comments'] as int),
             onTap: () => _onComment(reelId),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           AppInteractionButton(
             icon: isSaved ? Icons.star : Icons.star_border,
             count: _formatCount(reel['saves'] as int),
             isActive: isSaved,
-            activeColor: const Color(0xFFFFD700), // Gold
+            activeColor: const Color(0xFFFFD700),
             onTap: () => _onSave(reelId, isSaved),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           AppInteractionButton(
-            icon: Icons.reply, // Share style icon
+            icon: Icons.reply, 
             count: _formatCount(reel['shares'] as int),
             onTap: () => _onShare(reelId),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 18),
           AppInteractionButton(
             icon: Icons.more_horiz,
             count: '',
@@ -524,7 +524,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     return Positioned(
       left: 16,
       right: 80,
-      bottom: 24,
+      bottom: 40,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
@@ -534,20 +534,20 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 1.5),
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
                 child: CircleAvatar(
-                  radius: 22,
-                  backgroundColor: Colors.grey[800],
+                  radius: 20,
+                  backgroundColor: Colors.grey[900],
                   backgroundImage: (reel['avatarUrl'] as String).isNotEmpty
                       ? NetworkImage(reel['avatarUrl'] as String)
                       : null,
                   child: (reel['avatarUrl'] as String).isEmpty
-                      ? const Icon(Icons.person, color: Colors.white, size: 24)
+                      ? const Icon(Icons.person, color: Colors.white, size: 20)
                       : null,
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -560,11 +560,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                             color: Colors.white,
+                            letterSpacing: 0.2,
                           ),
                         ),
-                        const SizedBox(width: 4),
+                        const SizedBox(width: 6),
                         Container(
-                          padding: const EdgeInsets.all(1),
+                          padding: const EdgeInsets.all(1.5),
                           decoration: const BoxDecoration(
                             color: Color(0xFFEF4444),
                             shape: BoxShape.circle,
@@ -572,7 +573,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                           child: const Icon(
                             Icons.check,
                             color: Colors.white,
-                            size: 9,
+                            size: 10,
                           ),
                         ),
                       ],
@@ -580,10 +581,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     Text(
                       reel['handle'] as String,
                       style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white.withOpacity(0.6),
+                        fontSize: 13,
+                        color: Colors.white.withOpacity(0.7),
                         fontWeight: FontWeight.w400,
-                        letterSpacing: 0.1,
                       ),
                     ),
                   ],
@@ -591,7 +591,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               ),
             ],
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 12),
           Text(
             reel['caption'] as String,
             maxLines: 2,
@@ -600,7 +600,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               fontSize: 15,
               color: Colors.white,
               fontWeight: FontWeight.w400,
-              height: 1.3,
+              height: 1.4,
             ),
           ),
           const SizedBox(height: 6),
@@ -612,22 +612,21 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               'See More',
               style: TextStyle(
                 fontSize: 14,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withOpacity(0.9),
                 fontWeight: FontWeight.w700,
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           // Page indicators
           Row(
             mainAxisSize: MainAxisSize.min,
             children: List.generate(5, (index) {
               final isTarget = index == 0;
-              return AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: isTarget ? 10 : 6,
-                height: 6,
-                margin: const EdgeInsets.only(right: 6),
+              return Container(
+                width: isTarget ? 10 : 5,
+                height: 5,
+                margin: const EdgeInsets.only(right: 5),
                 decoration: BoxDecoration(
                   color: isTarget
                       ? Colors.white
@@ -649,11 +648,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         opacity: _showControls ? 1.0 : 0.0,
         duration: const Duration(milliseconds: 200),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.black.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(40),
-            border: Border.all(color: Colors.white.withOpacity(0.1), width: 1),
+            color: Colors.black.withOpacity(0.6),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.15), width: 1),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -663,14 +662,14 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                 child: Icon(
                   playing ? Icons.pause : Icons.play_arrow,
                   color: Colors.white,
-                  size: 32,
+                  size: 28,
                 ),
               ),
               Container(
-                width: 1,
-                height: 24,
-                margin: const EdgeInsets.symmetric(horizontal: 20),
-                color: Colors.white.withOpacity(0.3),
+                width: 1.5,
+                height: 20,
+                margin: const EdgeInsets.symmetric(horizontal: 16),
+                color: Colors.white.withOpacity(0.4),
               ),
               GestureDetector(
                 onTap: () {
@@ -679,7 +678,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                 child: const Icon(
                   Icons.volume_off_rounded,
                   color: Colors.white,
-                  size: 32,
+                  size: 28,
                 ),
               ),
             ],

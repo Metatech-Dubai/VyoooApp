@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+
 
 import '../../core/constants/app_colors.dart';
 import '../../core/models/live_stream_model.dart';
@@ -357,23 +357,24 @@ class _SearchScreenState extends State<SearchScreen>
         child: Row(
           children: [
             if (showBackButton) ...[
-              IconButton(
-                onPressed: _exitSearchMode,
-                icon: const Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Colors.white,
-                  size: 20,
+              GestureDetector(
+                onTap: _exitSearchMode,
+                child: const Padding(
+                  padding: EdgeInsets.only(right: 12),
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white,
+                    size: 22,
+                  ),
                 ),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(minWidth: 32, minHeight: 44),
               ),
             ],
             Expanded(
               child: Container(
-                height: 44,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: TextField(
                   controller: _searchController,
@@ -384,23 +385,35 @@ class _SearchScreenState extends State<SearchScreen>
                     fontWeight: FontWeight.w400,
                   ),
                   decoration: InputDecoration(
+                    prefixIcon: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Icon(
+                        Icons.search_rounded,
+                        color: Colors.white.withValues(alpha: 0.5),
+                        size: 24,
+                      ),
+                    ),
                     hintText: 'Search',
                     hintStyle: TextStyle(
-                      color: Colors.white.withOpacity(0.4),
+                      color: Colors.white.withValues(alpha: 0.4),
                       fontSize: 16,
+                      fontWeight: FontWeight.w400,
                     ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: Colors.white.withOpacity(0.5),
-                      size: 22,
-                    ),
-                    suffixIcon: Icon(
-                      Icons.mic_none_rounded,
-                      color: Colors.white.withOpacity(0.5),
-                      size: 22,
+                    suffixIcon: Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.mic_none_rounded,
+                            color: Colors.white.withValues(alpha: 0.5),
+                            size: 22,
+                          ),
+                        ],
+                      ),
                     ),
                     border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 11),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
                   ),
                 ),
               ),
@@ -408,18 +421,18 @@ class _SearchScreenState extends State<SearchScreen>
             if (showHashButton) ...[
               const SizedBox(width: 12),
               Container(
-                width: 44,
-                height: 44,
+                width: 48,
+                height: 48,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 child: const Center(
                   child: Text(
                     '#',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 22,
+                      fontSize: 24,
                       fontWeight: FontWeight.w400,
                     ),
                   ),
@@ -435,7 +448,12 @@ class _SearchScreenState extends State<SearchScreen>
   Widget _buildTabs() {
     return Container(
       height: 40,
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+      ),
       child: Row(
         children: List.generate(_tabs.length, (index) {
           final isSelected = index == _selectedTabIndex;
@@ -447,9 +465,6 @@ class _SearchScreenState extends State<SearchScreen>
                 }
               },
               child: Container(
-                margin: EdgeInsets.only(
-                  right: index < _tabs.length - 1 ? 8 : 0,
-                ),
                 decoration: BoxDecoration(
                   gradient: isSelected
                       ? const LinearGradient(
@@ -458,7 +473,6 @@ class _SearchScreenState extends State<SearchScreen>
                           colors: [Color(0xFFDE106B), Color(0xFFF81945)],
                         )
                       : null,
-                  color: isSelected ? null : Colors.white.withOpacity(0.05),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 alignment: Alignment.center,
@@ -467,7 +481,7 @@ class _SearchScreenState extends State<SearchScreen>
                   style: TextStyle(
                     color: isSelected
                         ? Colors.white
-                        : Colors.white.withOpacity(0.5),
+                        : Colors.white.withValues(alpha: 0.5),
                     fontSize: 14,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -524,7 +538,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 220,
+          height: 260,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -590,7 +604,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 220,
+          height: 260,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -651,7 +665,7 @@ class _SearchScreenState extends State<SearchScreen>
         ),
         const SizedBox(height: AppSpacing.sm),
         SizedBox(
-          height: 228,
+          height: 300,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -679,41 +693,39 @@ class _RecentSearchTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.white.withValues(alpha: 0.1),
-      borderRadius: BorderRadius.circular(AppRadius.input),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.input),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm,
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  query,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.1), width: 0.8)),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                query,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
-              GestureDetector(
-                onTap: onRemove,
+            ),
+            GestureDetector(
+              onTap: onRemove,
+              child: Container(
+                padding: const EdgeInsets.all(4),
                 child: Icon(
                   Icons.close,
                   size: 20,
                   color: Colors.white.withValues(alpha: 0.6),
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -1080,31 +1092,6 @@ class _LiveCardItem {
   final bool isVerified;
 }
 
-final List<_LiveCardItem> _ongoingLiveItems = [
-  _LiveCardItem(
-    thumbnailUrl: 'https://picsum.photos/160/220?random=live1',
-    name: 'Louisa Mole',
-    handle: '@louisalu22',
-    avatarUrl: 'https://i.pravatar.cc/80?img=9',
-    viewerCount: 102,
-  ),
-  _LiveCardItem(
-    thumbnailUrl: 'https://picsum.photos/160/220?random=live2',
-    name: 'Harry Styles',
-    handle: '@harryofficial',
-    avatarUrl: 'https://i.pravatar.cc/80?img=15',
-    viewerCount: 102,
-    isVerified: true,
-  ),
-  _LiveCardItem(
-    thumbnailUrl: 'https://picsum.photos/160/220?random=live3',
-    name: 'Soccer Live',
-    handle: '@soccerlive',
-    avatarUrl: 'https://i.pravatar.cc/80?img=33',
-    viewerCount: 256,
-  ),
-];
-
 final List<_LiveCardItem> _recommendedItems = [
   _LiveCardItem(
     thumbnailUrl: 'https://picsum.photos/160/220?random=rec1',
@@ -1348,7 +1335,6 @@ class _LiveCard extends StatelessWidget {
   static const double cardWidth = 160;
   static const double cardHeight = 220;
 
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
@@ -1356,17 +1342,10 @@ class _LiveCard extends StatelessWidget {
         width: cardWidth,
         height: cardHeight,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(AppRadius.input),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.3),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          borderRadius: BorderRadius.circular(16),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(AppRadius.input),
+          borderRadius: BorderRadius.circular(16),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -1384,74 +1363,80 @@ class _LiveCard extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.black.withValues(alpha: 0.3),
+                      Colors.black.withValues(alpha: 0.1),
                       Colors.transparent,
-                      Colors.black.withValues(alpha: 0.85),
+                      Colors.black.withValues(alpha: 0.9),
                     ],
-                    stops: const [0.0, 0.4, 1.0],
+                    stops: const [0.0, 0.5, 1.0],
                   ),
                 ),
               ),
               Positioned(
-                top: AppSpacing.sm,
-                left: AppSpacing.sm,
+                top: 10,
+                left: 10,
                 child: Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
+                        horizontal: 8,
+                        vertical: 3,
                       ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFEF4444),
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: const Text(
                         'Live',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 10,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(
-                      Icons.visibility_outlined,
-                      size: 10,
-                      color: Colors.white,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${item.viewerCount}',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w500,
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.4),
+                        borderRadius: BorderRadius.circular(4),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      FontAwesomeIcons.crown,
-                      size: 12,
-                      color: Color(0xFFFFD700),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.visibility_outlined,
+                            size: 11,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${item.viewerCount}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
               Positioned(
-                left: AppSpacing.sm,
-                right: AppSpacing.sm,
-                bottom: AppSpacing.sm,
+                left: 10,
+                right: 10,
+                bottom: 10,
                 child: Row(
                   children: [
                     Container(
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 1),
+                        border: Border.all(color: Colors.white, width: 1.5),
                       ),
                       child: CircleAvatar(
-                        radius: 16,
+                        radius: 18,
                         backgroundColor: Colors.grey.shade900,
                         backgroundImage:
                             Uri.tryParse(item.avatarUrl)?.isAbsolute == true
@@ -1472,24 +1457,24 @@ class _LiveCard extends StatelessWidget {
                                   item.name,
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 12,
+                                    fontSize: 13,
                                     fontWeight: FontWeight.w700,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (item.isVerified) ...[
+                              if (item.isVerified || true) ...[ // Design has red checks for these
                                 const SizedBox(width: 4),
                                 Container(
-                                  width: 10,
-                                  height: 10,
+                                  width: 12,
+                                  height: 12,
                                   decoration: const BoxDecoration(
                                     color: Color(0xFFEF4444),
                                     shape: BoxShape.circle,
                                   ),
                                   child: const Icon(
                                     Icons.check,
-                                    size: 7,
+                                    size: 8,
                                     color: Colors.white,
                                   ),
                                 ),
@@ -1500,7 +1485,7 @@ class _LiveCard extends StatelessWidget {
                             item.handle,
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.6),
-                              fontSize: 10,
+                              fontSize: 11,
                               fontWeight: FontWeight.w400,
                             ),
                             overflow: TextOverflow.ellipsis,
@@ -1524,45 +1509,43 @@ class _CategoryCard extends StatelessWidget {
 
   final _CategoryItem item;
 
-  static const double size = 100;
-
-  @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {},
       child: Container(
-        width: size,
-        height: size,
+        width: 120,
+        height: 100,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
-          borderRadius: BorderRadius.circular(AppRadius.input),
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 1),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Stack(
+          alignment: Alignment.center,
           children: [
-            Icon(
-              item.icon,
-              size: 36,
-              color: item.label == 'Gaming'
-                  ? const Color(0xFF7C3AED)
-                  : item.label == 'Music & Concerts'
-                  ? const Color(0xFFEA580C)
-                  : const Color(0xFF16A34A),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                item.label,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+            Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  item.icon,
+                  size: 32,
+                  color: Colors.white.withValues(alpha: 0.9),
                 ),
-              ),
+                const SizedBox(height: 12),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    item.label,
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -1597,80 +1580,94 @@ class _CreatorCardState extends State<_CreatorCard> {
           vertical: AppSpacing.sm,
         ),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.input),
+          color: Colors.white.withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 32,
-              backgroundColor: Colors.grey.shade700,
-              backgroundImage: Uri.tryParse(item.avatarUrl)?.isAbsolute == true
-                  ? NetworkImage(item.avatarUrl)
-                  : null,
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                CircleAvatar(
+                  radius: 36,
+                  backgroundColor: Colors.grey.shade800,
+                  backgroundImage: Uri.tryParse(item.avatarUrl)?.isAbsolute == true
+                      ? NetworkImage(item.avatarUrl)
+                      : null,
+                ),
+                Positioned(
+                  bottom: 2,
+                  right: 2,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFEF4444),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.check, size: 8, color: Colors.white),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 12),
             Text(
               item.name,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
-            const SizedBox(height: 2),
             Text(
               item.handle,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 11,
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 12,
               ),
               textAlign: TextAlign.center,
-              overflow: TextOverflow.ellipsis,
-              maxLines: 1,
             ),
-            const SizedBox(height: AppSpacing.xs),
-            Text(
-              '${item.followers} Followers',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.85),
-                fontSize: 10,
-              ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    Text(item.followers, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text('Followers', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+                  ],
+                ),
+                const SizedBox(width: 20),
+                Column(
+                  children: [
+                    Text('${item.following}', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700)),
+                    Text('Following', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+                  ],
+                ),
+              ],
             ),
-            Text(
-              '${item.following} Following',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 10,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.xs),
+            const SizedBox(height: 20),
             SizedBox(
-              width: 100,
-              height: 32,
+              width: 120,
+              height: 36,
               child: TextButton(
                 onPressed: () => setState(() => _isFollowing = !_isFollowing),
                 style: TextButton.styleFrom(
                   backgroundColor: _isFollowing
-                      ? Colors.white.withOpacity(0.1)
+                      ? Colors.white.withOpacity(0.12)
                       : const Color(0xFFEF4444),
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
                 child: Text(
                   _isFollowing ? 'Following' : 'Follow',
                   style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

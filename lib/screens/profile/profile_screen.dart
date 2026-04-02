@@ -354,15 +354,24 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ],
                 ),
                 const SizedBox(height: AppSpacing.lg),
-                CircleAvatar(
-                  radius: 52,
-                  backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty)
-                      ? NetworkImage(avatarUrl)
-                      : null,
-                  child: (avatarUrl == null || avatarUrl.isEmpty)
-                      ? Icon(Icons.person_rounded, size: 52, color: Colors.white.withValues(alpha: 0.6))
-                      : null,
+                Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: const Color(0xFFDE106B), width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFFDE106B).withValues(alpha: 0.35),
+                        blurRadius: 16,
+                        spreadRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: CircleAvatar(
+                    radius: 52,
+                    backgroundColor: Colors.white.withValues(alpha: 0.2),
+                    backgroundImage: (avatarUrl != null && avatarUrl.isNotEmpty) ? NetworkImage(avatarUrl) : null,
+                    child: (avatarUrl == null || avatarUrl.isEmpty) ? Icon(Icons.person_rounded, size: 52, color: Colors.white.withValues(alpha: 0.6)) : null,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 Text(
@@ -377,11 +386,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _StatChip(label: 'Posts', value: '1,038'),
-                    const SizedBox(width: AppSpacing.sm),
+                    _StatChip(label: 'Posts', value: '1,630'),
+                    const SizedBox(width: AppSpacing.xl),
                     _StatChip(
                       label: 'Following',
-                      value: '10,906',
+                      value: '10.9M',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
                           builder: (_) => const FollowersFollowingScreen(
@@ -392,7 +401,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ),
                       ),
                     ),
-                    const SizedBox(width: AppSpacing.sm),
+                    const SizedBox(width: AppSpacing.xl),
                     _StatChip(
                       label: 'Followers',
                       value: '2,437',
@@ -1249,13 +1258,9 @@ class _StatChip extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-          ),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -1267,7 +1272,7 @@ class _StatChip extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 2),
+              const SizedBox(height: 4),
               Text(
                 label,
                 style: TextStyle(
