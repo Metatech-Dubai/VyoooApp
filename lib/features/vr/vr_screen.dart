@@ -237,12 +237,20 @@ class VrGridView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
+      margin: const EdgeInsets.only(top: 8),
       decoration: const BoxDecoration(
-        color: Colors.black,
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF5A1245), // Dark magenta/purple
+            Colors.black,
+          ],
+          stops: [0.0, 0.4],
+        ),
         borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(28),
-          topRight: Radius.circular(28),
+          topLeft: Radius.circular(32),
+          topRight: Radius.circular(32),
         ),
       ),
       clipBehavior: Clip.antiAlias,

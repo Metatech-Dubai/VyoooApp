@@ -1,54 +1,104 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../core/constants/app_colors.dart';
-import '../../core/services/auth_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/subscription/membership_tier.dart';
-import '../../core/theme/app_radius.dart';
-import '../../core/theme/app_spacing.dart';
-import '../../core/wrappers/auth_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
+import 'blocked_users_screen.dart';
+import 'change_password_screen.dart';
+import 'delete_account_screen.dart';
+import 'two_factor_screen.dart';
 
 /// Account screen: Current Plan, Login & Security, Delete Account.
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
-  static const Color _appBarBg = Color(0xFF2A1035);
-  static const Color _cardBg = Color(0xFF1E0D28);
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _appBarBg,
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildAppBar(context),
-            Expanded(
-              child: Container(
-                width: double.infinity,
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [_appBarBg, _cardBg, Color(0xFF14001F)],
-                  ),
-                ),
+      backgroundColor: const Color(0xFF14001F),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Color(0xFF3B0026),
+              Color(0xFF14001F),
+              Color(0xFF000000),
+            ],
+            stops: [0.0, 0.4, 1.0],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildAppBar(context),
+              Expanded(
                 child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.lg),
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
                   children: [
-                    _buildCurrentPlanSection(context),
-                    const SizedBox(height: AppSpacing.xl),
-                    _buildLoginSecuritySection(context),
-                    const SizedBox(height: AppSpacing.xl),
-                    _buildDeleteAccountSection(context),
+                    _buildSectionHeader('Current Plan'),
+                    const SizedBox(height: 4),
+                    _buildSectionSubheader('Your plan determines access and features'),
+                    const SizedBox(height: 16),
+                    _buildCurrentPlanCard(context),
+                    const SizedBox(height: 32),
+                    _buildSectionHeader('Login & Security'),
+                    const SizedBox(height: 4),
+                    _buildSectionSubheader('Manage your passwords and security methods.'),
+                    const SizedBox(height: 16),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Column(
+                        children: [
+                          _AccountRow(
+                            label: 'Change Password',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const ChangePasswordScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _divider(),
+                          _AccountRow(
+                            label: 'Two-factor authentication',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const TwoFactorScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _divider(),
+                          _AccountRow(
+                            label: 'Blocked Users',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const BlockedUsersScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 32),
+                    _buildDeleteAccountTile(context),
                   ],
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -56,290 +106,202 @@ class AccountScreen extends StatelessWidget {
 
   Widget _buildAppBar(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm, vertical: AppSpacing.sm),
+      padding: const EdgeInsets.fromLTRB(8, 8, 16, 16),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.chevron_left_rounded, color: Colors.white, size: 32),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+            icon: const Icon(
+              Icons.chevron_left_rounded,
+              color: Colors.white,
+              size: 32,
+            ),
           ),
-          const Expanded(
-            child: Text(
-              'Account',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-              ),
+          const Text(
+            'Account',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 22,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.5,
             ),
           ),
           const Text(
             'VyooO',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 16,
+              fontSize: 18,
               fontWeight: FontWeight.w600,
+              letterSpacing: -0.2,
             ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
     );
   }
 
-  Widget _buildCurrentPlanSection(BuildContext context) {
+  Widget _buildSectionHeader(String title) {
+    return Text(
+      title,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 20,
+        fontWeight: FontWeight.w800,
+        letterSpacing: -0.4,
+      ),
+    );
+  }
+
+  Widget _buildSectionSubheader(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.5),
+        fontSize: 14,
+        letterSpacing: -0.2,
+      ),
+    );
+  }
+
+  Widget _divider() {
+    return Divider(
+      height: 1,
+      thickness: 1,
+      color: Colors.white.withValues(alpha: 0.08),
+      indent: 20,
+      endIndent: 20,
+    );
+  }
+
+  Widget _buildCurrentPlanCard(BuildContext context) {
     final controller = context.watch<SubscriptionController>();
     final tier = controller.currentTier;
-    final showUpgrade = tier == MembershipTier.none || tier == MembershipTier.standard;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Current Plan',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Your plan determines access and features',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Container(
-          padding: const EdgeInsets.all(AppSpacing.md),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.input),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _planSubtitle(tier),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      _planPriceLine(tier),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.85),
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _planSubtitle(tier),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: -0.2,
+                  ),
                 ),
+                const SizedBox(height: 4),
+                Text(
+                  _planPriceLine(tier),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 13,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute<void>(builder: (_) => const SubscriptionScreen()),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF81945),
+              foregroundColor: Colors.white,
+              minimumSize: const Size(100, 36),
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              elevation: 0,
+            ),
+            child: const Text(
+              'Upgrade Plan',
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.1,
               ),
-              if (showUpgrade) ...[
-                const SizedBox(width: AppSpacing.sm),
-                Material(
-                  color: AppColors.pink,
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => const SubscriptionScreen()),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Text(
-                        'Upgrade Plan',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ] else
-                Material(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: InkWell(
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(builder: (_) => const SubscriptionScreen()),
-                      );
-                    },
-                    borderRadius: BorderRadius.circular(AppRadius.pill),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                      child: Text(
-                        'Manage Plan',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-            ],
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
   String _planSubtitle(MembershipTier tier) {
     switch (tier) {
       case MembershipTier.none:
-        return 'Free - Standard Plan';
+        return 'Free · Standard Plan';
       case MembershipTier.standard:
-        return 'Monthly - Standard Plan';
+        return 'Monthly · Standard Plan';
       case MembershipTier.subscriber:
-        return 'Monthly - Subscriber';
+        return 'Monthly · Subscriber';
       case MembershipTier.creator:
-        return 'Monthly - Creator';
+        return 'Monthly · Creator';
     }
   }
 
   String _planPriceLine(MembershipTier tier) {
     switch (tier) {
       case MembershipTier.none:
-        return 'Free - Upgrade to unlock features';
+        return 'Free · Upgrade to unlock features';
       case MembershipTier.standard:
-        return '\$4.99 - Renews on 04 Jan 2026';
+        return '\$4.99 · Renews on 04 Jan 2026';
       case MembershipTier.subscriber:
-        return '\$4.99/M - Subscriber';
+        return '\$4.99/M · Premium features active';
       case MembershipTier.creator:
-        return '\$19.99/M - Creator';
+        return '\$19.99/M · Creator features active';
     }
   }
 
-  Widget _buildLoginSecuritySection(BuildContext context) {
+  Widget _buildDeleteAccountTile(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Login & Security',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          'Manage your passwords and security methods.',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(AppRadius.input),
-          ),
-          child: Column(
+        GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const DeleteAccountScreen(),
+              ),
+            );
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _AccountRow(label: 'Change Password', onTap: () {}),
-              Divider(height: 1, color: Colors.white.withValues(alpha: 0.1), indent: AppSpacing.md, endIndent: AppSpacing.md),
-              _AccountRow(label: 'Two-factor authentication', onTap: () {}),
-              Divider(height: 1, color: Colors.white.withValues(alpha: 0.1), indent: AppSpacing.md, endIndent: AppSpacing.md),
-              _AccountRow(label: 'Blocked Users', onTap: () {}),
+              const Text(
+                'Delete Account',
+                style: TextStyle(
+                  color: Color(0xFFF81945),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.3),
+                size: 28,
+              ),
             ],
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildDeleteAccountSection(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Delete Account',
-          style: TextStyle(
-            color: AppColors.pink,
-            fontSize: 17,
-            fontWeight: FontWeight.w700,
-          ),
-        ),
         const SizedBox(height: 4),
-        Text(
-          "This will permanently delete your account and all it's data",
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 14,
-          ),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        Material(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(AppRadius.input),
-          child: InkWell(
-            onTap: () => _requestAccountDeletion(context),
-            borderRadius: BorderRadius.circular(AppRadius.input),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
-              child: Row(
-                children: [
-                  const Expanded(child: SizedBox()),
-                  Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.6), size: 24),
-                ],
-              ),
-            ),
-          ),
-        ),
+        _buildSectionSubheader("This will permanently delete your account and all it's data"),
       ],
-    );
-  }
-
-  Future<void> _requestAccountDeletion(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0020),
-        title: const Text('Delete account', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'This will permanently delete your account and all associated data. This cannot be undone. Are you sure?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text('Cancel', style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Delete account', style: TextStyle(color: AppColors.pink, fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    await AuthService().signOut();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Account deletion requested.'), behavior: SnackBarBehavior.floating),
-    );
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      (route) => false,
     );
   }
 }
@@ -356,9 +318,9 @@ class _AccountRow extends StatelessWidget {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(AppRadius.input),
+        borderRadius: BorderRadius.circular(24),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Row(
             children: [
               Expanded(

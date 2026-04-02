@@ -95,22 +95,22 @@ class AppFeedTabSelector extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white.withOpacity(0.15)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  labels[index],
-                  style: TextStyle(
-                    fontSize: 14,
-                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+                  decoration: BoxDecoration(
                     color: isSelected
                         ? Colors.white
-                        : Colors.white.withOpacity(0.6),
+                        : Colors.white.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
+                  child: Text(
+                    labels[index],
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.black
+                          : Colors.white,
+                    ),
+                  ),
               ),
             ),
           );

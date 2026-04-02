@@ -125,25 +125,24 @@ class _CommentsSheetState extends State<_CommentsSheet> {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                Color(0xFF49113B), // Deep Magenta
-                Color(0xFF210D1D), // Darker muted purple
-                Color(0xFF0F040C), // Near black
+                Color(0xFF2C0B24), // Darker Magenta top
+                Color(0xFF0F040C), // Near black bottom
               ],
             ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(36)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               _DragHandle(),
               const Padding(
-                padding: EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.symmetric(vertical: 8),
                 child: Text(
                   'Comments',
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ),

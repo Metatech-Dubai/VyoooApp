@@ -82,9 +82,13 @@ class AppBottomNavigation extends StatelessWidget {
     return Container(
       decoration: const BoxDecoration(
         gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A061E), Color(0xFF77105D), Color(0xFF6D0D45)],
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            Color(0xFF1B051D), // Dark purple/black
+            Color(0xFF6B0E4C), // Deep magenta
+            Color(0xFF8B125E), // Lighter magenta
+          ],
         ),
       ),
       child: BottomNavigationBar(
@@ -100,55 +104,39 @@ class AppBottomNavigation extends StatelessWidget {
         showUnselectedLabels: false,
         items: [
           BottomNavigationBarItem(
-            icon: _buildIcon(
-              _NavAssets.homeUnselected,
-              Icons.home_rounded,
-              false,
-            ),
-            activeIcon: _buildIcon(
-              _NavAssets.homeSelected,
-              Icons.home_rounded,
-              true,
-            ),
+            icon: _buildIcon(_NavAssets.homeUnselected, Icons.home_rounded, false),
+            activeIcon: _buildIcon(_NavAssets.homeSelected, Icons.home_rounded, true),
             label: 'Home',
           ),
           BottomNavigationBarItem(
-            icon: _buildIcon(
-              _NavAssets.searchUnselected,
-              Icons.search_rounded,
-              false,
-            ),
-            activeIcon: _buildIcon(
-              _NavAssets.searchSelected,
-              Icons.search_rounded,
-              true,
-            ),
+            icon: _buildIcon(_NavAssets.searchUnselected, Icons.search_rounded, false),
+            activeIcon: _buildIcon(_NavAssets.searchSelected, Icons.search_rounded, true),
             label: 'Search',
           ),
           BottomNavigationBarItem(
-            icon: _buildIcon(
-              _NavAssets.addUnselected,
-              Icons.add_box_rounded,
-              false,
+            icon: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+              ),
+              child: _buildIcon(_NavAssets.addUnselected, Icons.add, false),
             ),
-            activeIcon: _buildIcon(
-              _NavAssets.addSelected,
-              Icons.add_box_rounded,
-              true,
+            activeIcon: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.5),
+              ),
+              child: _buildIcon(_NavAssets.addSelected, Icons.add, true),
             ),
             label: 'Create',
           ),
           BottomNavigationBarItem(
-            icon: _buildIcon(
-              _NavAssets.notificationUnselected,
-              Icons.notifications_outlined,
-              false,
-            ),
-            activeIcon: _buildIcon(
-              _NavAssets.notificationSelected,
-              Icons.notifications_outlined,
-              true,
-            ),
+            icon: _buildIcon(_NavAssets.notificationUnselected, Icons.notifications_none_rounded, false),
+            activeIcon: _buildIcon(_NavAssets.notificationSelected, Icons.notifications_rounded, true),
             label: 'Notifications',
           ),
           BottomNavigationBarItem(

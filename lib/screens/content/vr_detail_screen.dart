@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/app_spacing.dart';
-import '../../core/widgets/app_bottom_navigation.dart';
 
 /// Payload for opening VR full-screen view (from profile VR grid or search).
 class VRDetailPayload {
@@ -14,6 +13,10 @@ class VRDetailPayload {
     this.avatarUrl = 'https://i.pravatar.cc/80?img=33',
     this.description = 'It\'s the silence that is more beauti...',
     this.likeCount = 100000,
+    this.commentCount = 1200,
+    this.viewCount = 1500000,
+    this.shareCount = 450,
+    this.saveCount = 3000,
   });
 
   final String title;
@@ -24,6 +27,10 @@ class VRDetailPayload {
   final String avatarUrl;
   final String description;
   final int likeCount;
+  final int commentCount;
+  final int viewCount;
+  final int shareCount;
+  final int saveCount;
 }
 
 /// Full-screen VR view: back + "VR", full-height media, VR badge, vertical actions (eye, heart, comment, share, save), creator overlay, description "See more".
@@ -37,11 +44,41 @@ class VRDetailScreen extends StatefulWidget {
 }
 
 class _VRDetailScreenState extends State<VRDetailScreen> {
-  int _currentBottomNavIndex = 4;
+  bool _showOverlay = false;
+  bool _showInstruction = true;
+
+  @override
+  void initState() {
+    super.initState();
+    // Auto-hide instruction after delay
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _showInstruction = false);
+    });
+  }
 
   static String _formatCount(int n) {
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(0)}K';
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
     return '$n';
+  }
+
+  Widget _buildInstructionOverlay() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.6),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+      ),
+      child: const Text(
+        'Move device to explore video',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
+    );
   }
 
   @override
@@ -52,86 +89,130 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          Image.network(p.thumbnailUrl, fit: BoxFit.cover),
+          // Background Media
+          GestureDetector(
+            onTap: () {
+              setState(() => _showOverlay = !_showOverlay);
+              if (_showOverlay) {
+                Future.delayed(const Duration(seconds: 3), () {
+                  if (mounted) setState(() => _showOverlay = false);
+                });
+              }
+            },
+            child: Image.network(p.thumbnailUrl, fit: BoxFit.cover),
+          ),
+          // Gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: 0.5),
+                  Colors.black.withValues(alpha: 0.4),
                   Colors.transparent,
                   Colors.transparent,
-                  Colors.black.withValues(alpha: 0.85),
+                  Colors.black.withValues(alpha: 0.6),
                 ],
                 stops: const [0.0, 0.15, 0.5, 1.0],
               ),
             ),
           ),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildAppBar(context),
-                const Spacer(),
-                _buildBottomOverlay(p),
-              ],
-            ),
-          ),
+          // Sidebar Actions (Always visible or toggleable?) - Matching Design 1
           Positioned(
-            top: 0,
-            right: 0,
-            bottom: 0,
+            right: 12,
+            bottom: 120, // Above user info/nav
             child: SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.only(right: AppSpacing.sm, top: 56),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildActionIcon(Icons.visibility_outlined, null),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildActionIcon(
-                      Icons.favorite_rounded,
-                      _formatCount(p.likeCount),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildActionIcon(Icons.chat_bubble_outline_rounded, null),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildActionIcon(Icons.share_rounded, null),
-                    const SizedBox(height: AppSpacing.lg),
-                    _buildActionIcon(Icons.bookmark_border_rounded, null),
-                  ],
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildActionIcon(Icons.visibility_outlined, _formatCount(p.viewCount)),
+                  const SizedBox(height: 20),
+                  _buildActionIcon(Icons.favorite_border, _formatCount(p.likeCount)),
+                  const SizedBox(height: 20),
+                  _buildActionIcon(Icons.chat_bubble_outline, _formatCount(p.commentCount)),
+                  const SizedBox(height: 20),
+                  _buildActionIcon(Icons.star_border, _formatCount(p.saveCount)),
+                  const SizedBox(height: 20),
+                  _buildActionIcon(Icons.reply, _formatCount(p.shareCount)), // Share icon
+                  const SizedBox(height: 20),
+                  _buildActionIcon(Icons.more_horiz, null),
+                ],
               ),
             ),
           ),
+          // Bottom Visibility Toggle Icon (Right Corner)
           Positioned(
-            top: MediaQuery.of(context).padding.top + 56,
-            right: AppSpacing.md,
+            right: 20,
+            bottom: 40,
+            child: Icon(
+              Icons.visibility_off_outlined,
+              size: 28,
+              color: Colors.white.withValues(alpha: 0.9),
+            ),
+          ),
+          // Bottom Info Row
+          Positioned(
+            left: 0,
+            right: 80,
+            bottom: 20,
+            child: SafeArea(
+              child: _buildBottomOverlay(p),
+            ),
+          ),
+          // Top VR Badge
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 64,
+            right: 20,
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.25),
+                color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
               ),
               child: const Text(
                 'VR',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+          // Instructional Overlay
+          if (_showInstruction)
+            Center(
+              child: _buildInstructionOverlay(),
+            ),
+          // AppBar
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(child: _buildAppBar(context)),
+          ),
+          // Bottom Progress Bar
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Container(
+              height: 3,
+              width: double.infinity,
+              color: Colors.black.withOpacity(0.3),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Container(
+                  height: 3,
+                  width: MediaQuery.sizeOf(context).width * 0.4, // Mock 40% progress
+                  color: const Color(0xFFEF4444),
                 ),
               ),
             ),
           ),
         ],
-      ),
-      bottomNavigationBar: AppBottomNavigation(
-        currentIndex: _currentBottomNavIndex,
-        onTap: (index) {
-          if (index == 4) return;
-          setState(() => _currentBottomNavIndex = index);
-        },
-        profileImageUrl: widget.payload?.avatarUrl,
       ),
     );
   }
@@ -172,12 +253,13 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
       children: [
         Icon(icon, color: Colors.white, size: 28),
         if (count != null) ...[
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           Text(
             count,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
-              fontSize: 11,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],
@@ -187,42 +269,57 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
 
   Widget _buildBottomOverlay(VRDetailPayload p) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(
-        AppSpacing.md,
-        0,
-        AppSpacing.md,
-        AppSpacing.md,
-      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 24,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
-                backgroundImage: NetworkImage(p.avatarUrl),
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 2),
+                ),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.grey[900],
+                  backgroundImage: NetworkImage(p.avatarUrl),
+                ),
               ),
-              const SizedBox(width: AppSpacing.sm),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      p.creatorName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                      ),
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      children: [
+                        Text(
+                          p.creatorName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.all(1.5),
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFEF4444),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.check, color: Colors.white, size: 10),
+                        ),
+                      ],
                     ),
                     Text(
                       p.creatorHandle,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 13,
+                        fontWeight: FontWeight.w400,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -231,26 +328,27 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: AppSpacing.sm),
+          const SizedBox(height: 14),
           Text(
             p.description,
             style: const TextStyle(
               color: Colors.white,
-              fontSize: 14,
-              height: 1.35,
+              fontSize: 15,
+              fontWeight: FontWeight.w400,
+              height: 1.4,
             ),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 4),
           GestureDetector(
             onTap: () {},
             child: Text(
               'See More',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.75),
+                color: Colors.white.withValues(alpha: 0.9),
                 fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w700,
               ),
             ),
           ),
