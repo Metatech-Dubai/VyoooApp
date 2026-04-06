@@ -34,6 +34,7 @@ class FeedVideoItem extends StatefulWidget {
 class _FeedVideoItemState extends State<FeedVideoItem> {
   VideoPlayerController? _controller;
   bool _initialized = false;
+  bool _isRouteActive = true;
 
   @override
   void initState() {
@@ -44,10 +45,25 @@ class _FeedVideoItemState extends State<FeedVideoItem> {
   @override
   void didUpdateWidget(FeedVideoItem old) {
     super.didUpdateWidget(old);
-    if (widget.isActive && !old.isActive) {
+    if (_isRouteActive && widget.isActive && !old.isActive) {
       _initVideo();
     } else if (!widget.isActive && old.isActive) {
       _controller?.pause();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final routeActive = TickerMode.of(context);
+    if (routeActive == _isRouteActive) return;
+    _isRouteActive = routeActive;
+    if (!_isRouteActive) {
+      _controller?.pause();
+      return;
+    }
+    if (widget.isActive) {
+      _initVideo();
     }
   }
 

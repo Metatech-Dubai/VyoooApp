@@ -15,10 +15,12 @@ class StoryViewerScreen extends StatefulWidget {
     super.key,
     required this.groups,
     this.initialGroupIndex = 0,
+    this.initialStoryIndex = 0,
   });
 
   final List<StoryGroup> groups;
   final int initialGroupIndex;
+  final int initialStoryIndex;
 
   @override
   State<StoryViewerScreen> createState() => _StoryViewerScreenState();
@@ -41,7 +43,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     super.initState();
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _groupIndex = widget.initialGroupIndex;
-    _storyIndex = 0;
+    _storyIndex = widget.initialStoryIndex;
     _progress = AnimationController(vsync: this, duration: _storyDuration)
       ..addStatusListener((s) {
         if (s == AnimationStatus.completed) _advance();

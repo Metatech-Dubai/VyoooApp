@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
@@ -68,6 +69,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   List<StoryModel> _myStories = [];
   String _myAvatarUrl = '';
 
+  /// True when Following tab has no followed feed but we show [For You] reels instead.
+  bool get _followingUsesForYouFallback =>
+      currentTab == HomeTab.following &&
+      _reelsFollowing.isEmpty &&
+      _reelsForYou.isNotEmpty;
+
   /// Reels for current tab. Rebuilt when currentTab changes; PageView uses this.
   List<Map<String, dynamic>> get _currentReels {
     switch (currentTab) {
@@ -76,7 +83,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       case HomeTab.vr:
         return _reelsVR;
       case HomeTab.following:
-        return _reelsFollowing;
+        // No one followed (or no reels from them) → show For You so the tab isn't a black void.
+        if (_reelsFollowing.isNotEmpty) return _reelsFollowing;
+        return _reelsForYou;
       case HomeTab.forYou:
         return _reelsForYou;
     }
@@ -104,14 +113,15 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     super.didUpdateWidget(old);
     if (widget.refreshToken != old.refreshToken) {
       // Switch to For You tab and scroll to top so the new video is visible.
+      _jumpPageControllerToStart();
       setState(() {
         currentTab = HomeTab.forYou;
         _currentIndex = 0;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _pageController.hasClients) {
-          _pageController.jumpToPage(0);
-        }
+        if (!mounted) return;
+        _jumpPageControllerToStart();
+        _ensurePageControllerMatchesFeed();
       });
       _loadReels();
     }
@@ -137,8 +147,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     }
     if (mounted) {
       setState(() {
-        if (forYou.isNotEmpty) _reelsForYou = forYou;
-        if (following.isNotEmpty) _reelsFollowing = following;
+        // Always assign so empty API results clear lists (avoids stale / black feed).
+        _reelsForYou = forYou;
+        _reelsFollowing = following;
         if (trending.isNotEmpty) _reelsTrending = trending;
         if (vr.isNotEmpty) _reelsVR = vr;
         _storyGroups = storyGroups;
@@ -212,17 +223,38 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     );
   }
 
+  /// While the *previous* tab's [PageView] is still mounted, force page 0 so the
+  /// controller index is never out of range on the next tab's [itemCount] (which
+  /// caused a blank/black viewport when switching e.g. For You → Following).
+  void _jumpPageControllerToStart() {
+    if (_pageController.hasClients) {
+      _pageController.jumpToPage(0);
+    }
+  }
+
+  void _ensurePageControllerMatchesFeed() {
+    if (!_pageController.hasClients) return;
+    final len = _currentReels.length;
+    if (len == 0) return;
+    final raw = _pageController.page?.round() ?? _currentIndex;
+    final safe = raw.clamp(0, len - 1);
+    if (safe != raw) {
+      _pageController.jumpToPage(safe);
+      if (mounted) setState(() => _currentIndex = safe);
+    }
+  }
+
   void _onTabChanged(HomeTab tab) {
+    _jumpPageControllerToStart();
     setState(() {
       currentTab = tab;
       _currentIndex = 0;
     });
-    // PageView is only in the tree when tab != VR. Schedule jump after build.
     if (tab != HomeTab.vr) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && currentTab == tab && _pageController.hasClients) {
-          _pageController.jumpToPage(0);
-        }
+        if (!mounted || currentTab != tab) return;
+        _jumpPageControllerToStart();
+        _ensurePageControllerMatchesFeed();
       });
     }
   }
@@ -270,10 +302,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     horizontal: isFollowing ? 8 : 0,
                     vertical: isFollowing ? 8 : 0,
                   ),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(isFollowing ? 24 : 0),
-                    child: _buildReelsFeed(),
-                  ),
+                  child: _buildFeedClipArea(isFollowing),
                 ),
               ),
             _buildHeader(),
@@ -302,11 +331,17 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
   void _openStoryViewer(int groupIndex) {
     if (_storyGroups.isEmpty) return;
+    final uid = AuthService().currentUser?.uid ?? '';
+    final group = _storyGroups[groupIndex];
+    final initialStoryIndex = uid.isEmpty
+        ? 0
+        : group.stories.indexWhere((s) => !s.isViewedBy(uid));
     Navigator.of(context).push(
       PageRouteBuilder<void>(
         pageBuilder: (_, _, _) => StoryViewerScreen(
           groups: _storyGroups,
           initialGroupIndex: groupIndex,
+          initialStoryIndex: initialStoryIndex == -1 ? 0 : initialStoryIndex,
         ),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
@@ -322,6 +357,16 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       ),
     );
     if (posted == true) _loadReels();
+  }
+
+  Future<void> _handleMyStoryTap() async {
+    final uid = AuthService().currentUser?.uid ?? '';
+    final myGroupIdx = _storyGroups.indexWhere((g) => g.userId == uid);
+    if (myGroupIdx != -1) {
+      _openStoryViewer(myGroupIdx);
+      return;
+    }
+    await _openStoryUpload();
   }
 
   Widget _buildStoryRow() {
@@ -353,13 +398,63 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         },
         myAvatarUrl: _myAvatarUrl,
         myHasStory: _myStories.isNotEmpty,
-        onAddStory: _openStoryUpload,
+        onAddStory: _handleMyStoryTap,
+      ),
+    );
+  }
+
+  /// Rounded feed; when Following has no followed content, a banner + [For You] fallback.
+  Widget _buildFeedClipArea(bool isFollowingTab) {
+    final radius = BorderRadius.circular(isFollowingTab ? 24 : 0);
+    final feed = ClipRRect(
+      borderRadius: radius,
+      child: _buildReelsFeed(),
+    );
+    if (isFollowingTab && _followingUsesForYouFallback) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildFollowingFallbackBanner(),
+          const SizedBox(height: 8),
+          Expanded(child: feed),
+        ],
+      );
+    }
+    return feed;
+  }
+
+  Widget _buildFollowingFallbackBanner() {
+    return Material(
+      color: Colors.white.withValues(alpha: 0.14),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        child: Row(
+          children: [
+            Icon(Icons.people_outline_rounded, color: Colors.white.withValues(alpha: 0.85), size: 20),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "You're not following anyone yet, or they have no reels. Showing For You for now.",
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.92),
+                  fontSize: 12,
+                  height: 1.3,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildReelsFeed() {
     final reels = _currentReels;
+    if (reels.isEmpty) {
+      return _buildEmptyReelsPlaceholder();
+    }
     return PageView.builder(
       controller: _pageController,
       scrollDirection: Axis.vertical,
@@ -367,15 +462,109 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       itemCount: reels.length,
       itemBuilder: (context, index) {
         final reel = reels[index];
+        final videoUrl = (reel['videoUrl'] as String?)?.trim() ?? '';
+        if (videoUrl.isEmpty) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'This reel has no video URL.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 16,
+                ),
+              ),
+            ),
+          );
+        }
         return GestureDetector(
           onTap: _onVideoTap,
           child: ReelItemWidget(
-            videoUrl: reel['videoUrl'] as String,
+            videoUrl: videoUrl,
             // Only play when this page is visible AND the home tab is active.
             isVisible: widget.isActive && index == _currentIndex,
           ),
         );
       },
+    );
+  }
+
+  Widget _buildEmptyReelsPlaceholder() {
+    final (String title, String subtitle, IconData icon) = switch (currentTab) {
+      HomeTab.following => (
+          'Nothing here yet',
+          _reelsForYou.isEmpty
+              ? 'Follow creators to see their reels here. For You is empty too—check back after content is added.'
+              : 'Follow creators to see their reels here. (For You will fill this tab until you do.)',
+          Icons.people_outline_rounded,
+        ),
+      HomeTab.trending => (
+          'No trending reels',
+          'Check back soon or try For You.',
+          Icons.trending_up_rounded,
+        ),
+      HomeTab.forYou => (
+          'No reels to show',
+          'Pull to refresh later or check your connection.',
+          Icons.play_circle_outline_rounded,
+        ),
+      HomeTab.vr => ('No reels', '', Icons.video_library_outlined),
+    };
+
+    return SizedBox.expand(
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 32),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+            Icon(
+              icon,
+              size: 56,
+              color: Colors.white.withValues(alpha: 0.35),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            if (subtitle.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Text(
+                subtitle,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.65),
+                  fontSize: 15,
+                  height: 1.35,
+                ),
+              ),
+            ],
+            if (currentTab == HomeTab.following) ...[
+              const SizedBox(height: 24),
+              TextButton(
+                style: TextButton.styleFrom(foregroundColor: AppColors.pink),
+                onPressed: () => _onTabChanged(HomeTab.forYou),
+                child: const Text(
+                  'Browse For You',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    ),
     );
   }
 
