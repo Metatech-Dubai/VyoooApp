@@ -120,6 +120,16 @@ class StoryService {
     }
   }
 
+  /// Uploads multiple [images] as separate story docs with a shared [caption].
+  Future<void> uploadMultipleStories({
+    required List<File> images,
+    required String caption,
+  }) async {
+    for (final image in images) {
+      await uploadStory(image: image, caption: caption);
+    }
+  }
+
   // ── Interactions ──────────────────────────────────────────────────────────
 
   /// Marks a story as viewed by the current user (arrayUnion, idempotent).

@@ -1,0 +1,30 @@
+---
+description: iOS bundle ID is fixed for App Store and Firebase; never substitute another id
+alwaysApply: true
+---
+
+# iOS bundle identifier — do not change
+
+The production iOS app uses **`com.vyooo`**. It is live on the App Store and registered in Firebase (**vyooo (ios)**). This identifier must stay the same.
+
+## Do not modify
+
+- **`PRODUCT_BUNDLE_IDENTIFIER`** in `ios/Runner.xcodeproj/project.pbxproj`: main **Runner** target must remain **`com.vyooo`**; **RunnerTests** should stay **`com.vyooo.RunnerTests`** (or equivalent under the same app id family).
+- **`BUNDLE_ID`** in `ios/Runner/GoogleService-Info.plist` for this app.
+- **`iosBundleId`** for iOS in `lib/firebase_options.dart`.
+
+## Apple Developer team (signing)
+
+**`com.vyooo`** is tied to exactly one Apple Developer **Team** (the one that created the App Store app). Do **not** hardcode a random `DEVELOPMENT_TEAM` in `project.pbxproj` for all developers: another team’s ID causes *“app identifier cannot be registered… not available”* because Apple will not assign the same bundle id to two teams.
+
+Each machine should use **Xcode → Signing & Capabilities → Team** with an Apple ID that is a member of the team that **owns** `com.vyooo`. Osama’s iPhone must be registered under that same team (Devices + development profile).
+
+## If device signing or “bundle id not available” errors appear
+
+Do **not** change the bundle id. Fix **team + provisioning**:
+
+- Sign in to Xcode with the Apple ID that has access to the **Metatech / Vyooo** developer team (or whoever owns the App Store app).
+- Pick that **Team** for the Runner target; enable **Automatically manage signing**.
+- Ensure the device is added to the team’s devices if profiles are manual.
+
+Using a different bundle id would create a **separate** app (new App Store listing / new Firebase iOS app), which is not acceptable for this product.
