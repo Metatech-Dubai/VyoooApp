@@ -106,18 +106,6 @@ class _FeedVideoItemState extends State<FeedVideoItem> {
     return n.toString();
   }
 
-  void _toggleControls() {
-    setState(() {
-      _showControls = !_showControls;
-    });
-    _hideTimer?.cancel();
-    if (_showControls) {
-      _hideTimer = Timer(const Duration(seconds: 3), () {
-        if (mounted) setState(() => _showControls = false);
-      });
-    }
-  }
-
   void _togglePlay() {
     if (_controller == null) return;
     setState(() {
