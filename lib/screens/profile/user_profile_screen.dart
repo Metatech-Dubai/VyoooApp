@@ -16,7 +16,6 @@ import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
 import '../content/vr_detail_screen.dart';
 import '../../features/subscription/creator_subscription_screen.dart';
-import 'followers_following_screen.dart';
 
 /// Data for displaying another user's profile (e.g. from search or followers list).
 class UserProfilePayload {
@@ -286,7 +285,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               color: Color(0xFFF81945),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.check_rounded, size: 10, color: Colors.white),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 10,
+                              color: Colors.white,
+                            ),
                           ),
                         ],
                       ],
@@ -306,13 +309,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       children: [
                         _UserStatChip(
                           label: 'Following',
-                          value: _formatCount(_liveFollowingCount ?? p.followingCount),
+                          value: _formatCount(
+                            _liveFollowingCount ?? p.followingCount,
+                          ),
                           onTap: () {},
                         ),
                         const SizedBox(width: 32),
                         _UserStatChip(
                           label: 'Followers',
-                          value: _formatCount(_liveFollowerCount ?? p.followerCount),
+                          value: _formatCount(
+                            _liveFollowerCount ?? p.followerCount,
+                          ),
                           onTap: () {},
                         ),
                         const SizedBox(width: 32),

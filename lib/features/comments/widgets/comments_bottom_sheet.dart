@@ -411,10 +411,7 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Color(0xFF5A1531),
-                      Color(0xFF200226),
-                    ],
+                    colors: [Color(0xFF5A1531), Color(0xFF200226)],
                   ),
                   border: Border.all(
                     color: Colors.white.withValues(alpha: 0.1),
@@ -882,25 +879,6 @@ class _ViewMoreRepliesRow extends StatelessWidget {
               color: Color(0x80FFFFFF),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-/// Drag handle pill
-class _DragHandle extends StatelessWidget {
-  const _DragHandle();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 48,
-        height: 5,
-        decoration: BoxDecoration(
-          color: const Color(0x33FFFFFF), // 20%
-          borderRadius: BorderRadius.circular(2.5),
         ),
       ),
     );

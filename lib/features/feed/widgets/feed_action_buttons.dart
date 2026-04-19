@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 /// Right-side vertical action column: Crown, Views, Likes, Comments, Share, More.
 class FeedActionButtons extends StatelessWidget {
@@ -37,13 +36,12 @@ class FeedActionButtons extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _ActionItem(
-          icon: 'assets/vyooO_icons/Home/vr.png',
-          count: viewCount,
-        ),
+        _ActionItem(icon: 'assets/vyooO_icons/Home/vr.png', count: viewCount),
         const SizedBox(height: _spacing),
         _ActionItem(
-          icon: isLiked ? 'assets/vyooO_icons/Home/heart.png' : 'assets/vyooO_icons/Home/heart.png',
+          icon: isLiked
+              ? 'assets/vyooO_icons/Home/heart.png'
+              : 'assets/vyooO_icons/Home/heart.png',
           count: likeCount,
           color: isLiked ? const Color(0xFFFF2E93) : Colors.white,
           onTap: onLike,
@@ -56,7 +54,9 @@ class FeedActionButtons extends StatelessWidget {
         ),
         const SizedBox(height: _spacing),
         _ActionItem(
-          icon: isFavorited ? 'assets/vyooO_icons/Profile/favourites.png' : 'assets/vyooO_icons/Profile/favourites.png',
+          icon: isFavorited
+              ? 'assets/vyooO_icons/Profile/favourites.png'
+              : 'assets/vyooO_icons/Profile/favourites.png',
           count: favoriteCount,
           color: isFavorited ? const Color(0xFFFFD700) : Colors.white,
           onTap: onFavorite,
@@ -101,11 +101,7 @@ class _ActionItem extends StatelessWidget {
             SizedBox(
               width: _iconSize,
               height: _iconSize,
-              child: Image.asset(
-                icon as String,
-                color: c,
-                fit: BoxFit.contain,
-              ),
+              child: Image.asset(icon as String, color: c, fit: BoxFit.contain),
             ),
           if (count != null && count!.isNotEmpty) ...[
             const SizedBox(height: 4),

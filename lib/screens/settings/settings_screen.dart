@@ -327,13 +327,11 @@ class _SettingsTile extends StatelessWidget {
     required this.iconPath,
     required this.label,
     required this.onTap,
-    this.iconSize = 22,
     this.isPremium = false,
     this.isLogout = false,
   });
 
   final String iconPath;
-  final double iconSize;
   final String label;
   final VoidCallback onTap;
   final bool isPremium;
@@ -363,8 +361,8 @@ class _SettingsTile extends StatelessWidget {
                         : TextDirection.ltr,
                     child: Image.asset(
                       iconPath,
-                      width: iconSize,
-                      height: iconSize,
+                      width: 22,
+                      height: 22,
                       color: color,
                     ),
                   ),

@@ -1387,17 +1387,17 @@ class _UserSearchResultTile extends StatelessWidget {
   final VoidCallback? onTap;
   final VoidCallback? onFollowTap;
 
-  static String _formatFollowers(int n) {
-    if (n >= 1000000) {
-      final v = n / 1000000;
-      return '${v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1)}M';
-    }
-    if (n >= 1000) {
-      final v = n / 1000;
-      return '${v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1)}K';
-    }
-    return '$n';
-  }
+  // static String _formatFollowers(int n) {
+  //   if (n >= 1000000) {
+  //     final v = n / 1000000;
+  //     return '${v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1)}M';
+  //   }
+  //   if (n >= 1000) {
+  //     final v = n / 1000;
+  //     return '${v >= 10 ? v.toStringAsFixed(0) : v.toStringAsFixed(1)}K';
+  //   }
+  //   return '$n';
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -1407,16 +1407,16 @@ class _UserSearchResultTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Padding(
-          padding: const EdgeInsets.symmetric(
-            vertical: 12,
-            horizontal: 8,
-          ),
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Row(
             children: [
               Container(
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1.5),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 1.5,
+                  ),
                 ),
                 child: CircleAvatar(
                   radius: 28,
@@ -1457,7 +1457,11 @@ class _UserSearchResultTile extends StatelessWidget {
                               color: Color(0xFFF81945),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.check_rounded, size: 9, color: Colors.white),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 9,
+                              color: Colors.white,
+                            ),
                           ),
                         ],
                       ],
@@ -1480,10 +1484,13 @@ class _UserSearchResultTile extends StatelessWidget {
               GestureDetector(
                 onTap: onFollowTap,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 18,
+                    vertical: 8,
+                  ),
                   decoration: BoxDecoration(
-                    color: user.isFollowing 
-                        ? Colors.white.withValues(alpha: 0.1) 
+                    color: user.isFollowing
+                        ? Colors.white.withValues(alpha: 0.1)
                         : const Color(0xFFF81945),
                     borderRadius: BorderRadius.circular(20),
                   ),
@@ -1512,14 +1519,14 @@ class _LiveCardItem {
     required this.handle,
     required this.avatarUrl,
     this.viewerCount = 102,
-    this.isVerified = false,
+    // this.isVerified = false,
   });
   final String thumbnailUrl;
   final String name;
   final String handle;
   final String avatarUrl;
   final int viewerCount;
-  final bool isVerified;
+  // final bool isVerified;
 }
 
 class _LiveSearchResultItem {
@@ -1788,7 +1795,7 @@ class _LiveCard extends StatelessWidget {
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
-                              if (item.isVerified || true) ...[
+                              if (true) ...[
                                 // Design has red checks for these
                                 const SizedBox(width: 4),
                                 Container(
