@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/theme/app_spacing.dart';
-import '../core/theme/app_gradients.dart';
 
 /// Single reel item for PageView. Handles video playback, auto-play, pause, preload.
 /// Use AutomaticKeepAliveClientMixin for performance.
@@ -188,7 +187,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    
+
     // Show loading/retrying state
     if (_controller == null && !_showError) {
       return Container(
@@ -314,7 +313,8 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
             // ── Play/Pause & Mute Overlay ─────────────────────────────────────
             Center(
               child: AnimatedOpacity(
-                opacity: _showControls || !(_controller?.value.isPlaying ?? true)
+                opacity:
+                    _showControls || !(_controller?.value.isPlaying ?? true)
                     ? 1.0
                     : 0.0,
                 duration: const Duration(milliseconds: 200),
