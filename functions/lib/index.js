@@ -60,6 +60,37 @@ const WHATSAPP_OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 const TWILIO_ACCOUNT_SID = ((_j = process.env.TWILIO_ACCOUNT_SID) !== null && _j !== void 0 ? _j : '').trim();
 const TWILIO_AUTH_TOKEN = ((_k = process.env.TWILIO_AUTH_TOKEN) !== null && _k !== void 0 ? _k : '').trim();
 const TWILIO_WHATSAPP_FROM = ((_l = process.env.TWILIO_WHATSAPP_FROM) !== null && _l !== void 0 ? _l : '').trim();
+function normalizeWhatsAppSender(raw) {
+    const trimmed = raw.trim();
+    if (!trimmed)
+        return '';
+    return trimmed.toLowerCase().startsWith('whatsapp:')
+        ? trimmed
+        : `whatsapp:${trimmed}`;
+}
+function parseTwilioWhatsAppFailureMessage(status, body) {
+    try {
+        const parsed = JSON.parse(body);
+        const code = typeof parsed.code === 'number' ? parsed.code : null;
+        const message = typeof parsed.message === 'string' ? parsed.message.trim() : '';
+        if (code === 63015) {
+            return 'This WhatsApp number is not enabled in your Twilio sandbox. Send the sandbox join code first, then retry.';
+        }
+        if (code === 21606) {
+            return 'Invalid Twilio WhatsApp sender. Set TWILIO_WHATSAPP_FROM to whatsapp:+14155238886 (or your approved business sender).';
+        }
+        if (message.length > 0) {
+            return message.length <= 300 ? message : `${message.slice(0, 297)}...`;
+        }
+    }
+    catch (_a) {
+        // Non-JSON body.
+    }
+    if (status === 401 || status === 403) {
+        return 'Twilio credentials are invalid. Check TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN.';
+    }
+    return `Could not send WhatsApp code (HTTP ${status}).`;
+}
 function hashEmailOtp(uid, plain) {
     return crypto
         .createHash('sha256')
@@ -565,6 +596,7 @@ exports.processEmailOtpSendRequest = (0, firestore_1.onDocumentCreated)({
         : typeof raw.userId === 'number'
             ? String(raw.userId)
             : '';
+    const requestedEmail = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : '';
     if (!uid) {
         await markError('Invalid request.');
         return;
@@ -575,17 +607,21 @@ exports.processEmailOtpSendRequest = (0, firestore_1.onDocumentCreated)({
     // Resolve email + password provider via Auth; fall back to Firestore profile when
     // getUser fails (e.g. transient API errors). Client rules ensure userId matches signer;
     // emailOtpVerified === false means email/password signup path.
-    let email = '';
+    let email = requestedEmail;
     let isPasswordSignup = false;
+    let isAnonymous = false;
     try {
         const userRecord = await (0, auth_1.getAuth)().getUser(uid);
-        email = ((_a = userRecord.email) !== null && _a !== void 0 ? _a : '').trim();
+        if (!email) {
+            email = ((_a = userRecord.email) !== null && _a !== void 0 ? _a : '').trim();
+        }
         isPasswordSignup = userRecord.providerData.some((p) => p.providerId === 'password');
+        isAnonymous = userRecord.providerData.some((p) => p.providerId === 'anonymous');
     }
     catch (e) {
         console.error('processEmailOtpSendRequest getUser failed', uid, e);
         const emailFromDoc = typeof (profile === null || profile === void 0 ? void 0 : profile.email) === 'string' ? profile.email.trim() : '';
-        if (emailFromDoc.includes('@') && userDoc.exists) {
+        if ((emailFromDoc.includes('@') || email.includes('@')) && userDoc.exists) {
             email = emailFromDoc;
             // Fallback path for transient Auth Admin lookup failures:
             // this request can only be created by the signed-in user for their own uid.
@@ -608,8 +644,12 @@ exports.processEmailOtpSendRequest = (0, firestore_1.onDocumentCreated)({
         await markError('No email on this account.');
         return;
     }
-    if (!isPasswordSignup) {
+    if (!isPasswordSignup && !isAnonymous) {
         await markError('Email verification not required.');
+        return;
+    }
+    if (!email.includes('@')) {
+        await markError('Invalid email.');
         return;
     }
     const challengeRef = db.collection('email_otp_challenges').doc(uid);
@@ -662,7 +702,7 @@ exports.processEmailOtpVerifyRequest = (0, firestore_1.onDocumentCreated)({
     timeoutSeconds: 30,
     memory: '256MiB',
 }, async (event) => {
-    var _a;
+    var _a, _b;
     const snap = event.data;
     if (!snap)
         return;
@@ -676,6 +716,7 @@ exports.processEmailOtpVerifyRequest = (0, firestore_1.onDocumentCreated)({
     const raw = snap.data();
     const uid = typeof raw.userId === 'string' ? raw.userId : '';
     const code = typeof raw.code === 'string' ? raw.code.replace(/\D/g, '').slice(0, 4) : '';
+    const requestedEmail = typeof raw.email === 'string' ? raw.email.trim().toLowerCase() : '';
     if (!uid || code.length !== 4) {
         await markError('Enter the 4-digit code.');
         return;
@@ -708,7 +749,24 @@ exports.processEmailOtpVerifyRequest = (0, firestore_1.onDocumentCreated)({
         await markError('Invalid code.');
         return;
     }
-    await userRef.set({ emailOtpVerified: true }, { merge: true });
+    let shouldUpdateUserDoc = true;
+    try {
+        const userRecord = await (0, auth_1.getAuth)().getUser(uid);
+        const isAnonymous = userRecord.providerData.some((p) => p.providerId === 'anonymous');
+        const normalizedAuthEmail = ((_b = userRecord.email) !== null && _b !== void 0 ? _b : '').trim().toLowerCase();
+        if (isAnonymous) {
+            shouldUpdateUserDoc = false;
+        }
+        if (requestedEmail.length > 0 && normalizedAuthEmail.length > 0 && requestedEmail != normalizedAuthEmail) {
+            shouldUpdateUserDoc = false;
+        }
+    }
+    catch (_c) {
+        shouldUpdateUserDoc = false;
+    }
+    if (shouldUpdateUserDoc) {
+        await userRef.set({ emailOtpVerified: true }, { merge: true });
+    }
     await challengeRef.delete();
     await snap.ref.update({ status: 'done' });
 });
@@ -728,7 +786,8 @@ exports.processWhatsAppOtpSendRequest = (0, firestore_1.onDocumentCreated)({
     const markError = async (msg) => {
         await snap.ref.update({ status: 'error', error: msg });
     };
-    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !TWILIO_WHATSAPP_FROM) {
+    const twilioSender = normalizeWhatsAppSender(TWILIO_WHATSAPP_FROM);
+    if (!TWILIO_ACCOUNT_SID || !TWILIO_AUTH_TOKEN || !twilioSender) {
         await markError('WhatsApp delivery is not configured.');
         return;
     }
@@ -765,7 +824,7 @@ exports.processWhatsAppOtpSendRequest = (0, firestore_1.onDocumentCreated)({
     });
     const body = new URLSearchParams({
         To: `whatsapp:${phoneNumber}`,
-        From: TWILIO_WHATSAPP_FROM,
+        From: twilioSender,
         Body: `Your VyooO verification code is ${code}. It expires in 10 minutes.`,
     });
     const twilioRes = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`, {
@@ -780,7 +839,7 @@ exports.processWhatsAppOtpSendRequest = (0, firestore_1.onDocumentCreated)({
         const errBody = await twilioRes.text();
         firebase_functions_1.logger.error('Twilio WhatsApp send failed', { status: twilioRes.status, body: errBody.slice(0, 500) });
         await challengeRef.delete();
-        await markError(`Could not send WhatsApp code (HTTP ${twilioRes.status}).`);
+        await markError(parseTwilioWhatsAppFailureMessage(twilioRes.status, errBody));
         return;
     }
     await snap.ref.update({ status: 'done' });

@@ -17,7 +17,8 @@
     <application
         android:label="vyooo"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:enableOnBackInvokedCallback="true">
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:exported="false"

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:crypto/crypto.dart';
@@ -11,6 +12,7 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'email_otp_service.dart';
 import 'push_messaging_service.dart';
+import 'user_service.dart';
 import 'whatsapp_otp_service.dart';
 
 /// Result of an auth operation. No raw Firebase exceptions exposed to UI.
@@ -65,6 +67,21 @@ class AuthService {
   /// Current signed-in user, or null.
   User? get currentUser => _auth.currentUser;
 
+  Future<AuthResult> ensureAnonymousSession() async {
+    try {
+      final existing = _auth.currentUser;
+      if (existing != null) {
+        return AuthResult(success: true, user: existing);
+      }
+      final cred = await _auth.signInAnonymously();
+      return AuthResult(success: true, user: cred.user);
+    } on FirebaseAuthException catch (e) {
+      return AuthResult(success: false, message: _mapAuthException(e.code));
+    } catch (e) {
+      return AuthResult(success: false, message: _genericMessage(e));
+    }
+  }
+
   /// Register with email and password.
   Future<AuthResult> registerWithEmail({
     required String email,
@@ -101,6 +118,90 @@ class AuthService {
     }
   }
 
+  /// Request Firebase phone-auth OTP for sign-in.
+  Future<AuthResult> requestPhoneSignInOtp({
+    required String phoneNumber,
+    required void Function(String verificationId, int? resendToken) onCodeSent,
+    int? forceResendingToken,
+  }) async {
+    final normalizedPhone = phoneNumber.trim();
+    if (normalizedPhone.isEmpty || !normalizedPhone.startsWith('+')) {
+      return const AuthResult(
+        success: false,
+        message: 'Enter phone number with country code, e.g. +971...',
+      );
+    }
+    final completer = Completer<AuthResult>();
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: normalizedPhone,
+        forceResendingToken: forceResendingToken,
+        timeout: const Duration(seconds: 60),
+        verificationCompleted: (credential) async {
+          if (completer.isCompleted) return;
+          try {
+            final userCred = await _auth.signInWithCredential(credential);
+            completer.complete(AuthResult(success: true, user: userCred.user));
+          } on FirebaseAuthException catch (e) {
+            completer.complete(
+              AuthResult(success: false, message: _mapAuthException(e.code)),
+            );
+          } catch (e) {
+            completer.complete(
+              AuthResult(success: false, message: _genericMessage(e)),
+            );
+          }
+        },
+        verificationFailed: (e) {
+          if (completer.isCompleted) return;
+          completer.complete(
+            AuthResult(success: false, message: _mapAuthException(e.code)),
+          );
+        },
+        codeSent: (verificationId, resendToken) {
+          onCodeSent(verificationId, resendToken);
+          if (completer.isCompleted) return;
+          completer.complete(const AuthResult(success: true));
+        },
+        codeAutoRetrievalTimeout: (_) {},
+      );
+      return await completer.future.timeout(
+        const Duration(seconds: 75),
+        onTimeout: () => const AuthResult(
+          success: false,
+          message: 'Phone verification timed out. Please try again.',
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
+      return AuthResult(success: false, message: _mapAuthException(e.code));
+    } catch (e) {
+      return AuthResult(success: false, message: _genericMessage(e));
+    }
+  }
+
+  /// Verify SMS code and sign in with phone credential.
+  Future<AuthResult> verifyPhoneSignInOtp({
+    required String verificationId,
+    required String smsCode,
+  }) async {
+    final code = smsCode.trim();
+    if (verificationId.trim().isEmpty || code.isEmpty) {
+      return const AuthResult(success: false, message: 'Enter the OTP code.');
+    }
+    try {
+      final credential = PhoneAuthProvider.credential(
+        verificationId: verificationId,
+        smsCode: code,
+      );
+      final userCred = await _auth.signInWithCredential(credential);
+      return AuthResult(success: true, user: userCred.user);
+    } on FirebaseAuthException catch (e) {
+      return AuthResult(success: false, message: _mapAuthException(e.code));
+    } catch (e) {
+      return AuthResult(success: false, message: _genericMessage(e));
+    }
+  }
+
   /// Send verification email to current user.
   Future<AuthResult> sendEmailVerification() async {
     try {
@@ -130,13 +231,13 @@ class AuthService {
   }
 
   /// Sends a 4-digit OTP to the signed-in user's email (Firestore trigger + Resend).
-  Future<AuthResult> sendSignupEmailOtp() async {
+  Future<AuthResult> sendSignupEmailOtp({String email = ''}) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         return const AuthResult(success: false, message: 'No user signed in.');
       }
-      await EmailOtpService().requestSendOtp();
+      await EmailOtpService().requestSendOtp(email: email);
       return AuthResult(success: true, user: user);
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
@@ -154,19 +255,27 @@ class AuthService {
       }
       await WhatsAppOtpService().requestSendOtp(phoneNumber: phoneNumber);
       return AuthResult(success: true, user: user);
+    } on FirebaseException catch (e) {
+      final raw = (e.message ?? e.code).trim();
+      return AuthResult(
+        success: false,
+        message: raw.isEmpty
+            ? 'Could not send WhatsApp OTP request.'
+            : 'Could not send WhatsApp OTP: $raw',
+      );
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
     }
   }
 
   /// Verifies the email OTP and sets [emailOtpVerified] on the user profile (server).
-  Future<AuthResult> verifySignupEmailOtp(String code) async {
+  Future<AuthResult> verifySignupEmailOtp(String code, {String email = ''}) async {
     try {
       final user = _auth.currentUser;
       if (user == null) {
         return const AuthResult(success: false, message: 'No user signed in.');
       }
-      await EmailOtpService().verifyOtp(code);
+      await EmailOtpService().verifyOtp(code, email: email);
       return AuthResult(success: true, user: user);
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
@@ -185,6 +294,57 @@ class AuthService {
       }
       await WhatsAppOtpService().verifyOtp(code: code, phoneNumber: phoneNumber);
       return AuthResult(success: true, user: user);
+    } on FirebaseException catch (e) {
+      final raw = (e.message ?? e.code).trim();
+      return AuthResult(
+        success: false,
+        message: raw.isEmpty
+            ? 'Could not verify WhatsApp OTP.'
+            : 'WhatsApp verification failed: $raw',
+      );
+    } catch (e) {
+      return AuthResult(success: false, message: _genericMessage(e));
+    }
+  }
+
+  Future<AuthResult> completeSignupAfterOtp({
+    required String name,
+    required String email,
+    required String password,
+    String phoneNumber = '',
+  }) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        return const AuthResult(success: false, message: 'No user signed in.');
+      }
+      User? finalUser = user;
+      final hasPasswordProvider = user.providerData.any(
+        (p) => p.providerId == 'password',
+      );
+      if (user.isAnonymous || !hasPasswordProvider) {
+        final credential = EmailAuthProvider.credential(
+          email: email.trim(),
+          password: password,
+        );
+        final linked = await user.linkWithCredential(credential);
+        finalUser = linked.user;
+      }
+      if (finalUser == null) {
+        return const AuthResult(success: false, message: 'Could not create account.');
+      }
+      await UserService().createUserDocument(
+        uid: finalUser.uid,
+        email: email.trim(),
+      );
+      await UserService().updateUserProfile(
+        uid: finalUser.uid,
+        displayName: name.trim(),
+        phoneNumber: phoneNumber,
+      );
+      return AuthResult(success: true, user: finalUser);
+    } on FirebaseAuthException catch (e) {
+      return AuthResult(success: false, message: _mapAuthException(e.code));
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
     }
@@ -508,6 +668,26 @@ class AuthService {
         return 'Invalid email or password. If this email was created with Google, use Google sign-in first.';
       case 'operation-not-allowed':
         return 'Sign-in method is not enabled.';
+      case 'admin-restricted-operation':
+        return 'Anonymous sign-in is disabled in Firebase Auth. Enable it to continue OTP signup.';
+      case 'invalid-verification-code':
+        return 'Invalid OTP code. Please try again.';
+      case 'invalid-verification-id':
+        return 'Verification expired. Request a new OTP.';
+      case 'session-expired':
+        return 'OTP expired. Please request a new one.';
+      case 'quota-exceeded':
+        return 'Too many OTP requests. Try again later.';
+      case 'app-not-authorized':
+        return 'This app build is not authorized for Firebase Phone Auth. Add your Android SHA-1 and SHA-256 in Firebase Console and download latest google-services.json.';
+      case 'captcha-check-failed':
+        return 'Phone verification security check failed. Please retry with stable internet, or update Firebase Android app configuration.';
+      case 'invalid-app-credential':
+        return 'Phone verification failed for this app signature. Verify Firebase Android app package and SHA fingerprints.';
+      case 'missing-client-identifier':
+        return 'Missing client identifier for phone verification. Check Firebase Android app setup and google-services.json.';
+      case 'network-request-failed':
+        return 'Network error while sending OTP. Please check connection and try again.';
       case 'account-exists-with-different-credential':
         return 'This email is already linked with a different sign-in method.';
       case 'weak-password':
@@ -517,6 +697,10 @@ class AuthService {
       case 'invalid-action-code':
         return 'Invalid or already used reset link.';
       default:
+        final normalized = code.trim();
+        if (normalized.isNotEmpty) {
+          return 'Authentication failed ($normalized). Please try again.';
+        }
         return 'Something went wrong. Please try again.';
     }
   }
@@ -525,6 +709,14 @@ class AuthService {
     var s = e.toString();
     if (s.startsWith('Exception: ')) {
       s = s.substring('Exception: '.length);
+    }
+    final lower = s.toLowerCase();
+    if (lower.contains('app attestation failed') ||
+        (lower.contains('app check') && lower.contains('403'))) {
+      return 'Security check failed for this app build. Please retry after adding the latest App Check debug token in Firebase Console.';
+    }
+    if (lower.contains('permission-denied')) {
+      return 'Request was blocked by Firebase rules or App Check. Please try again in a moment.';
     }
     if (s.isEmpty) return 'Something went wrong. Please try again.';
     return s;

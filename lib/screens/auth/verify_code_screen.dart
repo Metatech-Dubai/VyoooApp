@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
+import '../../core/services/signup_draft_service.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/widgets/app_gradient_background.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
@@ -14,6 +16,7 @@ class VerifyCodeScreen extends StatefulWidget {
     this.phoneNumber = '',
     this.autoSendOnOpen = true,
     this.initialErrorMessage,
+    this.forPhoneLogin = false,
   });
 
   final String channel;
@@ -22,13 +25,13 @@ class VerifyCodeScreen extends StatefulWidget {
   final String phoneNumber;
   final bool autoSendOnOpen;
   final String? initialErrorMessage;
+  final bool forPhoneLogin;
 
   @override
   State<VerifyCodeScreen> createState() => _VerifyCodeScreenState();
 }
 
 class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
-  static const int _otpLength = 4;
   late final List<TextEditingController> _controllers;
   late final List<FocusNode> _focusNodes;
   final AuthService _auth = AuthService();
@@ -37,8 +40,12 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   String? _errorMessage;
   late String _activeChannel;
   late String _activePhoneNumber;
+  String _phoneVerificationId = '';
+  int? _phoneResendToken;
 
   bool get _useWhatsApp => _activeChannel == 'whatsapp';
+  bool get _usePhone => _activeChannel == 'phone';
+  int get _otpLength => _usePhone ? 6 : 4;
 
   @override
   void initState() {
@@ -111,7 +118,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    _useWhatsApp
+                    _usePhone
+                        ? "Please enter the code we've just sent to your number"
+                        : _useWhatsApp
                         ? "Please enter the code we've just sent to WhatsApp"
                         : "Please enter the code we've just sent to email",
                     style: TextStyle(
@@ -123,7 +132,11 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    _useWhatsApp
+                    _usePhone
+                        ? (widget.maskedPhone.isEmpty
+                              ? 'your phone number'
+                              : widget.maskedPhone)
+                        : _useWhatsApp
                         ? (widget.maskedPhone.isEmpty
                               ? 'your WhatsApp number'
                               : widget.maskedPhone)
@@ -224,19 +237,20 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  Center(
-                    child: GestureDetector(
-                      onTap: _onSwitchVerificationMethod,
-                      child: const Text(
-                        'Try Another Way',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.secondaryTextColor,
-                          fontWeight: FontWeight.w400,
+                  if (!widget.forPhoneLogin)
+                    Center(
+                      child: GestureDetector(
+                        onTap: _onSwitchVerificationMethod,
+                        child: const Text(
+                          'Try Another Way',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: AppTheme.secondaryTextColor,
+                            fontWeight: FontWeight.w400,
+                          ),
                         ),
                       ),
                     ),
-                  ),
                   const SizedBox(height: 30),
                 ],
               ),
@@ -281,7 +295,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       builder: (_, __) {
         final hasFocus = _focusNodes[index].hasFocus;
         return Container(
-          width: 70,
+          width: _usePhone ? 48 : 70,
           height: 70,
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.08),
@@ -339,19 +353,39 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
   Future<void> _sendOtp() async {
     if (_sendInFlight || !mounted) return;
+    final draft = SignupDraftService().current;
     setState(() {
       _sendInFlight = true;
       _errorMessage = null;
     });
-    final result = _useWhatsApp
-        ? await _auth.sendSignupWhatsAppOtp(phoneNumber: _activePhoneNumber)
-        : await _auth.sendSignupEmailOtp();
+    final result = _usePhone
+        ? await _auth.requestPhoneSignInOtp(
+            phoneNumber: _activePhoneNumber,
+            forceResendingToken: _phoneResendToken,
+            onCodeSent: (verificationId, resendToken) {
+              _phoneVerificationId = verificationId;
+              _phoneResendToken = resendToken;
+            },
+          )
+        : _useWhatsApp
+            ? await _auth.sendSignupWhatsAppOtp(phoneNumber: _activePhoneNumber)
+            : await _auth.sendSignupEmailOtp(email: draft?.email ?? '');
     if (!mounted) return;
+    if (_usePhone &&
+        result.success &&
+        _phoneVerificationId.trim().isEmpty &&
+        _auth.currentUser != null) {
+      setState(() => _sendInFlight = false);
+      await _finishAfterSuccessfulVerification();
+      return;
+    }
     setState(() {
       _sendInFlight = false;
       if (!result.success) {
         _errorMessage = result.message ??
-            (_useWhatsApp
+            (_usePhone
+                ? 'Could not send phone code.'
+                : _useWhatsApp
                 ? 'Could not send WhatsApp code.'
                 : 'Could not send code.');
       }
@@ -366,16 +400,22 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   Future<void> _onVerify() async {
     if (!_isOtpComplete || _verifyInFlight) return;
     final code = _controllers.map((c) => c.text).join();
+    final draft = SignupDraftService().current;
     setState(() {
       _verifyInFlight = true;
       _errorMessage = null;
     });
-    final result = _useWhatsApp
-        ? await _auth.verifySignupWhatsAppOtp(
-            code: code,
-            phoneNumber: _activePhoneNumber,
+    final result = _usePhone
+        ? await _auth.verifyPhoneSignInOtp(
+            verificationId: _phoneVerificationId,
+            smsCode: code,
           )
-        : await _auth.verifySignupEmailOtp(code);
+        : _useWhatsApp
+            ? await _auth.verifySignupWhatsAppOtp(
+                code: code,
+                phoneNumber: _activePhoneNumber,
+              )
+            : await _auth.verifySignupEmailOtp(code, email: draft?.email ?? '');
     if (!mounted) return;
     if (!result.success) {
       setState(() {
@@ -384,16 +424,45 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       });
       return;
     }
+    await _finishAfterSuccessfulVerification();
+  }
+
+  Future<void> _finishAfterSuccessfulVerification() async {
+    final draft = SignupDraftService().current;
+    if (draft != null) {
+      final complete = await _auth.completeSignupAfterOtp(
+        name: draft.name,
+        email: draft.email,
+        password: draft.password,
+        phoneNumber: draft.phoneNumber,
+      );
+      if (!mounted) return;
+      if (!complete.success) {
+        setState(() {
+          _verifyInFlight = false;
+          _errorMessage = complete.message ?? 'Could not finalize account.';
+        });
+        return;
+      }
+      SignupDraftService().clear();
+    }
     await OtpSessionService().clearOtpRequirement();
     await OtpSessionService().clearSignupOtpPreference();
     setState(() => _verifyInFlight = false);
     if (!mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute(builder: (_) => const AuthWrapper()),
+      (route) => false,
+    );
   }
 
   Future<void> _onSwitchVerificationMethod() async {
     if (_verifyInFlight || _sendInFlight) return;
-    final target = _useWhatsApp ? 'email' : 'whatsapp';
+    final target = _usePhone
+        ? 'email'
+        : _useWhatsApp
+            ? 'email'
+            : 'whatsapp';
     if (target == 'whatsapp' && _activePhoneNumber.isEmpty) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -406,9 +475,10 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       return;
     }
     final prefs = OtpSessionService();
+    final draft = SignupDraftService().current;
     final destination = target == 'whatsapp'
         ? _activePhoneNumber
-        : (_auth.currentUser?.email ?? '');
+        : (draft?.email ?? _auth.currentUser?.email ?? '');
     await prefs.setSignupOtpPreference(channel: target, destination: destination);
     if (!mounted) return;
     setState(() {

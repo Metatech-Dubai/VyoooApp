@@ -17,6 +17,8 @@ class AppUserModel {
     this.verificationStatus = 'none',
     this.accountType = 'personal',
     this.vipVerified = false,
+    this.orgProfileCompleted = false,
+    this.organizationDetails = const {},
     required this.createdAt,
     this.following = const [],
     this.blockedUsers = const [],
@@ -38,6 +40,8 @@ class AppUserModel {
   final String verificationStatus;
   final String accountType;
   final bool vipVerified;
+  final bool orgProfileCompleted;
+  final Map<String, dynamic> organizationDetails;
   final Timestamp createdAt;
   /// UIDs this user follows (stored on their Firestore user doc).
   final List<String> following;
@@ -60,6 +64,8 @@ class AppUserModel {
       'verificationStatus': verificationStatus,
       'accountType': accountType,
       'vipVerified': vipVerified,
+      'orgProfileCompleted': orgProfileCompleted,
+      'organizationDetails': organizationDetails,
       'createdAt': createdAt,
       'following': following,
       'blockedUsers': blockedUsers,
@@ -94,6 +100,10 @@ class AppUserModel {
       verificationStatus: json['verificationStatus'] as String? ?? 'none',
       accountType: json['accountType'] as String? ?? 'personal',
       vipVerified: json['vipVerified'] as bool? ?? false,
+      orgProfileCompleted: json['orgProfileCompleted'] as bool? ?? false,
+      organizationDetails: json['organizationDetails'] is Map<String, dynamic>
+          ? (json['organizationDetails'] as Map<String, dynamic>)
+          : <String, dynamic>{},
       createdAt: json['createdAt'] is Timestamp
           ? json['createdAt'] as Timestamp
           : Timestamp.now(),
@@ -118,6 +128,8 @@ class AppUserModel {
     String? verificationStatus,
     String? accountType,
     bool? vipVerified,
+    bool? orgProfileCompleted,
+    Map<String, dynamic>? organizationDetails,
     Timestamp? createdAt,
     List<String>? following,
     List<String>? blockedUsers,
@@ -138,6 +150,8 @@ class AppUserModel {
       verificationStatus: verificationStatus ?? this.verificationStatus,
       accountType: accountType ?? this.accountType,
       vipVerified: vipVerified ?? this.vipVerified,
+      orgProfileCompleted: orgProfileCompleted ?? this.orgProfileCompleted,
+      organizationDetails: organizationDetails ?? this.organizationDetails,
       createdAt: createdAt ?? this.createdAt,
       following: following ?? this.following,
       blockedUsers: blockedUsers ?? this.blockedUsers,

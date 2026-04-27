@@ -37,6 +37,15 @@ class UserService {
 
   static const String _usersCollection = 'users';
 
+  static String normalizePhone(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty) return '';
+    final keepPlus = trimmed.startsWith('+');
+    final digitsOnly = trimmed.replaceAll(RegExp(r'[^0-9]'), '');
+    if (digitsOnly.isEmpty) return '';
+    return keepPlus ? '+$digitsOnly' : digitsOnly;
+  }
+
   static Map<String, dynamic> _initialUserData(
     String uid,
     String email, {
@@ -45,6 +54,8 @@ class UserService {
       {
         'uid': uid,
         'email': email,
+        'phoneNumber': '',
+        'normalizedPhone': '',
         'displayName': '',
         'username': '',
         'bio': '',
@@ -57,6 +68,8 @@ class UserService {
         'verificationStatus': 'none',
         'accountType': 'personal',
         'vipVerified': false,
+        'orgProfileCompleted': false,
+        'organizationDetails': <String, dynamic>{},
         'createdAt': FieldValue.serverTimestamp(),
         'following': <String>[],
         'blockedUsers': <String>[],
@@ -81,13 +94,14 @@ class UserService {
   Future<void> ensureUserDocument({
     required String uid,
     required String email,
+    bool emailOtpVerified = true,
   }) async {
     try {
       final docRef = _firestore.collection(_usersCollection).doc(uid);
       final doc = await docRef.get();
       if (!doc.exists) {
         await docRef.set(
-          _initialUserData(uid, email, emailOtpVerified: true),
+          _initialUserData(uid, email, emailOtpVerified: emailOtpVerified),
         );
       }
     } catch (e) {
@@ -107,6 +121,9 @@ class UserService {
     bool? onboardingCompleted,
     String? accountType,
     bool? vipVerified,
+    String? phoneNumber,
+    bool? orgProfileCompleted,
+    Map<String, dynamic>? organizationDetails,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -125,6 +142,17 @@ class UserService {
         data['accountType'] = accountType.trim().toLowerCase();
       }
       if (vipVerified != null) data['vipVerified'] = vipVerified;
+      if (phoneNumber != null) {
+        final raw = phoneNumber.trim();
+        data['phoneNumber'] = raw;
+        data['normalizedPhone'] = normalizePhone(raw);
+      }
+      if (orgProfileCompleted != null) {
+        data['orgProfileCompleted'] = orgProfileCompleted;
+      }
+      if (organizationDetails != null) {
+        data['organizationDetails'] = organizationDetails;
+      }
       if (data.isEmpty) return;
       await _firestore.collection(_usersCollection).doc(uid).set(
             data,
@@ -160,6 +188,40 @@ class UserService {
           .get();
       if (q.docs.isEmpty) return null;
       return AppUserModel.fromJson(q.docs.first.data());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Resolve login identifier to email.
+  /// Accepts email, username, or display name.
+  Future<String?> resolveEmailForLoginIdentifier(String identifier) async {
+    final raw = identifier.trim();
+    if (raw.isEmpty) return null;
+    if (raw.contains('@')) return raw.toLowerCase();
+    final normalizedUsername = raw.toLowerCase().replaceAll('@', '');
+    try {
+      final byUsername = await _firestore
+          .collection(_usersCollection)
+          .where('username', isEqualTo: normalizedUsername)
+          .limit(1)
+          .get();
+      if (byUsername.docs.isNotEmpty) {
+        final email = (byUsername.docs.first.data()['email'] as String? ?? '').trim();
+        if (email.isNotEmpty) return email;
+      }
+
+      final byDisplayName = await _firestore
+          .collection(_usersCollection)
+          .where('displayName', isEqualTo: raw)
+          .limit(1)
+          .get();
+      if (byDisplayName.docs.isNotEmpty) {
+        final email = (byDisplayName.docs.first.data()['email'] as String? ?? '')
+            .trim();
+        if (email.isNotEmpty) return email;
+      }
+      return null;
     } catch (_) {
       return null;
     }

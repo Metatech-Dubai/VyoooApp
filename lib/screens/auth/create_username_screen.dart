@@ -10,6 +10,7 @@ import '../../core/widgets/app_gradient_background.dart';
 import '../../services/firestore_username_service.dart';
 import '../../services/username_service.dart';
 import '../../services/username_validation.dart';
+import '../onboarding/organization_details_screen.dart';
 import '../onboarding/select_dob_screen.dart';
 
 enum _OnboardingAccountType { personal, business, government }
@@ -33,6 +34,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   Timer? _debounceTimer;
   StreamSubscription<UsernameCheckResult>? _availabilitySub;
   bool _isChecking = false;
+  bool _isSubmitting = false;
   bool? _available;
   List<String> _suggestions = [];
   UsernameService get _usernameService =>
@@ -144,7 +146,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   bool get _isUsernameValid {
     final text = _usernameController.text.trim();
     if (!UsernameValidation.isValidFormat(text)) return false;
-    if (_isChecking) return false;
+    if (_isChecking || _isSubmitting) return false;
     return _available == true;
   }
 
@@ -452,6 +454,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 
   Future<void> _onNext() async {
+    if (_isSubmitting) return;
     final username = UsernameValidation.normalize(_usernameController.text.trim());
     if (!UsernameValidation.isValidFormat(username)) {
       if (!mounted) return;
@@ -491,29 +494,49 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       }
     }
 
-    final uid = AuthService().currentUser?.uid;
-    final selectedType = await _showAccountTypeDialog();
-    if (selectedType == null) return;
-    if (uid != null && uid.isNotEmpty) {
-      try {
-        await UserService().updateUserProfile(
-          uid: uid,
-          username: username,
-          accountType: selectedType.name,
-        );
-      } catch (_) {
-        // Still navigate so onboarding isn't blocked by network/backend errors
+    setState(() => _isSubmitting = true);
+    try {
+      final uid = AuthService().currentUser?.uid;
+      final selectedType = await _showAccountTypeDialog();
+      if (selectedType == null) {
+        if (mounted) setState(() => _isSubmitting = false);
+        return;
+      }
+
+      if (uid == null || uid.isEmpty) {
         if (!mounted) return;
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (_) => const SelectDobScreen()),
+        setState(() => _isSubmitting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session expired. Please sign in again.')),
         );
         return;
       }
+
+      await UserService().updateUserProfile(
+        uid: uid,
+        username: username,
+        accountType: selectedType.name,
+      );
+
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (_) => selectedType == _OnboardingAccountType.personal
+              ? const SelectDobScreen()
+              : OrganizationDetailsScreen(accountType: selectedType.name),
+        ),
+        (route) => false,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not save username/account type. Please try again.'),
+        ),
+      );
     }
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const SelectDobScreen()),
-    );
   }
 
   Future<_OnboardingAccountType?> _showAccountTypeDialog() async {

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
@@ -30,6 +31,7 @@ void main() async {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    await _configureFirebaseAppCheck();
     firebaseInitialized = true;
     await PushMessagingService.instance.configure();
   } catch (e, st) {
@@ -75,6 +77,47 @@ void main() async {
       child: VyoooApp(firebaseInitialized: firebaseInitialized),
     ),
   );
+}
+
+Future<void> _configureFirebaseAppCheck() async {
+  if (kIsWeb) return;
+  const forceDebugAppCheck = bool.fromEnvironment(
+    'FORCE_DEBUG_APP_CHECK',
+    defaultValue: false,
+  );
+  // Keep local development unblocked: App Check is only required in release
+  // unless explicitly forced on via --dart-define=FORCE_DEBUG_APP_CHECK=true.
+  if (!kReleaseMode && !forceDebugAppCheck) {
+    debugPrint('AppCheck: skipped for non-release build');
+    return;
+  }
+  final useDebugProvider = forceDebugAppCheck || !kReleaseMode;
+  try {
+    if (Platform.isAndroid) {
+      debugPrint(
+        'AppCheck(Android): using ${useDebugProvider ? 'debug' : 'playIntegrity'} provider',
+      );
+      await FirebaseAppCheck.instance.activate(
+        androidProvider: useDebugProvider
+            ? AndroidProvider.debug
+            : AndroidProvider.playIntegrity,
+      );
+      return;
+    }
+    if (Platform.isIOS) {
+      debugPrint(
+        'AppCheck(iOS): using ${useDebugProvider ? 'debug' : 'appAttest/deviceCheck'} provider',
+      );
+      await FirebaseAppCheck.instance.activate(
+        appleProvider: useDebugProvider
+            ? AppleProvider.debug
+            : AppleProvider.appAttestWithDeviceCheckFallback,
+      );
+    }
+  } catch (e, st) {
+    debugPrint('Firebase App Check init failed: $e');
+    debugPrint(st.toString());
+  }
 }
 
 class VyoooApp extends StatelessWidget {

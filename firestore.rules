@@ -28,7 +28,11 @@ service cloud.firestore {
         'isVerified',
         'verificationStatus',
         'accountType',
-        'vipVerified'
+        'vipVerified',
+        'phoneNumber',
+        'normalizedPhone',
+        'orgProfileCompleted',
+        'organizationDetails',
       ]) &&
       request.resource.data.uid == userId &&
       request.resource.data.email is string &&
@@ -54,7 +58,15 @@ service cloud.firestore {
       (!('accountType' in request.resource.data) ||
         request.resource.data.accountType is string) &&
       (!('vipVerified' in request.resource.data) ||
-        request.resource.data.vipVerified is bool);
+        request.resource.data.vipVerified is bool) &&
+      (!('phoneNumber' in request.resource.data) ||
+        request.resource.data.phoneNumber is string) &&
+      (!('normalizedPhone' in request.resource.data) ||
+        request.resource.data.normalizedPhone is string) &&
+      (!('orgProfileCompleted' in request.resource.data) ||
+        request.resource.data.orgProfileCompleted is bool) &&
+      (!('organizationDetails' in request.resource.data) ||
+        request.resource.data.organizationDetails is map);
     }
 
     // Clients cannot set or flip emailOtpVerified; only Cloud Functions (Admin SDK) may.
@@ -77,7 +89,8 @@ service cloud.firestore {
     // ── User profile doc only: users/{uid} (one segment after users/) ─────────
     // following / blockedUsers live here; only the owner may write the doc.
     match /users/{userId} {
-      allow read: if isSignedIn();
+      // Needed for pre-auth login lookup by username/displayName.
+      allow read: if true;
       allow create: if isOwner(userId)
                     && validUserDoc(userId)
                     && request.resource.data.followersCount == 0;
