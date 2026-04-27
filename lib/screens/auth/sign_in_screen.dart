@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
+import '../../core/services/user_service.dart';
 import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -42,40 +43,35 @@ class _SignInScreenState extends State<SignInScreen> {
 
   Future<void> _onLogin() async {
     if (!_canLogin || _isLoading) return;
-    OtpSessionService().startEmailLoginHandshake();
+    OtpSessionService().abortEmailLoginHandshake();
+    await OtpSessionService().clearOtpRequirement();
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
+    final identifier = _usernameController.text.trim();
+    final resolvedEmail = await UserService().resolveEmailForLoginIdentifier(
+      identifier,
+    );
+    if (!mounted) return;
+    if (resolvedEmail == null || resolvedEmail.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No account found with this email/username/name.';
+      });
+      return;
+    }
     final result = await _auth.signInWithEmail(
-      email: _usernameController.text.trim(),
+      email: resolvedEmail,
       password: _passwordController.text.trim(),
     );
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (result.success) {
-      final otpResult = await _auth.sendSignupEmailOtp();
       if (!mounted) return;
-      if (!otpResult.success) {
-        OtpSessionService().abortEmailLoginHandshake();
-        await OtpSessionService().clearOtpRequirement();
-        await _auth.signOut();
-        if (!mounted) return;
-        setState(() {
-          _errorMessage = otpResult.message ?? 'Could not send verification code.';
-        });
-        return;
-      }
-      final uid = result.user?.uid ?? _auth.currentUser?.uid;
-      if (uid != null && uid.isNotEmpty) {
-        await OtpSessionService().requireOtpForUid(uid);
-      }
-      if (!mounted) return;
-      // Drop Sign-In route; AuthWrapper shows Verify from session flag (no feed under overlay).
       Navigator.of(context).popUntil((route) => route.isFirst);
       return;
     } else {
-      OtpSessionService().abortEmailLoginHandshake();
       setState(() => _errorMessage = result.message ?? 'Login failed');
     }
   }
@@ -209,7 +205,7 @@ class _SignInScreenState extends State<SignInScreen> {
         fontWeight: FontWeight.w400,
       ),
       decoration: const InputDecoration(
-        hintText: 'Email',
+        hintText: 'Email, username or name',
         prefixIcon: Icon(Icons.mail_outline, color: AppTheme.primary, size: 22),
         suffixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
       ),
@@ -391,46 +387,68 @@ class _SignInScreenState extends State<SignInScreen> {
   }
 
   Widget _buildSocialIcons() {
+    Widget iconFrame(Widget child) {
+      return SizedBox(
+        width: 28,
+        height: 28,
+        child: Center(child: child),
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         GestureDetector(
           onTap: _onGoogleSignIn,
           child: _isGoogleLoading
-              ? const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppTheme.primary,
+              ? iconFrame(
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.primary,
+                    ),
                   ),
                 )
-              : const FaIcon(
-                  FontAwesomeIcons.google,
-                  color: AppTheme.primary,
-                  size: 28,
+              : iconFrame(
+                  const FaIcon(
+                    FontAwesomeIcons.google,
+                    color: AppTheme.primary,
+                    size: 24,
+                  ),
                 ),
         ),
         const SizedBox(width: 40),
         GestureDetector(
           onTap: _onAppleSignIn,
           child: _isAppleLoading
-              ? const SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: AppTheme.primary,
+              ? iconFrame(
+                  const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: AppTheme.primary,
+                    ),
                   ),
                 )
-              : const FaIcon(
-                  FontAwesomeIcons.apple,
-                  color: AppTheme.primary,
-                  size: 28,
+              : iconFrame(
+                  const FaIcon(
+                    FontAwesomeIcons.apple,
+                    color: AppTheme.primary,
+                    size: 26,
+                  ),
                 ),
         ),
         const SizedBox(width: 40),
-        FaIcon(FontAwesomeIcons.facebook, color: AppTheme.primary, size: 28),
+        iconFrame(
+          const FaIcon(
+            FontAwesomeIcons.facebook,
+            color: AppTheme.primary,
+            size: 24,
+          ),
+        ),
       ],
     );
   }

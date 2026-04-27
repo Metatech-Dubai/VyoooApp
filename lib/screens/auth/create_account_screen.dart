@@ -4,7 +4,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:country_picker/country_picker.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
-import '../../core/services/user_service.dart';
+import '../../core/services/signup_draft_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import 'sign_in_screen.dart';
@@ -20,6 +20,7 @@ class CreateAccountScreen extends StatefulWidget {
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
   static const String _otpChannelEmail = 'email';
   static const String _otpChannelWhatsApp = 'whatsapp';
+  static const String _otpChannelPhone = 'phone';
 
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
@@ -500,71 +501,132 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       });
       return;
     }
+    if (otpChannel == _otpChannelPhone &&
+        (phone.isEmpty || !phone.startsWith('+') || phone.length < 8)) {
+      setState(() {
+        _errorMessage = 'Please enter a valid phone number for Number OTP.';
+      });
+      return;
+    }
 
-    setState(() => _isLoading = true);
-    await OtpSessionService().setSignupOtpPreference(
-      channel: otpChannel,
-      destination: otpChannel == _otpChannelWhatsApp ? phone : email,
-    );
-    final result = await _auth.registerWithEmail(
-      email: email,
-      password: password,
-    );
-    if (!mounted) return;
-    if (!result.success) {
-      setState(() {
-        _isLoading = false;
-        _errorMessage = result.message ?? 'Registration failed.';
-      });
-      return;
-    }
-    final user = result.user;
-    if (user == null) {
-      setState(() => _isLoading = false);
-      return;
-    }
-    try {
-      await UserService().createUserDocument(uid: user.uid, email: email);
-      await UserService().updateUserProfile(
-        uid: user.uid,
-        displayName: name,
-      );
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _isLoading = false;
-        _errorMessage = 'Account created but setup failed. Please try again.';
-      });
-      return;
-    }
-    if (!mounted) return;
-    var initialOtpError = '';
-    var autoSendOnOpen = otpChannel == _otpChannelEmail;
-    if (otpChannel == _otpChannelWhatsApp) {
-      final otpResult = await _auth.sendSignupWhatsAppOtp(phoneNumber: phone);
-      if (!mounted) return;
-      if (!otpResult.success) {
-        initialOtpError =
-            otpResult.message ??
-            'Could not send WhatsApp OTP. Please try resending.';
-        autoSendOnOpen = true;
+    if (otpChannel == _otpChannelPhone) {
+      try {
+        await OtpSessionService().setSignupOtpPreference(
+          channel: otpChannel,
+          destination: phone,
+        );
+        SignupDraftService().save(
+          SignupDraft(
+            name: name,
+            email: email,
+            phoneNumber: phone,
+            password: password,
+            channel: otpChannel,
+          ),
+        );
+        if (!mounted) return;
+        final route = MaterialPageRoute(
+          builder: (_) => VerifyCodeScreen(
+            channel: otpChannel,
+            maskedEmail: _maskEmailForDisplay(email),
+            phoneNumber: phone,
+            maskedPhone: _maskPhoneForDisplay(phone),
+            autoSendOnOpen: true,
+          ),
+        );
+        Navigator.of(context).pushReplacement(route);
+        return;
+      } catch (e) {
+        if (!mounted) return;
+        setState(() {
+          _errorMessage =
+              'Could not open number verification. ${e.toString().replaceFirst('Exception: ', '')}';
+        });
+        return;
       }
     }
-    setState(() => _isLoading = false);
-    if (!mounted) return;
-    final route = MaterialPageRoute(
-      builder: (_) => VerifyCodeScreen(
+
+    try {
+      setState(() => _isLoading = true);
+      if (otpChannel != _otpChannelPhone) {
+        final anonResult = await _auth.ensureAnonymousSession();
+        if (!mounted) return;
+        if (!anonResult.success) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = anonResult.message ?? 'Could not start verification.';
+          });
+          return;
+        }
+      }
+      await OtpSessionService().setSignupOtpPreference(
         channel: otpChannel,
-        maskedEmail: _maskEmailForDisplay(email),
-        maskedPhone: otpChannel == _otpChannelWhatsApp
-            ? _maskPhoneForDisplay(phone)
-            : '',
-        phoneNumber: otpChannel == _otpChannelWhatsApp ? phone : '',
-        autoSendOnOpen: autoSendOnOpen,
-        initialErrorMessage: initialOtpError,
-      ),
-    );
-    Navigator.of(context).pushReplacement(route);
+        destination: otpChannel == _otpChannelEmail ? email : phone,
+      );
+      SignupDraftService().save(
+        SignupDraft(
+          name: name,
+          email: email,
+          phoneNumber: phone,
+          password: password,
+          channel: otpChannel,
+        ),
+      );
+      if (!mounted) return;
+      var initialOtpError = '';
+      var autoSendOnOpen = otpChannel == _otpChannelEmail;
+      if (otpChannel == _otpChannelEmail) {
+        final otpResult = await _auth.sendSignupEmailOtp(email: email);
+        if (!mounted) return;
+        if (!otpResult.success) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = otpResult.message ?? 'Could not send email OTP.';
+          });
+          return;
+        } else {
+          autoSendOnOpen = false;
+        }
+      }
+      if (otpChannel == _otpChannelWhatsApp) {
+        final otpResult = await _auth.sendSignupWhatsAppOtp(phoneNumber: phone);
+        if (!mounted) return;
+        if (!otpResult.success) {
+          setState(() {
+            _isLoading = false;
+            _errorMessage = otpResult.message ??
+                'Could not send WhatsApp OTP. Please try again.';
+          });
+          return;
+        }
+      }
+      if (otpChannel == _otpChannelPhone) {
+        autoSendOnOpen = true;
+      }
+      setState(() => _isLoading = false);
+      if (!mounted) return;
+      final route = MaterialPageRoute(
+        builder: (_) => VerifyCodeScreen(
+          channel: otpChannel,
+          maskedEmail: _maskEmailForDisplay(email),
+          phoneNumber: (otpChannel == _otpChannelWhatsApp || otpChannel == _otpChannelPhone)
+              ? phone
+              : '',
+          maskedPhone: (otpChannel == _otpChannelWhatsApp || otpChannel == _otpChannelPhone)
+              ? _maskPhoneForDisplay(phone)
+              : '',
+          autoSendOnOpen: autoSendOnOpen,
+          initialErrorMessage: initialOtpError,
+        ),
+      );
+      Navigator.of(context).pushReplacement(route);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'Could not continue verification. ${e.toString().replaceFirst('Exception: ', '')}';
+      });
+    }
   }
 
   Future<String?> _showVerificationMethodDialog() {
@@ -596,6 +658,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             onPressed: () => Navigator.of(ctx).pop(_otpChannelWhatsApp),
             child: Text(
               'WhatsApp OTP${phoneValue.isEmpty ? '' : '\n$phoneValue'}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(ctx).pop(_otpChannelPhone),
+            child: Text(
+              'Number OTP${phoneValue.isEmpty ? '' : '\n$phoneValue'}',
               textAlign: TextAlign.center,
             ),
           ),
@@ -637,6 +706,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             ),
           ),
           TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_otpChannelPhone),
+            child: Text(
+              phoneValue.isEmpty ? 'Number OTP' : 'Number OTP ($phoneValue)',
+            ),
+          ),
+          TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Cancel'),
           ),
@@ -644,6 +719,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       ),
     );
   }
+
 
   void _pickCountry() {
     showCountryPicker(

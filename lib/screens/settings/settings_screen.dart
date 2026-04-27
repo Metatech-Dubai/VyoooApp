@@ -292,12 +292,15 @@ class SettingsScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 16),
-                  TextButton(
+                  FilledButton(
                     onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
                     child: const Text(
                       'Yes, Logout',
                       style: TextStyle(
-                        color: Color(0xFFF43F5E),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -339,10 +342,8 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = isLogout
-        ? const Color(0xFFF81945)
-        : Colors.white.withValues(alpha: 0.85);
-    final labelColor = isLogout ? const Color(0xFFF81945) : Colors.white;
+    final color = isLogout ? Colors.black : Colors.white.withValues(alpha: 0.85);
+    final labelColor = isLogout ? Colors.black : Colors.white;
 
     return Material(
       color: Colors.transparent,

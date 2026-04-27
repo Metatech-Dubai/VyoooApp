@@ -51,7 +51,29 @@ class _ProfileScreenState extends State<ProfileScreen>
 
   static const List<String> _tabs = ['Posts', 'VR', 'Streams'];
   static const int _savedTabIndex = 3;
+  static const Map<String, String> _accountTypeLabels = <String, String>{
+    'personal': 'Personal',
+    'business': 'Business',
+    'government': 'Government',
+    'celebrity': 'Celebrity',
+    'sports_celebrity': 'Sports Celebrity',
+    'content_creator': 'Content Creator',
+    'entrepreneur': 'Entrepreneur',
+    'musician': 'Musician',
+    'restricted': 'Restricted',
+  };
   int _selectedTabIndex = 0;
+
+  static String _accountTypeLabel(String? raw) {
+    final key = (raw ?? '').trim().toLowerCase();
+    if (_accountTypeLabels.containsKey(key)) return _accountTypeLabels[key]!;
+    if (key.isEmpty) return _accountTypeLabels['personal']!;
+    return key
+        .split(RegExp(r'[_\s]+'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
 
   static String _formatStatCount(int n) {
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
@@ -138,12 +160,15 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ),
                   ),
                   const SizedBox(width: 16),
-                  TextButton(
+                  FilledButton(
                     onPressed: () => Navigator.pop(context, true),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.black,
+                      foregroundColor: Colors.white,
+                    ),
                     child: const Text(
                       'Yes, Logout',
                       style: TextStyle(
-                        color: Color(0xFFF43F5E),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -553,7 +578,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     required int postCount,
   }) {
     final username = user?.username?.isNotEmpty == true
-        ? '@${user!.username}'
+        ? user!.username!
         : (AuthService().currentUser?.email ?? 'Profile');
     final displayName = user?.displayName?.isNotEmpty == true
         ? user!.displayName!
@@ -565,6 +590,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       accountType: user?.accountType ?? 'personal',
       vipVerified: user?.vipVerified ?? false,
     );
+    final accountTypeKey = (user?.accountType ?? 'personal').trim().toLowerCase();
+    final accountTypeLabel = _accountTypeLabel(accountTypeKey);
+    final bio = (user?.bio ?? '').trim();
 
     return CustomScrollView(
       slivers: [
@@ -651,6 +679,40 @@ class _ProfileScreenState extends State<ProfileScreen>
                     ],
                   ],
                 ),
+                const SizedBox(height: AppSpacing.sm),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(AppRadius.pill),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                  ),
+                  child: Text(
+                    accountTypeLabel,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.92),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (bio.isNotEmpty) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
+                    child: Text(
+                      bio,
+                      textAlign: TextAlign.center,
+                      maxLines: 3,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.72),
+                        fontSize: 13,
+                        height: 1.35,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: AppSpacing.xl),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,

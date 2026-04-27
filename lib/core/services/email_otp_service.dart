@@ -14,7 +14,7 @@ class EmailOtpService {
   factory EmailOtpService() => _instance;
 
   /// Create `email_otp_send_requests/{id}` and wait until status is `done` or `error`.
-  Future<void> requestSendOtp() async {
+  Future<void> requestSendOtp({String email = ''}) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       throw Exception('No user signed in.');
@@ -24,6 +24,7 @@ class EmailOtpService {
         .doc();
     await ref.set({
       'userId': user.uid,
+      if (email.trim().isNotEmpty) 'email': email.trim(),
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -33,7 +34,7 @@ class EmailOtpService {
   }
 
   /// Create `email_otp_verify_requests/{id}` with a 4-digit [code].
-  Future<void> verifyOtp(String code) async {
+  Future<void> verifyOtp(String code, {String email = ''}) async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       throw Exception('No user signed in.');
@@ -48,6 +49,7 @@ class EmailOtpService {
     await ref.set({
       'userId': user.uid,
       'code': digits,
+      if (email.trim().isNotEmpty) 'email': email.trim(),
       'status': 'pending',
       'createdAt': FieldValue.serverTimestamp(),
     });

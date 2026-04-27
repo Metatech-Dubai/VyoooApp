@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'verify_code_screen.dart';
+import '../auth/verify_code_screen.dart';
 
 class _CountryDial {
   const _CountryDial({
@@ -34,7 +34,9 @@ const List<_CountryDial> _kPhoneCountryDials = [
 ];
 
 class TwoFactorScreen extends StatefulWidget {
-  const TwoFactorScreen({super.key});
+  const TwoFactorScreen({super.key, this.forLoginPhoneAuth = false});
+
+  final bool forLoginPhoneAuth;
 
   @override
   State<TwoFactorScreen> createState() => _TwoFactorScreenState();
@@ -43,6 +45,8 @@ class TwoFactorScreen extends StatefulWidget {
 class _TwoFactorScreenState extends State<TwoFactorScreen> {
   late _CountryDial _selected;
   final _phoneController = TextEditingController();
+  String? _errorMessage;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -209,14 +213,15 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     const SizedBox(height: 24),
                     _buildPhoneInput(),
                     const SizedBox(height: 32),
+                    if (_errorMessage != null) ...[
+                      Text(
+                        _errorMessage!,
+                        style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                      ),
+                      const SizedBox(height: 10),
+                    ],
                     ElevatedButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute<void>(
-                            builder: (_) => const VerifyCodeScreen(),
-                          ),
-                        );
-                      },
+                      onPressed: _isLoading ? null : _onSendCode,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
@@ -226,13 +231,19 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text(
-                        'Send Code',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Text(
+                              'Send Code',
+                              style: TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
                     ),
                     const SizedBox(height: 16),
                     TextButton(
@@ -345,6 +356,10 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
           Expanded(
             child: TextField(
               controller: _phoneController,
+              onChanged: (_) {
+                if (_errorMessage == null) return;
+                setState(() => _errorMessage = null);
+              },
               style: const TextStyle(color: Colors.white, fontSize: 15),
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
@@ -365,5 +380,46 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
         ],
       ),
     );
+  }
+
+  String _normalizedPhone() {
+    final raw = _phoneController.text.trim().replaceAll(RegExp(r'[^0-9]'), '');
+    if (raw.isEmpty) return '';
+    final local = raw.startsWith('0') ? raw.substring(1) : raw;
+    return '${_selected.dialCode}$local';
+  }
+
+  Future<void> _onSendCode() async {
+    final phone = _normalizedPhone();
+    if (phone.isEmpty || !phone.startsWith('+')) {
+      setState(() => _errorMessage = 'Enter a valid phone number.');
+      return;
+    }
+    if (!widget.forLoginPhoneAuth) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => const VerifyCodeScreen(),
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => VerifyCodeScreen(
+          channel: 'phone',
+          phoneNumber: phone,
+          maskedPhone: _maskPhoneForDisplay(phone),
+          autoSendOnOpen: true,
+          forPhoneLogin: true,
+        ),
+      ),
+    );
+  }
+
+  String _maskPhoneForDisplay(String value) {
+    final t = value.trim();
+    if (t.length <= 4) return t;
+    final visible = t.substring(t.length - 4);
+    return '${'*' * (t.length - 4)}$visible';
   }
 }

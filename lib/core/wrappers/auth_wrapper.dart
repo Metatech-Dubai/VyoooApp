@@ -11,6 +11,7 @@ import '../utils/account_message.dart';
 import '../services/auth_service.dart';
 import '../services/user_service.dart';
 import '../services/otp_session_service.dart';
+import '../services/signup_draft_service.dart';
 import '../services/push_messaging_service.dart';
 import '../../screens/auth/create_account_screen.dart';
 import '../../screens/auth/create_username_screen.dart';
@@ -70,6 +71,38 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
         if (!authSnapshot.hasData || user == null) {
           return const CreateAccountScreen();
+        }
+        if (user.isAnonymous) {
+          final draft = SignupDraftService().current;
+          if (draft == null) {
+            return const CreateAccountScreen();
+          }
+          return FutureBuilder<(String channel, String destination)>(
+            future: OtpSessionService().getSignupOtpPreference(),
+            builder: (context, prefSnapshot) {
+              if (prefSnapshot.connectionState != ConnectionState.done) {
+                return const Scaffold(
+                  backgroundColor: Color(0xFF0D0015),
+                  body: Center(
+                    child: CircularProgressIndicator(
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  ),
+                );
+              }
+              final pref = prefSnapshot.data;
+              final channel = (pref?.$1 ?? draft.channel).toLowerCase();
+              final destination = (pref?.$2 ?? '').trim();
+              final phone = destination.isNotEmpty ? destination : draft.phoneNumber;
+              return VerifyCodeScreen(
+                channel: channel == 'whatsapp' ? 'whatsapp' : 'email',
+                phoneNumber: phone,
+                maskedPhone: channel == 'whatsapp' ? _maskPhoneForDisplay(phone) : '',
+                maskedEmail: _maskEmailForDisplay(draft.email),
+                autoSendOnOpen: false,
+              );
+            },
+          );
         }
         final isPasswordAccount =
             user.providerData.any((p) => p.providerId == 'password');
@@ -140,6 +173,7 @@ class _UserDocGateState extends State<_UserDocGate> {
       await UserService().ensureUserDocument(
         uid: widget.uid,
         email: widget.email,
+        emailOtpVerified: !widget.isPasswordAccount,
       );
     }
   }
@@ -178,80 +212,23 @@ class _UserDocGateState extends State<_UserDocGate> {
               return const CreateUsernameScreen();
             }
             return ListenableBuilder(
-              listenable: Listenable.merge([
-                OtpSessionService.sessionRevision,
-                AuthService.authNoticeRevision,
-              ]),
+              listenable: AuthService.authNoticeRevision,
               builder: (context, _) {
                 _maybeShowAccountNotice(appUser);
-                final handshake = OtpSessionService().emailLoginHandshakeActive;
-                if (widget.isPasswordAccount &&
-                    appUser.emailOtpVerified &&
-                    handshake) {
-                  return const Scaffold(
-                    backgroundColor: Color(0xFF0D0015),
-                    body: Center(
-                      child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    ),
-                  );
-                }
-                return FutureBuilder<bool>(
-                  key: ValueKey<String>(
-                    'otp_${widget.uid}_${OtpSessionService.sessionRevision.value}_${AuthService.authNoticeRevision.value}',
-                  ),
-                  future: OtpSessionService().isOtpRequiredForUid(widget.uid),
-                  builder: (context, otpSnapshot) {
-                    if (otpSnapshot.connectionState != ConnectionState.done) {
-                      return const Scaffold(
-                        backgroundColor: Color(0xFF0D0015),
-                        body: Center(
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                          ),
-                        ),
-                      );
-                    }
-                    final sessionOtpRequired = otpSnapshot.data ?? false;
-                    if (widget.isPasswordAccount &&
-                        (sessionOtpRequired || !appUser.emailOtpVerified)) {
-                      return FutureBuilder<(String channel, String destination)>(
-                        future: OtpSessionService().getSignupOtpPreference(),
-                        builder: (context, prefSnapshot) {
-                          final pref = prefSnapshot.data;
-                          final channel = (pref?.$1 ?? 'email').toLowerCase();
-                          final destination = pref?.$2 ?? '';
-                          final useWhatsApp = channel == 'whatsapp' &&
-                              destination.trim().isNotEmpty;
-                          return VerifyCodeScreen(
-                            channel: useWhatsApp ? 'whatsapp' : 'email',
-                            phoneNumber: useWhatsApp ? destination : '',
-                            maskedPhone: useWhatsApp
-                                ? _maskPhoneForDisplay(destination)
-                                : '',
-                            maskedEmail: _maskEmailForDisplay(widget.email),
-                            autoSendOnOpen: !sessionOtpRequired && !useWhatsApp,
-                          );
-                        },
-                      );
-                    }
-                    if (appUser.onboardingCompleted) {
-                      if (kDebugMode && AppConfig.enableSubscriptionTierTesting) {
-                        return TierPickerScreen(
-                          onContinue: () {
-                            Navigator.of(context).pushAndRemoveUntil(
-                              MaterialPageRoute(builder: (_) => const MainNavWrapper()),
-                              (route) => false,
-                            );
-                          },
+                if (appUser.onboardingCompleted) {
+                  if (kDebugMode && AppConfig.enableSubscriptionTierTesting) {
+                    return TierPickerScreen(
+                      onContinue: () {
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(builder: (_) => const MainNavWrapper()),
+                          (route) => false,
                         );
-                      }
-                      return const MainNavWrapper();
-                    }
-                    return const CreateUsernameScreen();
-                  },
-                );
+                      },
+                    );
+                  }
+                  return const MainNavWrapper();
+                }
+                return const CreateUsernameScreen();
               },
             );
           },
