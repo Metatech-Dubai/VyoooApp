@@ -13,6 +13,7 @@ class VerifyCodeScreen extends StatefulWidget {
     this.maskedPhone = '',
     this.phoneNumber = '',
     this.autoSendOnOpen = true,
+    this.initialErrorMessage,
   });
 
   final String channel;
@@ -20,6 +21,7 @@ class VerifyCodeScreen extends StatefulWidget {
   final String maskedPhone;
   final String phoneNumber;
   final bool autoSendOnOpen;
+  final String? initialErrorMessage;
 
   @override
   State<VerifyCodeScreen> createState() => _VerifyCodeScreenState();
@@ -43,6 +45,9 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     super.initState();
     _activeChannel = widget.channel.trim().toLowerCase();
     _activePhoneNumber = widget.phoneNumber.trim();
+    _errorMessage = widget.initialErrorMessage?.trim().isNotEmpty == true
+        ? widget.initialErrorMessage!.trim()
+        : null;
     _controllers = List.generate(_otpLength, (_) => TextEditingController());
     _focusNodes = List.generate(_otpLength, (_) => FocusNode());
     if (widget.autoSendOnOpen) {

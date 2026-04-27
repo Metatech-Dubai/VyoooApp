@@ -8,6 +8,7 @@ import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import 'sign_in_screen.dart';
+import 'verify_code_screen.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -24,6 +25,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _phoneFocusNode = FocusNode();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _obscurePassword = true;
@@ -50,15 +52,28 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   static const double _spacingAboveButton = 50;
   static const double _spacingAboveSignIn = 16;
   static const double _dividerSpacing = 30;
-  static const double _socialIconSize = 28;
+  static const double _socialIconSize = 24;
+  static const double _socialIconContainerSize = 40;
   static const double _socialIconSpacing = 40;
   static const double _bottomSpacing = 30;
+
+  @override
+  void initState() {
+    super.initState();
+    _phoneFocusNode.addListener(() {
+      if (mounted) setState(() {});
+    });
+    _phoneController.addListener(() {
+      if (mounted) setState(() {});
+    });
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
+    _phoneFocusNode.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -285,9 +300,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   Widget _buildPhoneField() {
-    final dialCode = '+$_selectedCountryDialCode';
     return TextFormField(
       controller: _phoneController,
+      focusNode: _phoneFocusNode,
       style: const TextStyle(
         color: AppTheme.defaultTextColor,
         fontSize: _inputFontSize,
@@ -296,21 +311,31 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       keyboardType: TextInputType.phone,
       decoration: InputDecoration(
         hintText: 'Phone Number',
-        prefixIcon: GestureDetector(
-          onTap: _pickCountry,
-          child: Container(
-            width: 98,
-            alignment: Alignment.center,
-            child: Text(
-              '$_selectedCountryFlag $dialCode',
-              style: const TextStyle(
-                color: AppTheme.primary,
-                fontWeight: FontWeight.w600,
-                fontSize: 14,
+        prefixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 12),
+            const Icon(Icons.phone_outlined, color: AppTheme.primary, size: 22),
+            const SizedBox(width: 8),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _pickCountry,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                child: Text(
+                  '$_selectedCountryFlag +$_selectedCountryDialCode',
+                  style: const TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
               ),
             ),
-          ),
+            const SizedBox(width: 2),
+          ],
         ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       ),
     );
   }
@@ -344,9 +369,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     TextCapitalization textCapitalization = TextCapitalization.none,
     bool obscureText = false,
     Widget? suffixIcon,
+    FocusNode? focusNode,
+    VoidCallback? onTap,
+    bool showPrefixIcon = true,
   }) {
     return TextFormField(
       controller: controller,
+      focusNode: focusNode,
       style: const TextStyle(
         color: AppTheme.defaultTextColor,
         fontSize: _inputFontSize,
@@ -355,9 +384,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,
       obscureText: obscureText,
+      onTap: onTap,
       decoration: InputDecoration(
         hintText: hint,
-        prefixIcon: Icon(icon, color: AppTheme.primary, size: 22),
+        prefixIcon: showPrefixIcon
+            ? Icon(icon, color: AppTheme.primary, size: 22)
+            : null,
         suffixIcon: suffixIcon,
         suffixIconConstraints: const BoxConstraints(
           minWidth: 40,
@@ -376,16 +408,22 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           : isApple
               ? _onAppleSignIn
               : null,
-      child: (isGoogle && _isGoogleLoading) || (isApple && _isAppleLoading)
-          ? SizedBox(
-              width: _socialIconSize,
-              height: _socialIconSize,
-              child: const CircularProgressIndicator(
-                strokeWidth: 2,
-                color: AppTheme.primary,
-              ),
-            )
-          : FaIcon(icon, color: AppTheme.primary, size: _socialIconSize),
+      child: SizedBox(
+        width: _socialIconContainerSize,
+        height: _socialIconContainerSize,
+        child: Center(
+          child: (isGoogle && _isGoogleLoading) || (isApple && _isAppleLoading)
+              ? SizedBox(
+                  width: _socialIconSize,
+                  height: _socialIconSize,
+                  child: const CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppTheme.primary,
+                  ),
+                )
+              : FaIcon(icon, color: AppTheme.primary, size: _socialIconSize),
+        ),
+      ),
     );
   }
 
@@ -433,8 +471,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       setState(() => _errorMessage = 'Please enter your name.');
       return;
     }
-    if (email.isEmpty || password.isEmpty) {
-      setState(() => _errorMessage = 'Please fill in email and password.');
+    if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
+      setState(() => _errorMessage = 'Please enter a valid email address.');
+      return;
+    }
+    if (phone.isEmpty || !phone.startsWith('+') || phone.length < 8) {
+      setState(() => _errorMessage = 'Please enter a valid phone number.');
+      return;
+    }
+    if (password.isEmpty) {
+      setState(() => _errorMessage = 'Please enter your password.');
       return;
     }
     if (password != confirm) {
@@ -456,6 +502,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
 
     setState(() => _isLoading = true);
+    await OtpSessionService().setSignupOtpPreference(
+      channel: otpChannel,
+      destination: otpChannel == _otpChannelWhatsApp ? phone : email,
+    );
     final result = await _auth.registerWithEmail(
       email: email,
       password: password,
@@ -475,6 +525,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
     try {
       await UserService().createUserDocument(uid: user.uid, email: email);
+      await UserService().updateUserProfile(
+        uid: user.uid,
+        displayName: name,
+      );
     } catch (_) {
       if (!mounted) return;
       setState(() {
@@ -484,125 +538,109 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
     if (!mounted) return;
+    var initialOtpError = '';
+    var autoSendOnOpen = otpChannel == _otpChannelEmail;
     if (otpChannel == _otpChannelWhatsApp) {
       final otpResult = await _auth.sendSignupWhatsAppOtp(phoneNumber: phone);
       if (!mounted) return;
       if (!otpResult.success) {
-        setState(() {
-          _isLoading = false;
-          _errorMessage = otpResult.message ?? 'Could not send WhatsApp OTP.';
-        });
-        return;
+        initialOtpError =
+            otpResult.message ??
+            'Could not send WhatsApp OTP. Please try resending.';
+        autoSendOnOpen = true;
       }
     }
-    await OtpSessionService().setSignupOtpPreference(
-      channel: otpChannel,
-      destination: otpChannel == _otpChannelWhatsApp ? phone : email,
-    );
     setState(() => _isLoading = false);
-    // AuthWrapper shows VerifyCodeScreen until email OTP is verified.
+    if (!mounted) return;
+    final route = MaterialPageRoute(
+      builder: (_) => VerifyCodeScreen(
+        channel: otpChannel,
+        maskedEmail: _maskEmailForDisplay(email),
+        maskedPhone: otpChannel == _otpChannelWhatsApp
+            ? _maskPhoneForDisplay(phone)
+            : '',
+        phoneNumber: otpChannel == _otpChannelWhatsApp ? phone : '',
+        autoSendOnOpen: autoSendOnOpen,
+        initialErrorMessage: initialOtpError,
+      ),
+    );
+    Navigator.of(context).pushReplacement(route);
   }
 
   Future<String?> _showVerificationMethodDialog() {
-    return showDialog<String>(
+    final platform = Theme.of(context).platform;
+    final isCupertino =
+        platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+    return isCupertino
+        ? _showCupertinoVerificationMethodDialog()
+        : _showMaterialVerificationMethodDialog();
+  }
+
+  Future<String?> _showCupertinoVerificationMethodDialog() {
+    final emailValue = _emailController.text.trim();
+    final phoneValue = _normalizedPhone();
+    return showCupertinoModalPopup<String>(
       context: context,
-      barrierDismissible: true,
-      builder: (ctx) => Dialog(
-        backgroundColor: const Color(0xFF1A0A24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 18, 18, 14),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Verify your account',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Choose how you want to receive OTP.',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.74),
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _verificationMethodTile(
-                icon: Icons.mark_email_unread_outlined,
-                title: 'Email OTP',
-                subtitle: _emailController.text.trim().isEmpty
-                    ? 'Use your email address'
-                    : _emailController.text.trim(),
-                onTap: () => Navigator.of(ctx).pop(_otpChannelEmail),
-              ),
-              const SizedBox(height: 10),
-              _verificationMethodTile(
-                icon: FontAwesomeIcons.whatsapp,
-                title: 'WhatsApp OTP',
-                subtitle: _normalizedPhone().isEmpty
-                    ? 'Use your phone number'
-                    : _normalizedPhone(),
-                onTap: () => Navigator.of(ctx).pop(_otpChannelWhatsApp),
-              ),
-            ],
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Verify your account'),
+        message: const Text('Choose how you want to receive OTP.'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(ctx).pop(_otpChannelEmail),
+            child: Text(
+              'Email OTP${emailValue.isEmpty ? '' : '\n$emailValue'}',
+              textAlign: TextAlign.center,
+            ),
           ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(ctx).pop(_otpChannelWhatsApp),
+            child: Text(
+              'WhatsApp OTP${phoneValue.isEmpty ? '' : '\n$phoneValue'}',
+              textAlign: TextAlign.center,
+            ),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
         ),
       ),
     );
   }
 
-  Widget _verificationMethodTile({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
-      child: Ink(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: White24.value),
+  Future<String?> _showMaterialVerificationMethodDialog() {
+    final theme = Theme.of(context);
+    final emailValue = _emailController.text.trim();
+    final phoneValue = _normalizedPhone();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Verify your account'),
+        content: Text(
+          'Choose how you want to receive OTP.',
+          style: theme.textTheme.bodyMedium,
         ),
-        child: Row(
-          children: [
-            Icon(icon, color: AppTheme.primary, size: 20),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
-              ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_otpChannelEmail),
+            child: Text(emailValue.isEmpty ? 'Email OTP' : 'Email OTP ($emailValue)'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(_otpChannelWhatsApp),
+            child: Text(
+              phoneValue.isEmpty
+                  ? 'WhatsApp OTP'
+                  : 'WhatsApp OTP ($phoneValue)',
             ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white54, size: 14),
-          ],
-        ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
   }
@@ -642,6 +680,23 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     if (raw.isEmpty) return '';
     final local = raw.startsWith('0') ? raw.substring(1) : raw;
     return '+$_selectedCountryDialCode$local';
+  }
+
+  String _maskEmailForDisplay(String value) {
+    final t = value.trim();
+    final at = t.indexOf('@');
+    if (at <= 0 || at >= t.length - 1) return t;
+    final local = t.substring(0, at);
+    final domain = t.substring(at + 1);
+    if (local.length <= 1) return '***@$domain';
+    return '${local[0]}${'*' * (local.length - 1)}@$domain';
+  }
+
+  String _maskPhoneForDisplay(String value) {
+    final t = value.trim();
+    if (t.length <= 4) return t;
+    final visible = t.substring(t.length - 4);
+    return '${'*' * (t.length - 4)}$visible';
   }
 
   void _onSignIn() {

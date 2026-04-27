@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
@@ -516,16 +517,56 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 
   Future<_OnboardingAccountType?> _showAccountTypeDialog() async {
+    final platform = Theme.of(context).platform;
+    final isCupertino =
+        platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
+    if (isCupertino) {
+      return _showCupertinoAccountTypeDialog();
+    }
+
+    return _showMaterialAccountTypeDialog();
+  }
+
+  Future<_OnboardingAccountType?> _showCupertinoAccountTypeDialog() {
+    return showCupertinoModalPopup<_OnboardingAccountType>(
+      context: context,
+      builder: (ctx) => CupertinoActionSheet(
+        title: const Text('Select account type'),
+        actions: [
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(ctx).pop(_OnboardingAccountType.personal),
+            child: const Text('Personal account'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(ctx).pop(_OnboardingAccountType.business),
+            child: const Text('Business account'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(ctx).pop(_OnboardingAccountType.government),
+            child: const Text('Government account'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          isDefaultAction: true,
+          onPressed: () => Navigator.of(ctx).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<_OnboardingAccountType?> _showMaterialAccountTypeDialog() {
     _OnboardingAccountType selected = _OnboardingAccountType.personal;
     return showDialog<_OnboardingAccountType>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A0A24),
           title: const Text(
             'Select account type',
-            style: TextStyle(color: Colors.white),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -538,28 +579,24 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               return RadioListTile<_OnboardingAccountType>(
                 value: type,
                 groupValue: selected,
-                activeColor: const Color(0xFFF81945),
+                activeColor: AppTheme.primary,
                 onChanged: (v) {
                   if (v == null) return;
                   setDialogState(() => selected = v);
                 },
-                title: Text(label, style: const TextStyle(color: Colors.white)),
+                title: Text(label),
               );
             }).toList(),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              ),
+              child: const Text('Cancel'),
             ),
             FilledButton(
               onPressed: () => Navigator.of(ctx).pop(selected),
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFF81945),
-                foregroundColor: Colors.white,
+                backgroundColor: AppTheme.primary,
               ),
               child: const Text('Continue'),
             ),
