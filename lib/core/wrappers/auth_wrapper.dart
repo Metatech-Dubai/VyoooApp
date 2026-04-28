@@ -1,5 +1,4 @@
-import 'dart:async' show unawaited;
-
+import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -7,12 +6,12 @@ import 'package:provider/provider.dart';
 
 import '../config/app_config.dart';
 import '../models/app_user_model.dart';
-import '../utils/account_message.dart';
 import '../services/auth_service.dart';
-import '../services/user_service.dart';
 import '../services/otp_session_service.dart';
-import '../services/signup_draft_service.dart';
 import '../services/push_messaging_service.dart';
+import '../services/signup_draft_service.dart';
+import '../services/user_service.dart';
+import '../utils/account_message.dart';
 import '../../screens/auth/create_account_screen.dart';
 import '../../screens/auth/create_username_screen.dart';
 import '../../screens/auth/verify_code_screen.dart';
