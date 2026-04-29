@@ -43,7 +43,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   String _phoneVerificationId = '';
   int? _phoneResendToken;
 
-  bool get _useWhatsApp => _activeChannel == 'whatsapp';
   bool get _usePhone => _activeChannel == 'phone';
   int get _otpLength => _usePhone ? 6 : 4;
 
@@ -120,8 +119,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   Text(
                     _usePhone
                         ? "Please enter the code we've just sent to your number"
-                        : _useWhatsApp
-                        ? "Please enter the code we've just sent to WhatsApp"
                         : "Please enter the code we've just sent to email",
                     style: TextStyle(
                       fontSize: 14,
@@ -135,10 +132,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                     _usePhone
                         ? (widget.maskedPhone.isEmpty
                               ? 'your phone number'
-                              : widget.maskedPhone)
-                        : _useWhatsApp
-                        ? (widget.maskedPhone.isEmpty
-                              ? 'your WhatsApp number'
                               : widget.maskedPhone)
                         : (widget.maskedEmail.isEmpty
                               ? 'your email'
@@ -239,7 +232,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                     ),
                   ),
                   const SizedBox(height: 20),
-                  if (!widget.forPhoneLogin)
+                  if (!widget.forPhoneLogin && _usePhone)
                     Center(
                       child: GestureDetector(
                         onTap: _onSwitchVerificationMethod,
@@ -370,8 +363,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
               _phoneResendToken = resendToken;
             },
           )
-        : _useWhatsApp
-        ? await _auth.sendSignupWhatsAppOtp(phoneNumber: _activePhoneNumber)
         : await _auth.sendSignupEmailOtp(email: draft?.email ?? '');
     if (!mounted) return;
     if (_usePhone &&
@@ -389,8 +380,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
             result.message ??
             (_usePhone
                 ? 'Could not send phone code.'
-                : _useWhatsApp
-                ? 'Could not send WhatsApp code.'
                 : 'Could not send code.');
       }
     });
@@ -414,11 +403,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         ? await _auth.verifyPhoneSignInOtp(
             verificationId: _phoneVerificationId,
             smsCode: code,
-          )
-        : _useWhatsApp
-        ? await _auth.verifySignupWhatsAppOtp(
-            code: code,
-            phoneNumber: _activePhoneNumber,
           )
         : await _auth.verifySignupEmailOtp(code, email: draft?.email ?? '');
     if (!mounted) return;
@@ -467,27 +451,11 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
   Future<void> _onSwitchVerificationMethod() async {
     if (_verifyInFlight || _sendInFlight) return;
-    final target = _usePhone
-        ? 'email'
-        : _useWhatsApp
-        ? 'email'
-        : 'whatsapp';
-    if (target == 'whatsapp' && _activePhoneNumber.isEmpty) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No WhatsApp number found for this signup. Continue with email or register again with WhatsApp OTP.',
-          ),
-        ),
-      );
-      return;
-    }
+    if (!_usePhone) return;
+    final target = 'email';
     final prefs = OtpSessionService();
     final draft = SignupDraftService().current;
-    final destination = target == 'whatsapp'
-        ? _activePhoneNumber
-        : (draft?.email ?? _auth.currentUser?.email ?? '');
+    final destination = (draft?.email ?? _auth.currentUser?.email ?? '');
     await prefs.setSignupOtpPreference(
       channel: target,
       destination: destination,
@@ -500,9 +468,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         c.clear();
       }
     });
-    if (target == 'whatsapp') {
-      await _sendOtp();
-    }
   }
 
   Future<void> _onBack() async {

@@ -19,7 +19,6 @@ class CreateAccountScreen extends StatefulWidget {
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
   static const String _otpChannelEmail = 'email';
-  static const String _otpChannelWhatsApp = 'whatsapp';
   static const String _otpChannelPhone = 'phone';
 
   final _formKey = GlobalKey<FormState>();
@@ -510,13 +509,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
     final otpChannel = await _showVerificationMethodDialog();
     if (!mounted || otpChannel == null) return;
-    if (otpChannel == _otpChannelWhatsApp &&
-        (phone.isEmpty || !phone.startsWith('+') || phone.length < 8)) {
-      setState(() {
-        _errorMessage = 'Please enter a valid phone number for WhatsApp OTP.';
-      });
-      return;
-    }
     if (otpChannel == _otpChannelPhone &&
         (phone.isEmpty || !phone.startsWith('+') || phone.length < 8)) {
       setState(() {
@@ -605,19 +597,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           autoSendOnOpen = false;
         }
       }
-      if (otpChannel == _otpChannelWhatsApp) {
-        final otpResult = await _auth.sendSignupWhatsAppOtp(phoneNumber: phone);
-        if (!mounted) return;
-        if (!otpResult.success) {
-          setState(() {
-            _isLoading = false;
-            _errorMessage =
-                otpResult.message ??
-                'Could not send WhatsApp OTP. Please try again.';
-          });
-          return;
-        }
-      }
       if (otpChannel == _otpChannelPhone) {
         autoSendOnOpen = true;
       }
@@ -627,14 +606,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         builder: (_) => VerifyCodeScreen(
           channel: otpChannel,
           maskedEmail: _maskEmailForDisplay(email),
-          phoneNumber:
-              (otpChannel == _otpChannelWhatsApp ||
-                  otpChannel == _otpChannelPhone)
-              ? phone
-              : '',
-          maskedPhone:
-              (otpChannel == _otpChannelWhatsApp ||
-                  otpChannel == _otpChannelPhone)
+          phoneNumber: otpChannel == _otpChannelPhone ? phone : '',
+          maskedPhone: otpChannel == _otpChannelPhone
               ? _maskPhoneForDisplay(phone)
               : '',
           autoSendOnOpen: autoSendOnOpen,
@@ -678,13 +651,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             ),
           ),
           CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(ctx).pop(_otpChannelWhatsApp),
-            child: Text(
-              'WhatsApp OTP${phoneValue.isEmpty ? '' : '\n$phoneValue'}',
-              textAlign: TextAlign.center,
-            ),
-          ),
-          CupertinoActionSheetAction(
             onPressed: () => Navigator.of(ctx).pop(_otpChannelPhone),
             child: Text(
               'Number OTP${phoneValue.isEmpty ? '' : '\n$phoneValue'}',
@@ -720,14 +686,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
             onPressed: () => Navigator.of(ctx).pop(_otpChannelEmail),
             child: Text(
               emailValue.isEmpty ? 'Email OTP' : 'Email OTP ($emailValue)',
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(_otpChannelWhatsApp),
-            child: Text(
-              phoneValue.isEmpty
-                  ? 'WhatsApp OTP'
-                  : 'WhatsApp OTP ($phoneValue)',
             ),
           ),
           TextButton(

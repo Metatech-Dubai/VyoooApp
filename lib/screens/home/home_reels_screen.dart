@@ -95,10 +95,16 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       case HomeTab.vr:
         return _reelsVR;
       case HomeTab.following:
-        return _reelsFollowing;
+        return _followingFeedReels;
       case HomeTab.forYou:
         return _reelsForYou;
     }
+  }
+
+  List<Map<String, dynamic>> get _followingFeedReels {
+    // Product requirement: if user follows nobody, show Trending in Following tab.
+    if (_followingIds.isEmpty) return _reelsTrending;
+    return _reelsFollowing;
   }
 
   // State for likes/saves (optimistic UI)
@@ -406,8 +412,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     setState(() => _currentIndex = index);
     if (_currentReels.isNotEmpty) {
       final feedIndex = _feedIndexForPage(index, _currentReels.length);
+      final reelId = _asString(_currentReels[feedIndex]['id']);
+      if (reelId.isEmpty) return;
       _reelsController.incrementView(
-        reelId: _currentReels[feedIndex]['id'] as String,
+        reelId: reelId,
       );
     }
   }
@@ -570,6 +578,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     super.build(context);
     final isVrTab = currentTab == HomeTab.vr;
     final isFollowing = currentTab == HomeTab.following;
+    final isFollowingFallback = isFollowing && _followingIds.isEmpty;
+    final followingStoriesTop = MediaQuery.paddingOf(context).top + 120;
+    final followingFeedTop = followingStoriesTop + 120;
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -595,17 +606,20 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               )
             else
               Positioned.fill(
-                top: isFollowing ? 220 : 0, // Push video down for stories
+                top: (isFollowing && !isFollowingFallback)
+                    ? followingFeedTop
+                    : 0, // Push video down only when stories row is visible.
                 child: Padding(
                   padding: EdgeInsets.symmetric(
-                    horizontal: isFollowing ? 8 : 0,
-                    vertical: isFollowing ? 8 : 0,
+                    horizontal: (isFollowing && !isFollowingFallback) ? 8 : 0,
+                    vertical: (isFollowing && !isFollowingFallback) ? 8 : 0,
                   ),
                   child: _buildFeedClipArea(isFollowing),
                 ),
               ),
             _buildHeader(),
-            if (isFollowing) _buildStoryRow(),
+            if (isFollowing && !isFollowingFallback)
+              _buildStoryRow(topOffset: followingStoriesTop),
             if (!isVrTab) ...[
               _buildInteractionButtons(),
               _buildBottomUserInfo(),
@@ -665,7 +679,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     await _openStoryUpload();
   }
 
-  Widget _buildStoryRow() {
+  Widget _buildStoryRow({required double topOffset}) {
     final uid = AuthService().currentUser?.uid ?? '';
     final otherGroups = _storyGroups.where((g) => g.userId != uid).toList();
 
@@ -681,7 +695,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         .toList();
 
     return Positioned(
-      top: 100,
+      top: topOffset,
       left: 0,
       right: 0,
       child: FollowingHeaderStories(
@@ -880,7 +894,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   Widget _buildInteractionButtons() {
     final reel = _currentFeedReel();
     if (reel == null) return const SizedBox.shrink();
-    final reelId = reel['id'] as String;
+    final reelId = _asString(reel['id']);
+    if (reelId.isEmpty) return const SizedBox.shrink();
     final isLiked = _likedReels[reelId] ?? false;
     final isSaved = _savedReels[reelId] ?? false;
     final bottomSafeInset = MediaQuery.paddingOf(context).bottom;
@@ -895,7 +910,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         children: [
           AppInteractionButton(
             icon: Icons.visibility_outlined,
-            count: _formatCount(reel['views'] as int),
+            count: _formatCount(_asInt(reel['views'])),
             iconSize: 24,
             textSize: 10,
             spacing: 3,
@@ -903,7 +918,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           const SizedBox(height: 12),
           AppInteractionButton(
             icon: isLiked ? Icons.favorite : Icons.favorite_border,
-            count: _formatCount(reel['likes'] as int),
+            count: _formatCount(_asInt(reel['likes'])),
             isActive: isLiked,
             activeColor: const Color(0xFFEF4444),
             onTap: () => _onLike(reelId, isLiked),
@@ -914,7 +929,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           const SizedBox(height: 12),
           AppInteractionButton(
             icon: Icons.chat_bubble_outline,
-            count: _formatCount(reel['comments'] as int),
+            count: _formatCount(_asInt(reel['comments'])),
             onTap: () => _onComment(reelId),
             iconSize: 24,
             textSize: 10,
@@ -923,7 +938,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           const SizedBox(height: 12),
           AppInteractionButton(
             icon: isSaved ? Icons.star : Icons.star_border,
-            count: _formatCount(reel['saves'] as int),
+            count: _formatCount(_asInt(reel['saves'])),
             isActive: isSaved,
             activeColor: const Color(0xFFFFD700),
             onTap: () => _onSave(reelId, isSaved),
@@ -934,7 +949,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           const SizedBox(height: 12),
           AppInteractionButton(
             icon: Icons.reply,
-            count: _formatCount(reel['shares'] as int),
+            count: _formatCount(_asInt(reel['shares'])),
             onTap: () => _onShare(reelId),
             iconSize: 24,
             textSize: 10,
@@ -954,7 +969,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
   void _onMoreOptions(String reelId) {
     final reel = _currentReels.firstWhere((r) => r['id'] == reelId);
-    final authorId = reel['userId'] as String? ?? '';
+    final authorId = _asString(reel['userId']);
     showReelMoreOptionsSheet(
       context,
       reelId: reelId,
@@ -963,8 +978,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       onDownload: _onDownloadTapped,
       onReport: () => showReportSheet(
         context,
-        username: reel['username'] as String,
-        avatarUrl: reel['avatarUrl'] as String,
+        username: _asString(reel['username'], fallback: 'User'),
+        avatarUrl: _asString(reel['avatarUrl']),
         targetUserId: authorId.isEmpty ? null : authorId,
         isFollowing: authorId.isNotEmpty && _followingIds.contains(authorId),
       ),
@@ -1048,11 +1063,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     radius: 20,
                     backgroundColor: Colors.grey[900],
                     backgroundImage: _isValidNetworkUrl(
-                            reel['avatarUrl'] as String?)
-                        ? NetworkImage((reel['avatarUrl'] as String).trim())
+                            _asString(reel['avatarUrl']))
+                        ? NetworkImage(_asString(reel['avatarUrl']))
                         : null,
                     onBackgroundImageError: (_, __) {},
-                    child: !_isValidNetworkUrl(reel['avatarUrl'] as String?)
+                    child: !_isValidNetworkUrl(_asString(reel['avatarUrl']))
                         ? const Icon(Icons.person, color: Colors.white, size: 20)
                         : null,
                   ),
@@ -1068,7 +1083,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                         GestureDetector(
                           onTap: () => _openReelAuthorProfile(reel),
                           child: Text(
-                            reel['username'] as String,
+                            _asString(reel['username'], fallback: 'User'),
                             style: const TextStyle(
                               fontSize: 18,
                               fontWeight: FontWeight.w700,
@@ -1095,7 +1110,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     GestureDetector(
                       onTap: () => _openReelAuthorProfile(reel),
                       child: Text(
-                        reel['handle'] as String,
+                        _asString(reel['handle'], fallback: '@user'),
                         style: TextStyle(
                           fontSize: 13,
                           color: Colors.white.withValues(alpha: 0.7),
@@ -1110,7 +1125,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           ),
           const SizedBox(height: 12),
           _CaptionWithSeeMore(
-            text: reel['caption'] as String,
+            text: _asString(reel['caption']),
           ),
           const SizedBox(height: 16),
         ],
@@ -1131,6 +1146,18 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       return '${(count / 1000).toStringAsFixed(1)}K';
     }
     return count.toString();
+  }
+
+  String _asString(dynamic value, {String fallback = ''}) {
+    if (value == null) return fallback;
+    final text = value.toString().trim();
+    return text.isEmpty ? fallback : text;
+  }
+
+  int _asInt(dynamic value, {int fallback = 0}) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value?.toString() ?? '') ?? fallback;
   }
 
   bool _isValidNetworkUrl(String? raw) {
