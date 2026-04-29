@@ -1261,6 +1261,9 @@ class _UserProfileVRCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final avatarProvider = Uri.tryParse(item.avatarUrl)?.isAbsolute == true
+        ? NetworkImage(item.avatarUrl)
+        : null;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -1328,7 +1331,14 @@ class _UserProfileVRCard extends StatelessWidget {
                   CircleAvatar(
                     radius: 14,
                     backgroundColor: Colors.grey.shade700,
-                    backgroundImage: NetworkImage(item.avatarUrl),
+                    backgroundImage: avatarProvider,
+                    child: avatarProvider == null
+                        ? const Icon(
+                            Icons.person_rounded,
+                            size: 14,
+                            color: Colors.white70,
+                          )
+                        : null,
                   ),
                   const SizedBox(width: AppSpacing.sm),
                   Expanded(
@@ -1395,6 +1405,9 @@ class _UserProfileStreamCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final imageProvider = Uri.tryParse(item.thumbnailUrl)?.isAbsolute == true
+        ? NetworkImage(item.thumbnailUrl)
+        : null;
     return GestureDetector(
       onTap: onTap,
       child: ClipRRect(
@@ -1402,7 +1415,13 @@ class _UserProfileStreamCard extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.network(item.thumbnailUrl, fit: BoxFit.cover),
+            if (imageProvider != null)
+              Image(
+                image: imageProvider,
+                fit: BoxFit.cover,
+              )
+            else
+              Container(color: const Color(0xFF26172A)),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(

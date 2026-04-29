@@ -104,9 +104,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
               final destination = (pref?.$2 ?? '').trim();
               final phone = destination.isNotEmpty ? destination : draft.phoneNumber;
               return VerifyCodeScreen(
-                channel: channel == 'whatsapp' ? 'whatsapp' : 'email',
+                channel: channel == 'phone' ? 'phone' : 'email',
                 phoneNumber: phone,
-                maskedPhone: channel == 'whatsapp' ? _maskPhoneForDisplay(phone) : '',
+                maskedPhone: channel == 'phone' ? _maskPhoneForDisplay(phone) : '',
                 maskedEmail: _maskEmailForDisplay(draft.email),
                 autoSendOnOpen: false,
               );
@@ -332,8 +332,7 @@ class _UserDocGateState extends State<_UserDocGate> {
     if (selected == null) return;
     setState(() {
       _selectedLoginOtpChannel = selected;
-      _selectedLoginOtpPhone =
-          (selected == 'phone' || selected == 'whatsapp') && hasPhone
+      _selectedLoginOtpPhone = selected == 'phone' && hasPhone
           ? normalizedPhone
           : '';
     });
@@ -372,14 +371,6 @@ class _UserDocGateState extends State<_UserDocGate> {
           ),
           if (hasPhone)
             CupertinoActionSheetAction(
-              onPressed: () => Navigator.of(ctx).pop('whatsapp'),
-              child: Text(
-                'WhatsApp OTP\n$phoneNumber',
-                textAlign: TextAlign.center,
-              ),
-            ),
-          if (hasPhone)
-            CupertinoActionSheetAction(
               onPressed: () => Navigator.of(ctx).pop('phone'),
               child: Text(
                 'Number OTP\n$phoneNumber',
@@ -412,11 +403,6 @@ class _UserDocGateState extends State<_UserDocGate> {
             onPressed: () => Navigator.of(ctx).pop('email'),
             child: Text(email.isEmpty ? 'Email OTP' : 'Email OTP ($email)'),
           ),
-          if (hasPhone)
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop('whatsapp'),
-              child: Text('WhatsApp OTP ($phoneNumber)'),
-            ),
           if (hasPhone)
             TextButton(
               onPressed: () => Navigator.of(ctx).pop('phone'),
