@@ -242,6 +242,36 @@ class UserService {
     }
   }
 
+  /// Resolve a normalized phone number to the account email.
+  Future<String?> resolveEmailForPhone(String phoneNumber) async {
+    final normalized = normalizePhone(phoneNumber);
+    if (normalized.isEmpty) return null;
+    try {
+      final byNormalized = await _firestore
+          .collection(_usersCollection)
+          .where('normalizedPhone', isEqualTo: normalized)
+          .limit(1)
+          .get();
+      if (byNormalized.docs.isNotEmpty) {
+        final email = (byNormalized.docs.first.data()['email'] as String? ?? '')
+            .trim();
+        if (email.isNotEmpty) return email;
+      }
+      final byRaw = await _firestore
+          .collection(_usersCollection)
+          .where('phoneNumber', isEqualTo: phoneNumber.trim())
+          .limit(1)
+          .get();
+      if (byRaw.docs.isNotEmpty) {
+        final email = (byRaw.docs.first.data()['email'] as String? ?? '').trim();
+        if (email.isNotEmpty) return email;
+      }
+      return null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Stream of user document for reactive updates.
   Stream<AppUserModel?> userStream(String uid) {
     return _firestore
