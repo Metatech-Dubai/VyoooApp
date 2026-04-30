@@ -11,7 +11,6 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import 'create_account_screen.dart';
 import 'find_account_screen.dart';
-import 'verify_code_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -41,7 +40,8 @@ class _SignInScreenState extends State<SignInScreen> {
 
   bool get _canLogin =>
       _selectedLoginMethod == _loginMethodPhone
-          ? _normalizedPhone().isNotEmpty
+          ? (_normalizedPhone().isNotEmpty &&
+              _passwordController.text.trim().isNotEmpty)
           : (_usernameController.text.trim().isNotEmpty &&
               _passwordController.text.trim().isNotEmpty);
 
@@ -115,21 +115,40 @@ class _SignInScreenState extends State<SignInScreen> {
       setState(() => _errorMessage = 'Please enter a valid phone number.');
       return;
     }
+    if (_passwordController.text.trim().isEmpty) {
+      setState(() => _errorMessage = 'Please enter your password.');
+      return;
+    }
     setState(() {
+      _isLoading = true;
       _errorMessage = null;
     });
+    var resolvedEmail = await UserService().resolveEmailForPhone(phone);
+    resolvedEmail ??= _emailForPhoneLogin(phone);
     if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => VerifyCodeScreen(
-          channel: 'phone',
-          phoneNumber: phone,
-          maskedPhone: _maskPhoneForDisplay(phone),
-          autoSendOnOpen: true,
-          forPhoneLogin: true,
-        ),
-      ),
+    if (resolvedEmail == null || resolvedEmail.isEmpty) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = 'No account found with this phone number.';
+      });
+      return;
+    }
+    final result = await _auth.signInWithEmail(
+      email: resolvedEmail,
+      password: _passwordController.text.trim(),
     );
+    if (!mounted) return;
+    setState(() {
+      _isLoading = false;
+    });
+    if (result.success) {
+      OtpSessionService().abortEmailLoginHandshake();
+      await OtpSessionService().clearOtpRequirement();
+      if (!mounted) return;
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+    setState(() => _errorMessage = result.message ?? 'Login failed');
   }
 
   Future<void> _onAppleSignIn() async {
@@ -210,6 +229,10 @@ class _SignInScreenState extends State<SignInScreen> {
                     _buildRememberRow(),
                   ] else ...[
                     _buildPhoneField(),
+                    AppPadding.sectionGap,
+                    _buildPasswordField(),
+                    SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+                    _buildRememberRow(),
                   ],
                   SizedBox(height: AppSpacing.xl + AppSpacing.md),
                   if (_errorMessage != null) ...[
@@ -657,10 +680,11 @@ class _SignInScreenState extends State<SignInScreen> {
     return '+$_selectedCountryDialCode$local';
   }
 
-  String _maskPhoneForDisplay(String value) {
-    final t = value.trim();
-    if (t.length <= 4) return t;
-    final visible = t.substring(t.length - 4);
-    return '${'*' * (t.length - 4)}$visible';
+  String _emailForPhoneLogin(String phone) {
+    final normalized = phone.toLowerCase().trim();
+    if (normalized.isEmpty) return '';
+    final safe = normalized.replaceAll(RegExp(r'[^a-z0-9+]'), '');
+    return '${safe.replaceAll('+', 'p')}-phone@vyooo.app';
   }
+
 }
