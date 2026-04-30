@@ -1062,11 +1062,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   child: CircleAvatar(
                     radius: 20,
                     backgroundColor: Colors.grey[900],
-                    backgroundImage: _isValidNetworkUrl(
-                            _asString(reel['avatarUrl']))
+                    backgroundImage: _isValidNetworkUrl(_asString(reel['avatarUrl']))
                         ? NetworkImage(_asString(reel['avatarUrl']))
                         : null,
-                    onBackgroundImageError: (_, __) {},
+                    onBackgroundImageError: _isValidNetworkUrl(_asString(reel['avatarUrl']))
+                        ? (_, __) {}
+                        : null,
                     child: !_isValidNetworkUrl(_asString(reel['avatarUrl']))
                         ? const Icon(Icons.person, color: Colors.white, size: 20)
                         : null,
