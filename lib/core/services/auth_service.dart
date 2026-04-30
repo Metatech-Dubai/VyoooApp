@@ -333,14 +333,18 @@ class AuthService {
       if (finalUser == null) {
         return const AuthResult(success: false, message: 'Could not create account.');
       }
+      // Keep auth profile aligned so name is available even before Firestore sync settles.
+      final normalizedName = name.trim();
+      if (normalizedName.isNotEmpty) {
+        try {
+          await finalUser.updateDisplayName(normalizedName);
+        } catch (_) {}
+      }
       try {
-        await UserService().createUserDocument(
+        await _upsertSignupProfileWithRetry(
           uid: finalUser.uid,
           email: email.trim(),
-        );
-        await UserService().updateUserProfile(
-          uid: finalUser.uid,
-          displayName: name.trim(),
+          displayName: normalizedName,
           phoneNumber: phoneNumber,
         );
       } on FirebaseException catch (e) {
@@ -360,6 +364,44 @@ class AuthService {
       return AuthResult(success: false, message: _mapAuthException(e.code));
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
+    }
+  }
+
+  Future<void> _upsertSignupProfileWithRetry({
+    required String uid,
+    required String email,
+    required String displayName,
+    required String phoneNumber,
+  }) async {
+    final userService = UserService();
+    final delays = <Duration>[
+      Duration.zero,
+      const Duration(milliseconds: 350),
+      const Duration(milliseconds: 900),
+    ];
+    Object? lastError;
+    for (final delay in delays) {
+      if (delay > Duration.zero) {
+        await Future<void>.delayed(delay);
+      }
+      try {
+        await userService.ensureUserDocument(
+          uid: uid,
+          email: email,
+          emailOtpVerified: true,
+        );
+        await userService.updateUserProfile(
+          uid: uid,
+          displayName: displayName,
+          phoneNumber: phoneNumber,
+        );
+        return;
+      } catch (e) {
+        lastError = e;
+      }
+    }
+    if (lastError != null) {
+      throw lastError;
     }
   }
 

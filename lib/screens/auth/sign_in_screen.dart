@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:country_picker/country_picker.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/user_service.dart';
@@ -10,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import 'create_account_screen.dart';
 import 'find_account_screen.dart';
+import 'verify_code_screen.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -19,7 +21,11 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
+  static const String _loginMethodEmail = 'email';
+  static const String _loginMethodPhone = 'phone';
+
   final _usernameController = TextEditingController();
+  final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
@@ -27,21 +33,31 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
   String? _errorMessage;
+  String _selectedLoginMethod = _loginMethodEmail;
+  String _selectedCountryDialCode = '44';
+  String _selectedCountryFlag = '🇬🇧';
 
   final AuthService _auth = AuthService();
 
   bool get _canLogin =>
-      _usernameController.text.trim().isNotEmpty &&
-      _passwordController.text.trim().isNotEmpty;
+      _selectedLoginMethod == _loginMethodPhone
+          ? _normalizedPhone().isNotEmpty
+          : (_usernameController.text.trim().isNotEmpty &&
+              _passwordController.text.trim().isNotEmpty);
 
   @override
   void dispose() {
     _usernameController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
 
   Future<void> _onLogin() async {
+    if (_selectedLoginMethod == _loginMethodPhone) {
+      await _onPhoneLogin();
+      return;
+    }
     if (!_canLogin || _isLoading) return;
     final otpSession = OtpSessionService();
     otpSession.startEmailLoginHandshake();
@@ -90,6 +106,30 @@ class _SignInScreenState extends State<SignInScreen> {
       otpSession.abortEmailLoginHandshake();
       setState(() => _errorMessage = result.message ?? 'Login failed');
     }
+  }
+
+  Future<void> _onPhoneLogin() async {
+    if (!_canLogin || _isLoading) return;
+    final phone = _normalizedPhone();
+    if (phone.isEmpty || !phone.startsWith('+') || phone.length < 8) {
+      setState(() => _errorMessage = 'Please enter a valid phone number.');
+      return;
+    }
+    setState(() {
+      _errorMessage = null;
+    });
+    if (!mounted) return;
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => VerifyCodeScreen(
+          channel: 'phone',
+          phoneNumber: phone,
+          maskedPhone: _maskPhoneForDisplay(phone),
+          autoSendOnOpen: true,
+          forPhoneLogin: true,
+        ),
+      ),
+    );
   }
 
   Future<void> _onAppleSignIn() async {
@@ -159,12 +199,18 @@ class _SignInScreenState extends State<SignInScreen> {
                       height: 1.2,
                     ),
                   ),
+                  SizedBox(height: AppSpacing.lg),
+                  _buildLoginMethodToggle(),
                   SizedBox(height: AppSpacing.xl + AppSpacing.md),
-                  _buildUsernameField(),
-                  AppPadding.sectionGap,
-                  _buildPasswordField(),
-                  SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                  _buildRememberRow(),
+                  if (_selectedLoginMethod == _loginMethodEmail) ...[
+                    _buildUsernameField(),
+                    AppPadding.sectionGap,
+                    _buildPasswordField(),
+                    SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+                    _buildRememberRow(),
+                  ] else ...[
+                    _buildPhoneField(),
+                  ],
                   SizedBox(height: AppSpacing.xl + AppSpacing.md),
                   if (_errorMessage != null) ...[
                     Text(
@@ -224,6 +270,112 @@ class _SignInScreenState extends State<SignInScreen> {
         hintText: 'Email, Username or Name',
         prefixIcon: Icon(Icons.mail_outline, color: AppTheme.primary, size: 22),
         suffixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
+      ),
+    );
+  }
+
+  Widget _buildPhoneField() {
+    return TextFormField(
+      controller: _phoneController,
+      onChanged: (_) => setState(() {}),
+      style: const TextStyle(
+        color: AppTheme.defaultTextColor,
+        fontSize: 16,
+        fontWeight: FontWeight.w400,
+      ),
+      keyboardType: TextInputType.phone,
+      decoration: InputDecoration(
+        hintText: 'Phone Number',
+        prefixIcon: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(width: 12),
+            const Icon(Icons.phone_outlined, color: AppTheme.primary, size: 22),
+            const SizedBox(width: 8),
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _pickCountry,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
+                child: Text(
+                  '$_selectedCountryFlag +$_selectedCountryDialCode',
+                  style: const TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 2),
+          ],
+        ),
+        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+      ),
+    );
+  }
+
+  Widget _buildLoginMethodToggle() {
+    final isEmail = _selectedLoginMethod == _loginMethodEmail;
+    return Container(
+      height: 54,
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedLoginMethod = _loginMethodEmail),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isEmail ? Colors.white : Colors.transparent,
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Text(
+                  'Email',
+                  style: TextStyle(
+                    color: isEmail
+                        ? Colors.black.withValues(alpha: 0.9)
+                        : Colors.white.withValues(alpha: 0.82),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Expanded(
+            child: GestureDetector(
+              onTap: () => setState(() => _selectedLoginMethod = _loginMethodPhone),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOut,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: isEmail ? Colors.transparent : Colors.white,
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Text(
+                  'Phone',
+                  style: TextStyle(
+                    color: isEmail
+                        ? Colors.white.withValues(alpha: 0.82)
+                        : Colors.black.withValues(alpha: 0.9),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -344,8 +496,8 @@ class _SignInScreenState extends State<SignInScreen> {
                   valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
                 ),
               )
-            : const Text(
-                'Login',
+            : Text(
+                _selectedLoginMethod == _loginMethodPhone ? 'Continue' : 'Login',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
               ),
       ),
@@ -467,5 +619,48 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
       ],
     );
+  }
+
+  void _pickCountry() {
+    showCountryPicker(
+      context: context,
+      showPhoneCode: true,
+      favorite: const ['GB', 'AE'],
+      countryListTheme: CountryListThemeData(
+        backgroundColor: const Color(0xFF12081C),
+        textStyle: const TextStyle(color: Colors.white),
+        inputDecoration: InputDecoration(
+          labelText: 'Search country',
+          labelStyle: TextStyle(color: AppTheme.secondaryTextColor),
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: White24.value),
+          ),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.primary),
+          ),
+        ),
+      ),
+      onSelect: (Country c) {
+        if (!mounted) return;
+        setState(() {
+          _selectedCountryDialCode = c.phoneCode;
+          _selectedCountryFlag = c.flagEmoji;
+        });
+      },
+    );
+  }
+
+  String _normalizedPhone() {
+    final raw = _phoneController.text.replaceAll(RegExp(r'[^0-9]'), '');
+    if (raw.isEmpty) return '';
+    final local = raw.startsWith('0') ? raw.substring(1) : raw;
+    return '+$_selectedCountryDialCode$local';
+  }
+
+  String _maskPhoneForDisplay(String value) {
+    final t = value.trim();
+    if (t.length <= 4) return t;
+    final visible = t.substring(t.length - 4);
+    return '${'*' * (t.length - 4)}$visible';
   }
 }
