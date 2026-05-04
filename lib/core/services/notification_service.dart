@@ -18,6 +18,7 @@ class AppNotification {
     this.actorUsername = '',
     this.actorAvatarUrl = '',
     this.reelId = '',
+    this.storyId = '',
     this.commentId = '',
     this.targetUserId = '',
   });
@@ -32,6 +33,7 @@ class AppNotification {
   final String actorUsername;
   final String actorAvatarUrl;
   final String reelId;
+  final String storyId;
   final String commentId;
   final String targetUserId;
 
@@ -54,6 +56,7 @@ class AppNotification {
       actorUsername: (data['actorUsername'] as String?) ?? '',
       actorAvatarUrl: (data['actorAvatarUrl'] as String?) ?? '',
       reelId: (data['reelId'] as String?) ?? '',
+      storyId: (data['storyId'] as String?) ?? '',
       commentId: (data['commentId'] as String?) ?? '',
       targetUserId: (data['targetUserId'] as String?) ?? '',
     );

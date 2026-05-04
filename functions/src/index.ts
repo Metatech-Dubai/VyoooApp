@@ -1,7 +1,11 @@
 import * as crypto from 'crypto';
 import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
-import { onDocumentCreated, onDocumentWritten } from 'firebase-functions/v2/firestore';
+import {
+  onDocumentCreated,
+  onDocumentDeleted,
+  onDocumentWritten,
+} from 'firebase-functions/v2/firestore';
 import { logger } from 'firebase-functions';
 import { RtcTokenBuilder, RtcRole } from 'agora-access-token';
 
@@ -1190,5 +1194,87 @@ export const sendPushOnNotificationCreate = onDocumentCreated(
       );
       throw e;
     }
+  },
+);
+
+// ── Story engagement counters (server-maintained) ────────────────────────────
+/**
+ * Keeps `stories/{storyId}.likes` in sync with `storyLikes/{uid}_{storyId}` creates/deletes.
+ * Clients write only `storyLikes`; Firestore rules block non-owners from patching `likes` on stories.
+ */
+export const syncStoryLikeCount = onDocumentWritten(
+  {
+    document: 'storyLikes/{likeId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (event) => {
+    const db = admin.firestore();
+    const beforeExist = event.data?.before.exists ?? false;
+    const afterExist = event.data?.after.exists ?? false;
+    const beforeData = event.data?.before.data() as { storyId?: unknown } | undefined;
+    const afterData = event.data?.after.data() as { storyId?: unknown } | undefined;
+    const storyId =
+      typeof afterData?.storyId === 'string'
+        ? afterData.storyId.trim()
+        : typeof beforeData?.storyId === 'string'
+          ? beforeData.storyId.trim()
+          : '';
+    if (!storyId) return;
+
+    const ref = db.collection('stories').doc(storyId);
+
+    if (!beforeExist && afterExist) {
+      const snap = await ref.get();
+      if (!snap.exists) return;
+      await ref.set({ likes: admin.firestore.FieldValue.increment(1) }, { merge: true });
+      return;
+    }
+
+    if (beforeExist && !afterExist) {
+      const snap = await ref.get();
+      if (!snap.exists) return;
+      await ref.set({ likes: admin.firestore.FieldValue.increment(-1) }, { merge: true });
+    }
+  },
+);
+
+/**
+ * Increments `stories/{storyId}.comments` when a comment doc is created.
+ */
+export const syncStoryCommentCountOnCreate = onDocumentCreated(
+  {
+    document: 'stories/{storyId}/comments/{commentId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (event) => {
+    const storyId = event.params.storyId as string;
+    if (!storyId) return;
+    const db = admin.firestore();
+    const ref = db.collection('stories').doc(storyId);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    await ref.set({ comments: admin.firestore.FieldValue.increment(1) }, { merge: true });
+  },
+);
+
+/**
+ * Decrements `stories/{storyId}.comments` when a comment doc is deleted (one per doc).
+ */
+export const syncStoryCommentCountOnDelete = onDocumentDeleted(
+  {
+    document: 'stories/{storyId}/comments/{commentId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (event) => {
+    const storyId = event.params.storyId as string;
+    if (!storyId) return;
+    const db = admin.firestore();
+    const ref = db.collection('stories').doc(storyId);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    await ref.set({ comments: admin.firestore.FieldValue.increment(-1) }, { merge: true });
   },
 );

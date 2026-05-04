@@ -189,6 +189,12 @@ class _NotificationScreenState extends State<NotificationScreen>
 
   Future<void> _handleReply(AppNotification item) async {
     await NotificationService().markAsRead(item.id);
+    final storyId = item.storyId.trim();
+    if (storyId.isNotEmpty) {
+      if (!mounted) return;
+      showStoryCommentsBottomSheet(context, storyId: storyId);
+      return;
+    }
     final reelId = item.reelId.trim();
     if (reelId.isEmpty) {
       if (!mounted) return;

@@ -11,7 +11,7 @@ import '../../features/story/story_upload_screen.dart';
 import 'upload_photo_preview_screen.dart';
 import 'upload_video_preview_screen.dart';
 
-/// Upload screen for subscribers: media grid from gallery, album dropdown, Story / Gallery / Live actions.
+/// Upload screen for subscribers: media grid from gallery, album dropdown, Story / Post / Live actions.
 /// Opened from bottom nav plus; standard users are redirected to membership instead.
 class UploadScreen extends StatefulWidget {
   const UploadScreen({super.key});
@@ -23,7 +23,7 @@ class UploadScreen extends StatefulWidget {
 class _UploadScreenState extends State<UploadScreen> {
   String _selectedAlbum = 'Recents';
   int? _selectedIndex;
-  int _bottomSegment = 1; // 0 Story, 1 Gallery, 2 Live
+  int _bottomSegment = 1; // 0 Story, 1 Post (device gallery grid), 2 Live
 
   List<AssetPathEntity> _paths = [];
   List<AssetEntity> _assets = [];
@@ -359,7 +359,7 @@ class _UploadScreenState extends State<UploadScreen> {
             },
           ),
           _BottomSegmentButton(
-            label: 'Gallery',
+            label: 'Post',
             iconPath: 'assets/vyooO_icons/Upload_Story_Live/gallery.png',
             selected: _bottomSegment == 1,
             onTap: () => setState(() => _bottomSegment = 1),
@@ -572,8 +572,8 @@ class _BottomSegmentButton extends StatelessWidget {
               errorBuilder: (_, _, _) => Icon(
                 label == 'Story'
                     ? Icons.videocam_outlined
-                    : label == 'Gallery'
-                    ? Icons.grid_view_rounded
+                    : label == 'Post'
+                    ? Icons.post_add_outlined
                     : Icons.wifi_tethering_rounded,
                 color: color,
                 size: 20,

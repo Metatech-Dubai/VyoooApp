@@ -107,8 +107,132 @@ service cloud.firestore {
     }
 
     // ── App collections (explicit so list/get never rely on a fragile catch‑all) ──
+    // ── Stories (24h content): owner creates/deletes; anyone signed-in can read;
+    // non-owners may only patch viewedBy. likes/comments are updated by Cloud Functions only.
+    function storyCreateKeys() {
+      return request.resource.data.keys().hasOnly([
+        'userId',
+        'username',
+        'avatarUrl',
+        'mediaUrl',
+        'caption',
+        'createdAt',
+        'expiresAt',
+        'viewedBy',
+        'mediaType',
+        'durationMs',
+        'likes',
+        'comments',
+        'segmentGroupId',
+      ]);
+    }
+
+    function storyValidCreate() {
+      return storyCreateKeys()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.username is string
+        && request.resource.data.avatarUrl is string
+        && request.resource.data.mediaUrl is string
+        && request.resource.data.caption is string
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.expiresAt is timestamp
+        && request.resource.data.viewedBy is list
+        && request.resource.data.mediaType is string
+        && request.resource.data.mediaType in ['image', 'video']
+        && request.resource.data.durationMs is int
+        && request.resource.data.likes is int
+        && request.resource.data.likes == 0
+        && request.resource.data.comments is int
+        && request.resource.data.comments == 0
+        && request.resource.data.segmentGroupId is string;
+    }
+
+    function storyOwnerIdUnchanged() {
+      return request.resource.data.userId == resource.data.userId;
+    }
+
+    function storyViewedByOnlyUpdate() {
+      return storyOwnerIdUnchanged()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy']);
+    }
+
     match /stories/{storyId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && storyValidCreate();
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if isSignedIn()
+                    && storyOwnerIdUnchanged()
+                    && (
+                      resource.data.userId == request.auth.uid
+                      || storyViewedByOnlyUpdate()
+                    );
+    }
+
+    match /stories/{storyId}/comments/{commentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.keys().hasOnly([
+                      'userId',
+                      'username',
+                      'avatarUrl',
+                      'text',
+                      'parentId',
+                      'likeCount',
+                      'createdAt',
+                      'isVerified',
+                    ])
+                    && request.resource.data.username is string
+                    && request.resource.data.avatarUrl is string
+                    && request.resource.data.text is string
+                    && request.resource.data.parentId is string
+                    && request.resource.data.likeCount is int
+                    && request.resource.data.likeCount == 0
+                    && request.resource.data.createdAt is timestamp
+                    && request.resource.data.isVerified is bool;
+      // Subtree deletes may include reply docs by other users (same as reels pattern).
+      allow delete: if isSignedIn();
+      allow update: if isSignedIn()
+                    && request.resource.data.userId == resource.data.userId
+                    && (
+                      resource.data.userId == request.auth.uid
+                      || request.resource.data.diff(resource.data).affectedKeys()
+                           .hasOnly(['likeCount'])
+                    );
+    }
+
+    match /stories/{storyId}/comments/{commentId}/likes/{likerId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && likerId == request.auth.uid
+                    && request.resource.data.keys().hasOnly(['userId', 'likedAt'])
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.likedAt is timestamp;
+      allow delete: if isSignedIn() && likerId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /storyLikes/{id} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn()
+                    && request.resource.data.keys().hasOnly(['userId', 'storyId', 'likedAt'])
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.storyId is string
+                    && request.resource.data.storyId.size() > 0
+                    && request.resource.data.likedAt is timestamp
+                    && id == request.auth.uid + '_' + request.resource.data.storyId;
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /users/{userId}/storyHighlights/{highlightId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
+    }
+
+    match /users/{userId}/storyHighlights/{highlightId}/items/{itemId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isOwner(userId);
     }
 
     match /reels/{reelId} {

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/comment_service.dart';
+import '../../../core/services/story_comment_service.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/user_facing_errors.dart';
 import '../models/comment.dart';
@@ -23,13 +24,42 @@ void showCommentsBottomSheet(
   required String reelId,
   void Function(int commentCountDelta)? onCommentCountChanged,
 }) {
+  _openCommentsSheet(
+    context,
+    contentId: reelId,
+    forStory: false,
+    onCommentCountChanged: onCommentCountChanged,
+  );
+}
+
+/// Opens comments for a story (`stories/{storyId}/comments`).
+void showStoryCommentsBottomSheet(
+  BuildContext context, {
+  required String storyId,
+  void Function(int commentCountDelta)? onCommentCountChanged,
+}) {
+  _openCommentsSheet(
+    context,
+    contentId: storyId,
+    forStory: true,
+    onCommentCountChanged: onCommentCountChanged,
+  );
+}
+
+void _openCommentsSheet(
+  BuildContext context, {
+  required String contentId,
+  required bool forStory,
+  void Function(int commentCountDelta)? onCommentCountChanged,
+}) {
   showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withValues(alpha: 0.45),
     builder: (context) => _CommentsBottomSheetBody(
-      reelId: reelId,
+      contentId: contentId,
+      forStory: forStory,
       onCommentCountChanged: onCommentCountChanged,
     ),
   );
@@ -76,11 +106,13 @@ List<_CommentListRow> _buildCommentRows(
 
 class _CommentsBottomSheetBody extends StatefulWidget {
   const _CommentsBottomSheetBody({
-    required this.reelId,
+    required this.contentId,
+    required this.forStory,
     this.onCommentCountChanged,
   });
 
-  final String reelId;
+  final String contentId;
+  final bool forStory;
   final void Function(int commentCountDelta)? onCommentCountChanged;
 
   @override
@@ -89,7 +121,8 @@ class _CommentsBottomSheetBody extends StatefulWidget {
 }
 
 class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
-  final _commentService = CommentService();
+  final _reelCommentService = CommentService();
+  final _storyCommentService = StoryCommentService();
   final _textCtrl = TextEditingController();
   final _focusNode = FocusNode();
 
@@ -139,8 +172,9 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
 
   void _subscribeTail() {
     _tailSub?.cancel();
-    _tailSub = _commentService
-        .watchRecentCommentsTail(widget.reelId)
+    _tailSub = (widget.forStory
+            ? _storyCommentService.watchRecentCommentsTail(widget.contentId)
+            : _reelCommentService.watchRecentCommentsTail(widget.contentId))
         .listen(
           _onTailSnapshot,
           onError: (Object error, StackTrace stackTrace) {
@@ -191,10 +225,15 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
     setState(() => _parsing = true);
     try {
       final merged = _sortedMergedDocs();
-      final tree = await _commentService.commentsFromDocuments(
-        widget.reelId,
-        merged,
-      );
+      final tree = widget.forStory
+          ? await _storyCommentService.commentsFromDocuments(
+              widget.contentId,
+              merged,
+            )
+          : await _reelCommentService.commentsFromDocuments(
+              widget.contentId,
+              merged,
+            );
       if (!mounted) return;
       setState(() {
         _comments = tree;
@@ -220,10 +259,15 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
     final oldest = sorted.first;
     setState(() => _loadingOlder = true);
     try {
-      final snap = await _commentService.fetchCommentsOlderThan(
-        widget.reelId,
-        oldest,
-      );
+      final snap = widget.forStory
+          ? await _storyCommentService.fetchCommentsOlderThan(
+              widget.contentId,
+              oldest,
+            )
+          : await _reelCommentService.fetchCommentsOlderThan(
+              widget.contentId,
+              oldest,
+            );
       if (!mounted) return;
       if (snap.docs.isEmpty) {
         setState(() {
@@ -275,11 +319,19 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
 
     setState(() => _posting = true);
     try {
-      await _commentService.addComment(
-        widget.reelId,
-        text,
-        parentId: _replyParentId ?? '',
-      );
+      if (widget.forStory) {
+        await _storyCommentService.addComment(
+          widget.contentId,
+          text,
+          parentId: _replyParentId ?? '',
+        );
+      } else {
+        await _reelCommentService.addComment(
+          widget.contentId,
+          text,
+          parentId: _replyParentId ?? '',
+        );
+      }
       if (!mounted) return;
       FocusManager.instance.primaryFocus?.unfocus();
       _textCtrl.clear();
@@ -349,10 +401,15 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
     );
     if (ok != true || !mounted) return;
     try {
-      final removed = await _commentService.deleteComment(
-        widget.reelId,
-        commentId,
-      );
+      final removed = widget.forStory
+          ? await _storyCommentService.deleteComment(
+              widget.contentId,
+              commentId,
+            )
+          : await _reelCommentService.deleteComment(
+              widget.contentId,
+              commentId,
+            );
       if (!mounted) return;
       if (removed <= 0) {
         _showErrorSnack(
@@ -369,7 +426,19 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
   Future<void> _onLike(Comment c) async {
     if (AuthService().currentUser == null) return;
     try {
-      await _commentService.toggleCommentLike(widget.reelId, c.id, c.isLiked);
+      if (widget.forStory) {
+        await _storyCommentService.toggleCommentLike(
+          widget.contentId,
+          c.id,
+          c.isLiked,
+        );
+      } else {
+        await _reelCommentService.toggleCommentLike(
+          widget.contentId,
+          c.id,
+          c.isLiked,
+        );
+      }
     } catch (e) {
       if (mounted) _showErrorSnack(messageForFirestore(e));
     }
@@ -377,7 +446,12 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
 
   Future<void> _onReport(Comment c) async {
     if (AuthService().currentUser == null) return;
-    await showReportCommentSheet(context, reelId: widget.reelId, comment: c);
+    await showReportCommentSheet(
+      context,
+      reelId: widget.forStory ? null : widget.contentId,
+      storyId: widget.forStory ? widget.contentId : null,
+      comment: c,
+    );
   }
 
   // ── Build ──────────────────────────────────────────────────────────────────

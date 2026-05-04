@@ -1,22 +1,32 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/services/comment_service.dart';
+import '../../../core/services/story_comment_service.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/user_facing_errors.dart';
 import '../models/comment.dart';
 
 /// Bottom sheet: pick a reason and write to `comment_reports`.
+/// Provide exactly one of [reelId] or [storyId].
 Future<void> showReportCommentSheet(
   BuildContext context, {
-  required String reelId,
+  String? reelId,
+  String? storyId,
   required Comment comment,
 }) async {
+  assert(
+    (reelId != null && reelId.isNotEmpty && (storyId == null || storyId.isEmpty)) ||
+        (storyId != null && storyId.isNotEmpty && (reelId == null || reelId.isEmpty)),
+    'Provide either reelId or storyId',
+  );
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
     builder: (ctx) => _ReportCommentBody(
-      reelId: reelId,
+      reelId: reelId ?? '',
+      storyId: storyId ?? '',
+      forStory: storyId != null && storyId.isNotEmpty,
       comment: comment,
     ),
   );
@@ -25,10 +35,14 @@ Future<void> showReportCommentSheet(
 class _ReportCommentBody extends StatefulWidget {
   const _ReportCommentBody({
     required this.reelId,
+    required this.storyId,
+    required this.forStory,
     required this.comment,
   });
 
   final String reelId;
+  final String storyId;
+  final bool forStory;
   final Comment comment;
 
   @override
@@ -50,12 +64,21 @@ class _ReportCommentBodyState extends State<_ReportCommentBody> {
     if (_submitting) return;
     setState(() => _submitting = true);
     try {
-      await CommentService().reportComment(
-        reelId: widget.reelId,
-        commentId: widget.comment.id,
-        commentAuthorId: widget.comment.authorUserId,
-        reason: reason,
-      );
+      if (widget.forStory) {
+        await StoryCommentService().reportComment(
+          storyId: widget.storyId,
+          commentId: widget.comment.id,
+          commentAuthorId: widget.comment.authorUserId,
+          reason: reason,
+        );
+      } else {
+        await CommentService().reportComment(
+          reelId: widget.reelId,
+          commentId: widget.comment.id,
+          commentAuthorId: widget.comment.authorUserId,
+          reason: reason,
+        );
+      }
       if (!mounted) return;
       Navigator.of(context).pop();
       ScaffoldMessenger.of(context).showSnackBar(

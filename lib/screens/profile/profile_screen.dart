@@ -9,6 +9,7 @@ import '../../core/theme/app_gradients.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
+import '../../core/models/story_highlight_model.dart';
 import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/reels_service.dart';
@@ -20,6 +21,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/utils/verification_badge.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
+import '../../features/story/highlight_viewer_screen.dart';
 import '../../features/story/story_upload_screen.dart';
 import '../../features/story/story_viewer_screen.dart';
 import '../../core/models/live_stream_model.dart';
@@ -380,6 +382,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           ],
           initialGroupIndex: 0,
           initialStoryIndex: 0,
+          onStoriesModified: () {
+            if (mounted) setState(() {});
+          },
         ),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),
@@ -728,6 +733,65 @@ class _ProfileScreenState extends State<ProfileScreen>
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
+                      ),
+                    );
+                  },
+                ),
+                FutureBuilder<List<StoryHighlightModel>>(
+                  future: StoryService().getHighlightsForUser(profileUid),
+                  builder: (context, hSnap) {
+                    final highlights = hSnap.data ?? const [];
+                    if (highlights.isEmpty) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(top: 12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Highlights',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.65),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          SizedBox(
+                            height: 40,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: highlights.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(width: 8),
+                              itemBuilder: (_, i) {
+                                final h = highlights[i];
+                                return ActionChip(
+                                  label: Text(
+                                    h.title,
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  backgroundColor:
+                                      Colors.white.withValues(alpha: 0.12),
+                                  side: BorderSide.none,
+                                  onPressed: () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute<void>(
+                                        builder: (_) => HighlightViewerScreen(
+                                          userId: profileUid,
+                                          highlightId: h.id,
+                                          title: h.title,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },

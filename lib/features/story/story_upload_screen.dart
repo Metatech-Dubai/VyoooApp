@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:camera/camera.dart';
@@ -8,11 +9,17 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:video_player/video_player.dart';
 
+import '../../core/models/story_model.dart';
 import '../../core/services/story_service.dart';
+import '../../core/utils/story_video_splitter.dart';
 import '../../screens/upload/creator_live_route.dart';
 
 enum _Tab { story, gallery, live }
+
+/// Story camera: still capture vs video recording (same pipeline as gallery video).
+enum _StoryCameraMode { photo, video }
 
 enum _StoryFilter { normal, warm, cool, mono, vivid }
 
@@ -37,8 +44,9 @@ class _StoryImageEdit {
 }
 
 /// Story upload (Figma): camera + Story/Gallery/Live tabs, caption + Post,
-/// multi-image strip. Gallery uses the **system photo picker** (`pickMultiImage`)
-/// only — no in-app grid (avoids “full gallery / video list” UX).
+/// multi-image strip, camera **Photo / Video** modes, gallery photos + one video.
+/// Gallery uses the system photo picker (`pickMultiImage`) for photos; video uses
+/// gallery pick or camera recording, then FFmpeg splits clips longer than 60s.
 class StoryUploadScreen extends StatefulWidget {
   const StoryUploadScreen({super.key});
 
@@ -54,12 +62,19 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   bool _isFront = false;
   bool _camPermDenied = false;
   String? _camError;
+  _StoryCameraMode _cameraMode = _StoryCameraMode.photo;
+  bool _isRecordingVideo = false;
+  Duration _recordElapsed = Duration.zero;
+  Timer? _recordTicker;
+  Timer? _recordMaxTimer;
 
   _Tab _tab = _Tab.story;
 
   List<File> _images = [];
   List<_StoryImageEdit> _imageEdits = [];
   int _previewIdx = 0;
+  /// FFmpeg output segments or a single picked file (≤60s); excludes temp cleanup until posted.
+  List<File> _videoStorySegments = [];
   final _captionCtrl = TextEditingController();
   bool _uploading = false;
 
@@ -107,6 +122,8 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _recordTicker?.cancel();
+    _recordMaxTimer?.cancel();
     _camCtrl?.dispose();
     _captionCtrl.dispose();
     super.dispose();
@@ -118,7 +135,11 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     switch (state) {
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
-        _disposeCameraSilently();
+        if (_isRecordingVideo && _camCtrl != null) {
+          unawaited(_stopRecordingThenDisposeCamera());
+        } else {
+          _disposeCameraSilently();
+        }
         break;
       case AppLifecycleState.resumed:
         if (_tab == _Tab.story && _images.isEmpty && !_camPermDenied) {
@@ -139,6 +160,11 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     } catch (_) {
       return false;
     }
+  }
+
+  Future<void> _stopRecordingThenDisposeCamera() async {
+    await _stopCameraRecording(save: true);
+    if (mounted) _disposeCameraSilently();
   }
 
   void _disposeCameraSilently() {
@@ -187,7 +213,8 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     }
   }
 
-  Future<void> _setupCamera(int index) async {
+  Future<void> _setupCamera(int index, {bool? enableAudio}) async {
+    final useAudio = enableAudio ?? (_cameraMode == _StoryCameraMode.video);
     final prev = _camCtrl;
     _camCtrl = null;
     if (mounted) {
@@ -206,7 +233,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     final ctrl = CameraController(
       cam,
       ResolutionPreset.high,
-      enableAudio: false,
+      enableAudio: useAudio,
       imageFormatGroup: ImageFormatGroup.jpeg,
     );
     _camCtrl = ctrl;
@@ -219,9 +246,28 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   }
 
   Future<void> _flipCamera() async {
-    if (_cameras.length < 2) return;
+    if (_cameras.length < 2 || _isRecordingVideo) return;
     _isFront = !_isFront;
     await _setupCamera(_defaultCameraIndex());
+  }
+
+  Future<void> _setCameraMode(_StoryCameraMode mode) async {
+    if (_isRecordingVideo) {
+      _showSnack('Stop recording before switching mode.');
+      return;
+    }
+    if (mode == _cameraMode) return;
+    setState(() => _cameraMode = mode);
+    await _setupCamera(_defaultCameraIndex());
+  }
+
+  Future<void> _onShutterTap() async {
+    if (!_camReady || _camCtrl == null) return;
+    if (_cameraMode == _StoryCameraMode.photo) {
+      await _capturePhoto();
+    } else {
+      await _toggleCameraVideoRecording();
+    }
   }
 
   Future<void> _capturePhoto() async {
@@ -237,6 +283,114 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       }
     } catch (e) {
       if (mounted) _showSnack('Capture failed: $e');
+    }
+  }
+
+  Future<void> _toggleCameraVideoRecording() async {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+
+    if (!ctrl.value.isRecordingVideo) {
+      final mic = await Permission.microphone.request();
+      if (!mounted) return;
+      if (!mic.isGranted) {
+        _showSnack('Microphone access is needed to record video with sound.');
+        return;
+      }
+      try {
+        await ctrl.startVideoRecording();
+        if (!mounted) return;
+        setState(() {
+          _isRecordingVideo = true;
+          _recordElapsed = Duration.zero;
+        });
+        _recordTicker?.cancel();
+        _recordTicker = Timer.periodic(const Duration(seconds: 1), (_) {
+          if (!mounted || !_isRecordingVideo) return;
+          setState(() => _recordElapsed += const Duration(seconds: 1));
+        });
+        _recordMaxTimer?.cancel();
+        _recordMaxTimer = Timer(const Duration(minutes: 10), () {
+          if (_isRecordingVideo) {
+            unawaited(_stopCameraRecording(save: true));
+          }
+        });
+      } catch (e) {
+        if (mounted) _showSnack('Could not start recording: $e');
+      }
+      return;
+    }
+
+    await _stopCameraRecording(save: true);
+  }
+
+  Future<void> _stopCameraRecording({required bool save}) async {
+    final ctrl = _camCtrl;
+    if (ctrl == null || !ctrl.value.isRecordingVideo) {
+      _recordTicker?.cancel();
+      _recordMaxTimer?.cancel();
+      if (mounted) setState(() => _isRecordingVideo = false);
+      return;
+    }
+    _recordTicker?.cancel();
+    _recordMaxTimer?.cancel();
+    try {
+      final xFile = await ctrl.stopVideoRecording();
+      if (!mounted) return;
+      setState(() => _isRecordingVideo = false);
+      if (save) {
+        await _ingestVideoFile(File(xFile.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isRecordingVideo = false);
+        _showSnack('Recording failed: $e');
+      }
+    }
+  }
+
+  /// Prepares gallery or camera video for posting (split >60s, then preview screen).
+  Future<void> _ingestVideoFile(File file) async {
+    setState(() {
+      _images = [];
+      _imageEdits = [];
+      _videoStorySegments = [];
+      _uploading = true;
+    });
+
+    late Duration dur;
+    try {
+      final vc = VideoPlayerController.file(file);
+      await vc.initialize();
+      dur = vc.value.duration;
+      await vc.dispose();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploading = false);
+        _showSnack('Could not read video: $e');
+      }
+      return;
+    }
+
+    if (!mounted) return;
+    if (dur == Duration.zero) {
+      setState(() => _uploading = false);
+      _showSnack('Video has no playable duration.');
+      return;
+    }
+
+    try {
+      final segments = await StoryVideoSplitter.splitToSegments(file, dur);
+      if (!mounted) return;
+      setState(() {
+        _videoStorySegments = segments;
+        _uploading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() => _uploading = false);
+        _showSnack('$e');
+      }
     }
   }
 
@@ -267,6 +421,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
 
     if (mounted) {
       setState(() {
+        _videoStorySegments = [];
         if (append) {
           final prevLen = _images.length;
           _images = [..._images, ...files];
@@ -290,8 +445,55 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     }
   }
 
+  Future<int> _videoDurationMs(File f) async {
+    final c = VideoPlayerController.file(f);
+    try {
+      await c.initialize();
+      return c.value.duration.inMilliseconds;
+    } finally {
+      await c.dispose();
+    }
+  }
+
+  Future<void> _pickVideoForStory() async {
+    final x = await _picker.pickVideo(source: ImageSource.gallery);
+    if (!mounted || x == null) return;
+    await _ingestVideoFile(File(x.path));
+  }
+
   Future<void> _post() async {
-    if (_images.isEmpty || _uploading) return;
+    if (_uploading) return;
+
+    if (_videoStorySegments.isNotEmpty) {
+      setState(() => _uploading = true);
+      try {
+        final caption = _captionCtrl.text.trim();
+        final groupId = _videoStorySegments.length > 1
+            ? DateTime.now().microsecondsSinceEpoch.toString()
+            : '';
+        final durs = <int>[];
+        for (final f in _videoStorySegments) {
+          durs.add(await _videoDurationMs(f));
+        }
+        await StoryService().uploadStoryMediaBatch(
+          files: List<File>.from(_videoStorySegments),
+          mediaType: StoryMediaType.video,
+          caption: caption,
+          durationMsPerFile: durs,
+          segmentGroupId: groupId,
+        );
+        await _deleteTempVideoSegments();
+        if (mounted) Navigator.of(context).pop(true);
+      } catch (e) {
+        if (mounted) {
+          _showSnack('Upload failed: $e');
+          setState(() => _uploading = false);
+        }
+      }
+      return;
+    }
+
+    if (_images.isEmpty) return;
     setState(() => _uploading = true);
     try {
       final renderedImages = await _buildUploadImages();
@@ -305,6 +507,17 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         _showSnack('Upload failed: $e');
         setState(() => _uploading = false);
       }
+    }
+  }
+
+  Future<void> _deleteTempVideoSegments() async {
+    final tmp = (await getTemporaryDirectory()).path;
+    for (final f in _videoStorySegments) {
+      try {
+        if (f.path.startsWith(tmp) && await f.exists()) {
+          await f.delete();
+        }
+      } catch (_) {}
     }
   }
 
@@ -650,7 +863,10 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     setState(() => _tab = tab);
     if (tab == _Tab.gallery) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted && _tab == _Tab.gallery && _images.isEmpty) {
+        if (mounted &&
+            _tab == _Tab.gallery &&
+            _images.isEmpty &&
+            _videoStorySegments.isEmpty) {
           _pickFromLibrary(append: false);
         }
       });
@@ -661,6 +877,12 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         if (!_cameraHealthy()) _initCamera();
       });
     }
+  }
+
+  String _formatRecordDuration(Duration d) {
+    final m = d.inMinutes;
+    final s = d.inSeconds.remainder(60);
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
   void _showSnack(String msg) {
@@ -678,6 +900,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
 
   @override
   Widget build(BuildContext context) {
+    if (_videoStorySegments.isNotEmpty) return _buildVideoPostPreview();
     if (_images.isNotEmpty) return _buildPreview();
     if (_tab == _Tab.gallery) return _buildGalleryPickerChrome();
     return _buildCameraView();
@@ -733,7 +956,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                     ),
                     const SizedBox(height: 24),
                     const Text(
-                      'Choose photos for your story',
+                      'Choose media for your story',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -743,7 +966,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                     ),
                     const SizedBox(height: 12),
                     Text(
-                      'Opens your photo library — still images only, up to 10. No video strip.',
+                      'Photos (up to 10) or one gallery video. Videos longer than 60s are split into multiple stories.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
@@ -770,6 +993,25 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                         ),
                       ),
                     ),
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.white,
+                          side: const BorderSide(color: Colors.white38),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                        ),
+                        onPressed: _uploading ? null : _pickVideoForStory,
+                        child: const Text(
+                          'Pick one video',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -777,6 +1019,132 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
             Padding(
               padding: const EdgeInsets.fromLTRB(56, 8, 56, 20),
               child: _buildTabBar(),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildVideoPostPreview() {
+    final n = _videoStorySegments.length;
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.white),
+                    onPressed: () {
+                      setState(() {
+                        _videoStorySegments = [];
+                        _uploading = false;
+                      });
+                    },
+                  ),
+                  const Expanded(
+                    child: Text(
+                      'Video story',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.video_collection_outlined,
+                        color: Colors.white54, size: 64),
+                    const SizedBox(height: 20),
+                    Text(
+                      n == 1
+                          ? '1 clip ready to post (max 60s).'
+                          : '$n clips ready (split automatically, 60s each).',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 17,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    TextField(
+                      controller: _captionCtrl,
+                      maxLength: 60,
+                      maxLines: 3,
+                      style: const TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        hintText: 'Add a caption (optional)',
+                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                        counterStyle: const TextStyle(color: Colors.white54),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.08),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide.none,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: _uploading
+                          ? null
+                          : () => setState(() => _videoStorySegments = []),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white,
+                        side: const BorderSide(color: Colors.white38),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Discard'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: FilledButton(
+                      onPressed: _uploading ? null : _post,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFDE106B),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: _uploading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text('Post'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -928,35 +1296,104 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                 ),
                 const Spacer(),
                 Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Expanded(
+                        child: SegmentedButton<_StoryCameraMode>(
+                          segments: const [
+                            ButtonSegment(
+                              value: _StoryCameraMode.photo,
+                              label: Text('Photo'),
+                              icon: Icon(Icons.photo_camera_outlined, size: 18),
+                            ),
+                            ButtonSegment(
+                              value: _StoryCameraMode.video,
+                              label: Text('Video'),
+                              icon: Icon(Icons.videocam_outlined, size: 18),
+                            ),
+                          ],
+                          selected: {_cameraMode},
+                          onSelectionChanged: (s) =>
+                              _setCameraMode(s.first),
+                          style: ButtonStyle(
+                            foregroundColor: WidgetStateProperty.resolveWith(
+                              (states) => states.contains(WidgetState.selected)
+                                  ? Colors.white
+                                  : Colors.white70,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (_cameraMode == _StoryCameraMode.video && _isRecordingVideo)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      _formatRecordDuration(_recordElapsed),
+                      style: const TextStyle(
+                        color: Color(0xFFFF2D55),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                Padding(
                   padding: const EdgeInsets.fromLTRB(40, 0, 40, 14),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       _SmallCircleBtn(
                         iconPath: 'assets/vyooO_icons/Upload_Story_Live/gallery.png',
-                        onTap: () => _pickFromLibrary(append: false),
+                        onTap: _isRecordingVideo
+                            ? () {}
+                            : () => _pickFromLibrary(append: false),
                       ),
                       GestureDetector(
-                        onTap: _capturePhoto,
+                        onTap: (_camReady || _isRecordingVideo)
+                            ? _onShutterTap
+                            : null,
                         child: Container(
                           width: 76,
                           height: 76,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 4),
+                            border: Border.all(
+                              color: _cameraMode == _StoryCameraMode.video
+                                  ? (_isRecordingVideo
+                                      ? const Color(0xFFFF2D55)
+                                      : Colors.white70)
+                                  : Colors.white,
+                              width: 4,
+                            ),
                           ),
                           padding: const EdgeInsets.all(5),
                           child: Container(
-                            decoration: const BoxDecoration(
+                            decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              color: Colors.white,
+                              color: _cameraMode == _StoryCameraMode.video
+                                  ? (_isRecordingVideo
+                                      ? const Color(0xFFFF2D55)
+                                      : Colors.transparent)
+                                  : Colors.white,
                             ),
+                            child: _cameraMode == _StoryCameraMode.video &&
+                                    _isRecordingVideo
+                                ? const Icon(Icons.stop, color: Colors.white, size: 32)
+                                : _cameraMode == _StoryCameraMode.video
+                                    ? const Icon(Icons.fiber_manual_record,
+                                        color: Color(0xFFFF2D55), size: 36)
+                                    : null,
                           ),
                         ),
                       ),
                       _SmallCircleBtn(
                         iconPath: 'assets/vyooO_icons/Upload_Story_Live/camera_switch.png',
-                        onTap: _flipCamera,
+                        onTap: _isRecordingVideo ? () {} : _flipCamera,
                       ),
                     ],
                   ),

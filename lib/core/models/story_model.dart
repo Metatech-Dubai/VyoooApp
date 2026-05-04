@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// A single story item (image + caption, expires in 24 h).
+enum StoryMediaType { image, video }
+
+/// A single story item (image or video + caption, expires in 24 h).
 class StoryModel {
   const StoryModel({
     required this.id,
@@ -12,6 +14,11 @@ class StoryModel {
     required this.createdAt,
     required this.expiresAt,
     required this.viewedBy,
+    this.mediaType = StoryMediaType.image,
+    this.durationMs = 0,
+    this.likes = 0,
+    this.comments = 0,
+    this.segmentGroupId = '',
   });
 
   final String id;
@@ -23,14 +30,26 @@ class StoryModel {
   final DateTime createdAt;
   final DateTime expiresAt;
   final List<String> viewedBy;
+  final StoryMediaType mediaType;
+  /// Playback duration for video; 0 for image (viewer uses default image timing).
+  final int durationMs;
+  final int likes;
+  final int comments;
+  /// Same id across FFmpeg-split segments posted together.
+  final String segmentGroupId;
 
   bool get isExpired => DateTime.now().isAfter(expiresAt);
   bool isViewedBy(String uid) => viewedBy.contains(uid);
+  bool get isVideo => mediaType == StoryMediaType.video;
 
   factory StoryModel.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
+    final data = doc.data() as Map<String, dynamic>? ?? {};
     final createdAt =
         (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+    final rawType = (data['mediaType'] as String?)?.toLowerCase() ?? '';
+    final mediaType = rawType == 'video'
+        ? StoryMediaType.video
+        : StoryMediaType.image;
     return StoryModel(
       id: doc.id,
       userId: data['userId'] as String? ?? '',
@@ -43,6 +62,11 @@ class StoryModel {
           createdAt.add(const Duration(hours: 24)),
       viewedBy:
           List<String>.from(data['viewedBy'] as List<dynamic>? ?? <dynamic>[]),
+      mediaType: mediaType,
+      durationMs: (data['durationMs'] as num?)?.toInt() ?? 0,
+      likes: (data['likes'] as num?)?.toInt() ?? 0,
+      comments: (data['comments'] as num?)?.toInt() ?? 0,
+      segmentGroupId: data['segmentGroupId'] as String? ?? '',
     );
   }
 
@@ -55,6 +79,11 @@ class StoryModel {
         'createdAt': Timestamp.fromDate(createdAt),
         'expiresAt': Timestamp.fromDate(expiresAt),
         'viewedBy': viewedBy,
+        'mediaType': mediaType == StoryMediaType.video ? 'video' : 'image',
+        'durationMs': durationMs,
+        'likes': likes,
+        'comments': comments,
+        'segmentGroupId': segmentGroupId,
       };
 }
 

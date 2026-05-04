@@ -664,6 +664,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           groups: _storyGroups,
           initialGroupIndex: groupIndex,
           initialStoryIndex: initialStoryIndex == -1 ? 0 : initialStoryIndex,
+          onStoriesModified: _loadReels,
         ),
         transitionsBuilder: (_, animation, _, child) =>
             FadeTransition(opacity: animation, child: child),

@@ -1,7 +1,7 @@
 "use strict";
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendPushOnNotificationCreate = exports.processWhatsAppOtpVerifyRequest = exports.processWhatsAppOtpSendRequest = exports.processEmailOtpVerifyRequest = exports.processEmailOtpSendRequest = exports.moderateReelOnWrite = exports.moderateReelOnCreate = exports.syncFollowersCountOnFollowingChange = exports.getCloudflareUploadUrl = exports.generateAgoraTokenOnRequest = void 0;
+exports.syncStoryCommentCountOnDelete = exports.syncStoryCommentCountOnCreate = exports.syncStoryLikeCount = exports.sendPushOnNotificationCreate = exports.processWhatsAppOtpVerifyRequest = exports.processWhatsAppOtpSendRequest = exports.processEmailOtpVerifyRequest = exports.processEmailOtpSendRequest = exports.moderateReelOnWrite = exports.moderateReelOnCreate = exports.syncFollowersCountOnFollowingChange = exports.getCloudflareUploadUrl = exports.generateAgoraTokenOnRequest = void 0;
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const auth_1 = require("firebase-admin/auth");
@@ -999,5 +999,79 @@ exports.sendPushOnNotificationCreate = (0, firestore_1.onDocumentCreated)({
         }, { merge: true });
         throw e;
     }
+});
+// ── Story engagement counters (server-maintained) ────────────────────────────
+/**
+ * Keeps `stories/{storyId}.likes` in sync with `storyLikes/{uid}_{storyId}` creates/deletes.
+ * Clients write only `storyLikes`; Firestore rules block non-owners from patching `likes` on stories.
+ */
+exports.syncStoryLikeCount = (0, firestore_1.onDocumentWritten)({
+    document: 'storyLikes/{likeId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+}, async (event) => {
+    var _a, _b, _c, _d, _e, _f;
+    const db = admin.firestore();
+    const beforeExist = (_b = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.exists) !== null && _b !== void 0 ? _b : false;
+    const afterExist = (_d = (_c = event.data) === null || _c === void 0 ? void 0 : _c.after.exists) !== null && _d !== void 0 ? _d : false;
+    const beforeData = (_e = event.data) === null || _e === void 0 ? void 0 : _e.before.data();
+    const afterData = (_f = event.data) === null || _f === void 0 ? void 0 : _f.after.data();
+    const storyId = typeof (afterData === null || afterData === void 0 ? void 0 : afterData.storyId) === 'string'
+        ? afterData.storyId.trim()
+        : typeof (beforeData === null || beforeData === void 0 ? void 0 : beforeData.storyId) === 'string'
+            ? beforeData.storyId.trim()
+            : '';
+    if (!storyId)
+        return;
+    const ref = db.collection('stories').doc(storyId);
+    if (!beforeExist && afterExist) {
+        const snap = await ref.get();
+        if (!snap.exists)
+            return;
+        await ref.set({ likes: admin.firestore.FieldValue.increment(1) }, { merge: true });
+        return;
+    }
+    if (beforeExist && !afterExist) {
+        const snap = await ref.get();
+        if (!snap.exists)
+            return;
+        await ref.set({ likes: admin.firestore.FieldValue.increment(-1) }, { merge: true });
+    }
+});
+/**
+ * Increments `stories/{storyId}.comments` when a comment doc is created.
+ */
+exports.syncStoryCommentCountOnCreate = (0, firestore_1.onDocumentCreated)({
+    document: 'stories/{storyId}/comments/{commentId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+}, async (event) => {
+    const storyId = event.params.storyId;
+    if (!storyId)
+        return;
+    const db = admin.firestore();
+    const ref = db.collection('stories').doc(storyId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        return;
+    await ref.set({ comments: admin.firestore.FieldValue.increment(1) }, { merge: true });
+});
+/**
+ * Decrements `stories/{storyId}.comments` when a comment doc is deleted (one per doc).
+ */
+exports.syncStoryCommentCountOnDelete = (0, firestore_1.onDocumentDeleted)({
+    document: 'stories/{storyId}/comments/{commentId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+}, async (event) => {
+    const storyId = event.params.storyId;
+    if (!storyId)
+        return;
+    const db = admin.firestore();
+    const ref = db.collection('stories').doc(storyId);
+    const snap = await ref.get();
+    if (!snap.exists)
+        return;
+    await ref.set({ comments: admin.firestore.FieldValue.increment(-1) }, { merge: true });
 });
 //# sourceMappingURL=index.js.map
