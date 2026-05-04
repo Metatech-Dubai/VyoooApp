@@ -11,11 +11,13 @@ class AppFeedHeader extends StatelessWidget {
     required this.selectedIndex,
     this.labels = _defaultLabels,
     this.onTabSelected,
+    this.trailing,
   });
 
   final int selectedIndex;
   final List<String> labels;
   final void Function(int index)? onTabSelected;
+  final Widget? trailing;
 
   static const List<String> _defaultLabels = [
     'Trending',
@@ -42,6 +44,10 @@ class AppFeedHeader extends StatelessWidget {
               onTabSelected: onTabSelected,
             ),
           ),
+          if (trailing != null) ...[
+            const SizedBox(width: AppSpacing.sm),
+            trailing!,
+          ],
         ],
       ),
     );
@@ -50,8 +56,8 @@ class AppFeedHeader extends StatelessWidget {
   Widget _buildLogo(BuildContext context) {
     final screenWidth = MediaQuery.sizeOf(context).width;
     final logoHeight = screenWidth < 360
-        ? 34.0
-        : (screenWidth < 420 ? 40.0 : 44.0);
+        ? 48.0
+        : (screenWidth < 420 ? 108.0 : 64.0);
 
     return SizedBox(
       height: logoHeight,
@@ -94,14 +100,14 @@ class AppFeedTabSelector extends StatelessWidget {
         children: List.generate(labels.length, (index) {
           final isSelected = selectedIndex == index;
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: 6),
             child: GestureDetector(
               onTap: () => onTabSelected?.call(index),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 8,
+                  horizontal: 12,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
                   color: isSelected
@@ -112,7 +118,7 @@ class AppFeedTabSelector extends StatelessWidget {
                 child: Text(
                   labels[index],
                   style: TextStyle(
-                    fontSize: 14,
+                    fontSize: 12,
                     fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                     color: isSelected ? Colors.black : Colors.white,
                   ),

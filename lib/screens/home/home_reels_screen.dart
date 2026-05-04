@@ -12,8 +12,10 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/widgets/app_feed_header.dart';
+import '../../screens/notifications/notification_screen.dart';
 import '../../core/widgets/app_interaction_button.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
 import '../../features/home/widgets/following_header_stories.dart';
@@ -222,7 +224,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final saveCounts = await _reelsController.getSaveCountsByReelIds(reelIds);
     if (mounted) {
       setState(() {
-        List<Map<String, dynamic>> withSaveCounts(List<Map<String, dynamic>> src) {
+        List<Map<String, dynamic>> withSaveCounts(
+          List<Map<String, dynamic>> src,
+        ) {
           return src.map((r) {
             final id = (r['id'] as String?) ?? '';
             if (id.isEmpty) return r;
@@ -240,6 +244,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             return cloned;
           }).toList();
         }
+
         // Always assign so empty API results clear lists (avoids stale / black feed).
         _reelsForYou = withSaveCounts(filteredForYou);
         _reelsFollowing = withSaveCounts(filteredFollowing);
@@ -263,12 +268,17 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     }
   }
 
-  Future<Map<String, String>> _fetchLatestProfileImages(Set<String> userIds) async {
+  Future<Map<String, String>> _fetchLatestProfileImages(
+    Set<String> userIds,
+  ) async {
     if (userIds.isEmpty) return const <String, String>{};
     final out = <String, String>{};
     final ids = userIds.toList(growable: false);
     for (var i = 0; i < ids.length; i += 10) {
-      final chunk = ids.sublist(i, (i + 10) > ids.length ? ids.length : (i + 10));
+      final chunk = ids.sublist(
+        i,
+        (i + 10) > ids.length ? ids.length : (i + 10),
+      );
       try {
         final q = await FirebaseFirestore.instance
             .collection('users')
@@ -389,7 +399,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       if (reelCount > 1) {
         final previousLast = cycles.last.last;
         if (shuffled.first == previousLast) {
-          final swapIndex = shuffled.indexWhere((value) => value != previousLast);
+          final swapIndex = shuffled.indexWhere(
+            (value) => value != previousLast,
+          );
           if (swapIndex > 0) {
             final tmp = shuffled[0];
             shuffled[0] = shuffled[swapIndex];
@@ -414,9 +426,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       final feedIndex = _feedIndexForPage(index, _currentReels.length);
       final reelId = _asString(_currentReels[feedIndex]['id']);
       if (reelId.isEmpty) return;
-      _reelsController.incrementView(
-        reelId: reelId,
-      );
+      _reelsController.incrementView(reelId: reelId);
     }
   }
 
@@ -731,8 +741,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       itemBuilder: (context, index) {
         final feedIndex = index;
         final reel = reels[feedIndex];
-        final mediaType =
-            ((reel['mediaType'] as String?) ?? 'video').toLowerCase();
+        final mediaType = ((reel['mediaType'] as String?) ?? 'video')
+            .toLowerCase();
         if (mediaType == 'image') {
           final imageUrl = ((reel['imageUrl'] as String?) ?? '').trim();
           final thumbnailUrl = ((reel['thumbnailUrl'] as String?) ?? '').trim();
@@ -754,7 +764,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           videoUrl: videoUrl,
           thumbnailUrl: loadingThumb,
           // Only play when this page is visible AND the home tab is active.
-          isVisible: widget.isActive &&
+          isVisible:
+              widget.isActive &&
               _isRouteVisible &&
               _isAppForeground &&
               index == _currentIndex,
@@ -886,8 +897,77 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         child: AppFeedHeader(
           selectedIndex: currentTab.index,
           onTabSelected: (index) => _onTabChanged(HomeTab.values[index]),
+          trailing: _buildHeaderNotificationIcon(),
         ),
       ),
+    );
+  }
+
+  Widget _buildHeaderNotificationIcon() {
+    return StreamBuilder<int>(
+      stream: NotificationService().watchUnreadCount(),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+        final showBadge = count > 0;
+        final label = count > 99 ? '99+' : '$count';
+        return GestureDetector(
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const NotificationScreen(),
+              ),
+            );
+          },
+          child: SizedBox(
+            width: 32,
+            height: 32,
+            child: Stack(
+              clipBehavior: Clip.none,
+              children: [
+                const Center(
+                  child: Icon(
+                    Icons.notifications_none_rounded,
+                    color: Colors.white,
+                    size: 26,
+                  ),
+                ),
+                if (showBadge)
+                  Positioned(
+                    right: -4,
+                    top: -2,
+                    child: Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF2D55),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: const Color(0xFF14001F),
+                          width: 1,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -900,7 +980,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final isSaved = _savedReels[reelId] ?? false;
     final bottomSafeInset = MediaQuery.paddingOf(context).bottom;
     // Keep action stack clearly above the bottom nav bar.
-    final interactionBottom = 84.0 + bottomSafeInset;
+    final interactionBottom = 18.0 + bottomSafeInset;
 
     return Positioned(
       right: 16,
@@ -959,7 +1039,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           AppInteractionButton(
             icon: Icons.more_horiz,
             count: '',
-            onTap: () => _onMoreOptions(reelId), 
+            onTap: () => _onMoreOptions(reelId),
             iconSize: 24,
           ),
         ],
@@ -1062,14 +1142,20 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   child: CircleAvatar(
                     radius: 20,
                     backgroundColor: Colors.grey[900],
-                    backgroundImage: _isValidNetworkUrl(_asString(reel['avatarUrl']))
+                    backgroundImage:
+                        _isValidNetworkUrl(_asString(reel['avatarUrl']))
                         ? NetworkImage(_asString(reel['avatarUrl']))
                         : null,
-                    onBackgroundImageError: _isValidNetworkUrl(_asString(reel['avatarUrl']))
+                    onBackgroundImageError:
+                        _isValidNetworkUrl(_asString(reel['avatarUrl']))
                         ? (_, _) {}
                         : null,
                     child: !_isValidNetworkUrl(_asString(reel['avatarUrl']))
-                        ? const Icon(Icons.person, color: Colors.white, size: 20)
+                        ? const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 20,
+                          )
                         : null,
                   ),
                 ),
@@ -1125,9 +1211,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             ],
           ),
           const SizedBox(height: 12),
-          _CaptionWithSeeMore(
-            text: _asString(reel['caption']),
-          ),
+          _CaptionWithSeeMore(text: _asString(reel['caption'])),
           const SizedBox(height: 16),
         ],
       ),
@@ -1175,14 +1259,19 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final fallbackName = (reel['username'] as String? ?? '').trim();
     final avatar = (reel['avatarUrl'] as String? ?? '').trim();
     final targetUid = (reel['userId'] as String? ?? '').trim();
-    final isFollowing = targetUid.isNotEmpty && _followingIds.contains(targetUid);
+    final isFollowing =
+        targetUid.isNotEmpty && _followingIds.contains(targetUid);
 
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UserProfileScreen(
           payload: UserProfilePayload(
-            username: normalizedUsername.isNotEmpty ? normalizedUsername : fallbackName,
-            displayName: fallbackName.isNotEmpty ? fallbackName : normalizedUsername,
+            username: normalizedUsername.isNotEmpty
+                ? normalizedUsername
+                : fallbackName,
+            displayName: fallbackName.isNotEmpty
+                ? fallbackName
+                : normalizedUsername,
             avatarUrl: avatar,
             isVerified: (reel['isVerified'] as bool?) ?? false,
             accountType: (reel['accountType'] as String?) ?? 'personal',

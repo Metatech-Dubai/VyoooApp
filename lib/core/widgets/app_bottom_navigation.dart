@@ -153,6 +153,14 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
+  Widget _buildChatIcon(bool isSelected) {
+    return Icon(
+      isSelected ? Icons.chat_bubble : Icons.chat_bubble_outline,
+      size: 25,
+      color: isSelected ? _activeIconColor : _inactiveIconColor,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -209,7 +217,7 @@ class AppBottomNavigation extends StatelessWidget {
                   isSelected: currentIndex == 3,
                   onTap: () => onTap(3),
                   splashColor: _splashColor,
-                  customChild: _buildNotificationIcon(currentIndex == 3),
+                  customChild: _buildChatIcon(currentIndex == 3),
                 ),
                 _buildNavTap(
                   onPressed: () => onTap(4),
