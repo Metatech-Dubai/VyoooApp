@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
 
+import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/notification_service.dart';
@@ -18,6 +19,7 @@ class NotificationScreen extends StatefulWidget {
 class _NotificationScreenState extends State<NotificationScreen>
     with AutomaticKeepAliveClientMixin {
   bool _isMarkingVisibleAsRead = false;
+  final Set<String> _followBackInFlight = <String>{};
 
   @override
   bool get wantKeepAlive => true;
@@ -126,33 +128,55 @@ class _NotificationScreenState extends State<NotificationScreen>
             ),
           );
         }
-        final sections = <String, List<AppNotification>>{};
-        for (final n in list) {
-          final key = _sectionFor(n.createdAt);
-          sections.putIfAbsent(key, () => <AppNotification>[]).add(n);
+        final me = AuthService().currentUser?.uid ?? '';
+        if (me.isEmpty) {
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            children: const <Widget>[],
+          );
         }
-        final rows = <Widget>[];
-        for (final key in ['Today', 'Yesterday', 'Last 7 days', 'Earlier']) {
-          final items = sections[key];
-          if (items == null || items.isEmpty) continue;
-          rows.add(_buildSectionHeader(key));
-          rows.add(const SizedBox(height: 12));
-          for (final item in items) {
-            rows.add(
-              _NotifTile(
-                item: item,
-                onTap: () => _handleOpen(item),
-                onFollowBack: () => _handleFollowBack(item),
-                onReply: () => _handleReply(item),
-              ),
+
+        return StreamBuilder<AppUserModel?>(
+          stream: UserService().userStream(me),
+          builder: (context, meSnapshot) {
+            final following = meSnapshot.data?.following ?? const <String>[];
+            final followedUserIds = following.toSet();
+            final sections = <String, List<AppNotification>>{};
+            for (final n in list) {
+              final key = _sectionFor(n.createdAt);
+              sections.putIfAbsent(key, () => <AppNotification>[]).add(n);
+            }
+            final rows = <Widget>[];
+            for (final key in ['Today', 'Yesterday', 'Last 7 days', 'Earlier']) {
+              final items = sections[key];
+              if (items == null || items.isEmpty) continue;
+              rows.add(_buildSectionHeader(key));
+              rows.add(const SizedBox(height: 12));
+              for (final item in items) {
+                final targetUid = item.senderId.trim();
+                final isFollowed = targetUid.isNotEmpty &&
+                    (followedUserIds.contains(targetUid) ||
+                        _followBackInFlight.contains(targetUid));
+                final isFollowingInProgress = _followBackInFlight.contains(targetUid);
+                rows.add(
+                  _NotifTile(
+                    item: item,
+                    isFollowed: isFollowed,
+                    isFollowingInProgress: isFollowingInProgress,
+                    onTap: () => _handleOpen(item),
+                    onFollowBack: () => _handleFollowBack(item),
+                    onReply: () => _handleReply(item),
+                  ),
+                );
+                rows.add(const SizedBox(height: 20));
+              }
+              rows.add(const SizedBox(height: 4));
+            }
+            return ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              children: rows,
             );
-            rows.add(const SizedBox(height: 20));
-          }
-          rows.add(const SizedBox(height: 4));
-        }
-        return ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          children: rows,
+          },
         );
       },
     );
@@ -167,6 +191,13 @@ class _NotificationScreenState extends State<NotificationScreen>
     final me = AuthService().currentUser?.uid ?? '';
     final targetUid = item.senderId.trim();
     if (me.isEmpty || targetUid.isEmpty || me == targetUid) return;
+    if (_followBackInFlight.contains(targetUid)) return;
+    final alreadyFollowing = await UserService().isFollowingUser(
+      currentUid: me,
+      targetUid: targetUid,
+    );
+    if (alreadyFollowing) return;
+    setState(() => _followBackInFlight.add(targetUid));
     try {
       await UserService().followUser(currentUid: me, targetUid: targetUid);
       if (!mounted) return;
@@ -184,6 +215,12 @@ class _NotificationScreenState extends State<NotificationScreen>
           behavior: SnackBarBehavior.floating,
         ),
       );
+    } finally {
+      if (mounted) {
+        setState(() => _followBackInFlight.remove(targetUid));
+      } else {
+        _followBackInFlight.remove(targetUid);
+      }
     }
   }
 
@@ -252,12 +289,16 @@ class _NotificationScreenState extends State<NotificationScreen>
 class _NotifTile extends StatelessWidget {
   const _NotifTile({
     required this.item,
+    required this.isFollowed,
+    required this.isFollowingInProgress,
     required this.onTap,
     this.onFollowBack,
     this.onReply,
   });
 
   final AppNotification item;
+  final bool isFollowed;
+  final bool isFollowingInProgress;
   final VoidCallback onTap;
   final VoidCallback? onFollowBack;
   final VoidCallback? onReply;
@@ -355,10 +396,13 @@ class _NotifTile extends StatelessWidget {
   Widget _buildActionButton() {
     switch (item.type.name) {
       case 'follow':
-        return _PinkPillButton(
-          label: 'Follow back',
-          onTap: onFollowBack ?? onTap,
-        );
+        if (isFollowed) {
+          return _OutlinePillButton(
+            label: isFollowingInProgress ? 'Following...' : 'Followed',
+            onTap: null,
+          );
+        }
+        return _PinkPillButton(label: 'Follow back', onTap: onFollowBack ?? onTap);
       case 'comment':
         return _OutlinePillButton(
           label: 'Reply',

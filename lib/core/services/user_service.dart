@@ -428,6 +428,13 @@ class UserService {
       throw ArgumentError('Invalid follow');
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
+    final meSnap = await meRef.get();
+    final meData = meSnap.data() ?? const <String, dynamic>{};
+    final followingRaw = meData['following'];
+    final alreadyFollowing = followingRaw is List &&
+        followingRaw.map((e) => e.toString()).contains(targetUid);
+    if (alreadyFollowing) return;
+
     await meRef.set(
       {
         'following': FieldValue.arrayUnion([targetUid]),
