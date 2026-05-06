@@ -18,8 +18,15 @@ import '../../core/services/reels_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/utils/verification_badge.dart';
 import '../../core/utils/user_facing_errors.dart';
+import '../../core/controllers/reels_controller.dart';
+import '../../core/widgets/app_interaction_button.dart';
 import '../../features/chat/services/chat_service.dart';
 import '../../features/chat/screens/chat_thread_screen.dart';
+import '../../features/comments/widgets/comments_bottom_sheet.dart';
+import '../../features/share/widgets/share_bottom_sheet.dart';
+import '../../features/reel/widgets/not_interested_sheet.dart';
+import '../../features/reel/widgets/report_sheet.dart';
+import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../content/live_stream_route.dart';
 import '../content/vr_detail_screen.dart';
 import '../../widgets/reel_item_widget.dart';
@@ -818,6 +825,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     'thumbnailUrl': data['thumbnailUrl'] as String? ?? '',
                     'mediaType': data['mediaType'] as String? ?? '',
                     'caption': data['caption'] as String? ?? '',
+                    'likes': (data['likes'] as num?)?.toInt() ?? 0,
+                    'comments': (data['comments'] as num?)?.toInt() ?? 0,
+                    'shares': (data['shares'] as num?)?.toInt() ?? 0,
+                    'saves': (data['saves'] as num?)?.toInt() ?? 0,
+                    'views': (data['views'] as num?)?.toInt() ?? 0,
                     'createdAt': data['createdAt'],
                   };
                 }).toList();
@@ -1598,6 +1610,15 @@ class _UserProfileReelFeedScreenState
     extends State<_UserProfileReelFeedScreen> {
   late final PageController _pageController;
   late int _currentIndex;
+  final ReelsController _reelsController = ReelsController();
+  final Map<String, bool> _likedReels = {};
+  final Map<String, bool> _savedReels = {};
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _warmInteractionState();
+  }
 
   @override
   void initState() {
@@ -1610,6 +1631,110 @@ class _UserProfileReelFeedScreenState
   void dispose() {
     _pageController.dispose();
     super.dispose();
+  }
+
+  Future<void> _warmInteractionState() async {
+    final reelIds = widget.reels
+        .map((r) => (r['id'] as String? ?? '').trim())
+        .where((id) => id.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (reelIds.isEmpty) return;
+    final likedIds = await _reelsController.getLikedReelIds(reelIds);
+    final savedIds = await _reelsController.getSavedReelIds(reelIds);
+    if (!mounted) return;
+    setState(() {
+      for (final id in reelIds) {
+        _likedReels[id] = likedIds.contains(id);
+        _savedReels[id] = savedIds.contains(id);
+      }
+    });
+  }
+
+  static int _asInt(dynamic value) {
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse('$value') ?? 0;
+  }
+
+  static String _asString(dynamic value) => value?.toString() ?? '';
+
+  static String _formatCount(int n) {
+    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
+    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}K';
+    return '$n';
+  }
+
+  void _adjustReelStat(String reelId, String key, int delta) {
+    final i = widget.reels.indexWhere((r) => _asString(r['id']) == reelId);
+    if (i < 0) return;
+    final current = _asInt(widget.reels[i][key]);
+    setState(() {
+      widget.reels[i][key] = (current + delta).clamp(0, 1 << 30);
+    });
+  }
+
+  Future<void> _onLike(String reelId, bool currentlyLiked) async {
+    final newState = await _reelsController.likeReel(
+      reelId: reelId,
+      currentlyLiked: currentlyLiked,
+    );
+    if (!mounted || newState == null) return;
+    setState(() => _likedReels[reelId] = newState);
+    _adjustReelStat(reelId, 'likes', newState ? 1 : -1);
+  }
+
+  Future<void> _onSave(String reelId, bool currentlySaved) async {
+    final newState = await _reelsController.saveReel(
+      reelId: reelId,
+      currentlySaved: currentlySaved,
+    );
+    if (!mounted || newState == null) return;
+    setState(() => _savedReels[reelId] = newState);
+    _adjustReelStat(reelId, 'saves', newState ? 1 : -1);
+  }
+
+  void _onShare(String reelId, Map<String, dynamic> reel) {
+    showShareBottomSheet(
+      context,
+      reelId: reelId,
+      mediaUrl: _asString(reel['videoUrl']),
+      onShareViaNative: () => _reelsController.shareReel(reelId: reelId),
+    );
+  }
+
+  void _onComment(String reelId) {
+    showCommentsBottomSheet(
+      context,
+      reelId: reelId,
+      onCommentCountChanged: (delta) => _adjustReelStat(reelId, 'comments', delta),
+    );
+  }
+
+  void _onMoreOptions(String reelId, Map<String, dynamic> reel) {
+    final authorId = _asString(reel['userId']).trim();
+    showReelMoreOptionsSheet(
+      context,
+      reelId: reelId,
+      playbackSpeed: 'Normal',
+      quality: 'Auto (1080p HD)',
+      onDownload: () {},
+      onReport: () => showReportSheet(
+        context,
+        username: _asString(reel['username']).isEmpty
+            ? 'User'
+            : _asString(reel['username']),
+        avatarUrl: _asString(reel['avatarUrl']),
+        targetUserId: authorId.isEmpty ? null : authorId,
+        isFollowing: false,
+      ),
+      onNotInterested: () => showNotInterestedSheet(context),
+      onCaptions: () {},
+      onPlaybackSpeed: () {},
+      onQuality: () {},
+      onManagePreferences: () {},
+      onWhyThisPost: () {},
+    );
   }
 
   @override
@@ -1638,12 +1763,18 @@ class _UserProfileReelFeedScreenState
                   return SizedBox.expand(
                     child: ColoredBox(
                       color: Colors.black,
-                      child: Image.network(
-                        displayUrl,
-                        fit: BoxFit.contain,
-                        errorBuilder: (context, error, stackTrace) =>
-                            const SizedBox.shrink(),
-                      ),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        Image.network(
+                          displayUrl,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const SizedBox.shrink(),
+                        ),
+                        _buildActionButtons(index),
+                      ],
+                    ),
                     ),
                   );
                 }
@@ -1654,9 +1785,15 @@ class _UserProfileReelFeedScreenState
                   child: ColoredBox(color: Colors.black),
                 );
               }
-              return ReelItemWidget(
-                videoUrl: videoUrl,
-                isVisible: index == _currentIndex,
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  ReelItemWidget(
+                    videoUrl: videoUrl,
+                    isVisible: index == _currentIndex,
+                  ),
+                  _buildActionButtons(index),
+                ],
               );
             },
           ),
@@ -1668,6 +1805,81 @@ class _UserProfileReelFeedScreenState
               ),
               onPressed: () => Navigator.of(context).pop(),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(int index) {
+    final reel = widget.reels[index];
+    final reelId = _asString(reel['id']).trim();
+    if (reelId.isEmpty) return const SizedBox.shrink();
+    final isLiked = _likedReels[reelId] ?? false;
+    final isSaved = _savedReels[reelId] ?? false;
+
+    final bottomSafeInset = MediaQuery.paddingOf(context).bottom;
+    final interactionBottom = 18.0 + bottomSafeInset;
+
+    return Positioned(
+      right: 16,
+      bottom: interactionBottom,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppInteractionButton(
+            icon: Icons.visibility_outlined,
+            count: _formatCount(_asInt(reel['views'])),
+            iconSize: 24,
+            textSize: 10,
+            spacing: 3,
+          ),
+          const SizedBox(height: 12),
+          AppInteractionButton(
+            icon: isLiked ? Icons.favorite : Icons.favorite_border,
+            count: _formatCount(_asInt(reel['likes'])),
+            isActive: isLiked,
+            activeColor: const Color(0xFFEF4444),
+            onTap: () => _onLike(reelId, isLiked),
+            iconSize: 24,
+            textSize: 10,
+            spacing: 3,
+          ),
+          const SizedBox(height: 12),
+          AppInteractionButton(
+            icon: Icons.chat_bubble_outline,
+            count: _formatCount(_asInt(reel['comments'])),
+            onTap: () => _onComment(reelId),
+            iconSize: 24,
+            textSize: 10,
+            spacing: 3,
+          ),
+          const SizedBox(height: 12),
+          AppInteractionButton(
+            icon: isSaved ? Icons.star : Icons.star_border,
+            count: _formatCount(_asInt(reel['saves'])),
+            isActive: isSaved,
+            activeColor: const Color(0xFFFFD700),
+            onTap: () => _onSave(reelId, isSaved),
+            iconSize: 24,
+            textSize: 10,
+            spacing: 3,
+          ),
+          const SizedBox(height: 12),
+          AppInteractionButton(
+            icon: Icons.reply,
+            count: _formatCount(_asInt(reel['shares'])),
+            onTap: () => _onShare(reelId, reel),
+            iconSize: 24,
+            textSize: 10,
+            spacing: 3,
+          ),
+          const SizedBox(height: 12),
+          AppInteractionButton(
+            icon: Icons.more_horiz,
+            count: '',
+            onTap: () => _onMoreOptions(reelId, reel),
+            iconSize: 24,
           ),
         ],
       ),
