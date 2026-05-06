@@ -141,6 +141,9 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       vsync: this,
       duration: const Duration(milliseconds: 260),
     );
+    _followingStoriesCollapse.addListener(() {
+      if (mounted) setState(() {});
+    });
     _loadReels();
   }
 
@@ -378,7 +381,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   @override
   void didPopNext() {
     if (_isRouteVisible && mounted) return;
-    if (mounted) setState(() => _isRouteVisible = true);
+    if (mounted) {
+      setState(() => _isRouteVisible = true);
+      // Refresh follow/story state after returning from profile/search screens.
+      _loadReels();
+    }
   }
 
   @override
@@ -590,6 +597,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       currentTab = tab;
       _currentIndex = 0;
     });
+    if (tab == HomeTab.following) {
+      // Ensure "Following" tab reflects latest follows immediately.
+      _loadReels();
+    }
     // Following starts expanded; first upward swipe collapses story strip.
     _followingStoriesCollapse.value = 0;
     if (tab != HomeTab.vr) {
@@ -658,11 +669,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               ),
             _buildHeader(),
             if (isFollowing)
-              _buildStoryRow(
-                topOffset: animatedStoriesTop,
-                opacity: 1 - (0.9 * collapseT),
-                ignorePointer: collapseT > 0.95,
-              ),
+              if (collapseT < 0.999)
+                _buildStoryRow(
+                  topOffset: animatedStoriesTop,
+                  opacity: 1 - collapseT,
+                  ignorePointer: collapseT > 0.95,
+                ),
             if (!isVrTab) ...[
               _buildInteractionButtons(),
               _buildBottomUserInfo(),

@@ -99,6 +99,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/videos/splash.mp4
     - assets/BrandLogo/
     - assets/BottomNavBar/
     - assets/vyooO_icons/

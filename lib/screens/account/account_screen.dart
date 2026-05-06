@@ -7,6 +7,7 @@ import '../../features/subscription/subscription_screen.dart';
 import 'blocked_users_screen.dart';
 import 'change_password_screen.dart';
 import 'delete_account_screen.dart';
+import '../profile/personal_information_screen.dart';
 import 'two_factor_screen.dart';
 import 'verification_request_screen.dart';
 
@@ -55,6 +56,17 @@ class AccountScreen extends StatelessWidget {
                       ),
                       child: Column(
                         children: [
+                          _AccountRow(
+                            label: 'Personal Information',
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const PersonalInformationScreen(),
+                                ),
+                              );
+                            },
+                          ),
+                          _divider(),
                           _AccountRow(
                             label: 'Change Password',
                             onTap: () {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:firebase_app_check/firebase_app_check.dart';
@@ -7,6 +8,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:video_player/video_player.dart';
 
 import 'core/config/app_config.dart';
 import 'core/navigation/app_keys.dart';
@@ -133,8 +135,80 @@ class VyoooApp extends StatelessWidget {
       scaffoldMessengerKey: appScaffoldMessengerKey,
       navigatorObservers: [appRouteObserver],
       home: firebaseInitialized
-          ? const AuthWrapper()
+          ? const _SplashVideoScreen()
           : const _FirebaseInitErrorScreen(),
+    );
+  }
+}
+
+class _SplashVideoScreen extends StatefulWidget {
+  const _SplashVideoScreen();
+
+  @override
+  State<_SplashVideoScreen> createState() => _SplashVideoScreenState();
+}
+
+class _SplashVideoScreenState extends State<_SplashVideoScreen> {
+  late final VideoPlayerController _controller;
+  Timer? _navigationTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = VideoPlayerController.asset('assets/videos/splash.mp4');
+    _initializeVideo();
+    _navigationTimer = Timer(const Duration(seconds: 3), _goToNextScreen);
+  }
+
+  Future<void> _initializeVideo() async {
+    try {
+      await _controller.initialize();
+      await _controller.setLooping(true);
+      await _controller.play();
+      if (mounted) setState(() {});
+    } catch (e, st) {
+      debugPrint('Splash video failed to initialize: $e');
+      debugPrint(st.toString());
+    }
+  }
+
+  void _goToNextScreen() {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder<void>(
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            const AuthWrapper(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 350),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _navigationTimer?.cancel();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: _controller.value.isInitialized
+          ? SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.cover,
+                child: SizedBox(
+                  width: _controller.value.size.width,
+                  height: _controller.value.size.height,
+                  child: VideoPlayer(_controller),
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
     );
   }
 }

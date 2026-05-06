@@ -16,7 +16,7 @@ class AppUserModel {
     this.emailOtpVerified = true,
     this.isVerified = false,
     this.verificationStatus = 'none',
-    this.accountType = 'personal',
+    this.accountType = 'private',
     this.vipVerified = false,
     this.orgProfileCompleted = false,
     this.organizationDetails = const {},
@@ -102,7 +102,7 @@ class AppUserModel {
       emailOtpVerified: json['emailOtpVerified'] as bool? ?? true,
       isVerified: json['isVerified'] as bool? ?? false,
       verificationStatus: json['verificationStatus'] as String? ?? 'none',
-      accountType: json['accountType'] as String? ?? 'personal',
+      accountType: json['accountType'] as String? ?? 'private',
       vipVerified: json['vipVerified'] as bool? ?? false,
       orgProfileCompleted: json['orgProfileCompleted'] as bool? ?? false,
       organizationDetails: json['organizationDetails'] is Map<String, dynamic>

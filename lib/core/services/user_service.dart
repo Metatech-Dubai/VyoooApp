@@ -67,7 +67,7 @@ class UserService {
         'emailOtpVerified': emailOtpVerified,
         'isVerified': false,
         'verificationStatus': 'none',
-        'accountType': 'personal',
+        'accountType': 'private',
         'vipVerified': false,
         'orgProfileCompleted': false,
         'organizationDetails': <String, dynamic>{},
@@ -113,6 +113,7 @@ class UserService {
   /// Updates user profile fields. Uses set with merge so the doc is created if it doesn't exist yet.
   Future<void> updateUserProfile({
     required String uid,
+    String? email,
     String? displayName,
     String? username,
     String? bio,
@@ -128,6 +129,12 @@ class UserService {
   }) async {
     try {
       final data = <String, dynamic>{};
+      if (email != null) {
+        final normalizedEmail = email.trim().toLowerCase();
+        if (normalizedEmail.isNotEmpty) {
+          data['email'] = normalizedEmail;
+        }
+      }
       if (displayName != null) {
         data['displayName'] = displayName.trim();
       }

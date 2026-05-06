@@ -13,7 +13,7 @@ import '../../services/username_validation.dart';
 import '../onboarding/organization_details_screen.dart';
 import '../onboarding/select_dob_screen.dart';
 
-enum _OnboardingAccountType { personal, business, government }
+enum _OnboardingAccountType { private, public, business, government }
 
 class CreateUsernameScreen extends StatefulWidget {
   const CreateUsernameScreen({super.key, this.usernameService});
@@ -517,7 +517,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       setState(() => _isSubmitting = false);
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => selectedType == _OnboardingAccountType.personal
+          builder: (_) =>
+              (selectedType == _OnboardingAccountType.private ||
+                  selectedType == _OnboardingAccountType.public)
               ? const SelectDobScreen()
               : OrganizationDetailsScreen(accountType: selectedType.name),
         ),
@@ -551,9 +553,12 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         title: const Text('Select account type'),
         actions: [
           CupertinoActionSheetAction(
-            onPressed: () =>
-                Navigator.of(ctx).pop(_OnboardingAccountType.personal),
-            child: const Text('Personal account'),
+            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.private),
+            child: const Text('Private account'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.public),
+            child: const Text('Public account'),
           ),
           CupertinoActionSheetAction(
             onPressed: () =>
@@ -583,8 +588,12 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         title: const Text('Select account type'),
         children: [
           SimpleDialogOption(
-            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.personal),
-            child: const Text('Personal account'),
+            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.private),
+            child: const Text('Private account'),
+          ),
+          SimpleDialogOption(
+            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.public),
+            child: const Text('Public account'),
           ),
           SimpleDialogOption(
             onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.business),
