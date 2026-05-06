@@ -6,6 +6,7 @@ import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/story_service.dart';
 import '../comments/widgets/comments_bottom_sheet.dart';
+import 'story_upload_screen.dart';
 
 /// Full-screen story viewer with image/video, like, comment, delete, highlights.
 class StoryViewerScreen extends StatefulWidget {
@@ -392,6 +393,15 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     );
   }
 
+  Future<void> _openAddAnotherStoryFlow() async {
+    final posted = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const StoryUploadScreen()),
+    );
+    if (posted != true || !mounted) return;
+    widget.onStoriesModified?.call();
+    Navigator.of(context).pop();
+  }
+
   void _onMoreTap() {
     if (!_isOwnStory) return;
     showModalBottomSheet<void>(
@@ -404,6 +414,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            ListTile(
+              leading: const Icon(Icons.add_circle_outline, color: Colors.white),
+              title: const Text(
+                'Add another story',
+                style: TextStyle(color: Colors.white),
+              ),
+              onTap: () {
+                Navigator.pop(ctx);
+                _openAddAnotherStoryFlow();
+              },
+            ),
             ListTile(
               leading: const Icon(Icons.collections_bookmark_outlined,
                   color: Colors.white),
