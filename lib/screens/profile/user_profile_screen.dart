@@ -1637,8 +1637,7 @@ class _UserProfileReelFeedScreenState
     final reelIds = widget.reels
         .map((r) => (r['id'] as String? ?? '').trim())
         .where((id) => id.isNotEmpty)
-        .toSet()
-        .toList(growable: false);
+        .toSet();
     if (reelIds.isEmpty) return;
     final likedIds = await _reelsController.getLikedReelIds(reelIds);
     final savedIds = await _reelsController.getSavedReelIds(reelIds);
@@ -1698,8 +1697,12 @@ class _UserProfileReelFeedScreenState
     showShareBottomSheet(
       context,
       reelId: reelId,
-      mediaUrl: _asString(reel['videoUrl']),
+      thumbnailUrl: _UserProfileScreenState._thumbnailFromReel(reel),
+      authorName: _asString(reel['username']).isEmpty
+          ? widget.reels[_currentIndex]['username']?.toString()
+          : _asString(reel['username']),
       onShareViaNative: () => _reelsController.shareReel(reelId: reelId),
+      onCopyLink: () {},
     );
   }
 
