@@ -22,7 +22,9 @@ import '../../features/subscription/subscription_screen.dart';
 /// Main app shell: IndexedStack (0 Home, 1 Search, 2 placeholder, 3 Notifications, 4 Profile) + single bottom nav.
 /// Plus (index 2): subscribers → push Upload screen; standard users → push Membership screen.
 class MainNavWrapper extends StatefulWidget {
-  const MainNavWrapper({super.key});
+  const MainNavWrapper({super.key, this.initialIndex});
+
+  final int? initialIndex;
 
   @override
   State<MainNavWrapper> createState() => _MainNavWrapperState();
@@ -41,6 +43,11 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
   @override
   void initState() {
     super.initState();
+    if (widget.initialIndex != null) {
+      final safe = widget.initialIndex!.clamp(0, 4);
+      _currentIndex = safe;
+      _lastSelectedIndex = safe;
+    }
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {

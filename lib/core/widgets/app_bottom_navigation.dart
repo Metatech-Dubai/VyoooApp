@@ -196,6 +196,7 @@ class AppBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
     return Container(
       decoration: BoxDecoration(
         gradient: const LinearGradient(
@@ -219,7 +220,7 @@ class AppBottomNavigation extends StatelessWidget {
       child: ClipRRect(
         child: SafeArea(
           top: false,
-          minimum: const EdgeInsets.only(bottom: 4),
+          minimum: EdgeInsets.only(bottom: isIOS ? 4 : 0),
           child: SizedBox(
             height: 79,
             child: Row(

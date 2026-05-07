@@ -27,6 +27,7 @@ import '../../features/story/story_viewer_screen.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/services/live_stream_service.dart';
 import '../content/live_stream_route.dart';
+import '../content/post_feed_screen.dart';
 import '../content/vr_detail_screen.dart';
 import '../music/music_library_screen.dart';
 import 'edit_profile_screen.dart';
@@ -1089,9 +1090,17 @@ class _ProfileScreenState extends State<ProfileScreen>
                   return GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => _ProfileReelFeedScreen(
-                          reels: savedReels,
-                          initialIndex: index,
+                        builder: (_) => PostFeedScreen(
+                          payload: PostFeedPayload(
+                            posts: savedReels,
+                            initialIndex: index,
+                            creatorName: (reel['username'] as String? ?? '').trim().isNotEmpty
+                                ? (reel['username'] as String).trim()
+                                : 'Profile User',
+                            creatorHandle: '@${((reel['username'] as String?) ?? 'profile').replaceAll('@', '')}',
+                            avatarUrl: (reel['avatarUrl'] as String? ?? '').trim(),
+                            isVerified: reel['isVerified'] == true,
+                          ),
                         ),
                       ),
                     ),
@@ -1304,12 +1313,28 @@ class _ProfileScreenState extends State<ProfileScreen>
                   final mediaType = ((reel['mediaType'] as String?) ?? '')
                       .toLowerCase();
                   final isVideo = mediaType != 'image';
+                  final username = (reel['username'] as String? ?? '').trim();
+                  final avatarUrl = (reel['avatarUrl'] as String? ?? '').trim();
+                  final handle = username.isNotEmpty
+                      ? '@${username.replaceAll('@', '')}'
+                      : '@profile';
+                  final isVerified = reel['isVerified'] == true;
                   return GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => _ProfileReelFeedScreen(
-                          reels: posts,
-                          initialIndex: index,
+                        builder: (_) => PostFeedScreen(
+                          payload: PostFeedPayload(
+                            posts: posts,
+                            initialIndex: index,
+                            creatorName: username.isNotEmpty
+                                ? username
+                                : 'Profile User',
+                            creatorHandle: handle,
+                            avatarUrl: avatarUrl.isNotEmpty
+                                ? avatarUrl
+                                : '',
+                            isVerified: isVerified,
+                          ),
                         ),
                       ),
                     ),

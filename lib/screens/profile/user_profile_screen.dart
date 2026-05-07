@@ -28,6 +28,7 @@ import '../../features/reel/widgets/not_interested_sheet.dart';
 import '../../features/reel/widgets/report_sheet.dart';
 import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../content/live_stream_route.dart';
+import '../content/post_feed_screen.dart';
 import '../content/vr_detail_screen.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../features/reel/widgets/block_user_sheet.dart';
@@ -888,12 +889,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   final mediaType = ((reel['mediaType'] as String?) ?? '')
                       .toLowerCase();
                   final isVideo = mediaType != 'image';
+                  final username = (reel['username'] as String? ?? '').trim();
+                  final avatarUrl = (reel['avatarUrl'] as String? ?? '').trim();
+                  final creatorName = username.isNotEmpty
+                      ? username
+                      : widget.payload.displayName;
+                  final handle = username.isNotEmpty
+                      ? '@${username.replaceAll('@', '')}'
+                      : '@${widget.payload.username.replaceAll('@', '')}';
+                  final isVerified = reel['isVerified'] == true ||
+                      _liveIsVerified == true ||
+                      widget.payload.isVerified;
                   return GestureDetector(
                     onTap: () => Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => _UserProfileReelFeedScreen(
-                          reels: posts,
-                          initialIndex: index,
+                        builder: (_) => PostFeedScreen(
+                          payload: PostFeedPayload(
+                            posts: posts,
+                            initialIndex: index,
+                            creatorName: creatorName,
+                            creatorHandle: handle,
+                            avatarUrl: avatarUrl.isNotEmpty
+                                ? avatarUrl
+                                : widget.payload.avatarUrl,
+                            isVerified: isVerified,
+                          ),
                         ),
                       ),
                     ),
