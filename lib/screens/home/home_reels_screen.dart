@@ -34,6 +34,7 @@ import '../../features/reel/widgets/why_seeing_this_sheet.dart';
 import '../../features/share/widgets/share_bottom_sheet.dart';
 import '../../features/vr/vr_screen.dart';
 import '../profile/user_profile_screen.dart';
+import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
 
 enum HomeTab { trending, vr, following, forYou }
@@ -629,7 +630,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         lerpDouble(followingStoriesTop, storiesCollapsedTop, collapseT) ??
         followingStoriesTop;
     final animatedFeedTop =
-        lerpDouble(followingFeedTop, MediaQuery.paddingOf(context).top + 86, collapseT) ??
+        lerpDouble(
+          followingFeedTop,
+          MediaQuery.paddingOf(context).top + 86,
+          collapseT,
+        ) ??
         followingFeedTop;
 
     return Scaffold(
@@ -1386,11 +1391,12 @@ class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              caption,
-              maxLines: _expanded ? null : 2,
-              overflow: TextOverflow.clip,
+            CaptionWithHashtags(
+              text: caption,
               style: _captionStyle,
+              hashtagColor: AppColors.brandPink,
+              maxLines: _expanded ? null : 2,
+              overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
             ),
             if (hasOverflow && !_expanded) ...[
               const SizedBox(height: 6),

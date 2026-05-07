@@ -1,7 +1,9 @@
 import 'dart:math' show min;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
+import '../utils/hashtag_utils.dart';
 import '../utils/video_upload_policy.dart';
 import 'auth_service.dart';
 import 'pexels_feed_service.dart';
@@ -126,6 +128,88 @@ class ReelsService {
     }
   }
 
+  /// Reels whose structured [tags] array or [caption] references [rawTag].
+  ///
+  /// Uses Firestore [array-contains] on normalized tags, then merges a bounded
+  /// client scan of trending / for-you reels so older docs without [tags] still match.
+  Future<List<Map<String, dynamic>>> getReelsByHashtag(
+    String rawTag, {
+    int limit = 60,
+  }) async {
+    final tag = HashtagUtils.normalizeForQuery(rawTag);
+    if (tag.isEmpty) return [];
+
+    final merged = <String, Map<String, dynamic>>{};
+
+    void takePlayable(Map<String, dynamic> r) {
+      final id = (r['id'] as String?)?.trim() ?? '';
+      if (id.isEmpty || merged.containsKey(id)) return;
+      if (!_isVisibleToCurrentUser(r) || !_isPlayableReel(r)) return;
+      if (!HashtagUtils.reelMapMatchesHashtag(r, tag)) return;
+      merged[id] = r;
+    }
+
+    try {
+      final snap = await _firestore
+          .collection(_reelsCollection)
+          .where('tags', arrayContains: tag)
+          .limit(limit)
+          .get();
+      for (final d in snap.docs) {
+        takePlayable(_docToReelMap(d));
+        if (merged.length >= limit) {
+          return _sortReelsByCreatedAtDesc(
+            merged.values.toList(),
+          ).take(limit).toList(growable: false);
+        }
+      }
+    } catch (e, st) {
+      debugPrint('getReelsByHashtag arrayContains failed: $e');
+      debugPrint('$st');
+    }
+
+    if (merged.length < limit) {
+      try {
+        final trending = await getReelsTrending(limit: 100);
+        for (final r in trending) {
+          takePlayable(r);
+          if (merged.length >= limit) break;
+        }
+      } catch (e, st) {
+        debugPrint('getReelsByHashtag trending supplement failed: $e');
+        debugPrint('$st');
+      }
+    }
+
+    if (merged.length < limit) {
+      try {
+        final fy = await getReelsForYou(limit: 100);
+        for (final r in fy) {
+          takePlayable(r);
+          if (merged.length >= limit) break;
+        }
+      } catch (e, st) {
+        debugPrint('getReelsByHashtag forYou supplement failed: $e');
+        debugPrint('$st');
+      }
+    }
+
+    return _sortReelsByCreatedAtDesc(
+      merged.values.toList(),
+    ).take(limit).toList(growable: false);
+  }
+
+  List<Map<String, dynamic>> _sortReelsByCreatedAtDesc(
+    List<Map<String, dynamic>> list,
+  ) {
+    list.sort((a, b) {
+      final aTs = (a['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      final bTs = (b['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      return bTs.compareTo(aTs);
+    });
+    return list;
+  }
+
   /// Fetch a single reel by document id.
   Future<Map<String, dynamic>?> getReelById(String reelId) async {
     final id = reelId.trim();
@@ -146,7 +230,9 @@ class ReelsService {
   /// Admin helper: reels that require manual moderation review.
   ///
   /// Returns newest first and does not apply feed visibility filters.
-  Future<List<Map<String, dynamic>>> getReelsNeedingReview({int limit = 50}) async {
+  Future<List<Map<String, dynamic>>> getReelsNeedingReview({
+    int limit = 50,
+  }) async {
     try {
       final q = await _firestore
           .collection(_reelsCollection)
@@ -186,7 +272,8 @@ class ReelsService {
   }) async {
     if (videoIds.isEmpty) return 0;
     final uid = AuthService().currentUser?.uid ?? '';
-    final username = AuthService().currentUser?.email?.split('@').first ?? 'Vyooo';
+    final username =
+        AuthService().currentUser?.email?.split('@').first ?? 'Vyooo';
     int added = 0;
     for (var i = 0; i < videoIds.length; i++) {
       final id = videoIds[i].trim();
@@ -250,15 +337,19 @@ class ReelsService {
     final mediaType = _resolveMediaType(data);
     if (mediaType == 'image') {
       final imageUrl = ((data['imageUrl'] as String?) ?? '').trim();
-      if (imageUrl.isNotEmpty) return Uri.tryParse(imageUrl)?.isAbsolute == true;
+      if (imageUrl.isNotEmpty)
+        return Uri.tryParse(imageUrl)?.isAbsolute == true;
       final thumbnailUrl = ((data['thumbnailUrl'] as String?) ?? '').trim();
-      return thumbnailUrl.isNotEmpty && Uri.tryParse(thumbnailUrl)?.isAbsolute == true;
+      return thumbnailUrl.isNotEmpty &&
+          Uri.tryParse(thumbnailUrl)?.isAbsolute == true;
     }
     final url = (data['videoUrl'] as String?) ?? '';
     return VideoUploadPolicy.isPlayableUrl(url);
   }
 
-  Map<String, dynamic> _docToReelMap(QueryDocumentSnapshot<Map<String, dynamic>> d) {
+  Map<String, dynamic> _docToReelMap(
+    QueryDocumentSnapshot<Map<String, dynamic>> d,
+  ) {
     return _snapshotDataToReelMap(d.id, d.data());
   }
 
@@ -267,6 +358,11 @@ class ReelsService {
     Map<String, dynamic> data,
   ) {
     final mediaType = _resolveMediaType(data);
+    final rawTags = data['tags'];
+    final tagsList = rawTags is List
+        ? rawTags.map((e) => e.toString()).toList(growable: false)
+        : <String>[];
+
     return {
       'id': id,
       'mediaType': mediaType,
@@ -276,10 +372,15 @@ class ReelsService {
       'username': data['username'] ?? '',
       'handle': data['handle'] ?? '',
       'caption': data['caption'] ?? '',
+      'tags': tagsList,
+      'isVR': data['isVR'] == true,
       'likes': (data['likes'] as num?)?.toInt() ?? 0,
       'comments': (data['comments'] as num?)?.toInt() ?? 0,
       'saves': (data['saves'] as num?)?.toInt() ?? 0,
-      'views': (data['views'] as num?)?.toInt() ?? (data['viewsCount'] as num?)?.toInt() ?? 0,
+      'views':
+          (data['views'] as num?)?.toInt() ??
+          (data['viewsCount'] as num?)?.toInt() ??
+          0,
       'shares': (data['shares'] as num?)?.toInt() ?? 0,
       'avatarUrl': data['profileImage'] ?? data['avatarUrl'] ?? '',
       'userId': data['userId'] ?? '',

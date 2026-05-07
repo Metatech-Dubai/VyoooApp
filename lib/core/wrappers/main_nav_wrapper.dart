@@ -9,6 +9,7 @@ import '../services/user_service.dart';
 import '../subscription/subscription_controller.dart';
 import '../widgets/app_bottom_navigation.dart';
 import '../../screens/home/home_reels_screen.dart';
+import '../navigation/search_tab_launcher.dart';
 import '../../screens/search/search_screen.dart';
 import '../../screens/upload/upload_screen.dart';
 import '../../features/chat/screens/chat_inbox_screen.dart';
@@ -39,6 +40,9 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
   final UserService _userService = UserService();
   StreamSubscription<String>? _reelDeepLinkSub;
   StreamSubscription<String>? _profileDeepLinkSub;
+  final GlobalKey<SearchScreenState> _searchScreenKey =
+      GlobalKey<SearchScreenState>();
+  late final SearchTabLaunchCallback _searchTabLaunchHandler;
 
   @override
   void initState() {
@@ -83,10 +87,27 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
       if (!mounted) return;
       _openProfileFromDeepLink(profileRef);
     });
+
+    _searchTabLaunchHandler = (String query, int categoryTabIndex) {
+      if (!mounted) return;
+      setState(() {
+        _currentIndex = 1;
+        _lastSelectedIndex = 1;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _searchScreenKey.currentState?.applyExternalQuery(
+          query,
+          categoryTabIndex,
+        );
+      });
+    };
+    SearchTabLauncher.instance.register(_searchTabLaunchHandler);
   }
 
   @override
   void dispose() {
+    SearchTabLauncher.instance.unregister(_searchTabLaunchHandler);
     _reelDeepLinkSub?.cancel();
     _profileDeepLinkSub?.cancel();
     PresenceService.instance.stop();
@@ -185,7 +206,7 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
         deepLinkReelId: _deepLinkedReelId,
         deepLinkNonce: _deepLinkNonce,
       ),
-      const SearchScreen(),
+      SearchScreen(key: _searchScreenKey),
       const Placeholder(), // Plus opens Upload or Membership via push; no tab content.
       const ChatInboxScreen(),
       const ProfileScreen(),

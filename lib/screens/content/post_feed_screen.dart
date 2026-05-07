@@ -14,6 +14,7 @@ import '../../features/reel/widgets/not_interested_sheet.dart';
 import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../../features/reel/widgets/report_sheet.dart';
 import '../../features/share/widgets/share_bottom_sheet.dart';
+import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
 
 /// Payload for opening the post feed (e.g. from profile post grid).
@@ -25,6 +26,7 @@ class PostFeedPayload {
     this.creatorHandle = '@mattrife_x',
     this.avatarUrl = '',
     this.isVerified = true,
+    this.screenTitle = 'Posts',
   });
 
   final int initialIndex;
@@ -33,6 +35,7 @@ class PostFeedPayload {
   final String creatorHandle;
   final String avatarUrl;
   final bool isVerified;
+  final String screenTitle;
 }
 
 /// Full-screen posts feed: app bar "Posts", scrollable post cards (avatar, caption, media, like/comment/share/save).
@@ -70,7 +73,10 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
       return;
     }
     final safeStart = p.initialIndex.clamp(0, source.length - 1);
-    _orderedPosts = [...source.sublist(safeStart), ...source.sublist(0, safeStart)];
+    _orderedPosts = [
+      ...source.sublist(safeStart),
+      ...source.sublist(0, safeStart),
+    ];
     _warmInteractionState();
   }
 
@@ -234,7 +240,8 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
     showCommentsBottomSheet(
       context,
       reelId: reelId,
-      onCommentCountChanged: (delta) => _adjustPostStat(reelId, 'comments', delta),
+      onCommentCountChanged: (delta) =>
+          _adjustPostStat(reelId, 'comments', delta),
     );
   }
 
@@ -269,7 +276,9 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
       onDownload: () {},
       onReport: () => showReportSheet(
         context,
-        username: _asString(post['username']).isNotEmpty ? _asString(post['username']) : 'User',
+        username: _asString(post['username']).isNotEmpty
+            ? _asString(post['username'])
+            : 'User',
         avatarUrl: _asString(post['avatarUrl']),
         targetUserId: authorId.isEmpty ? null : authorId,
         isFollowing: false,
@@ -328,7 +337,9 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update caption. Please try again.')),
+        const SnackBar(
+          content: Text('Could not update caption. Please try again.'),
+        ),
       );
     }
   }
@@ -340,7 +351,9 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete post?'),
-        content: const Text('This will remove this post from your profile feed.'),
+        content: const Text(
+          'This will remove this post from your profile feed.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -366,7 +379,9 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete post. Please try again.')),
+        const SnackBar(
+          content: Text('Could not delete post. Please try again.'),
+        ),
       );
     }
   }
@@ -392,7 +407,10 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.deleteRed),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.deleteRed,
+              ),
               title: const Text(
                 'Delete post',
                 style: TextStyle(color: AppColors.deleteRed),
@@ -423,7 +441,9 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
                   ? Center(
                       child: Text(
                         'No posts found',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.7),
+                        ),
                       ),
                     )
                   : NotificationListener<ScrollNotification>(
@@ -479,22 +499,31 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
   }
 
   Widget _buildAppBar(BuildContext context) {
+    final title = (widget.payload?.screenTitle ?? 'Posts').trim();
     return Padding(
       padding: const EdgeInsets.fromLTRB(2, 4, AppSpacing.xs, 2),
       child: Row(
         children: [
           IconButton(
             onPressed: () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: Colors.white,
+              size: 22,
+            ),
             visualDensity: VisualDensity.compact,
           ),
           const SizedBox(width: AppSpacing.sm),
-          const Text(
-            'Posts',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: Text(
+              title.isEmpty ? 'Posts' : title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],
@@ -605,31 +634,15 @@ class _PostCard extends StatelessWidget {
     final caption = _asString(post['caption']).trim();
     if (caption.isEmpty) return const SizedBox.shrink();
     if (caption.length <= 95) {
-      return Text(
-        caption,
-        style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.33),
+      return CaptionWithHashtags(
+        text: caption,
         maxLines: 10,
         overflow: TextOverflow.ellipsis,
       );
     }
     final shortened = caption.substring(0, 92);
-    return Text.rich(
-      TextSpan(
-        children: [
-          TextSpan(
-            text: shortened,
-            style: const TextStyle(color: Colors.white, fontSize: 14, height: 1.33),
-          ),
-          TextSpan(
-            text: '...Read more',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
+    return CaptionWithHashtags(
+      text: '$shortened...Read more',
       maxLines: 2,
       overflow: TextOverflow.ellipsis,
     );
@@ -658,9 +671,15 @@ class _PostCard extends StatelessWidget {
               CircleAvatar(
                 radius: 19,
                 backgroundColor: Colors.white.withValues(alpha: 0.2),
-                backgroundImage: avatarUrl.isNotEmpty ? NetworkImage(avatarUrl) : null,
+                backgroundImage: avatarUrl.isNotEmpty
+                    ? NetworkImage(avatarUrl)
+                    : null,
                 child: avatarUrl.isEmpty
-                    ? const Icon(Icons.person_rounded, color: Colors.white, size: 18)
+                    ? const Icon(
+                        Icons.person_rounded,
+                        color: Colors.white,
+                        size: 18,
+                      )
                     : null,
               ),
               const SizedBox(width: AppSpacing.sm),
@@ -681,7 +700,11 @@ class _PostCard extends StatelessWidget {
                         ),
                         if (isVerified) ...[
                           const SizedBox(width: 6),
-                          const Icon(Icons.check_circle_rounded, size: 16, color: Colors.white),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            size: 16,
+                            color: Colors.white,
+                          ),
                         ],
                       ],
                     ),
@@ -692,13 +715,17 @@ class _PostCard extends StatelessWidget {
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 12.5,
                       ),
-                    )
+                    ),
                   ],
                 ),
               ),
               IconButton(
                 onPressed: onMore,
-                icon: Icon(Icons.more_horiz_rounded, color: Colors.white.withValues(alpha: 0.8), size: 24),
+                icon: Icon(
+                  Icons.more_horiz_rounded,
+                  color: Colors.white.withValues(alpha: 0.8),
+                  size: 24,
+                ),
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
               ),
@@ -715,7 +742,9 @@ class _PostCard extends StatelessWidget {
                 children: [
                   AspectRatio(
                     aspectRatio: 800 / 900,
-                    child: isVideoPost && _asString(post['videoUrl']).trim().isNotEmpty
+                    child:
+                        isVideoPost &&
+                            _asString(post['videoUrl']).trim().isNotEmpty
                         ? ValueListenableBuilder<int>(
                             valueListenable: activeIndex,
                             builder: (_, currentActive, _) => ReelItemWidget(
@@ -766,39 +795,59 @@ class _PostCard extends StatelessWidget {
               GestureDetector(
                 onTap: onLike,
                 child: Icon(
-                  isLiked ? Icons.favorite_rounded : Icons.favorite_outline_rounded,
-                  color: isLiked ? const Color(0xFFF2486A) : Colors.white.withValues(alpha: 0.9),
+                  isLiked
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_outline_rounded,
+                  color: isLiked
+                      ? const Color(0xFFF2486A)
+                      : Colors.white.withValues(alpha: 0.9),
                   size: 21,
                 ),
               ),
               const SizedBox(width: 4),
               Text(
                 _formatCount(_asInt(post['likes'])),
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12.5),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 12.5,
+                ),
               ),
               const SizedBox(width: AppSpacing.lg),
               GestureDetector(
                 onTap: onComment,
-                child: Icon(Icons.chat_bubble_outline_rounded, color: Colors.white.withValues(alpha: 0.9), size: 20),
+                child: Icon(
+                  Icons.chat_bubble_outline_rounded,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  size: 20,
+                ),
               ),
               const SizedBox(width: 4),
               Text(
                 '${_asInt(post['comments'])}',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontSize: 12.5),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 12.5,
+                ),
               ),
               const SizedBox(width: AppSpacing.md),
               GestureDetector(
                 onTap: onSave,
                 child: Icon(
                   isSaved ? Icons.star_rounded : Icons.star_outline_rounded,
-                  color: isSaved ? const Color(0xFFFFD700) : Colors.white.withValues(alpha: 0.9),
+                  color: isSaved
+                      ? const Color(0xFFFFD700)
+                      : Colors.white.withValues(alpha: 0.9),
                   size: 20,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               GestureDetector(
                 onTap: onShare,
-                child: Icon(Icons.reply_rounded, color: Colors.white.withValues(alpha: 0.9), size: 20),
+                child: Icon(
+                  Icons.reply_rounded,
+                  color: Colors.white.withValues(alpha: 0.9),
+                  size: 20,
+                ),
               ),
             ],
           ),

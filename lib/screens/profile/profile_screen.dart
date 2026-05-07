@@ -6,6 +6,7 @@ import 'package:share_plus/share_plus.dart';
 
 import '../../core/config/deep_link_config.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
@@ -774,8 +775,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                                       fontSize: 13,
                                     ),
                                   ),
-                                  backgroundColor:
-                                      Colors.white.withValues(alpha: 0.12),
+                                  backgroundColor: Colors.white.withValues(
+                                    alpha: 0.12,
+                                  ),
                                   side: BorderSide.none,
                                   onPressed: () {
                                     Navigator.of(context).push(
@@ -1094,11 +1096,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                           payload: PostFeedPayload(
                             posts: savedReels,
                             initialIndex: index,
-                            creatorName: (reel['username'] as String? ?? '').trim().isNotEmpty
+                            creatorName:
+                                (reel['username'] as String? ?? '')
+                                    .trim()
+                                    .isNotEmpty
                                 ? (reel['username'] as String).trim()
                                 : 'Profile User',
-                            creatorHandle: '@${((reel['username'] as String?) ?? 'profile').replaceAll('@', '')}',
-                            avatarUrl: (reel['avatarUrl'] as String? ?? '').trim(),
+                            creatorHandle:
+                                '@${((reel['username'] as String?) ?? 'profile').replaceAll('@', '')}',
+                            avatarUrl: (reel['avatarUrl'] as String? ?? '')
+                                .trim(),
                             isVerified: reel['isVerified'] == true,
                           ),
                         ),
@@ -1330,9 +1337,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                 ? username
                                 : 'Profile User',
                             creatorHandle: handle,
-                            avatarUrl: avatarUrl.isNotEmpty
-                                ? avatarUrl
-                                : '',
+                            avatarUrl: avatarUrl.isNotEmpty ? avatarUrl : '',
                             isVerified: isVerified,
                           ),
                         ),
@@ -1511,8 +1516,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                 vertical: AppSpacing.sm,
               ),
               itemCount: streams.length,
-              separatorBuilder: (_, _) =>
-                  const SizedBox(height: AppSpacing.md),
+              separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
               itemBuilder: (context, index) {
                 final stream = streams[index];
                 return SizedBox(
@@ -2304,9 +2308,7 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
         content: TextField(
           controller: controller,
           maxLines: 4,
-          decoration: const InputDecoration(
-            hintText: 'Write a caption',
-          ),
+          decoration: const InputDecoration(hintText: 'Write a caption'),
         ),
         actions: [
           TextButton(
@@ -2337,7 +2339,9 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not update caption. Please try again.')),
+        const SnackBar(
+          content: Text('Could not update caption. Please try again.'),
+        ),
       );
     }
   }
@@ -2349,7 +2353,9 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Delete post?'),
-        content: const Text('This will remove this post from your profile feed.'),
+        content: const Text(
+          'This will remove this post from your profile feed.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -2383,7 +2389,9 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not delete post. Please try again.')),
+        const SnackBar(
+          content: Text('Could not delete post. Please try again.'),
+        ),
       );
     }
   }
@@ -2398,14 +2406,20 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
           children: [
             ListTile(
               leading: const Icon(Icons.edit_rounded, color: Colors.white),
-              title: const Text('Edit caption', style: TextStyle(color: Colors.white)),
+              title: const Text(
+                'Edit caption',
+                style: TextStyle(color: Colors.white),
+              ),
               onTap: () {
                 Navigator.of(ctx).pop();
                 _editCaption(reel);
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline_rounded, color: AppColors.deleteRed),
+              leading: const Icon(
+                Icons.delete_outline_rounded,
+                color: AppColors.deleteRed,
+              ),
               title: const Text(
                 'Delete post',
                 style: TextStyle(color: AppColors.deleteRed),
@@ -2429,7 +2443,9 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final currentReel = _loopedReels.isEmpty ? null : _loopedReels[_currentIndex];
+    final currentReel = _loopedReels.isEmpty
+        ? null
+        : _loopedReels[_currentIndex];
     final avatarUrl = ((currentReel?['avatarUrl'] as String?) ?? '').trim();
     final username = ((currentReel?['username'] as String?) ?? '').trim();
     final handle = ((currentReel?['handle'] as String?) ?? '').trim();
@@ -2527,7 +2543,10 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
                 const Spacer(),
                 if (currentReel != null)
                   IconButton(
-                    icon: const Icon(Icons.more_horiz_rounded, color: Colors.white),
+                    icon: const Icon(
+                      Icons.more_horiz_rounded,
+                      color: Colors.white,
+                    ),
                     onPressed: () => _openPostOptions(currentReel),
                   ),
               ],
@@ -2584,7 +2603,11 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
                             ? NetworkImage(avatarUrl)
                             : null,
                         child: avatarUrl.isEmpty
-                            ? const Icon(Icons.person, color: Colors.white70, size: 18)
+                            ? const Icon(
+                                Icons.person,
+                                color: Colors.white70,
+                                size: 18,
+                              )
                             : null,
                       ),
                       const SizedBox(width: 10),
@@ -2601,7 +2624,9 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
                               ),
                             ),
                             Text(
-                              handle.isNotEmpty ? normalizedHandle : '@myprofile',
+                              handle.isNotEmpty
+                                  ? normalizedHandle
+                                  : '@myprofile',
                               style: TextStyle(
                                 color: Colors.white.withValues(alpha: 0.85),
                                 fontSize: 14,
@@ -2613,16 +2638,29 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Text(
-                    caption.isNotEmpty ? caption : 'No caption',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.95),
-                      fontSize: 26,
-                      height: 1.05,
+                  if (caption.isNotEmpty)
+                    CaptionWithHashtags(
+                      text: caption,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 26,
+                        height: 1.05,
+                      ),
+                      hashtagColor: AppColors.brandPink,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    )
+                  else
+                    Text(
+                      'No caption',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 26,
+                        height: 1.05,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -2633,10 +2671,7 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
 }
 
 class _OverlayMetric extends StatelessWidget {
-  const _OverlayMetric({
-    required this.icon,
-    required this.value,
-  });
+  const _OverlayMetric({required this.icon, required this.value});
 
   final IconData icon;
   final String value;

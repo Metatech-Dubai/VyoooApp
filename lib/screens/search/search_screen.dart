@@ -15,9 +15,11 @@ import '../../core/utils/verification_badge.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/utils/hashtag_utils.dart';
 import '../../features/vr/vr_screen.dart';
 import '../../features/vr/vr_player_screen.dart';
 import '../content/live_stream_route.dart';
+import '../content/post_feed_screen.dart';
 import '../profile/user_profile_screen.dart';
 
 /// Search tab: search bar, Live/VR/Camera tabs, Ongoing Now & Recommended sections.
@@ -26,10 +28,10 @@ class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  SearchScreenState createState() => SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen>
+class SearchScreenState extends State<SearchScreen>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
@@ -58,8 +60,19 @@ class _SearchScreenState extends State<SearchScreen>
   List<String> _recentSearches = <String>[];
   List<_VRSearchItem> _vrSearchItems = <_VRSearchItem>[];
   bool _vrLoading = false;
+  final Map<String, Future<List<Map<String, dynamic>>>>
+  _hashtagPostSearchFutures = {};
 
-  static const List<String> _tabs = ['Live', 'VR', 'Users'];
+  Future<List<Map<String, dynamic>>> _futurePostsForQuery(
+    String normalizedQuery,
+  ) {
+    return _hashtagPostSearchFutures.putIfAbsent(
+      normalizedQuery,
+      () => _reelsService.getReelsByHashtag(normalizedQuery),
+    );
+  }
+
+  static const List<String> _tabs = ['Live', 'Posts', 'VR', 'Users'];
 
   @override
   void initState() {
@@ -81,6 +94,29 @@ class _SearchScreenState extends State<SearchScreen>
     _selectedTabIndex = _lastSelectedTabIndex;
     _loadUsers();
     _loadVrItems();
+  }
+
+  /// Called from [MainNavWrapper] when user taps a hashtag elsewhere.
+  void applyExternalQuery(String query, int categoryTabIndex) {
+    if (!mounted) return;
+    final trimmed = query.trim();
+    if (trimmed.isEmpty) return;
+    final normalized = HashtagUtils.normalizeForQuery(trimmed);
+    if (normalized.isNotEmpty) {
+      _hashtagPostSearchFutures.remove(normalized);
+    }
+    _lastSearchQuery = trimmed;
+    _searchController.text = trimmed;
+    _searchController.selection = TextSelection.collapsed(
+      offset: trimmed.length,
+    );
+    final safeTab = categoryTabIndex.clamp(0, _tabs.length - 1);
+    setState(() {
+      _selectedTabIndex = safeTab;
+      _lastSelectedTabIndex = safeTab;
+      _isSearchActive = false;
+    });
+    _searchFocusNode.unfocus();
   }
 
   void _bindMyFollowingRealtime() {
@@ -124,6 +160,14 @@ class _SearchScreenState extends State<SearchScreen>
             final avatar = (r['avatarUrl']?.toString() ?? '').trim();
             final video = (r['videoUrl']?.toString() ?? '').trim();
             final views = (r['views'] as num?)?.toInt() ?? 0;
+            final rawTags = r['tags'];
+            final tagList = rawTags is List
+                ? rawTags
+                      .map((e) => HashtagUtils.normalizeForQuery(e.toString()))
+                      .where((t) => t.isNotEmpty)
+                      .toList()
+                : <String>[];
+            final caption = (r['caption']?.toString() ?? '').trim();
             return _VRSearchItem(
               thumbnailUrl: thumb.isNotEmpty ? thumb : avatar,
               creatorName: username.isNotEmpty ? username : 'Creator',
@@ -132,6 +176,8 @@ class _SearchScreenState extends State<SearchScreen>
               viewerCount: views,
               isVerified: (r['isVerified'] as bool?) ?? false,
               videoUrl: video.isNotEmpty ? video : null,
+              caption: caption,
+              normalizedTags: tagList,
             );
           })
           .where((item) => item.thumbnailUrl.isNotEmpty)
@@ -483,6 +529,39 @@ class _SearchScreenState extends State<SearchScreen>
     });
   }
 
+  /// While typing a query, show tabbed results. Empty query + focus shows recents;
+  /// empty + no focus shows the default explore layout.
+  Widget _buildMainSearchBody() {
+    final hasQuery = _searchController.text.trim().isNotEmpty;
+    if (hasQuery) return _buildSearchResultsView();
+    if (_isSearchActive) return _buildSearchActiveView();
+    return _buildSearchIdleView();
+  }
+
+  List<_VRSearchItem> get _filteredVrSearchItems {
+    final q = _normalizedQuery;
+    if (q.isEmpty) return _vrSearchItems;
+    final hashtagOnly = _isHashtagQuery;
+    return _vrSearchItems
+        .where((item) {
+          if (hashtagOnly) {
+            return HashtagUtils.matchesCaptionOrTags(
+              caption: item.caption,
+              tags: item.normalizedTags,
+              normalizedTag: q,
+            );
+          }
+          final name = item.creatorName.toLowerCase();
+          final handle = item.creatorHandle.toLowerCase();
+          final cap = item.caption.toLowerCase();
+          return name.contains(q) ||
+              handle.contains(q) ||
+              cap.contains(q) ||
+              item.normalizedTags.any((t) => t.contains(q));
+        })
+        .toList(growable: false);
+  }
+
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -496,13 +575,7 @@ class _SearchScreenState extends State<SearchScreen>
               showHashButton: !_isSearchActive,
             ),
             const SizedBox(height: 12),
-            Expanded(
-              child: _isSearchActive
-                  ? _buildSearchActiveView()
-                  : _searchController.text.trim().isEmpty
-                  ? _buildSearchIdleView()
-                  : _buildSearchResultsView(),
-            ),
+            Expanded(child: _buildMainSearchBody()),
           ],
         ),
       ),
@@ -519,6 +592,8 @@ class _SearchScreenState extends State<SearchScreen>
           child: _selectedTabIndex == 0
               ? _buildIdleLiveContent()
               : _selectedTabIndex == 1
+              ? _buildIdlePostsContent()
+              : _selectedTabIndex == 2
               ? _buildIdleVRContent()
               : _buildIdleUsersContent(),
         ),
@@ -544,6 +619,23 @@ class _SearchScreenState extends State<SearchScreen>
         const SizedBox(height: AppSpacing.xl),
         _buildSection('Explore More', _dynamicExploreItems, showViewAll: true),
       ],
+    );
+  }
+
+  Widget _buildIdlePostsContent() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Text(
+          'Use the search bar to find posts by hashtag or keyword. Tap the # button to start a hashtag search.',
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.65),
+            fontSize: 15,
+            height: 1.4,
+          ),
+        ),
+      ),
     );
   }
 
@@ -580,9 +672,9 @@ class _SearchScreenState extends State<SearchScreen>
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
-          itemCount: _vrSearchItems.length,
+          itemCount: _filteredVrSearchItems.length,
           itemBuilder: (context, index) =>
-              _VRSearchResultGridCard(item: _vrSearchItems[index]),
+              _VRSearchResultGridCard(item: _filteredVrSearchItems[index]),
         );
       },
     );
@@ -625,18 +717,18 @@ class _SearchScreenState extends State<SearchScreen>
             builder: (context) {
               final users = _filteredUsers;
               return ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: users.length,
-            separatorBuilder: (context, index) =>
-                const SizedBox(height: AppSpacing.sm),
-            itemBuilder: (context, index) => _UserSearchResultTile(
-              user: users[index],
-              isFollowBusy: _followInFlightIds.contains(users[index].uid),
-              onTap: () => _openUserProfile(users[index]),
-              onFollowTap: () => _toggleFollow(users[index]),
-            ),
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: users.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: AppSpacing.sm),
+                itemBuilder: (context, index) => _UserSearchResultTile(
+                  user: users[index],
+                  isFollowBusy: _followInFlightIds.contains(users[index].uid),
+                  onTap: () => _openUserProfile(users[index]),
+                  onFollowTap: () => _toggleFollow(users[index]),
+                ),
               );
             },
           ),
@@ -655,6 +747,8 @@ class _SearchScreenState extends State<SearchScreen>
           child: _selectedTabIndex == 0
               ? _buildLiveSearchResultsGrid()
               : _selectedTabIndex == 1
+              ? _buildPostsSearchResultsGrid()
+              : _selectedTabIndex == 2
               ? _buildVRSearchResultsGrid()
               : _buildUserSearchResultsList(),
         ),
@@ -694,6 +788,73 @@ class _SearchScreenState extends State<SearchScreen>
     );
   }
 
+  Widget _buildPostsSearchResultsGrid() {
+    final q = _normalizedQuery;
+    if (q.isEmpty) {
+      return Center(
+        child: Text(
+          'Enter a search to find posts',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.65),
+            fontSize: 14,
+          ),
+        ),
+      );
+    }
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _futurePostsForQuery(q),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.white54),
+          );
+        }
+        if (snapshot.hasError) {
+          return Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text(
+                'Could not load posts. Try again in a moment.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+              ),
+            ),
+          );
+        }
+        final posts = snapshot.data ?? const <Map<String, dynamic>>[];
+        if (posts.isEmpty) {
+          return Center(
+            child: Text(
+              _isHashtagQuery
+                  ? 'No posts for #$q yet'
+                  : 'No posts matching "$q"',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 14,
+              ),
+            ),
+          );
+        }
+        return GridView.builder(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: AppSpacing.xs,
+          ),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 2,
+            childAspectRatio: 0.65,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+          ),
+          itemCount: posts.length,
+          itemBuilder: (context, index) =>
+              _PostSearchGridCard(posts: posts, index: index),
+        );
+      },
+    );
+  }
+
   Widget _buildVRSearchResultsGrid() {
     return Consumer<SubscriptionController>(
       builder: (context, subscriptionController, _) {
@@ -705,7 +866,7 @@ class _SearchScreenState extends State<SearchScreen>
             child: CircularProgressIndicator(color: Colors.white54),
           );
         }
-        if (_vrSearchItems.isEmpty) {
+        if (_filteredVrSearchItems.isEmpty) {
           return const Center(
             child: Text(
               'No VR results found',
@@ -724,9 +885,9 @@ class _SearchScreenState extends State<SearchScreen>
             crossAxisSpacing: 12,
             mainAxisSpacing: 12,
           ),
-          itemCount: _vrSearchItems.length,
+          itemCount: _filteredVrSearchItems.length,
           itemBuilder: (context, index) =>
-              _VRSearchResultGridCard(item: _vrSearchItems[index]),
+              _VRSearchResultGridCard(item: _filteredVrSearchItems[index]),
         );
       },
     );
@@ -1305,6 +1466,144 @@ class _RecentSearchTile extends StatelessWidget {
   }
 }
 
+String _postSearchThumbnail(Map<String, dynamic> post) {
+  final mediaType = (post['mediaType']?.toString() ?? '').toLowerCase();
+  final image = (post['imageUrl']?.toString() ?? '').trim();
+  final thumb = (post['thumbnailUrl']?.toString() ?? '').trim();
+  final video = (post['videoUrl']?.toString() ?? '').trim();
+  if (mediaType == 'image') {
+    return image.isNotEmpty ? image : thumb;
+  }
+  if (thumb.isNotEmpty) return thumb;
+  if (image.isNotEmpty) return image;
+  if (video.isEmpty) return '';
+  try {
+    final uri = Uri.parse(video);
+    final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+    if (videoId.isEmpty) return '';
+    return 'https://videodelivery.net/$videoId/thumbnails/thumbnail.jpg';
+  } catch (_) {
+    return '';
+  }
+}
+
+class _PostSearchGridCard extends StatelessWidget {
+  const _PostSearchGridCard({required this.posts, required this.index});
+
+  final List<Map<String, dynamic>> posts;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    final post = posts[index];
+    final thumb = _postSearchThumbnail(post);
+    final name = (post['username']?.toString() ?? '').trim();
+    final handle = (post['handle']?.toString() ?? '').trim();
+    final displayHandle = handle.isNotEmpty
+        ? (handle.startsWith('@') ? handle : '@$handle')
+        : '@creator';
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PostFeedScreen(
+              payload: PostFeedPayload(
+                posts: posts,
+                initialIndex: index,
+                creatorName: name.isNotEmpty ? name : 'Creator',
+                creatorHandle: displayHandle,
+                avatarUrl: (post['avatarUrl']?.toString() ?? '').trim(),
+                isVerified: post['isVerified'] == true,
+              ),
+            ),
+          ),
+        );
+      },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(AppRadius.input),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            thumb.isNotEmpty
+                ? Image.network(
+                    thumb,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) =>
+                        Container(color: const Color(0xFF1A0020)),
+                  )
+                : Container(color: const Color(0xFF1A0020)),
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.2),
+                    Colors.transparent,
+                    Colors.black.withValues(alpha: 0.88),
+                  ],
+                  stops: const [0.0, 0.4, 1.0],
+                ),
+              ),
+            ),
+            Positioned(
+              left: AppSpacing.sm,
+              right: AppSpacing.sm,
+              bottom: AppSpacing.sm,
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Colors.grey.shade700,
+                    backgroundImage: () {
+                      final av = (post['avatarUrl']?.toString() ?? '').trim();
+                      if (Uri.tryParse(av)?.isAbsolute == true) {
+                        return NetworkImage(av);
+                      }
+                      return null;
+                    }(),
+                    onBackgroundImageError: (_, _) {},
+                  ),
+                  const SizedBox(width: AppSpacing.sm),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          name.isNotEmpty ? name : 'Creator',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        Text(
+                          displayHandle,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.65),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SearchResultGridCard extends StatelessWidget {
   const _SearchResultGridCard({required this.item, this.onTap});
 
@@ -1328,7 +1627,8 @@ class _SearchResultGridCard extends StatelessWidget {
             Image.network(
               item.thumbnailUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(color: const Color(0xFF1A0020)),
+              errorBuilder: (_, _, _) =>
+                  Container(color: const Color(0xFF1A0020)),
             ),
             Container(
               decoration: BoxDecoration(
@@ -1465,7 +1765,8 @@ class _VRSearchResultGridCard extends StatelessWidget {
             Image.network(
               item.thumbnailUrl,
               fit: BoxFit.cover,
-              errorBuilder: (_, _, _) => Container(color: const Color(0xFF1A0020)),
+              errorBuilder: (_, _, _) =>
+                  Container(color: const Color(0xFF1A0020)),
             ),
             Container(
               decoration: BoxDecoration(
@@ -1741,7 +2042,9 @@ class _UserSearchResultTile extends StatelessWidget {
                           height: 14,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                       : Text(
@@ -1756,8 +2059,8 @@ class _UserSearchResultTile extends StatelessWidget {
               ),
             ),
           ],
-          ),
         ),
+      ),
     );
   }
 }
@@ -1842,6 +2145,8 @@ class _VRSearchItem {
     this.viewerCount = 102,
     required this.isVerified,
     this.videoUrl,
+    this.caption = '',
+    this.normalizedTags = const [],
   });
   final String thumbnailUrl;
   final String creatorName;
@@ -1850,6 +2155,8 @@ class _VRSearchItem {
   final int viewerCount;
   final bool isVerified;
   final String? videoUrl;
+  final String caption;
+  final List<String> normalizedTags;
 }
 
 class _CategoryItem {
