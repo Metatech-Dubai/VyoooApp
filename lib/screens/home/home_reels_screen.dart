@@ -854,9 +854,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           child: Center(
             child: Image.network(
               imageUrl,
-              fit: BoxFit.cover,
-              width: double.infinity,
-              height: double.infinity,
+              fit: BoxFit.contain,
               errorBuilder: (context, error, stackTrace) {
                 return _buildMissingMediaPlaceholder(
                   'Failed to load image reel.',

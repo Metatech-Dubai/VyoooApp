@@ -104,19 +104,35 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.brandNearBlack,
+      backgroundColor: const Color(0xFF07010F),
       body: Stack(
         children: [
-          Positioned(
-            top: -80,
-            left: -60,
-            right: -60,
+          Positioned.fill(
             child: Container(
-              height: 280,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.45, 1.0],
+                  colors: [
+                    Color(0xFF1A0826),
+                    Color(0xFF10041A),
+                    Color(0xFF07010F),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -100,
+            left: -100,
+            right: -100,
+            child: Container(
+              height: 400,
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [Color(0x44DE106B), Color(0x00000000)],
-                  radius: 0.9,
+                  colors: [Color(0x88DE106B), Color(0x00000000)],
+                  radius: 0.75,
                 ),
               ),
             ),
@@ -138,7 +154,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                         'Message requests',
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: 18,
+                          fontSize: 17,
                           fontWeight: FontWeight.w700,
                         ),
                       ),

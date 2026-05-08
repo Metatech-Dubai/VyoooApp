@@ -1,4 +1,5 @@
 rules_version = '2';
+// v2: add remove-follower rule
 service cloud.firestore {
   match /databases/{database}/documents {
     function isSignedIn() {
@@ -88,16 +89,24 @@ service cloud.firestore {
 
     // ── User profile doc only: users/{uid} (one segment after users/) ─────────
     // following / blockedUsers live here; only the owner may write the doc.
+    // Exception: any signed-in user may remove *only themselves* from another
+    // user's following array (powers the "remove follower" feature).
     match /users/{userId} {
       // Needed for pre-auth login lookup by username/displayName.
       allow read: if true;
       allow create: if isOwner(userId)
                     && validUserDoc(userId)
                     && request.resource.data.followersCount == 0;
-      allow update: if isOwner(userId)
+      allow update: if (isOwner(userId)
                     && validUserDoc(userId)
                     && request.resource.data.followersCount == resource.data.followersCount
-                    && emailOtpVerifiedUnchanged();
+                    && emailOtpVerifiedUnchanged())
+                    || (isSignedIn()
+                        && !isOwner(userId)
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['following'])
+                        && request.auth.uid in resource.data.following
+                        && !(request.auth.uid in request.resource.data.following)
+                        && request.resource.data.following.size() == resource.data.following.size() - 1);
       allow delete: if isOwner(userId);
     }
 

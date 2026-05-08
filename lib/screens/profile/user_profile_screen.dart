@@ -21,6 +21,8 @@ import '../../core/utils/verification_badge.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/widgets/app_interaction_button.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/chat/services/chat_service.dart';
 import '../../features/chat/screens/chat_thread_screen.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
@@ -342,6 +344,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
     return Scaffold(
       backgroundColor: Colors.transparent,
+      bottomNavigationBar: AppBottomNavigation(
+        currentIndex: -1,
+        onTap: (index) {
+          MainNavWrapper.tabNotifier.value = index;
+          Navigator.of(context).popUntil((route) => route.isFirst);
+        },
+      ),
       body: Stack(
         children: [
           Positioned.fill(

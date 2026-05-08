@@ -1,7 +1,7 @@
 "use strict";
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupStaleRingingCalls = exports.onCallSessionUpdate = exports.onCallSessionCreate = exports.cleanupExpiredViewOnceMessages = exports.onViewOnceMessageUpdate = exports.onChatUpdate = exports.onChatMessageCreate = exports.onChatCreate = exports.syncStoryCommentCountOnDelete = exports.syncStoryCommentCountOnCreate = exports.syncStoryLikeCount = exports.sendPushOnNotificationCreate = exports.processCreatorSubscriptionRequest = exports.processWhatsAppOtpVerifyRequest = exports.processWhatsAppOtpSendRequest = exports.processEmailOtpVerifyRequest = exports.processEmailOtpSendRequest = exports.moderateReelOnWrite = exports.moderateReelOnCreate = exports.syncFollowersCountOnFollowingChange = exports.getCloudflareUploadUrl = exports.generateAgoraTokenOnRequest = void 0;
+exports.cleanupStaleRingingCalls = exports.onCallSessionUpdate = exports.onCallSessionCreate = exports.cleanupExpiredViewOnceMessages = exports.onViewOnceMessageUpdate = exports.onChatUpdate = exports.onChatMessageCreate = exports.onChatCreate = exports.syncStoryCommentCountOnDelete = exports.syncStoryCommentCountOnCreate = exports.syncStoryLikeCount = exports.sendPushOnNotificationCreate = exports.processCreatorSubscriptionRequest = exports.processWhatsAppOtpVerifyRequest = exports.processWhatsAppOtpSendRequest = exports.processEmailOtpVerifyRequest = exports.processEmailOtpSendRequest = exports.moderateReelOnWrite = exports.moderateReelOnCreate = exports.processFollowerRemoval = exports.syncFollowersCountOnFollowingChange = exports.getCloudflareUploadUrl = exports.generateAgoraTokenOnRequest = void 0;
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const auth_1 = require("firebase-admin/auth");
@@ -273,6 +273,45 @@ exports.syncFollowersCountOnFollowingChange = (0, firestore_1.onDocumentWritten)
         writes.push(db.collection('users').doc(targetUid).set({ followersCount: admin.firestore.FieldValue.increment(-1) }, { merge: true }));
     }
     await Promise.all(writes);
+});
+// ── processFollowerRemoval ────────────────────────────────────────────────────
+exports.processFollowerRemoval = (0, firestore_1.onDocumentCreated)({
+    document: 'follower_removal_requests/{requestId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+}, async (event) => {
+    const snap = event.data;
+    if (!snap)
+        return;
+    const requestId = event.params.requestId;
+    const data = snap.data();
+    const requestedBy = typeof data.requestedBy === 'string' ? data.requestedBy : '';
+    const followerUid = typeof data.followerUid === 'string' ? data.followerUid : '';
+    if (!requestedBy || !followerUid || requestedBy === followerUid) {
+        firebase_functions_1.logger.warn('processFollowerRemoval: invalid request', { requestId });
+        await snap.ref.update({ status: 'error', error: 'Invalid request' });
+        return;
+    }
+    try {
+        const db = admin.firestore();
+        const followerRef = db.collection('users').doc(followerUid);
+        await followerRef.update({
+            following: admin.firestore.FieldValue.arrayRemove([requestedBy]),
+        });
+        await snap.ref.update({ status: 'done' });
+        firebase_functions_1.logger.info('processFollowerRemoval: success', {
+            requestId,
+            requestedBy,
+            followerUid,
+        });
+    }
+    catch (err) {
+        firebase_functions_1.logger.error('processFollowerRemoval: failed', {
+            requestId,
+            error: String(err),
+        });
+        await snap.ref.update({ status: 'error', error: String(err) });
+    }
 });
 function toHiveImageUrl(videoUrl) {
     // Cloudflare Stream HLS URL:

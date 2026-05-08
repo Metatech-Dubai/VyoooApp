@@ -51,31 +51,30 @@ class UserService {
     String uid,
     String email, {
     required bool emailOtpVerified,
-  }) =>
-      {
-        'uid': uid,
-        'email': email,
-        'phoneNumber': '',
-        'normalizedPhone': '',
-        'displayName': '',
-        'username': '',
-        'bio': '',
-        'dob': '',
-        'profileImage': '',
-        'interests': [],
-        'onboardingCompleted': false,
-        'emailOtpVerified': emailOtpVerified,
-        'isVerified': false,
-        'verificationStatus': 'none',
-        'accountType': 'private',
-        'vipVerified': false,
-        'orgProfileCompleted': false,
-        'organizationDetails': <String, dynamic>{},
-        'createdAt': FieldValue.serverTimestamp(),
-        'following': <String>[],
-        'blockedUsers': <String>[],
-        'followersCount': 0,
-      };
+  }) => {
+    'uid': uid,
+    'email': email,
+    'phoneNumber': '',
+    'normalizedPhone': '',
+    'displayName': '',
+    'username': '',
+    'bio': '',
+    'dob': '',
+    'profileImage': '',
+    'interests': [],
+    'onboardingCompleted': false,
+    'emailOtpVerified': emailOtpVerified,
+    'isVerified': false,
+    'verificationStatus': 'none',
+    'accountType': 'private',
+    'vipVerified': false,
+    'orgProfileCompleted': false,
+    'organizationDetails': <String, dynamic>{},
+    'createdAt': FieldValue.serverTimestamp(),
+    'following': <String>[],
+    'blockedUsers': <String>[],
+    'followersCount': 0,
+  };
 
   /// Creates the initial user document. Call after AuthService.registerWithEmail success.
   Future<void> createUserDocument({
@@ -83,9 +82,10 @@ class UserService {
     required String email,
   }) async {
     try {
-      await _firestore.collection(_usersCollection).doc(uid).set(
-            _initialUserData(uid, email, emailOtpVerified: false),
-          );
+      await _firestore
+          .collection(_usersCollection)
+          .doc(uid)
+          .set(_initialUserData(uid, email, emailOtpVerified: false));
     } catch (e) {
       rethrow;
     }
@@ -145,7 +145,8 @@ class UserService {
       if (dob != null) data['dob'] = dob;
       if (profileImage != null) data['profileImage'] = profileImage;
       if (interests != null) data['interests'] = interests;
-      if (onboardingCompleted != null) data['onboardingCompleted'] = onboardingCompleted;
+      if (onboardingCompleted != null)
+        data['onboardingCompleted'] = onboardingCompleted;
       if (accountType != null && accountType.trim().isNotEmpty) {
         data['accountType'] = accountType.trim().toLowerCase();
       }
@@ -162,10 +163,10 @@ class UserService {
         data['organizationDetails'] = organizationDetails;
       }
       if (data.isEmpty) return;
-      await _firestore.collection(_usersCollection).doc(uid).set(
-            data,
-            SetOptions(merge: true),
-          );
+      await _firestore
+          .collection(_usersCollection)
+          .doc(uid)
+          .set(data, SetOptions(merge: true));
     } catch (e) {
       rethrow;
     }
@@ -216,7 +217,8 @@ class UserService {
           .limit(1)
           .get();
       if (byUsername.docs.isNotEmpty) {
-        final email = (byUsername.docs.first.data()['email'] as String? ?? '').trim();
+        final email = (byUsername.docs.first.data()['email'] as String? ?? '')
+            .trim();
         if (email.isNotEmpty) return email;
       }
 
@@ -226,8 +228,8 @@ class UserService {
           .limit(1)
           .get();
       if (byDisplayName.docs.isNotEmpty) {
-        final email = (byDisplayName.docs.first.data()['email'] as String? ?? '')
-            .trim();
+        final email =
+            (byDisplayName.docs.first.data()['email'] as String? ?? '').trim();
         if (email.isNotEmpty) return email;
       }
 
@@ -238,7 +240,9 @@ class UserService {
           .get();
       for (final doc in byDisplayNameFallback.docs) {
         final data = doc.data();
-        final displayName = (data['displayName'] as String? ?? '').trim().toLowerCase();
+        final displayName = (data['displayName'] as String? ?? '')
+            .trim()
+            .toLowerCase();
         if (displayName != normalizedDisplayName) continue;
         final email = (data['email'] as String? ?? '').trim();
         if (email.isNotEmpty) return email;
@@ -270,7 +274,8 @@ class UserService {
           .limit(1)
           .get();
       if (byRaw.docs.isNotEmpty) {
-        final email = (byRaw.docs.first.data()['email'] as String? ?? '').trim();
+        final email = (byRaw.docs.first.data()['email'] as String? ?? '')
+            .trim();
         if (email.isNotEmpty) return email;
       }
       return null;
@@ -281,11 +286,9 @@ class UserService {
 
   /// Stream of user document for reactive updates.
   Stream<AppUserModel?> userStream(String uid) {
-    return _firestore
-        .collection(_usersCollection)
-        .doc(uid)
-        .snapshots()
-        .map((snap) {
+    return _firestore.collection(_usersCollection).doc(uid).snapshots().map((
+      snap,
+    ) {
       if (snap.exists && snap.data() != null) {
         return AppUserModel.fromJson(snap.data()!);
       }
@@ -431,17 +434,15 @@ class UserService {
     final meSnap = await meRef.get();
     final meData = meSnap.data() ?? const <String, dynamic>{};
     final followingRaw = meData['following'];
-    final alreadyFollowing = followingRaw is List &&
+    final alreadyFollowing =
+        followingRaw is List &&
         followingRaw.map((e) => e.toString()).contains(targetUid);
     if (alreadyFollowing) return;
 
-    await meRef.set(
-      {
-        'following': FieldValue.arrayUnion([targetUid]),
-        'blockedUsers': FieldValue.arrayRemove([targetUid]),
-      },
-      SetOptions(merge: true),
-    );
+    await meRef.set({
+      'following': FieldValue.arrayUnion([targetUid]),
+      'blockedUsers': FieldValue.arrayRemove([targetUid]),
+    }, SetOptions(merge: true));
     await _firestore.collection(_usersCollection).doc(targetUid).update({
       'followersCount': FieldValue.increment(1),
     });
@@ -461,12 +462,28 @@ class UserService {
       throw ArgumentError('Invalid unfollow');
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
-    await meRef.set(
-      {'following': FieldValue.arrayRemove([targetUid])},
-      SetOptions(merge: true),
-    );
+    await meRef.set({
+      'following': FieldValue.arrayRemove([targetUid]),
+    }, SetOptions(merge: true));
     await _firestore.collection(_usersCollection).doc(targetUid).update({
       'followersCount': FieldValue.increment(-1),
+    });
+  }
+
+  Future<void> removeFollower({
+    required String currentUid,
+    required String followerUid,
+  }) async {
+    if (currentUid.isEmpty ||
+        followerUid.isEmpty ||
+        currentUid == followerUid) {
+      throw ArgumentError('Invalid remove follower');
+    }
+    final followerRef = _firestore
+        .collection(_usersCollection)
+        .doc(followerUid);
+    await followerRef.update({
+      'following': FieldValue.arrayRemove([currentUid]),
     });
   }
 
@@ -479,13 +496,10 @@ class UserService {
       throw ArgumentError('Invalid block');
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
-    await meRef.set(
-      {
-        'blockedUsers': FieldValue.arrayUnion([targetUid]),
-        'following': FieldValue.arrayRemove([targetUid]),
-      },
-      SetOptions(merge: true),
-    );
+    await meRef.set({
+      'blockedUsers': FieldValue.arrayUnion([targetUid]),
+      'following': FieldValue.arrayRemove([targetUid]),
+    }, SetOptions(merge: true));
   }
 
   Future<void> unblockUser({
@@ -496,10 +510,9 @@ class UserService {
       throw ArgumentError('Invalid unblock');
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
-    await meRef.set(
-      {'blockedUsers': FieldValue.arrayRemove([targetUid])},
-      SetOptions(merge: true),
-    );
+    await meRef.set({
+      'blockedUsers': FieldValue.arrayRemove([targetUid]),
+    }, SetOptions(merge: true));
   }
 
   /// Reactive follower count stream based on users who include [uid] in following.
@@ -557,7 +570,10 @@ class UserService {
   }) async {
     if (currentUid.isEmpty) return [];
     try {
-      final snap = await _firestore.collection(_usersCollection).limit(limit).get();
+      final snap = await _firestore
+          .collection(_usersCollection)
+          .limit(limit)
+          .get();
       final q = query.trim().toLowerCase();
       final out = <AppUserModel>[];
       for (final d in snap.docs) {
@@ -617,7 +633,9 @@ class UserService {
         ),
       );
     }
-    out.sort((a, b) => a.username.toLowerCase().compareTo(b.username.toLowerCase()));
+    out.sort(
+      (a, b) => a.username.toLowerCase().compareTo(b.username.toLowerCase()),
+    );
     return out;
   }
 }

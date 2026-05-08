@@ -4,7 +4,6 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/chat_summary_model.dart';
 import '../utils/chat_helpers.dart';
-import 'unread_badge.dart';
 
 class ChatTile extends StatelessWidget {
   const ChatTile({
@@ -25,12 +24,12 @@ class ChatTile extends StatelessWidget {
       onTap: onTap,
       splashColor: AppColors.brandDeepMagenta.withValues(alpha: 0.12),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         child: Row(
           children: [
             Container(
-              width: 54,
-              height: 54,
+              width: 48,
+              height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 gradient: hasUnread
@@ -42,7 +41,7 @@ class ChatTile extends StatelessWidget {
               ),
               padding: EdgeInsets.all(hasUnread ? 2 : 0),
               child: CircleAvatar(
-                radius: hasUnread ? 24 : 27,
+                radius: hasUnread ? 22 : 24,
                 backgroundColor: const Color(0xFF1A0A2E),
                 backgroundImage: hasAvatar
                     ? CachedNetworkImageProvider(summary.avatarUrl)
@@ -52,7 +51,7 @@ class ChatTile extends StatelessWidget {
                     : Icon(
                         summary.type == 'group' ? Icons.group : Icons.person,
                         color: Colors.white54,
-                        size: 24,
+                        size: 22,
                       ),
               ),
             ),
@@ -70,7 +69,7 @@ class ChatTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 15,
+                            fontSize: 14,
                             fontWeight: hasUnread ? FontWeight.w700 : FontWeight.w500,
                           ),
                         ),
@@ -79,13 +78,13 @@ class ChatTile extends StatelessWidget {
                       Text(
                         ChatHelpers.formatInboxTime(summary.lastMessageAt),
                         style: TextStyle(
-                          color: hasUnread ? Colors.white : Colors.white.withValues(alpha: 0.4),
-                          fontSize: 12,
+                          color: hasUnread ? Colors.white70 : Colors.white.withValues(alpha: 0.35),
+                          fontSize: 11,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 3),
+                  const SizedBox(height: 2),
                   Row(
                     children: [
                       Expanded(
@@ -97,8 +96,8 @@ class ChatTile extends StatelessWidget {
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: hasUnread
-                                ? Colors.white.withValues(alpha: 0.8)
-                                : Colors.white.withValues(alpha: 0.4),
+                                ? Colors.white.withValues(alpha: 0.7)
+                                : Colors.white.withValues(alpha: 0.35),
                             fontSize: 13,
                             fontWeight: hasUnread ? FontWeight.w500 : FontWeight.w400,
                           ),
@@ -106,7 +105,21 @@ class ChatTile extends StatelessWidget {
                       ),
                       if (hasUnread) ...[
                         const SizedBox(width: 8),
-                        UnreadBadge(count: summary.unreadCount),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.brandDeepMagenta,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ] else ...[
+                        const SizedBox(width: 8),
+                        Icon(
+                          Icons.camera_alt_outlined,
+                          color: Colors.white.withValues(alpha: 0.25),
+                          size: 18,
+                        ),
                       ],
                     ],
                   ),

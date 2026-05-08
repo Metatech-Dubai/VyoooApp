@@ -37,7 +37,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
   final VoidCallback? onHeaderTap;
 
   @override
-  Size get preferredSize => const Size.fromHeight(60);
+  Size get preferredSize => const Size.fromHeight(56);
 
   bool get _isGroup => chatType == ChatTypes.group;
 
@@ -73,15 +73,19 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF0D0518),
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1E0A30), Color(0xFF150820)],
+        ),
         border: Border(
-          bottom: BorderSide(color: Color(0x22DE106B), width: 0.5),
+          bottom: BorderSide(color: Color(0x33DE106B), width: 0.5),
         ),
       ),
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 2),
           child: Row(
             children: [
               IconButton(
@@ -91,7 +95,10 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   size: 22,
                 ),
                 onPressed: () => Navigator.of(context).pop(),
+                padding: const EdgeInsets.all(8),
+                constraints: const BoxConstraints(),
               ),
+              const SizedBox(width: 2),
               Expanded(
                 child: GestureDetector(
                   onTap: onHeaderTap,
@@ -99,17 +106,17 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   child: Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
-                        decoration: BoxDecoration(
+                        width: 34,
+                        height: 34,
+                        decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          gradient: const LinearGradient(
+                          gradient: LinearGradient(
                             colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
                           ),
                         ),
                         padding: const EdgeInsets.all(1.5),
                         child: CircleAvatar(
-                          radius: 16,
+                          radius: 15,
                           backgroundColor: const Color(0xFF1A0A2E),
                           backgroundImage: hasAvatar
                               ? CachedNetworkImageProvider(avatar)
@@ -119,7 +126,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                               : Icon(
                                   _isGroup ? Icons.group : Icons.person,
                                   color: Colors.white54,
-                                  size: 16,
+                                  size: 15,
                                 ),
                         ),
                       ),
@@ -135,7 +142,7 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
                                 color: Colors.white,
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -147,8 +154,8 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                                 style: TextStyle(
                                   color: presenceText == 'Active now'
                                       ? const Color(0xFF4CAF50)
-                                      : Colors.white.withValues(alpha: 0.45),
-                                  fontSize: 12,
+                                      : Colors.white.withValues(alpha: 0.4),
+                                  fontSize: 11,
                                 ),
                               ),
                           ],
@@ -163,27 +170,35 @@ class ChatAppBar extends StatelessWidget implements PreferredSizeWidget {
                   icon: const Icon(
                     Icons.call_outlined,
                     color: Colors.white70,
-                    size: 22,
+                    size: 21,
                   ),
                   onPressed: onAudioCall,
                   tooltip: 'Audio call',
+                  padding: const EdgeInsets.all(8),
+                  constraints: const BoxConstraints(),
                 ),
               if (onVideoCall != null)
-                IconButton(
-                  icon: const Icon(
-                    Icons.videocam_outlined,
-                    color: Colors.white70,
-                    size: 22,
+                Padding(
+                  padding: const EdgeInsets.only(left: 4),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.videocam_outlined,
+                      color: Colors.white70,
+                      size: 21,
+                    ),
+                    onPressed: onVideoCall,
+                    tooltip: 'Video call',
+                    padding: const EdgeInsets.all(8),
+                    constraints: const BoxConstraints(),
                   ),
-                  onPressed: onVideoCall,
-                  tooltip: 'Video call',
                 ),
               PopupMenuButton<String>(
                 icon: const Icon(
                   Icons.more_vert,
                   color: Colors.white70,
-                  size: 22,
+                  size: 21,
                 ),
+                padding: EdgeInsets.zero,
                 color: const Color(0xFF1A0A2E),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),

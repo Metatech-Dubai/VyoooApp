@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:path_provider/path_provider.dart';
 
 import 'package:audio_waveforms/audio_waveforms.dart';
 import 'package:flutter/material.dart';
@@ -43,6 +44,10 @@ class _MessageInputBarState extends State<MessageInputBar> {
 
   bool _isRecording = false;
   RecorderController? _recorderController;
+
+  String? _pendingFilePath;
+  int _pendingDuration = 0;
+  bool _isSendingVoice = false;
 
   static const List<String> _quickEmojis = [
     '😂',
@@ -117,26 +122,39 @@ class _MessageInputBarState extends State<MessageInputBar> {
     }
     _recorderController = RecorderController();
     try {
-      await _recorderController!.record();
+      final dir = await getTemporaryDirectory();
+      final path =
+          '${dir.path}/voice_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      await _recorderController!.record(path: path);
       setState(() => _isRecording = true);
     } catch (e) {
       debugPrint('[MessageInputBar] record error: $e');
+      _recorderController?.dispose();
+      _recorderController = null;
     }
   }
 
   Future<void> _stopRecording() async {
     if (_recorderController == null) return;
     try {
-      final path = await _recorderController!.stop();
       final duration = _recorderController!.elapsedDuration.inMilliseconds;
+      final path = await _recorderController!.stop();
       _recorderController!.dispose();
       _recorderController = null;
-      setState(() => _isRecording = false);
-      if (path != null && path.isNotEmpty) {
-        widget.onVoiceNoteSend?.call(File(path), duration);
-      }
+      setState(() {
+        _isRecording = false;
+        if (path != null && path.isNotEmpty && duration > 500) {
+          _pendingFilePath = path;
+          _pendingDuration = duration;
+        } else if (path != null && path.isNotEmpty) {
+          _pendingFilePath = path;
+          _pendingDuration = duration > 0 ? duration : 1000;
+        }
+      });
     } catch (e) {
       debugPrint('[MessageInputBar] stop record error: $e');
+      _recorderController?.dispose();
+      _recorderController = null;
       setState(() => _isRecording = false);
     }
   }
@@ -149,6 +167,34 @@ class _MessageInputBarState extends State<MessageInputBar> {
     _recorderController?.dispose();
     _recorderController = null;
     setState(() => _isRecording = false);
+    _discardPendingVoice();
+  }
+
+  void _sendPendingVoice() {
+    if (_isSendingVoice) return;
+    final path = _pendingFilePath;
+    final dur = _pendingDuration;
+    if (path == null || path.isEmpty || dur <= 0) return;
+    setState(() => _isSendingVoice = true);
+    widget.onVoiceNoteSend?.call(File(path), dur);
+    setState(() {
+      _pendingFilePath = null;
+      _pendingDuration = 0;
+      _isSendingVoice = false;
+    });
+  }
+
+  void _discardPendingVoice() {
+    final path = _pendingFilePath;
+    if (path != null) {
+      try {
+        File(path).deleteSync();
+      } catch (_) {}
+    }
+    setState(() {
+      _pendingFilePath = null;
+      _pendingDuration = 0;
+    });
   }
 
   void _showMediaSheet() {
@@ -250,24 +296,49 @@ class _MessageInputBarState extends State<MessageInputBar> {
 
   @override
   Widget build(BuildContext context) {
+    final hasPending = _pendingFilePath != null;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: const BoxDecoration(
-        color: Color(0xFF0D0518),
-        border: Border(top: BorderSide(color: Color(0x22DE106B), width: 0.5)),
+        color: Color(0xFF10041A),
+        border: Border(top: BorderSide(color: Color(0x33DE106B), width: 0.5)),
       ),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (_isRecording) _buildRecordingRow(),
-            if (!_isRecording) _buildInputRow(),
-            if (_showEmojiRow && !_isRecording) _buildEmojiRow(),
+            if (hasPending)
+              _buildVoicePreviewRow()
+            else if (_isRecording)
+              _buildRecordingRow()
+            else
+              _buildInputRow(),
+            if (_showEmojiRow && !_isRecording && !hasPending) _buildEmojiRow(),
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _stopAndSend() async {
+    if (_recorderController == null) return;
+    try {
+      final duration = _recorderController!.elapsedDuration.inMilliseconds;
+      final path = await _recorderController!.stop();
+      _recorderController!.dispose();
+      _recorderController = null;
+      setState(() => _isRecording = false);
+      if (path != null && path.isNotEmpty) {
+        final dur = duration > 0 ? duration : 1000;
+        widget.onVoiceNoteSend?.call(File(path), dur);
+      }
+    } catch (e) {
+      debugPrint('[MessageInputBar] stopAndSend error: $e');
+      _recorderController?.dispose();
+      _recorderController = null;
+      setState(() => _isRecording = false);
+    }
   }
 
   Widget _buildRecordingRow() {
@@ -275,13 +346,21 @@ class _MessageInputBarState extends State<MessageInputBar> {
       children: [
         GestureDetector(
           onTap: _cancelRecording,
-          child: const Icon(
-            Icons.delete_outline,
-            color: AppColors.deleteRed,
-            size: 26,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.deleteRed.withValues(alpha: 0.15),
+            ),
+            child: const Icon(
+              Icons.delete_outline,
+              color: AppColors.deleteRed,
+              size: 20,
+            ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         Expanded(
           child: AudioWaveforms(
             recorderController: _recorderController!,
@@ -293,15 +372,34 @@ class _MessageInputBarState extends State<MessageInputBar> {
             ),
           ),
         ),
-        const SizedBox(width: 12),
+        const SizedBox(width: 10),
         GestureDetector(
           onTap: _stopRecording,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.1),
+            ),
+            child: const Icon(
+              Icons.stop_rounded,
+              color: Colors.white,
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _stopAndSend,
           child: Container(
             width: 38,
             height: 38,
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: AppColors.brandMagenta,
+              gradient: LinearGradient(
+                colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
+              ),
             ),
             child: const Icon(
               Icons.send_rounded,
@@ -314,22 +412,125 @@ class _MessageInputBarState extends State<MessageInputBar> {
     );
   }
 
+  String _formatMs(int ms) {
+    final s = (ms / 1000).floor();
+    final m = (s / 60).floor().toString().padLeft(2, '0');
+    final sec = (s % 60).toString().padLeft(2, '0');
+    return '$m:$sec';
+  }
+
+  Widget _buildVoicePreviewRow() {
+    return Row(
+      children: [
+        GestureDetector(
+          onTap: _discardPendingVoice,
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: AppColors.deleteRed.withValues(alpha: 0.15),
+            ),
+            child: const Icon(
+              Icons.delete_outline,
+              color: AppColors.deleteRed,
+              size: 20,
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Container(
+            height: 40,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFFDE106B), Color(0xFFB80D5A)],
+              ),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.play_arrow_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+                const SizedBox(width: 6),
+                Expanded(child: _buildWaveformBars()),
+                const SizedBox(width: 8),
+                Text(
+                  _formatMs(_pendingDuration),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        GestureDetector(
+          onTap: _isSendingVoice ? null : _sendPendingVoice,
+          child: Container(
+            width: 38,
+            height: 38,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
+              ),
+            ),
+            child: _isSendingVoice
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
+                : const Icon(Icons.send_rounded, color: Colors.white, size: 18),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWaveformBars() {
+    return CustomPaint(
+      size: const Size(double.infinity, 20),
+      painter: _WaveformBarsPainter(),
+    );
+  }
+
   Widget _buildInputRow() {
     return Row(
       children: [
         GestureDetector(
           onTap: widget.mediaLoading ? null : _showMediaSheet,
-          child: Padding(
-            padding: const EdgeInsets.only(right: 8),
+          child: Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: widget.mediaLoading
+                  ? null
+                  : const LinearGradient(
+                      colors: [Color(0xFFDE106B), Color(0xFFB80D5A)],
+                    ),
+              color: widget.mediaLoading ? const Color(0xFF2A1540) : null,
+            ),
             child: Icon(
-              Icons.add_circle_outline,
-              color: widget.mediaLoading
-                  ? Colors.white24
-                  : Colors.white.withValues(alpha: 0.6),
-              size: 26,
+              Icons.camera_alt,
+              color: widget.mediaLoading ? Colors.white24 : Colors.white,
+              size: 16,
             ),
           ),
         ),
+        const SizedBox(width: 8),
         Expanded(
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 14),
@@ -358,6 +559,30 @@ class _MessageInputBarState extends State<MessageInputBar> {
                     ),
                   ),
                 ),
+                if (!_canSend && widget.onVoiceNoteSend != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: _startRecording,
+                      child: Icon(
+                        Icons.mic_none,
+                        color: Colors.white.withValues(alpha: 0.4),
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                if (!_canSend)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: widget.mediaLoading ? null : _showMediaSheet,
+                      child: Icon(
+                        Icons.image_outlined,
+                        color: Colors.white.withValues(alpha: 0.4),
+                        size: 22,
+                      ),
+                    ),
+                  ),
                 GestureDetector(
                   onTap: () => setState(() => _showEmojiRow = !_showEmojiRow),
                   child: Icon(
@@ -391,36 +616,6 @@ class _MessageInputBarState extends State<MessageInputBar> {
                 size: 18,
               ),
             ),
-          )
-        else if (widget.onVoiceNoteSend != null)
-          GestureDetector(
-            onTap: _startRecording,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.brandMagenta.withValues(alpha: 0.25),
-              ),
-              child: const Icon(Icons.mic, color: Colors.white70, size: 20),
-            ),
-          )
-        else
-          GestureDetector(
-            onTap: null,
-            child: Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.brandMagenta.withValues(alpha: 0.25),
-              ),
-              child: const Icon(
-                Icons.send_rounded,
-                color: Colors.white54,
-                size: 18,
-              ),
-            ),
           ),
       ],
     );
@@ -440,4 +635,28 @@ class _MessageInputBarState extends State<MessageInputBar> {
       ),
     );
   }
+}
+
+class _WaveformBarsPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.7)
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round;
+
+    const barSpacing = 4.0;
+    final barCount = (size.width / barSpacing).floor();
+    final mid = size.height / 2;
+
+    for (var i = 0; i < barCount; i++) {
+      final x = i * barSpacing + 1;
+      final h =
+          (((i * 7 + 3) % 11) / 11.0) * size.height * 0.8 + size.height * 0.15;
+      canvas.drawLine(Offset(x, mid - h / 2), Offset(x, mid + h / 2), paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

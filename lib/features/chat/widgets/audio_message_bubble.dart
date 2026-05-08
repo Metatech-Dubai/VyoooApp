@@ -93,9 +93,14 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
     return Align(
       alignment: widget.isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 260),
-        margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        constraints: const BoxConstraints(maxWidth: 240),
+        margin: EdgeInsets.only(
+          left: widget.isSent ? 60 : 10,
+          right: widget.isSent ? 10 : 60,
+          top: 2,
+          bottom: 2,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
           gradient: widget.isSent
               ? const LinearGradient(
@@ -105,7 +110,12 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                 )
               : null,
           color: widget.isSent ? null : const Color(0xFF1E0E2E),
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(18),
+            topRight: const Radius.circular(18),
+            bottomLeft: Radius.circular(widget.isSent ? 18 : 4),
+            bottomRight: Radius.circular(widget.isSent ? 4 : 18),
+          ),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -113,14 +123,14 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
           children: [
             if (widget.senderName != null)
               Padding(
-                padding: const EdgeInsets.only(bottom: 4),
+                padding: const EdgeInsets.only(bottom: 2),
                 child: Text(
                   widget.senderName!,
                   style: TextStyle(
                     color: widget.isSent
                         ? Colors.white70
                         : AppColors.brandMagenta,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -136,31 +146,33 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                         ? Icons.pause_circle_filled
                         : Icons.play_circle_filled,
                     color: Colors.white,
-                    size: 34,
+                    size: 30,
                   ),
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: 6),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(2),
-                        child: LinearProgressIndicator(
-                          value: progress.clamp(0.0, 1.0),
-                          backgroundColor: Colors.white24,
-                          color: Colors.white,
-                          minHeight: 3,
+                      SizedBox(
+                        height: 18,
+                        child: CustomPaint(
+                          size: const Size(double.infinity, 18),
+                          painter: _AudioWaveformPainter(
+                            progress: progress.clamp(0.0, 1.0),
+                            activeColor: Colors.white,
+                            inactiveColor: Colors.white.withValues(alpha: 0.3),
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2),
                       Text(
                         _isPlaying
                             ? _formatDuration(_position)
                             : _formatDuration(_duration),
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.6),
-                          fontSize: 11,
+                          fontSize: 10,
                         ),
                       ),
                     ],
@@ -168,24 +180,24 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 2),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 Text(
                   widget.time,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 11,
+                    color: Colors.white.withValues(alpha: 0.45),
+                    fontSize: 10,
                   ),
                 ),
                 if (widget.seenText != null) ...[
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 4),
                   Text(
                     widget.seenText!,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 11,
+                      color: Colors.white.withValues(alpha: 0.45),
+                      fontSize: 10,
                     ),
                   ),
                 ],
@@ -195,5 +207,45 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
         ),
       ),
     );
+  }
+}
+
+class _AudioWaveformPainter extends CustomPainter {
+  _AudioWaveformPainter({
+    required this.progress,
+    required this.activeColor,
+    required this.inactiveColor,
+  });
+
+  final double progress;
+  final Color activeColor;
+  final Color inactiveColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    const barWidth = 2.0;
+    const barSpacing = 3.5;
+    final barCount = (size.width / barSpacing).floor();
+    final mid = size.height / 2;
+    final progressX = size.width * progress;
+
+    for (var i = 0; i < barCount; i++) {
+      final x = i * barSpacing + 1;
+      final h = (((i * 7 + 3) % 11) / 11.0) * size.height * 0.85 + size.height * 0.15;
+      final paint = Paint()
+        ..color = x <= progressX ? activeColor : inactiveColor
+        ..strokeWidth = barWidth
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(
+        Offset(x, mid - h / 2),
+        Offset(x, mid + h / 2),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _AudioWaveformPainter oldDelegate) {
+    return oldDelegate.progress != progress;
   }
 }

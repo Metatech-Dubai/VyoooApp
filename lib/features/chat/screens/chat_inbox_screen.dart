@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
@@ -26,7 +27,6 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
   late final ChatController _controller;
   final UserService _userService = UserService();
   String? _currentUid;
-  String _filter = 'Primary';
 
   @override
   void initState() {
@@ -60,17 +60,6 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
     return _controller.summaries.where((s) {
       return s.requestStatus == RequestStatus.pending;
     }).toList();
-  }
-
-  List<ChatSummaryModel> get _filteredSummaries {
-    switch (_filter) {
-      case 'Requests':
-        return _requestSummaries;
-      case 'General':
-        return _primarySummaries.where((s) => s.unreadCount == 0).toList();
-      default:
-        return _primarySummaries;
-    }
   }
 
   Future<void> _openThread(ChatSummaryModel summary) async {
@@ -125,19 +114,35 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      backgroundColor: AppColors.brandNearBlack,
+      backgroundColor: const Color(0xFF07010F),
       body: Stack(
         children: [
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.45, 1.0],
+                  colors: [
+                    Color(0xFF1A0826),
+                    Color(0xFF10041A),
+                    Color(0xFF07010F),
+                  ],
+                ),
+              ),
+            ),
+          ),
           Positioned(
             top: -100,
-            left: -60,
-            right: -60,
+            left: -100,
+            right: -100,
             child: Container(
-              height: 320,
+              height: 420,
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [Color(0x55DE106B), Color(0x00000000)],
-                  radius: 0.85,
+                  colors: [Color(0x88DE106B), Color(0x00000000)],
+                  radius: 0.75,
                 ),
               ),
             ),
@@ -148,7 +153,22 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
               children: [
                 _buildHeader(),
                 _buildSearchBar(),
-                _buildFilterChips(),
+                _ChatNotesRow(
+                  summaries: _primarySummaries,
+                  currentUid: _currentUid,
+                  onTapNote: (summary) {
+                    if (summary != null) {
+                      _openThread(summary);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Notes coming soon'),
+                          duration: Duration(seconds: 1),
+                        ),
+                      );
+                    }
+                  },
+                ),
                 _buildMessagesSectionHeader(),
                 Expanded(child: _buildInboxList()),
               ],
@@ -161,7 +181,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
 
   Widget _buildHeader() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
       child: Row(
         children: [
           const Icon(Icons.menu, color: Colors.white70, size: 22),
@@ -173,12 +193,12 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
                 FirebaseAuth.instance.currentUser?.displayName ?? 'Messages',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: 17,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.2,
                 ),
               ),
-              const SizedBox(width: 4),
+              const SizedBox(width: 3),
               const Icon(
                 Icons.keyboard_arrow_down,
                 color: Colors.white54,
@@ -190,8 +210,8 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
           GestureDetector(
             onTap: _openNewMessage,
             child: Container(
-              width: 36,
-              height: 36,
+              width: 34,
+              height: 34,
               decoration: BoxDecoration(
                 color: const Color(0xFF1E0D33),
                 borderRadius: BorderRadius.circular(10),
@@ -199,7 +219,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
               child: const Icon(
                 Icons.edit_square,
                 color: Colors.white,
-                size: 20,
+                size: 18,
               ),
             ),
           ),
@@ -210,12 +230,12 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
       child: Container(
-        height: 38,
+        height: 36,
         decoration: BoxDecoration(
           color: const Color(0xFF1C0B2E),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(18),
           border: Border.all(color: const Color(0x22FFFFFF), width: 0.5),
         ),
         child: Row(
@@ -240,68 +260,17 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
     );
   }
 
-  Widget _buildFilterChips() {
-    final requestCount = _requestSummaries.length;
-    final chips = ['Primary', 'General', 'Requests'];
-    return SizedBox(
-      height: 40,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.fromLTRB(12, 2, 12, 2),
-        children: chips.map((c) {
-          final isActive = _filter == c;
-          final label = (c == 'Requests' && requestCount > 0)
-              ? 'Requests ($requestCount)'
-              : c;
-          return Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: GestureDetector(
-              onTap: () => setState(() => _filter = c),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: isActive
-                      ? AppColors.brandDeepMagenta
-                      : const Color(0xFF1C0B2E),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: isActive
-                        ? AppColors.brandDeepMagenta
-                        : const Color(0x33FFFFFF),
-                    width: 0.8,
-                  ),
-                ),
-                child: Text(
-                  label,
-                  style: TextStyle(
-                    color: isActive ? Colors.white : Colors.white60,
-                    fontSize: 13,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                  ),
-                ),
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-
   Widget _buildMessagesSectionHeader() {
     final requestCount = _requestSummaries.length;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 2),
       child: Row(
         children: [
           const Text(
             'Messages',
             style: TextStyle(
               color: Colors.white,
-              fontSize: 15,
+              fontSize: 14,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -360,43 +329,37 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
       );
     }
 
-    final summaries = _filteredSummaries;
+    final summaries = _primarySummaries;
     if (summaries.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              _filter == 'Requests'
-                  ? Icons.mark_email_unread_outlined
-                  : Icons.chat_bubble_outline,
+              Icons.chat_bubble_outline,
               color: Colors.white.withValues(alpha: 0.2),
               size: 48,
             ),
             const SizedBox(height: 12),
             Text(
-              _filter == 'Requests'
-                  ? 'No message requests'
-                  : 'No conversations yet',
+              'No conversations yet',
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.5),
                 fontSize: 14,
               ),
             ),
-            if (_filter == 'Primary') ...[
-              const SizedBox(height: 8),
-              GestureDetector(
-                onTap: _openNewMessage,
-                child: const Text(
-                  'Start a conversation',
-                  style: TextStyle(
-                    color: AppColors.brandMagenta,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                  ),
+            const SizedBox(height: 8),
+            GestureDetector(
+              onTap: _openNewMessage,
+              child: const Text(
+                'Start a conversation',
+                style: TextStyle(
+                  color: AppColors.brandMagenta,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-            ],
+            ),
           ],
         ),
       );
@@ -409,6 +372,203 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
         final summary = summaries[index];
         return ChatTile(summary: summary, onTap: () => _openThread(summary));
       },
+    );
+  }
+}
+
+class _ChatNotesRow extends StatelessWidget {
+  const _ChatNotesRow({
+    required this.summaries,
+    required this.currentUid,
+    required this.onTapNote,
+  });
+
+  final List<ChatSummaryModel> summaries;
+  final String? currentUid;
+  final void Function(ChatSummaryModel?) onTapNote;
+
+  @override
+  Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final seen = <String>{};
+    final noteUsers = <_NoteUser>[];
+
+    for (final s in summaries) {
+      if (s.type == ChatTypes.group) continue;
+      final otherUid = s.participantIds.firstWhere(
+        (id) => id != currentUid,
+        orElse: () => '',
+      );
+      if (otherUid.isEmpty || seen.contains(otherUid)) continue;
+      seen.add(otherUid);
+      noteUsers.add(
+        _NoteUser(name: s.title, avatarUrl: s.avatarUrl, summary: s),
+      );
+    }
+
+    return SizedBox(
+      height: 94,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.fromLTRB(10, 4, 10, 0),
+        itemCount: noteUsers.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return _ChatNoteItem(
+              name: currentUser?.displayName ?? 'Your note',
+              avatarUrl: currentUser?.photoURL,
+              noteText: 'Note...',
+              isCurrentUser: true,
+              onTap: () => onTapNote(null),
+            );
+          }
+          final user = noteUsers[index - 1];
+          return _ChatNoteItem(
+            name: user.name,
+            avatarUrl: user.avatarUrl.isNotEmpty ? user.avatarUrl : null,
+            noteText: null,
+            isCurrentUser: false,
+            onTap: () => onTapNote(user.summary),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _NoteUser {
+  const _NoteUser({
+    required this.name,
+    required this.avatarUrl,
+    required this.summary,
+  });
+  final String name;
+  final String avatarUrl;
+  final ChatSummaryModel summary;
+}
+
+class _ChatNoteItem extends StatelessWidget {
+  const _ChatNoteItem({
+    required this.name,
+    required this.avatarUrl,
+    required this.noteText,
+    required this.isCurrentUser,
+    required this.onTap,
+  });
+
+  final String name;
+  final String? avatarUrl;
+  final String? noteText;
+  final bool isCurrentUser;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 68,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              height: 64,
+              width: 68,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned(
+                    bottom: 0,
+                    left: 6,
+                    right: 6,
+                    child: _buildAvatar(),
+                  ),
+                  if (noteText != null)
+                    Positioned(
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      child: _NoteBubble(text: noteText!),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 3),
+            Text(
+              _displayName,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 10,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String get _displayName {
+    if (isCurrentUser) return 'Your note';
+    if (name.length > 9) return '${name.substring(0, 8)}…';
+    return name;
+  }
+
+  Widget _buildAvatar() {
+    final hasImage = avatarUrl != null && avatarUrl!.trim().isNotEmpty;
+    return Container(
+      width: 50,
+      height: 50,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: Color(0xFF2A1B2E),
+      ),
+      child: CircleAvatar(
+        radius: 25,
+        backgroundColor: const Color(0xFF2A1B2E),
+        backgroundImage: hasImage
+            ? CachedNetworkImageProvider(avatarUrl!)
+            : null,
+        child: hasImage
+            ? null
+            : const Icon(Icons.person, color: Colors.white38, size: 22),
+      ),
+    );
+  }
+}
+
+class _NoteBubble extends StatelessWidget {
+  const _NoteBubble({required this.text});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+        decoration: BoxDecoration(
+          color: const Color(0xDD2A1B2E),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+            width: 0.5,
+          ),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.6),
+            fontSize: 10,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
     );
   }
 }

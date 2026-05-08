@@ -661,7 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   children: [
                     Expanded(
                       child: Text(
-                        '@$username',
+                        username,
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 18,
@@ -956,28 +956,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ],
                 ),
                 const SizedBox(height: 12),
-                FutureBuilder<List<StoryModel>>(
-                  future: StoryService().getMyStories(),
-                  builder: (context, snapshot) {
-                    final hasStory =
-                        (snapshot.data ?? const <StoryModel>[]).isNotEmpty;
-                    final storyLabel = hasStory ? 'My Story' : 'Add Story';
-                    final storyIcon = hasStory
-                        ? Icons.auto_stories_rounded
-                        : Icons.add_circle_outline_rounded;
-                    return _OutlineButton(
-                      label: storyLabel,
-                      icon: storyIcon,
-                      onPressed: () => _openMyStoryComposerOrViewer(
-                        context,
-                        userId: profileUid,
-                        username: user?.username ?? 'you',
-                        avatarUrl: user?.profileImage ?? '',
-                      ),
-                    );
-                  },
-                ),
-                const SizedBox(height: 32),
               ],
             ),
           ),

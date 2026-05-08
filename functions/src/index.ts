@@ -338,6 +338,52 @@ export const syncFollowersCountOnFollowingChange = onDocumentWritten(
   },
 );
 
+// ── processFollowerRemoval ────────────────────────────────────────────────────
+export const processFollowerRemoval = onDocumentCreated(
+  {
+    document: 'follower_removal_requests/{requestId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const requestId = event.params.requestId;
+    const data = snap.data() as {
+      requestedBy?: unknown;
+      followerUid?: unknown;
+    };
+    const requestedBy =
+      typeof data.requestedBy === 'string' ? data.requestedBy : '';
+    const followerUid =
+      typeof data.followerUid === 'string' ? data.followerUid : '';
+    if (!requestedBy || !followerUid || requestedBy === followerUid) {
+      logger.warn('processFollowerRemoval: invalid request', { requestId });
+      await snap.ref.update({ status: 'error', error: 'Invalid request' });
+      return;
+    }
+    try {
+      const db = admin.firestore();
+      const followerRef = db.collection('users').doc(followerUid);
+      await followerRef.update({
+        following: admin.firestore.FieldValue.arrayRemove([requestedBy]),
+      });
+      await snap.ref.update({ status: 'done' });
+      logger.info('processFollowerRemoval: success', {
+        requestId,
+        requestedBy,
+        followerUid,
+      });
+    } catch (err) {
+      logger.error('processFollowerRemoval: failed', {
+        requestId,
+        error: String(err),
+      });
+      await snap.ref.update({ status: 'error', error: String(err) });
+    }
+  },
+);
+
 // ── moderateReelOnCreate (Hive Visual Moderation) ────────────────────────────
 type HiveClassScore = { class: string; score: number };
 type HiveV3Class = { class_name?: unknown; value?: unknown };

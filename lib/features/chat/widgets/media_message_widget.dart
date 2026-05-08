@@ -24,21 +24,21 @@ class MediaMessageWidget extends StatelessWidget {
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.65,
+          maxWidth: MediaQuery.of(context).size.width * 0.70,
         ),
         margin: EdgeInsets.only(
-          left: isSent ? 60 : 12,
-          right: isSent ? 12 : 60,
+          left: isSent ? 60 : 10,
+          right: isSent ? 10 : 60,
           top: 2,
           bottom: 2,
         ),
         decoration: BoxDecoration(
           color: isSent ? const Color(0xFF2A1040) : const Color(0xFF1E0E2E),
           borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isSent ? 18 : 4),
-            bottomRight: Radius.circular(isSent ? 4 : 18),
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isSent ? 16 : 4),
+            bottomRight: Radius.circular(isSent ? 4 : 16),
           ),
         ),
         clipBehavior: Clip.antiAlias,
@@ -50,7 +50,7 @@ class MediaMessageWidget extends StatelessWidget {
               child: _buildMediaContent(isVideo),
             ),
             Padding(
-              padding: const EdgeInsets.only(right: 10, bottom: 6, top: 4),
+              padding: const EdgeInsets.only(right: 10, bottom: 5, top: 3),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -58,7 +58,7 @@ class MediaMessageWidget extends StatelessWidget {
                     Text(
                       seenText!,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: Colors.white.withValues(alpha: 0.45),
                         fontSize: 10,
                       ),
                     ),
@@ -67,7 +67,7 @@ class MediaMessageWidget extends StatelessWidget {
                   Text(
                     time,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: Colors.white.withValues(alpha: 0.45),
                       fontSize: 10,
                     ),
                   ),

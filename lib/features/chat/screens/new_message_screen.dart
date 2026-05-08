@@ -98,9 +98,9 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open chat')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Could not open chat')));
     }
   }
 
@@ -113,19 +113,35 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.brandNearBlack,
+      backgroundColor: const Color(0xFF07010F),
       body: Stack(
         children: [
-          Positioned(
-            top: -80,
-            left: -60,
-            right: -60,
+          Positioned.fill(
             child: Container(
-              height: 280,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.45, 1.0],
+                  colors: [
+                    Color(0xFF1A0826),
+                    Color(0xFF10041A),
+                    Color(0xFF07010F),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            top: -100,
+            left: -100,
+            right: -100,
+            child: Container(
+              height: 400,
               decoration: const BoxDecoration(
                 gradient: RadialGradient(
-                  colors: [Color(0x44DE106B), Color(0x00000000)],
-                  radius: 0.9,
+                  colors: [Color(0x88DE106B), Color(0x00000000)],
+                  radius: 0.75,
                 ),
               ),
             ),
@@ -147,7 +163,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                           'New Message',
                           style: TextStyle(
                             color: Colors.white,
-                            fontSize: 18,
+                            fontSize: 17,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -224,7 +240,11 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(color: const Color(0x33FFFFFF), width: 0.5),
               ),
-              child: const Icon(Icons.group_add_outlined, color: Colors.white70, size: 22),
+              child: const Icon(
+                Icons.group_add_outlined,
+                color: Colors.white70,
+                size: 22,
+              ),
             ),
             const SizedBox(width: 12),
             const Expanded(
@@ -237,7 +257,11 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                 ),
               ),
             ),
-            Icon(Icons.chevron_right, color: Colors.white.withValues(alpha: 0.3), size: 20),
+            Icon(
+              Icons.chevron_right,
+              color: Colors.white.withValues(alpha: 0.3),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -255,7 +279,10 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
       return Center(
         child: Text(
           'No users found',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.4),
+            fontSize: 15,
+          ),
         ),
       );
     }
@@ -294,7 +321,11 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                       : null,
                   child: hasAvatar
                       ? null
-                      : const Icon(Icons.person, color: Colors.white54, size: 22),
+                      : const Icon(
+                          Icons.person,
+                          color: Colors.white54,
+                          size: 22,
+                        ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

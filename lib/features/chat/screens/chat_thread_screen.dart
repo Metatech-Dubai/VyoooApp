@@ -214,6 +214,17 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       _uploadError = null;
     });
     try {
+      if (!file.existsSync()) {
+        throw const ChatMediaException('Recording file not found');
+      }
+      final fileSize = file.lengthSync();
+      if (fileSize == 0) {
+        throw const ChatMediaException('Recording file is empty');
+      }
+      debugPrint(
+        '[ChatThread] voice note: path=${file.path} size=$fileSize dur=$durationMs',
+      );
+
       final messageRef = FirebaseFirestore.instance
           .collection('chats')
           .doc(widget.chatId)
@@ -221,6 +232,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           .doc();
       final messageId = messageRef.id;
 
+      debugPrint('[ChatThread] voice note: uploading to storage...');
       final result = await _mediaService.uploadAudioMessage(
         chatId: widget.chatId,
         senderId: widget.currentUser.uid,
@@ -230,6 +242,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           if (mounted) setState(() => _uploadProgress = p);
         },
       );
+      debugPrint('[ChatThread] voice note: upload OK, writing message...');
 
       await _chatService.sendMediaMessage(
         chatId: widget.chatId,
@@ -240,16 +253,30 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         storagePath: result.storagePath,
         durationMs: durationMs,
       );
+      debugPrint('[ChatThread] voice note: sent OK');
 
       _chatService.markChatRead(
         uid: widget.currentUser.uid,
         chatId: widget.chatId,
       );
-    } catch (e) {
+    } on ChatMediaException catch (e) {
+      debugPrint('[ChatThread] voice note media error: ${e.message}');
       if (mounted) {
-        setState(() => _uploadError = 'Voice note failed');
+        setState(() => _uploadError = e.message);
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text(e.message)));
+      }
+    } catch (e, st) {
+      debugPrint('[ChatThread] voice note send error: $e');
+      debugPrint('[ChatThread] voice note stacktrace: $st');
+      if (mounted) {
+        setState(() => _uploadError = '$e');
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Failed to send voice note')),
+          SnackBar(
+            content: Text('Voice note error: $e'),
+            duration: const Duration(seconds: 5),
+          ),
         );
       }
     } finally {
@@ -730,176 +757,215 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             ? _handleVideoCall
             : null,
       ),
-      body: Column(
+      body: Stack(
         children: [
-          if (_isUploading) _buildUploadIndicator(),
-          if (_uploadError != null && !_isUploading) _buildRetryBanner(),
-          Expanded(
-            child: StreamBuilder<List<MessageModel>>(
-              stream: _chatService.watchMessages(
-                widget.chatId,
-                widget.currentUser.uid,
-                clearedAt: _chatModel?.clearedAtBy[widget.currentUser.uid],
+          Positioned.fill(
+            child: Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  stops: [0.0, 0.4, 1.0],
+                  colors: [
+                    Color(0xFF1A0826),
+                    Color(0xFF10041A),
+                    Color(0xFF07010F),
+                  ],
+                ),
               ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting &&
-                    !snapshot.hasData) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Color(0xFFDE106B)),
-                  );
-                }
-
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Something went wrong',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                      ),
-                    ),
-                  );
-                }
-
-                final messages = snapshot.data ?? [];
-                if (messages.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.chat_bubble_outline,
-                          color: Colors.white.withValues(alpha: 0.2),
-                          size: 64,
+            ),
+          ),
+          Positioned(
+            top: -80,
+            left: -80,
+            right: -80,
+            child: Container(
+              height: 360,
+              decoration: const BoxDecoration(
+                gradient: RadialGradient(
+                  colors: [Color(0x55DE106B), Color(0x00000000)],
+                  radius: 0.7,
+                ),
+              ),
+            ),
+          ),
+          Column(
+            children: [
+              if (_isUploading) _buildUploadIndicator(),
+              if (_uploadError != null && !_isUploading) _buildRetryBanner(),
+              Expanded(
+                child: StreamBuilder<List<MessageModel>>(
+                  stream: _chatService.watchMessages(
+                    widget.chatId,
+                    widget.currentUser.uid,
+                    clearedAt: _chatModel?.clearedAtBy[widget.currentUser.uid],
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting &&
+                        !snapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(
+                          color: Color(0xFFDE106B),
                         ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'Say hi to $emptyName!',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.4),
-                            fontSize: 15,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                _chatService.markMessagesSeen(
-                  chatId: widget.chatId,
-                  uid: widget.currentUser.uid,
-                  messages: messages,
-                );
-                _chatService.markChatRead(
-                  uid: widget.currentUser.uid,
-                  chatId: widget.chatId,
-                );
-
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (_scrollController.hasClients) {
-                    _scrollController.jumpTo(
-                      _scrollController.position.maxScrollExtent,
-                    );
-                  }
-                });
-
-                int? lastSentIdx;
-                for (var i = messages.length - 1; i >= 0; i--) {
-                  if (messages[i].senderId == widget.currentUser.uid &&
-                      !messages[i].deletedForEveryone) {
-                    lastSentIdx = i;
-                    break;
-                  }
-                }
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isSent = msg.senderId == widget.currentUser.uid;
-                    final time = _formatMessageTime(msg.createdAt);
-                    final isLastSent = index == lastSentIdx;
-                    final seen = _seenText(msg, isSent, isLastSent);
-
-                    Widget bubble;
-                    if (msg.deletedForEveryone) {
-                      bubble = MessageBubble(
-                        text: '',
-                        isSent: isSent,
-                        time: time,
-                        isDeleted: true,
-                        senderName: _senderName(msg),
-                      );
-                    } else if (msg.isViewOnce &&
-                        (msg.type == ChatMessageTypes.image ||
-                            msg.type == ChatMessageTypes.video)) {
-                      bubble = ViewOnceMessageWidget(
-                        message: msg,
-                        isSent: isSent,
-                        time: time,
-                        currentUid: widget.currentUser.uid,
-                        isGroup: _isGroup,
-                        senderName: _senderName(msg),
-                        onTap: () => _openViewOnceMedia(msg),
-                      );
-                    } else if (msg.type == ChatMessageTypes.image ||
-                        msg.type == ChatMessageTypes.video) {
-                      bubble = _buildMediaBubble(
-                        msg,
-                        isSent,
-                        time,
-                        seenText: seen,
-                      );
-                    } else if (msg.type == ChatMessageTypes.call) {
-                      bubble = CallMessageBubble(message: msg, isSent: isSent);
-                    } else if (msg.type == ChatMessageTypes.audio) {
-                      bubble = AudioMessageBubble(
-                        message: msg,
-                        isSent: isSent,
-                        time: time,
-                        senderName: _senderName(msg),
-                        seenText: seen,
-                      );
-                    } else {
-                      bubble = MessageBubble(
-                        text: msg.text,
-                        isSent: isSent,
-                        time: time,
-                        isDeleted: false,
-                        senderName: _senderName(msg),
-                        seenText: seen,
                       );
                     }
 
-                    return GestureDetector(
-                      onLongPress: () => _handleDeleteMessage(msg),
-                      child: bubble,
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Something went wrong',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.5),
+                          ),
+                        ),
+                      );
+                    }
+
+                    final messages = snapshot.data ?? [];
+                    if (messages.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.chat_bubble_outline,
+                              color: Colors.white.withValues(alpha: 0.2),
+                              size: 64,
+                            ),
+                            const SizedBox(height: 12),
+                            Text(
+                              'Say hi to $emptyName!',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.4),
+                                fontSize: 15,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+
+                    _chatService.markMessagesSeen(
+                      chatId: widget.chatId,
+                      uid: widget.currentUser.uid,
+                      messages: messages,
+                    );
+                    _chatService.markChatRead(
+                      uid: widget.currentUser.uid,
+                      chatId: widget.chatId,
+                    );
+
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      if (_scrollController.hasClients) {
+                        _scrollController.jumpTo(
+                          _scrollController.position.maxScrollExtent,
+                        );
+                      }
+                    });
+
+                    int? lastSentIdx;
+                    for (var i = messages.length - 1; i >= 0; i--) {
+                      if (messages[i].senderId == widget.currentUser.uid &&
+                          !messages[i].deletedForEveryone) {
+                        lastSentIdx = i;
+                        break;
+                      }
+                    }
+
+                    return ListView.builder(
+                      controller: _scrollController,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: messages.length,
+                      itemBuilder: (context, index) {
+                        final msg = messages[index];
+                        final isSent = msg.senderId == widget.currentUser.uid;
+                        final time = _formatMessageTime(msg.createdAt);
+                        final isLastSent = index == lastSentIdx;
+                        final seen = _seenText(msg, isSent, isLastSent);
+
+                        Widget bubble;
+                        if (msg.deletedForEveryone) {
+                          bubble = MessageBubble(
+                            text: '',
+                            isSent: isSent,
+                            time: time,
+                            isDeleted: true,
+                            senderName: _senderName(msg),
+                          );
+                        } else if (msg.isViewOnce &&
+                            (msg.type == ChatMessageTypes.image ||
+                                msg.type == ChatMessageTypes.video)) {
+                          bubble = ViewOnceMessageWidget(
+                            message: msg,
+                            isSent: isSent,
+                            time: time,
+                            currentUid: widget.currentUser.uid,
+                            isGroup: _isGroup,
+                            senderName: _senderName(msg),
+                            onTap: () => _openViewOnceMedia(msg),
+                          );
+                        } else if (msg.type == ChatMessageTypes.image ||
+                            msg.type == ChatMessageTypes.video) {
+                          bubble = _buildMediaBubble(
+                            msg,
+                            isSent,
+                            time,
+                            seenText: seen,
+                          );
+                        } else if (msg.type == ChatMessageTypes.call) {
+                          bubble = CallMessageBubble(
+                            message: msg,
+                            isSent: isSent,
+                          );
+                        } else if (msg.type == ChatMessageTypes.audio) {
+                          bubble = AudioMessageBubble(
+                            message: msg,
+                            isSent: isSent,
+                            time: time,
+                            senderName: _senderName(msg),
+                            seenText: seen,
+                          );
+                        } else {
+                          bubble = MessageBubble(
+                            text: msg.text,
+                            isSent: isSent,
+                            time: time,
+                            isDeleted: false,
+                            senderName: _senderName(msg),
+                            seenText: seen,
+                          );
+                        }
+
+                        return GestureDetector(
+                          onLongPress: () => _handleDeleteMessage(msg),
+                          child: bubble,
+                        );
+                      },
                     );
                   },
-                );
-              },
-            ),
-          ),
-          StreamBuilder<List<Map<String, dynamic>>>(
-            stream: _typingService.watchTyping(
-              chatId: widget.chatId,
-              excludeUid: widget.currentUser.uid,
-            ),
-            builder: (context, snapshot) {
-              final typingUsers = snapshot.data ?? [];
-              return TypingIndicatorWidget(
-                typingUsers: typingUsers,
-                isGroup: _isGroup,
-              );
-            },
-          ),
-          MessageInputBar(
-            onSend: _handleSend,
-            onMediaAction: _handleMediaAction,
-            mediaLoading: _isUploading,
-            onTypingChanged: _handleTypingChanged,
-            onVoiceNoteSend: _handleVoiceNote,
+                ),
+              ),
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: _typingService.watchTyping(
+                  chatId: widget.chatId,
+                  excludeUid: widget.currentUser.uid,
+                ),
+                builder: (context, snapshot) {
+                  final typingUsers = snapshot.data ?? [];
+                  return TypingIndicatorWidget(
+                    typingUsers: typingUsers,
+                    isGroup: _isGroup,
+                  );
+                },
+              ),
+              MessageInputBar(
+                onSend: _handleSend,
+                onMediaAction: _handleMediaAction,
+                mediaLoading: _isUploading,
+                onTypingChanged: _handleTypingChanged,
+                onVoiceNoteSend: _handleVoiceNote,
+              ),
+            ],
           ),
         ],
       ),

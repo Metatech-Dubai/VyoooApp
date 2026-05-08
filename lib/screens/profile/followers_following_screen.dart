@@ -197,7 +197,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     ),
                   ),
                   _RemoveModalButton(
-                    label: 'Block',
+                    label: 'Remove',
                     onPressed: () async {
                       final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(ctx);
@@ -210,14 +210,15 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                         return;
                       }
                       try {
-                        await UserService().blockUser(
+                        await UserService().removeFollower(
                           currentUid: me,
-                          targetUid: target,
+                          followerUid: target,
                         );
                         if (context.mounted) {
                           await _loadConnections();
                           messenger.showSnackBar(
-                            const SnackBar(content: Text('User blocked.')),
+                            const SnackBar(
+                                content: Text('Follower removed.')),
                           );
                         }
                       } catch (e) {
@@ -233,7 +234,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               ),
               const SizedBox(height: AppSpacing.sm),
               const Text(
-                'Block this follower?',
+                'Remove this follower?',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 18,
@@ -269,7 +270,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                 child: Text(
-                  'Blocking removes this account from your feed and they won\'t be able to follow your activity.',
+                  'This account will be removed from your followers. They won\'t be notified that you removed them.',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.8),
                     fontSize: 14,

@@ -27,6 +27,8 @@ class MainNavWrapper extends StatefulWidget {
 
   final int? initialIndex;
 
+  static final ValueNotifier<int?> tabNotifier = ValueNotifier<int?>(null);
+
   @override
   State<MainNavWrapper> createState() => _MainNavWrapperState();
 }
@@ -44,9 +46,18 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
       GlobalKey<SearchScreenState>();
   late final SearchTabLaunchCallback _searchTabLaunchHandler;
 
+  void _onTabNotifierChanged() {
+    final v = MainNavWrapper.tabNotifier.value;
+    if (v != null && mounted) {
+      MainNavWrapper.tabNotifier.value = null;
+      _onNavTap(v);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
+    MainNavWrapper.tabNotifier.addListener(_onTabNotifierChanged);
     if (widget.initialIndex != null) {
       final safe = widget.initialIndex!.clamp(0, 4);
       _currentIndex = safe;
@@ -107,6 +118,7 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
 
   @override
   void dispose() {
+    MainNavWrapper.tabNotifier.removeListener(_onTabNotifierChanged);
     SearchTabLauncher.instance.unregister(_searchTabLaunchHandler);
     _reelDeepLinkSub?.cancel();
     _profileDeepLinkSub?.cancel();
