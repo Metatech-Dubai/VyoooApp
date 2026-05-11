@@ -102,6 +102,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   /// Pending follow request to this profile (private accounts).
   bool _pendingFollowRequest = false;
   StreamSubscription<bool>? _pendingFollowSub;
+  /// Keeps [_isFollowing] in sync when the owner accepts (CF updates users/me.following).
+  StreamSubscription<AppUserModel?>? _selfUserFollowSub;
+  StreamSubscription<DocumentSnapshot<Map<String, dynamic>>>? _followEdgeSub;
+  /// True once [follow_edges] has been active for this pair (detect delete → unfollow sync).
+  bool _followEdgeHadActive = false;
   int? _liveFollowerCount;
   int? _liveFollowingCount;
   int? _livePostCount;
@@ -122,8 +127,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     super.initState();
     _isFollowing = widget.payload.isFollowing;
     _isSubscribed = widget.payload.isSubscribed;
-    _refreshFollowFromFirestore();
+    unawaited(_refreshFollowFromFirestore(server: true));
     _bindPendingFollowRequest();
+    _bindFollowEdgeDoc();
+    _bindCurrentUserFollowingStream();
     _refreshCreatorSubscriptionFromFirestore();
     _loadPublicCounts();
     _bindLiveCountStreams();
@@ -143,8 +150,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _liveIsVerified = null;
       _liveAccountType = null;
       _liveVipVerified = null;
-      _refreshFollowFromFirestore();
+      unawaited(_refreshFollowFromFirestore(server: true));
       _bindPendingFollowRequest();
+      _bindFollowEdgeDoc();
+      _bindCurrentUserFollowingStream();
       _refreshCreatorSubscriptionFromFirestore();
       _loadPublicCounts();
       _bindLiveCountStreams();
@@ -154,6 +163,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   void dispose() {
     _pendingFollowSub?.cancel();
+    _followEdgeSub?.cancel();
+    _selfUserFollowSub?.cancel();
     _followerCountSub?.cancel();
     _postCountSub?.cancel();
     _subscriberCountSub?.cancel();
@@ -176,11 +187,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (!mounted) return;
       setState(() => _livePostCount = v);
     });
-    _subscriberCountSub =
-        _creatorSubscriptionService.subscriberCountStream(id).listen((v) {
-      if (!mounted) return;
-      setState(() => _liveSubscriberCount = v);
-    });
+    // creatorSubscriptions list reads are only allowed for the creator (Firestore rules).
+    final me = AuthService().currentUser?.uid;
+    if (me != null && me.isNotEmpty && me == id) {
+      _subscriberCountSub =
+          _creatorSubscriptionService.subscriberCountStream(id).listen((v) {
+        if (!mounted) return;
+        setState(() => _liveSubscriberCount = v);
+      });
+    }
     _targetUserSub = svc.userStream(id).listen((u) {
       if (!mounted) return;
       setState(() {
@@ -198,7 +213,10 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final svc = UserService();
     final fc = await svc.getFollowerCount(id);
     final pc = await svc.getReelCountForUser(id);
-    final sc = await _creatorSubscriptionService.getSubscriberCount(id);
+    final me = AuthService().currentUser?.uid;
+    final sc = (me != null && me.isNotEmpty && me == id)
+        ? await _creatorSubscriptionService.getSubscriberCount(id)
+        : 0;
     final u = await svc.getUser(id);
     if (!mounted) return;
     setState(() {
@@ -209,7 +227,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     });
   }
 
-  Future<void> _refreshFollowFromFirestore() async {
+  Future<void> _refreshFollowFromFirestore({bool server = false}) async {
     final target = widget.payload.targetUserId;
     final me = AuthService().currentUser?.uid;
     if (target == null ||
@@ -223,17 +241,80 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final v = await svc.isFollowingUser(
       currentUid: me,
       targetUid: target,
+      server: server,
+    );
+    final edgeActive = await svc.isFollowEdgeActive(
+      requesterUid: me,
+      targetUid: target,
+      server: server,
     );
     final pending = await svc.outgoingFollowRequestPending(
       requesterUid: me,
       targetUid: target,
+      server: server,
     );
     if (mounted) {
       setState(() {
-        _isFollowing = v;
-        _pendingFollowRequest = pending;
+        final following = v || edgeActive;
+        _isFollowing = following;
+        // Do not show Follow while request is pending or accepted-but-CF-pending.
+        _pendingFollowRequest = pending && !following;
       });
     }
+  }
+
+  /// After the owner accepts, the follow_request doc is deleted before
+  /// `users/me.following` always reflects the new edge — re-read a few times
+  /// so we do not briefly (or permanently) show Follow instead of Following.
+  Future<void> _reconcileFollowAfterRequestResolved() async {
+    // After accept, local cache can still omit the new following edge for a bit;
+    // Source.server avoids showing Follow until the write is visible.
+    for (var step = 0; step < 12; step++) {
+      if (!mounted) return;
+      if (step > 0) {
+        await Future<void>.delayed(const Duration(milliseconds: 280));
+      }
+      if (!mounted) return;
+      await _refreshFollowFromFirestore(server: true);
+      if (!mounted) return;
+      if (_isFollowing) return;
+    }
+  }
+
+  /// Server-written when a private follow is accepted; survives client cache races
+  /// on `users/{me}.following` (see [UserService.followEdgesCollection]).
+  void _bindFollowEdgeDoc() {
+    _followEdgeSub?.cancel();
+    _followEdgeSub = null;
+    _followEdgeHadActive = false;
+    final target = widget.payload.targetUserId;
+    final me = AuthService().currentUser?.uid;
+    if (target == null ||
+        target.isEmpty ||
+        me == null ||
+        me.isEmpty ||
+        me == target) {
+      return;
+    }
+    _followEdgeSub = UserService()
+        .watchFollowEdgeDoc(requesterUid: me, targetUid: target)
+        .listen((DocumentSnapshot<Map<String, dynamic>> snap) {
+      if (!mounted) return;
+      final d = snap.data();
+      final active = snap.exists && (d?['active'] as bool? ?? true);
+      if (active) {
+        _followEdgeHadActive = true;
+        setState(() {
+          _isFollowing = true;
+          _pendingFollowRequest = false;
+        });
+        return;
+      }
+      if (_followEdgeHadActive) {
+        _followEdgeHadActive = false;
+        unawaited(_refreshFollowFromFirestore(server: true));
+      }
+    });
   }
 
   void _bindPendingFollowRequest() {
@@ -252,8 +333,44 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         .watchOutgoingFollowRequestPending(requesterUid: me, targetUid: target)
         .listen((pending) {
       if (!mounted) return;
+      final wasPending = _pendingFollowRequest;
       setState(() => _pendingFollowRequest = pending);
+      if (wasPending && !pending) {
+        unawaited(_refreshFollowFromFirestore(server: true));
+        unawaited(_reconcileFollowAfterRequestResolved());
+      }
     });
+  }
+
+  void _bindCurrentUserFollowingStream() {
+    _selfUserFollowSub?.cancel();
+    _selfUserFollowSub = null;
+    final target = widget.payload.targetUserId;
+    final me = AuthService().currentUser?.uid;
+    if (target == null ||
+        target.isEmpty ||
+        me == null ||
+        me.isEmpty ||
+        me == target) {
+      return;
+    }
+    _selfUserFollowSub = UserService().userStream(me).listen((u) {
+      if (!mounted || u == null) return;
+      final nowFollowing = u.following.contains(target);
+      // Do not set _isFollowing to false from this stream: snapshots can briefly
+      // lag the server after an accept, which would flip the button back to Follow.
+      if (!nowFollowing) return;
+      setState(() {
+        _isFollowing = true;
+        _pendingFollowRequest = false;
+      });
+    });
+  }
+
+  bool _targetRequiresFollowRequest(UserProfilePayload p) {
+    return UserService.accountTypeRequiresFollowApproval(
+      _liveAccountType ?? p.accountType,
+    );
   }
 
   bool _isViewingOwnProfile(UserProfilePayload p) {
@@ -567,30 +684,37 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       ),
                       const SizedBox(height: 12),
                       Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          _UserStatChip(
-                            label: 'Posts',
-                            value: _formatCount(_livePostCount ?? p.postCount),
-                          ),
-                          const SizedBox(width: 12),
-                          _UserStatChip(
-                            label: 'Followers',
-                            value: _formatCount(
-                              _liveFollowerCount ?? p.followerCount,
+                          Expanded(
+                            child: _UserStatChip(
+                              label: 'Posts',
+                              value: _formatCount(_livePostCount ?? p.postCount),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          _UserStatChip(
-                            label: 'Following',
-                            value: _formatCount(
-                              _liveFollowingCount ?? p.followingCount,
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _UserStatChip(
+                              label: 'Followers',
+                              value: _formatCount(
+                                _liveFollowerCount ?? p.followerCount,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          _UserStatChip(
-                            label: 'Subscriptions',
-                            value: _formatCount(_liveSubscriberCount ?? 0),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _UserStatChip(
+                              label: 'Following',
+                              value: _formatCount(
+                                _liveFollowingCount ?? p.followingCount,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _UserStatChip(
+                              label: 'Subscriptions',
+                              value: _formatCount(_liveSubscriberCount ?? 0),
+                            ),
                           ),
                         ],
                       ),
@@ -688,7 +812,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ? '…'
                   : (_isFollowing
                       ? 'Following'
-                      : (_pendingFollowRequest ? 'Requested' : 'Follow')),
+                      : (_targetRequiresFollowRequest(p) && _pendingFollowRequest
+                          ? 'Requested'
+                          : 'Follow')),
               onPressed: _followActionBusy ? () {} : _onFollowTap,
             ),
           ),
@@ -1542,8 +1668,8 @@ class _UserStatChip extends StatelessWidget {
         onTap: null,
         borderRadius: BorderRadius.circular(10),
         child: Container(
-          width: 82,
-          padding: const EdgeInsets.symmetric(vertical: 14),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 4),
           decoration: BoxDecoration(
             color: const Color(0xFF4A1538),
             borderRadius: BorderRadius.circular(10),

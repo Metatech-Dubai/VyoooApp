@@ -2072,11 +2072,19 @@ class _UserSearchResultTile extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: user.isFollowing || user.outgoingFollowRequestPending
+                    color: user.isFollowing ||
+                            (UserService.accountTypeRequiresFollowApproval(
+                                  user.accountType,
+                                ) &&
+                                user.outgoingFollowRequestPending)
                         ? Colors.white.withValues(alpha: 0.1)
                         : const Color(0xFFF81945),
                     borderRadius: BorderRadius.circular(20),
-                    border: user.outgoingFollowRequestPending && !user.isFollowing
+                    border: UserService.accountTypeRequiresFollowApproval(
+                              user.accountType,
+                            ) &&
+                            user.outgoingFollowRequestPending &&
+                            !user.isFollowing
                         ? Border.all(color: Colors.white.withValues(alpha: 0.35))
                         : null,
                   ),
@@ -2094,7 +2102,10 @@ class _UserSearchResultTile extends StatelessWidget {
                       : Text(
                           user.isFollowing
                               ? 'Following'
-                              : (user.outgoingFollowRequestPending
+                              : (UserService.accountTypeRequiresFollowApproval(
+                                        user.accountType,
+                                      ) &&
+                                      user.outgoingFollowRequestPending
                                   ? 'Requested'
                                   : 'Follow'),
                           style: const TextStyle(

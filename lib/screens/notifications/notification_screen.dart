@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
 
@@ -159,18 +160,68 @@ class _NotificationScreenState extends State<NotificationScreen>
                     (followedUserIds.contains(targetUid) ||
                         _followBackInFlight.contains(targetUid));
                 final isFollowingInProgress = _followBackInFlight.contains(targetUid);
-                rows.add(
-                  _NotifTile(
-                    item: item,
-                    isFollowed: isFollowed,
-                    isFollowingInProgress: isFollowingInProgress,
-                    onTap: () => _handleOpen(item),
-                    onFollowBack: () => _handleFollowBack(item),
-                    onReply: () => _handleReply(item),
-                    onAcceptFollowRequest: () => _handleAcceptFollowRequest(item),
-                    onDeclineFollowRequest: () => _handleDeclineFollowRequest(item),
-                  ),
-                );
+                if (item.type == AppNotificationType.followRequest) {
+                  final rid = item.recipientId.trim();
+                  final sid = item.senderId.trim();
+                  if (rid.isEmpty || sid.isEmpty) {
+                    rows.add(
+                      _NotifTile(
+                        item: item,
+                        isFollowed: isFollowed,
+                        isFollowingInProgress: isFollowingInProgress,
+                        showFollowRequestActions: false,
+                        onTap: () => _handleOpen(item),
+                        onFollowBack: () => _handleFollowBack(item),
+                        onReply: () => _handleReply(item),
+                        onAcceptFollowRequest: () =>
+                            _handleAcceptFollowRequest(item),
+                        onDeclineFollowRequest: () =>
+                            _handleDeclineFollowRequest(item),
+                      ),
+                    );
+                  } else {
+                    rows.add(
+                      StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                        stream: FirebaseFirestore.instance
+                            .collection('follow_requests')
+                            .doc(UserService.followRequestDocId(sid, rid))
+                            .snapshots(),
+                        builder: (context, snap) {
+                          final showActions =
+                              _followRequestActionsStillPending(snap);
+                          return _NotifTile(
+                            item: item,
+                            isFollowed: isFollowed,
+                            isFollowingInProgress: isFollowingInProgress,
+                            showFollowRequestActions: showActions,
+                            onTap: () => _handleOpen(item),
+                            onFollowBack: () => _handleFollowBack(item),
+                            onReply: () => _handleReply(item),
+                            onAcceptFollowRequest: () =>
+                                _handleAcceptFollowRequest(item),
+                            onDeclineFollowRequest: () =>
+                                _handleDeclineFollowRequest(item),
+                          );
+                        },
+                      ),
+                    );
+                  }
+                } else {
+                  rows.add(
+                    _NotifTile(
+                      item: item,
+                      isFollowed: isFollowed,
+                      isFollowingInProgress: isFollowingInProgress,
+                      onTap: () => _handleOpen(item),
+                      onFollowBack: () => _handleFollowBack(item),
+                      onReply: () => _handleReply(item),
+                      onAcceptFollowRequest: () =>
+                          _handleAcceptFollowRequest(item),
+                      onDeclineFollowRequest: () =>
+                          _handleDeclineFollowRequest(item),
+                    ),
+                  );
+                }
                 rows.add(const SizedBox(height: 20));
               }
               rows.add(const SizedBox(height: 4));
@@ -326,6 +377,19 @@ class _NotificationScreenState extends State<NotificationScreen>
     );
   }
 
+  /// Accept/Decline only while `follow_requests/{requester}_{recipient}` exists
+  /// with `status == pending` (accept triggers CF delete; decline deletes client-side).
+  bool _followRequestActionsStillPending(
+    AsyncSnapshot<DocumentSnapshot<Map<String, dynamic>>> snap,
+  ) {
+    if (snap.hasError) return false;
+    if (!snap.hasData) return true;
+    final doc = snap.data!;
+    if (!doc.exists) return false;
+    final st = (doc.data()?['status'] as String?)?.trim() ?? '';
+    return st == 'pending';
+  }
+
   void _autoMarkVisibleAsRead(List<AppNotification> list) {
     if (_isMarkingVisibleAsRead || list.isEmpty) return;
     final unreadIds = list
@@ -351,6 +415,7 @@ class _NotifTile extends StatelessWidget {
     required this.isFollowed,
     required this.isFollowingInProgress,
     required this.onTap,
+    this.showFollowRequestActions = true,
     this.onFollowBack,
     this.onReply,
     this.onAcceptFollowRequest,
@@ -360,6 +425,8 @@ class _NotifTile extends StatelessWidget {
   final AppNotification item;
   final bool isFollowed;
   final bool isFollowingInProgress;
+  /// When false, hide Accept/Decline for [AppNotificationType.followRequest] rows.
+  final bool showFollowRequestActions;
   final VoidCallback onTap;
   final VoidCallback? onFollowBack;
   final VoidCallback? onReply;
@@ -467,6 +534,9 @@ class _NotifTile extends StatelessWidget {
         }
         return _PinkPillButton(label: 'Follow back', onTap: onFollowBack ?? onTap);
       case 'followRequest':
+        if (!showFollowRequestActions) {
+          return const SizedBox.shrink();
+        }
         return Row(
           mainAxisSize: MainAxisSize.min,
           children: [

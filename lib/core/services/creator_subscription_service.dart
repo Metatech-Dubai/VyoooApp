@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth_service.dart';
 
@@ -146,12 +149,17 @@ class CreatorSubscriptionService {
     final uid = _currentUid;
     final cleanCreatorId = creatorId.trim();
     if (uid.isEmpty || cleanCreatorId.isEmpty) return null;
-    final doc = await _firestore
-        .collection(_collection)
-        .doc(_docIdFor(uid, cleanCreatorId))
-        .get();
-    if (!doc.exists) return null;
-    return CreatorSubscriptionRecord.fromDoc(doc);
+    try {
+      final doc = await _firestore
+          .collection(_collection)
+          .doc(_docIdFor(uid, cleanCreatorId))
+          .get();
+      if (!doc.exists) return null;
+      return CreatorSubscriptionRecord.fromDoc(doc);
+    } on FirebaseException catch (e) {
+      if (e.code == 'permission-denied') return null;
+      rethrow;
+    }
   }
 
   Future<void> subscribeToCreator({
@@ -213,14 +221,39 @@ class CreatorSubscriptionService {
   }
 
   /// Reactive stream of active subscriber count for a creator.
+  ///
+  /// Firestore rules only allow listing when the viewer is party to those docs
+  /// (typically the creator). Other viewers get permission-denied; we emit `0`
+  /// instead of surfacing an unhandled async error.
   Stream<int> subscriberCountStream(String creatorId) {
     if (creatorId.isEmpty) return const Stream<int>.empty();
-    return _firestore
-        .collection(_collection)
-        .where('creatorId', isEqualTo: creatorId)
-        .where('status', isEqualTo: 'active')
-        .snapshots()
-        .map((q) => q.docs.length);
+    return Stream<int>.multi((out) {
+      late final StreamSubscription<QuerySnapshot<Map<String, dynamic>>> sub;
+      sub = _firestore
+          .collection(_collection)
+          .where('creatorId', isEqualTo: creatorId)
+          .where('status', isEqualTo: 'active')
+          .snapshots()
+          .listen(
+            (q) {
+              if (!out.isClosed) out.add(q.docs.length);
+            },
+            onError: (Object e, StackTrace st) {
+              // permission-denied is expected when the viewer is not the creator.
+              assert(() {
+                if (e is FirebaseException && e.code == 'permission-denied') {
+                  return true;
+                }
+                debugPrint(
+                  'CreatorSubscriptionService.subscriberCountStream: $e',
+                );
+                return true;
+              }());
+              if (!out.isClosed) out.add(0);
+            },
+          );
+      out.onCancel = () => sub.cancel();
+    });
   }
 
   /// One-time fetch of active subscriber count for a creator.

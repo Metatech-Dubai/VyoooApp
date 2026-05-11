@@ -303,10 +303,18 @@ exports.applyAcceptedFollowRequest = (0, firestore_1.onDocumentUpdated)({
     const db = admin.firestore();
     const batch = db.batch();
     const requesterRef = db.collection('users').doc(requesterUid);
+    const edgeId = `${requesterUid}_${targetUid}`;
+    const edgeRef = db.collection('follow_edges').doc(edgeId);
     batch.set(requesterRef, {
         following: admin.firestore.FieldValue.arrayUnion(targetUid),
         blockedUsers: admin.firestore.FieldValue.arrayRemove(targetUid),
     }, { merge: true });
+    batch.set(edgeRef, {
+        requesterUid,
+        targetUid,
+        active: true,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     batch.delete(event.data.after.ref);
     try {
         await batch.commit();

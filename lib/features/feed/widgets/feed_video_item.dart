@@ -44,6 +44,8 @@ class _FeedVideoItemState extends State<FeedVideoItem>
   bool _isMuted = false;
   bool _isAppForeground = true;
   bool _isFollowingAuthor = false;
+  bool _pendingFollowRequest = false;
+  bool _authorRequiresFollowApproval = false;
   bool _followBusy = false;
   String? _targetUserId;
   Timer? _hideTimer;
@@ -80,10 +82,21 @@ class _FeedVideoItemState extends State<FeedVideoItem>
       currentUid: me,
       targetUid: user.uid,
     );
+    final requiresApproval =
+        UserService.accountTypeRequiresFollowApproval(user.accountType);
+    var pending = false;
+    if (!following && requiresApproval) {
+      pending = await UserService().outgoingFollowRequestPending(
+        requesterUid: me,
+        targetUid: user.uid,
+      );
+    }
     if (!mounted) return;
     setState(() {
       _targetUserId = user.uid;
       _isFollowingAuthor = following;
+      _authorRequiresFollowApproval = requiresApproval;
+      _pendingFollowRequest = pending;
     });
   }
 
@@ -95,14 +108,38 @@ class _FeedVideoItemState extends State<FeedVideoItem>
       return;
     }
     setState(() => _followBusy = true);
+    final svc = UserService();
     try {
       if (_isFollowingAuthor) {
-        await UserService().unfollowUser(currentUid: me, targetUid: target);
+        await svc.unfollowUser(currentUid: me, targetUid: target);
+        if (!mounted) return;
+        setState(() {
+          _isFollowingAuthor = false;
+          _pendingFollowRequest = false;
+        });
+      } else if (_pendingFollowRequest) {
+        await svc.cancelFollowRequest(requesterUid: me, targetUid: target);
+        if (!mounted) return;
+        setState(() => _pendingFollowRequest = false);
       } else {
-        await UserService().followUser(currentUid: me, targetUid: target);
+        await svc.followUser(currentUid: me, targetUid: target);
+        if (!mounted) return;
+        final nowFollowing = await svc.isFollowingUser(
+          currentUid: me,
+          targetUid: target,
+        );
+        final pending = nowFollowing
+            ? false
+            : await svc.outgoingFollowRequestPending(
+                requesterUid: me,
+                targetUid: target,
+              );
+        if (!mounted) return;
+        setState(() {
+          _isFollowingAuthor = nowFollowing;
+          _pendingFollowRequest = pending;
+        });
       }
-      if (!mounted) return;
-      setState(() => _isFollowingAuthor = !_isFollowingAuthor);
     } finally {
       if (mounted) setState(() => _followBusy = false);
     }
@@ -263,6 +300,8 @@ class _FeedVideoItemState extends State<FeedVideoItem>
               onSeeMore: widget.onSeeMore,
               onUserTap: _openUserProfile,
               isFollowing: _isFollowingAuthor,
+              authorRequiresFollowApproval: _authorRequiresFollowApproval,
+              pendingFollowRequest: _pendingFollowRequest,
               followBusy: _followBusy,
               onFollowTap: _onFollowTap,
             ),
@@ -388,6 +427,8 @@ class _UserInfo extends StatelessWidget {
     this.onUserTap,
     this.onFollowTap,
     this.isFollowing = false,
+    this.authorRequiresFollowApproval = false,
+    this.pendingFollowRequest = false,
     this.followBusy = false,
   });
 
@@ -396,6 +437,8 @@ class _UserInfo extends StatelessWidget {
   final VoidCallback? onUserTap;
   final VoidCallback? onFollowTap;
   final bool isFollowing;
+  final bool authorRequiresFollowApproval;
+  final bool pendingFollowRequest;
   final bool followBusy;
 
   static const Color _pinkAccent = Color(0xFFF81945);
@@ -455,11 +498,27 @@ class _UserInfo extends StatelessWidget {
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                           decoration: BoxDecoration(
-                            color: isFollowing ? Colors.white24 : _pinkAccent,
+                            color: isFollowing ||
+                                    (authorRequiresFollowApproval &&
+                                        pendingFollowRequest)
+                                ? Colors.white24
+                                : _pinkAccent,
                             borderRadius: BorderRadius.circular(12),
+                            border: authorRequiresFollowApproval &&
+                                    pendingFollowRequest &&
+                                    !isFollowing
+                                ? Border.all(color: Colors.white30)
+                                : null,
                           ),
                           child: Text(
-                            followBusy ? '...' : (isFollowing ? 'Following' : 'Follow'),
+                            followBusy
+                                ? '...'
+                                : (isFollowing
+                                    ? 'Following'
+                                    : (authorRequiresFollowApproval &&
+                                            pendingFollowRequest
+                                        ? 'Requested'
+                                        : 'Follow')),
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 12,

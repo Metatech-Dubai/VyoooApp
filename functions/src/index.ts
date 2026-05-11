@@ -377,6 +377,8 @@ export const applyAcceptedFollowRequest = onDocumentUpdated(
     const db = admin.firestore();
     const batch = db.batch();
     const requesterRef = db.collection('users').doc(requesterUid);
+    const edgeId = `${requesterUid}_${targetUid}`;
+    const edgeRef = db.collection('follow_edges').doc(edgeId);
     batch.set(
       requesterRef,
       {
@@ -385,6 +387,12 @@ export const applyAcceptedFollowRequest = onDocumentUpdated(
       },
       { merge: true },
     );
+    batch.set(edgeRef, {
+      requesterUid,
+      targetUid,
+      active: true,
+      createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
     batch.delete(event.data!.after.ref);
 
     try {

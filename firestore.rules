@@ -370,6 +370,20 @@ service cloud.firestore {
                     );
     }
 
+    // Materialized edge when a private follow request is accepted (Cloud Function only).
+    // Doc id: requesterUid_targetUid (same as follow_requests id). Requester may delete on unfollow.
+    match /follow_edges/{edgeId} {
+      allow read: if isSignedIn()
+                    && (
+                      !exists(/databases/$(database)/documents/follow_edges/$(edgeId))
+                      || resource.data.requesterUid == request.auth.uid
+                      || resource.data.targetUid == request.auth.uid
+                    );
+      allow create, update: if false;
+      allow delete: if isSignedIn()
+                    && resource.data.requesterUid == request.auth.uid;
+    }
+
     // ── Token requests (Firestore-based Agora token generation) ───────────────
     // Users write their own requests; Cloud Function (Admin SDK) writes back.
     match /token_requests/{requestId} {
@@ -723,9 +737,13 @@ service cloud.firestore {
     // Clients can read only when they are the subscriber or creator.
     // All writes happen via Cloud Functions (Admin SDK).
     match /creatorSubscriptions/{docId} {
+      // Single-doc .get() on a missing doc still evaluates rules; without the
+      // exists() branch, empty resource.data fails subscriber/creator checks and
+      // clients see permission-denied instead of "not found".
       allow read: if isSignedIn()
                   && (
-                    resource.data.subscriberId == request.auth.uid
+                    !exists(/databases/$(database)/documents/creatorSubscriptions/$(docId))
+                    || resource.data.subscriberId == request.auth.uid
                     || resource.data.creatorId == request.auth.uid
                   );
       allow create, update, delete: if false;

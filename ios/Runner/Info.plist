@@ -42,6 +42,14 @@
 				<string>app-1-177333950751-ios-9b20ca802bcf0c8b72f82a</string>
 			</array>
 		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>REVERSED_CLIENT_ID</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.177333950751-4ku8c2nd4643bfamep394q09g1q07fsl</string>
+			</array>
+		</dict>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

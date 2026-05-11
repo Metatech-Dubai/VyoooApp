@@ -45,6 +45,11 @@ class UserService {
   static const String _usersCollection = 'users';
   static const String _followRequestsCollection = 'follow_requests';
 
+  /// Materialized edge written by Cloud Function when a private follow is accepted.
+  /// Same doc id as [follow_requests] for that pair; gives requesters a reliable listener
+  /// independent of `users/{uid}.following` cache timing.
+  static const String followEdgesCollection = 'follow_edges';
+
   /// Firestore doc id for [follow_requests] (requester first).
   static String followRequestDocId(String requesterUid, String targetUid) =>
       '${requesterUid}_$targetUid';
@@ -416,9 +421,15 @@ class UserService {
   }
 
   /// List of user IDs the current user is following. Source: users/{uid}.following (array).
-  Future<List<String>> getFollowing(String uid) async {
+  ///
+  /// Set [server] to true after follow/accept flows to avoid a stale local cache read.
+  Future<List<String>> getFollowing(String uid, {bool server = false}) async {
     try {
-      final doc = await _firestore.collection(_usersCollection).doc(uid).get();
+      final doc = await _firestore.collection(_usersCollection).doc(uid).get(
+            GetOptions(
+              source: server ? Source.server : Source.serverAndCache,
+            ),
+          );
       final data = doc.data();
       if (data == null) return [];
       final following = data['following'];
@@ -527,8 +538,9 @@ class UserService {
   Future<bool> isFollowingUser({
     required String currentUid,
     required String targetUid,
+    bool server = false,
   }) async {
-    final list = await getFollowing(currentUid);
+    final list = await getFollowing(currentUid, server: server);
     return list.contains(targetUid);
   }
 
@@ -540,20 +552,70 @@ class UserService {
     return blocked.contains(targetUid);
   }
 
-  /// True if [requesterUid] has a pending follow request to [targetUid].
+  /// True while a follow request doc exists for this pair and the owner has not
+  /// finished the flow (CF still may be applying `following` + [follow_edges]).
+  ///
+  /// Includes [status] `accepted`: the accepter's client sets that before the
+  /// Cloud Function deletes the doc; treating only `pending` as outstanding
+  /// caused a race where the requester briefly saw **Follow** instead of
+  /// **Requested**/**Following**.
   Future<bool> outgoingFollowRequestPending({
     required String requesterUid,
     required String targetUid,
+    bool server = false,
   }) async {
     if (requesterUid.isEmpty || targetUid.isEmpty) return false;
     try {
       final snap = await _firestore
           .collection(_followRequestsCollection)
           .doc(followRequestDocId(requesterUid, targetUid))
-          .get();
+          .get(
+            GetOptions(
+              source: server ? Source.server : Source.serverAndCache,
+            ),
+          );
       if (!snap.exists) return false;
       final st = (snap.data()?['status'] as String?)?.trim() ?? '';
-      return st == 'pending';
+      return st == 'pending' || st == 'accepted';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Server-owned doc: exists with `active: true` after a private follow is accepted.
+  Stream<DocumentSnapshot<Map<String, dynamic>>> watchFollowEdgeDoc({
+    required String requesterUid,
+    required String targetUid,
+  }) {
+    if (requesterUid.isEmpty || targetUid.isEmpty) {
+      return const Stream<DocumentSnapshot<Map<String, dynamic>>>.empty();
+    }
+    return _firestore
+        .collection(followEdgesCollection)
+        .doc(followRequestDocId(requesterUid, targetUid))
+        .snapshots();
+  }
+
+  /// One-shot read for refresh logic; pairs with [isFollowingUser] to avoid races
+  /// after accept (see [outgoingFollowRequestPending]).
+  Future<bool> isFollowEdgeActive({
+    required String requesterUid,
+    required String targetUid,
+    bool server = false,
+  }) async {
+    if (requesterUid.isEmpty || targetUid.isEmpty) return false;
+    try {
+      final snap = await _firestore
+          .collection(followEdgesCollection)
+          .doc(followRequestDocId(requesterUid, targetUid))
+          .get(
+            GetOptions(
+              source: server ? Source.server : Source.serverAndCache,
+            ),
+          );
+      if (!snap.exists) return false;
+      final d = snap.data();
+      return d != null && (d['active'] as bool? ?? true);
     } catch (_) {
       return false;
     }
@@ -573,7 +635,7 @@ class UserService {
         .map((s) {
           if (!s.exists) return false;
           final st = (s.data()?['status'] as String?)?.trim() ?? '';
-          return st == 'pending';
+          return st == 'pending' || st == 'accepted';
         });
   }
 
@@ -662,6 +724,17 @@ class UserService {
     if (existing.exists) {
       final st = (existing.data()?['status'] as String?)?.trim() ?? '';
       if (st == 'pending') return;
+      // Accepted/declined/stale docs: requester cannot client-update (rules only
+      // allow target to patch status). Re-check follow, then delete so a clean
+      // create is allowed — avoids permission-denied on blind .set().
+      if (await isFollowingUser(currentUid: requesterUid, targetUid: targetUid)) {
+        return;
+      }
+      try {
+        await ref.delete();
+      } catch (_) {
+        return;
+      }
     }
     await ref.set({
       'requesterUid': requesterUid,
@@ -726,9 +799,17 @@ class UserService {
     }
     await cancelFollowRequest(requesterUid: currentUid, targetUid: targetUid);
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
-    await meRef.set({
-      'following': FieldValue.arrayRemove([targetUid]),
-    }, SetOptions(merge: true));
+    final edgeRef = _firestore
+        .collection(followEdgesCollection)
+        .doc(followRequestDocId(currentUid, targetUid));
+    final batch = _firestore.batch();
+    batch.set(
+      meRef,
+      {'following': FieldValue.arrayRemove([targetUid])},
+      SetOptions(merge: true),
+    );
+    batch.delete(edgeRef);
+    await batch.commit();
   }
 
   Future<void> removeFollower({
