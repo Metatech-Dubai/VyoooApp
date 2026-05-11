@@ -32,21 +32,28 @@ class AppBottomNavigation extends StatelessWidget {
   final int unreadChatCount;
 
   static const double _iconSize = 25;
+  /// Profile tab avatar is 50% larger than other nav icons.
+  static double get _profileIconSize => _iconSize * 1.5;
   static const Color _activeIconColor = Colors.white;
   static const Color _inactiveIconColor = Color(0xFF8C8C96);
   static const Color _splashColor = Color(0x44DE106B);
 
-  Widget _buildIcon(String asset, IconData fallback, bool isSelected) {
+  Widget _buildIcon(
+    String asset,
+    IconData fallback,
+    bool isSelected, {
+    double size = _iconSize,
+  }) {
     return SizedBox(
-      width: _iconSize,
-      height: _iconSize,
+      width: size,
+      height: size,
       child: Image.asset(
         asset,
         fit: BoxFit.contain,
         color: isSelected ? _activeIconColor : _inactiveIconColor,
         errorBuilder: (ctx, err, stack) => Icon(
           fallback,
-          size: _iconSize,
+          size: size,
           color: isSelected ? _activeIconColor : _inactiveIconColor,
         ),
       ),
@@ -57,11 +64,11 @@ class AppBottomNavigation extends StatelessWidget {
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl!.trim().isNotEmpty;
     return Container(
-      width: _iconSize,
-      height: _iconSize,
+      width: _profileIconSize,
+      height: _profileIconSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: isSelected ? Border.all(color: Colors.white, width: 1.2) : null,
+        border: isSelected ? Border.all(color: Colors.white, width: 1.8) : null,
       ),
       child: ClipOval(
         child: hasProfileImage
@@ -75,6 +82,7 @@ class AppBottomNavigation extends StatelessWidget {
                     _NavAssets.homeUnselected,
                     Icons.person_rounded,
                     isSelected,
+                    size: _profileIconSize,
                   ),
                 ),
               )
@@ -85,6 +93,7 @@ class AppBottomNavigation extends StatelessWidget {
                   _NavAssets.homeUnselected,
                   Icons.person_rounded,
                   isSelected,
+                  size: _profileIconSize,
                 ),
               ),
       ),
