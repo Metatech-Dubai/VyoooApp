@@ -132,8 +132,13 @@ class SearchScreenState extends State<SearchScreen>
         for (var i = 0; i < _allUsers.length; i++) {
           final user = _allUsers[i];
           final nextFollowing = liveFollowing.contains(user.uid);
-          if (user.isFollowing != nextFollowing) {
-            _allUsers[i] = user.copyWith(isFollowing: nextFollowing);
+          if (user.isFollowing != nextFollowing ||
+              (nextFollowing && user.outgoingFollowRequestPending)) {
+            _allUsers[i] = user.copyWith(
+              isFollowing: nextFollowing,
+              outgoingFollowRequestPending:
+                  nextFollowing ? false : user.outgoingFollowRequestPending,
+            );
           }
         }
       });
@@ -245,6 +250,7 @@ class SearchScreenState extends State<SearchScreen>
               accountType: i.accountType,
               vipVerified: i.vipVerified,
               isFollowing: i.isFollowing,
+              outgoingFollowRequestPending: i.outgoingFollowRequestPending,
             ),
           )
           .toList();
@@ -431,22 +437,51 @@ class SearchScreenState extends State<SearchScreen>
     if (me == null || me.isEmpty || me == user.uid) return;
     if (_followInFlightIds.contains(user.uid)) return;
     final currently = _myFollowingIds.contains(user.uid);
+    final pending = user.outgoingFollowRequestPending;
     setState(() => _followInFlightIds.add(user.uid));
     try {
       if (currently) {
         await _userService.unfollowUser(currentUid: me, targetUid: user.uid);
         _myFollowingIds.remove(user.uid);
+      } else if (pending) {
+        await _userService.cancelFollowRequest(
+          requesterUid: me,
+          targetUid: user.uid,
+        );
       } else {
         await _userService.followUser(currentUid: me, targetUid: user.uid);
-        _myFollowingIds.add(user.uid);
+        final nowFollowing = await _userService.isFollowingUser(
+          currentUid: me,
+          targetUid: user.uid,
+        );
+        if (nowFollowing) {
+          _myFollowingIds.add(user.uid);
+        }
       }
+      if (!mounted) return;
+      final nowFollowing = await _userService.isFollowingUser(
+        currentUid: me,
+        targetUid: user.uid,
+      );
+      final nextPending = nowFollowing
+          ? false
+          : await _userService.outgoingFollowRequestPending(
+              requesterUid: me,
+              targetUid: user.uid,
+            );
       if (!mounted) return;
       setState(() {
         final idx = _allUsers.indexWhere((u) => u.uid == user.uid);
         if (idx >= 0) {
           _allUsers[idx] = _allUsers[idx].copyWith(
-            isFollowing: _myFollowingIds.contains(user.uid),
+            isFollowing: nowFollowing,
+            outgoingFollowRequestPending: nextPending,
           );
+        }
+        if (nowFollowing) {
+          _myFollowingIds.add(user.uid);
+        } else {
+          _myFollowingIds.remove(user.uid);
         }
       });
     } catch (e, st) {
@@ -458,13 +493,18 @@ class SearchScreenState extends State<SearchScreen>
           content: Text(
             currently
                 ? 'Could not unfollow right now: $e'
-                : 'Could not follow right now: $e',
+                : pending
+                    ? 'Could not cancel request right now: $e'
+                    : 'Could not follow right now: $e',
           ),
         ),
       );
     } finally {
-      if (!mounted) return;
-      setState(() => _followInFlightIds.remove(user.uid));
+      if (mounted) {
+        setState(() => _followInFlightIds.remove(user.uid));
+      } else {
+        _followInFlightIds.remove(user.uid);
+      }
     }
   }
 
@@ -2032,10 +2072,13 @@ class _UserSearchResultTile extends StatelessWidget {
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: user.isFollowing
+                    color: user.isFollowing || user.outgoingFollowRequestPending
                         ? Colors.white.withValues(alpha: 0.1)
                         : const Color(0xFFF81945),
                     borderRadius: BorderRadius.circular(20),
+                    border: user.outgoingFollowRequestPending && !user.isFollowing
+                        ? Border.all(color: Colors.white.withValues(alpha: 0.35))
+                        : null,
                   ),
                   child: isFollowBusy
                       ? const SizedBox(
@@ -2049,7 +2092,11 @@ class _UserSearchResultTile extends StatelessWidget {
                           ),
                         )
                       : Text(
-                          user.isFollowing ? 'Following' : 'Follow',
+                          user.isFollowing
+                              ? 'Following'
+                              : (user.outgoingFollowRequestPending
+                                  ? 'Requested'
+                                  : 'Follow'),
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 13,
@@ -2101,6 +2148,7 @@ class _UserSearchItem {
     this.accountType = 'personal',
     this.vipVerified = false,
     this.isFollowing = false,
+    this.outgoingFollowRequestPending = false,
   });
   final String uid;
   final String username;
@@ -2111,6 +2159,7 @@ class _UserSearchItem {
   final String accountType;
   final bool vipVerified;
   final bool isFollowing;
+  final bool outgoingFollowRequestPending;
 
   _UserSearchItem copyWith({
     String? uid,
@@ -2122,6 +2171,7 @@ class _UserSearchItem {
     String? accountType,
     bool? vipVerified,
     bool? isFollowing,
+    bool? outgoingFollowRequestPending,
   }) {
     return _UserSearchItem(
       uid: uid ?? this.uid,
@@ -2133,6 +2183,8 @@ class _UserSearchItem {
       accountType: accountType ?? this.accountType,
       vipVerified: vipVerified ?? this.vipVerified,
       isFollowing: isFollowing ?? this.isFollowing,
+      outgoingFollowRequestPending:
+          outgoingFollowRequestPending ?? this.outgoingFollowRequestPending,
     );
   }
 }

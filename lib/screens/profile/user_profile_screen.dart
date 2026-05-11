@@ -99,6 +99,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   late bool _isFollowing;
   late bool _isSubscribed;
   bool _followActionBusy = false;
+  /// Pending follow request to this profile (private accounts).
+  bool _pendingFollowRequest = false;
+  StreamSubscription<bool>? _pendingFollowSub;
   int? _liveFollowerCount;
   int? _liveFollowingCount;
   int? _livePostCount;
@@ -120,6 +123,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _isFollowing = widget.payload.isFollowing;
     _isSubscribed = widget.payload.isSubscribed;
     _refreshFollowFromFirestore();
+    _bindPendingFollowRequest();
     _refreshCreatorSubscriptionFromFirestore();
     _loadPublicCounts();
     _bindLiveCountStreams();
@@ -140,6 +144,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _liveAccountType = null;
       _liveVipVerified = null;
       _refreshFollowFromFirestore();
+      _bindPendingFollowRequest();
       _refreshCreatorSubscriptionFromFirestore();
       _loadPublicCounts();
       _bindLiveCountStreams();
@@ -148,6 +153,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   @override
   void dispose() {
+    _pendingFollowSub?.cancel();
     _followerCountSub?.cancel();
     _postCountSub?.cancel();
     _subscriberCountSub?.cancel();
@@ -213,11 +219,90 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         me == target) {
       return;
     }
-    final v = await UserService().isFollowingUser(
+    final svc = UserService();
+    final v = await svc.isFollowingUser(
       currentUid: me,
       targetUid: target,
     );
-    if (mounted) setState(() => _isFollowing = v);
+    final pending = await svc.outgoingFollowRequestPending(
+      requesterUid: me,
+      targetUid: target,
+    );
+    if (mounted) {
+      setState(() {
+        _isFollowing = v;
+        _pendingFollowRequest = pending;
+      });
+    }
+  }
+
+  void _bindPendingFollowRequest() {
+    _pendingFollowSub?.cancel();
+    _pendingFollowSub = null;
+    final target = widget.payload.targetUserId;
+    final me = AuthService().currentUser?.uid;
+    if (target == null ||
+        target.isEmpty ||
+        me == null ||
+        me.isEmpty ||
+        me == target) {
+      return;
+    }
+    _pendingFollowSub = UserService()
+        .watchOutgoingFollowRequestPending(requesterUid: me, targetUid: target)
+        .listen((pending) {
+      if (!mounted) return;
+      setState(() => _pendingFollowRequest = pending);
+    });
+  }
+
+  bool _isViewingOwnProfile(UserProfilePayload p) {
+    final me = AuthService().currentUser?.uid;
+    final tid = (p.targetUserId ?? '').trim();
+    return me != null && tid.isNotEmpty && me == tid;
+  }
+
+  bool _locksContentForViewer(UserProfilePayload p) {
+    if (_isViewingOwnProfile(p)) return false;
+    return UserService.accountTypeRequiresFollowApproval(
+      _liveAccountType ?? p.accountType,
+    );
+  }
+
+  Widget _buildPrivateProfilePlaceholder() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.lock_outline_rounded,
+            size: 48,
+            color: Colors.white.withValues(alpha: 0.45),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            'This account is private',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.9),
+              fontSize: 17,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Follow this account to see their posts, stories, and streams when they accept.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _refreshCreatorSubscriptionFromFirestore() async {
@@ -250,10 +335,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     try {
       if (_isFollowing) {
         await svc.unfollowUser(currentUid: me, targetUid: target);
-        if (mounted) setState(() => _isFollowing = false);
+        if (mounted) {
+          setState(() {
+            _isFollowing = false;
+            _pendingFollowRequest = false;
+          });
+        }
+      } else if (_pendingFollowRequest) {
+        await svc.cancelFollowRequest(requesterUid: me, targetUid: target);
+        if (mounted) setState(() => _pendingFollowRequest = false);
       } else {
         await svc.followUser(currentUid: me, targetUid: target);
-        if (mounted) setState(() => _isFollowing = true);
+        if (mounted) {
+          final nowFollowing = await svc.isFollowingUser(
+            currentUid: me,
+            targetUid: target,
+          );
+          final pending = nowFollowing
+              ? false
+              : await svc.outgoingFollowRequestPending(
+                  requesterUid: me,
+                  targetUid: target,
+                );
+          if (mounted) {
+            setState(() {
+              _isFollowing = nowFollowing;
+              _pendingFollowRequest = pending;
+            });
+          }
+        }
       }
       if (mounted) await _loadPublicCounts();
     } catch (e) {
@@ -576,7 +686,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: _PinkButton(
               label: _followActionBusy
                   ? '…'
-                  : (_isFollowing ? 'Following' : 'Follow'),
+                  : (_isFollowing
+                      ? 'Following'
+                      : (_pendingFollowRequest ? 'Requested' : 'Follow')),
               onPressed: _followActionBusy ? () {} : _onFollowTap,
             ),
           ),
@@ -870,6 +982,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         ),
       ];
     }
+    if (_locksContentForViewer(p) && !_isFollowing) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildPrivateProfilePlaceholder(),
+        ),
+      ];
+    }
     return [
       SliverToBoxAdapter(
         child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -1041,6 +1161,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   List<Widget> _buildVRGridSlivers(UserProfilePayload p) {
     final targetUid = (p.targetUserId ?? '').trim();
+    if (_locksContentForViewer(p) && !_isFollowing) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildPrivateProfilePlaceholder(),
+        ),
+      ];
+    }
     return [
       SliverToBoxAdapter(
         child: FutureBuilder<List<Map<String, dynamic>>>(
@@ -1121,6 +1249,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   List<Widget> _buildStreamsListSlivers(UserProfilePayload p) {
     final targetUid = (p.targetUserId ?? '').trim();
+    if (_locksContentForViewer(p) && !_isFollowing) {
+      return [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: _buildPrivateProfilePlaceholder(),
+        ),
+      ];
+    }
     return [
       SliverToBoxAdapter(
         child: StreamBuilder<List<LiveStreamModel>>(

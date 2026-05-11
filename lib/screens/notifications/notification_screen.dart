@@ -167,6 +167,8 @@ class _NotificationScreenState extends State<NotificationScreen>
                     onTap: () => _handleOpen(item),
                     onFollowBack: () => _handleFollowBack(item),
                     onReply: () => _handleReply(item),
+                    onAcceptFollowRequest: () => _handleAcceptFollowRequest(item),
+                    onDeclineFollowRequest: () => _handleDeclineFollowRequest(item),
                   ),
                 );
                 rows.add(const SizedBox(height: 20));
@@ -185,6 +187,62 @@ class _NotificationScreenState extends State<NotificationScreen>
 
   Future<void> _handleOpen(AppNotification item) async {
     await NotificationService().markAsRead(item.id);
+  }
+
+  Future<void> _handleAcceptFollowRequest(AppNotification item) async {
+    await NotificationService().markAsRead(item.id);
+    final me = AuthService().currentUser?.uid ?? '';
+    final requesterUid = item.senderId.trim();
+    if (me.isEmpty || requesterUid.isEmpty || me == requesterUid) return;
+    try {
+      await UserService().acceptFollowRequest(
+        ownerUid: me,
+        requesterUid: requesterUid,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Follow request accepted.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(messageForFirestore(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleDeclineFollowRequest(AppNotification item) async {
+    await NotificationService().markAsRead(item.id);
+    final me = AuthService().currentUser?.uid ?? '';
+    final requesterUid = item.senderId.trim();
+    if (me.isEmpty || requesterUid.isEmpty) return;
+    try {
+      await UserService().declineFollowRequest(
+        ownerUid: me,
+        requesterUid: requesterUid,
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Follow request declined.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(messageForFirestore(e)),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
   }
 
   Future<void> _handleFollowBack(AppNotification item) async {
@@ -295,6 +353,8 @@ class _NotifTile extends StatelessWidget {
     required this.onTap,
     this.onFollowBack,
     this.onReply,
+    this.onAcceptFollowRequest,
+    this.onDeclineFollowRequest,
   });
 
   final AppNotification item;
@@ -303,6 +363,8 @@ class _NotifTile extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onFollowBack;
   final VoidCallback? onReply;
+  final VoidCallback? onAcceptFollowRequest;
+  final VoidCallback? onDeclineFollowRequest;
 
   @override
   Widget build(BuildContext context) {
@@ -404,6 +466,23 @@ class _NotifTile extends StatelessWidget {
           );
         }
         return _PinkPillButton(label: 'Follow back', onTap: onFollowBack ?? onTap);
+      case 'followRequest':
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _OutlinePillButton(
+              label: 'Decline',
+              onTap: onDeclineFollowRequest ?? onTap,
+            ),
+            const SizedBox(width: 8),
+            _PinkPillButton(
+              label: 'Accept',
+              onTap: onAcceptFollowRequest ?? onTap,
+            ),
+          ],
+        );
+      case 'followRequestAccepted':
+        return const SizedBox.shrink();
       case 'comment':
         return _OutlinePillButton(
           label: 'Reply',

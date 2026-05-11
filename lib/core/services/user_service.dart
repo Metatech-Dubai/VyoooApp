@@ -17,6 +17,7 @@ class UserDiscoveryItem {
     required this.isVerified,
     required this.accountType,
     required this.vipVerified,
+    this.outgoingFollowRequestPending = false,
   });
 
   final String uid;
@@ -28,6 +29,8 @@ class UserDiscoveryItem {
   final bool isVerified;
   final String accountType;
   final bool vipVerified;
+  /// True when [accountType] is private and we sent a follow request not yet accepted.
+  final bool outgoingFollowRequestPending;
 }
 
 /// Firestore user document operations. No UI, no BuildContext.
@@ -40,6 +43,18 @@ class UserService {
   FirebaseFirestore get _firestore => FirebaseFirestore.instance;
 
   static const String _usersCollection = 'users';
+  static const String _followRequestsCollection = 'follow_requests';
+
+  /// Firestore doc id for [follow_requests] (requester first).
+  static String followRequestDocId(String requesterUid, String targetUid) =>
+      '${requesterUid}_$targetUid';
+
+  /// Private accounts require an accepted follow request before content is visible.
+  /// Treat legacy [personal] the same as [private] for client UX when payloads omit Firestore.
+  static bool accountTypeRequiresFollowApproval(String? accountType) {
+    final t = (accountType ?? 'private').trim().toLowerCase();
+    return t == 'private' || t == 'personal';
+  }
 
   static const int publicPersonaMaxLength = 80;
 
@@ -525,14 +540,161 @@ class UserService {
     return blocked.contains(targetUid);
   }
 
-  /// Adds [targetUid] to users/{currentUid}.following. Only mutates the signed-in user's document
-  /// (works with tight Firestore rules: no writes to other users' docs).
+  /// True if [requesterUid] has a pending follow request to [targetUid].
+  Future<bool> outgoingFollowRequestPending({
+    required String requesterUid,
+    required String targetUid,
+  }) async {
+    if (requesterUid.isEmpty || targetUid.isEmpty) return false;
+    try {
+      final snap = await _firestore
+          .collection(_followRequestsCollection)
+          .doc(followRequestDocId(requesterUid, targetUid))
+          .get();
+      if (!snap.exists) return false;
+      final st = (snap.data()?['status'] as String?)?.trim() ?? '';
+      return st == 'pending';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Stream<bool> watchOutgoingFollowRequestPending({
+    required String requesterUid,
+    required String targetUid,
+  }) {
+    if (requesterUid.isEmpty || targetUid.isEmpty) {
+      return Stream<bool>.value(false);
+    }
+    return _firestore
+        .collection(_followRequestsCollection)
+        .doc(followRequestDocId(requesterUid, targetUid))
+        .snapshots()
+        .map((s) {
+          if (!s.exists) return false;
+          final st = (s.data()?['status'] as String?)?.trim() ?? '';
+          return st == 'pending';
+        });
+  }
+
+  /// Cancels a pending follow request (no-op if missing).
+  Future<void> cancelFollowRequest({
+    required String requesterUid,
+    required String targetUid,
+  }) async {
+    if (requesterUid.isEmpty || targetUid.isEmpty) return;
+    try {
+      await _firestore
+          .collection(_followRequestsCollection)
+          .doc(followRequestDocId(requesterUid, targetUid))
+          .delete();
+    } catch (_) {}
+  }
+
+  /// Private-account owner accepts [requesterUid]. Cloud Function adds the follow edge.
+  Future<void> acceptFollowRequest({
+    required String ownerUid,
+    required String requesterUid,
+  }) async {
+    if (ownerUid.isEmpty || requesterUid.isEmpty || ownerUid == requesterUid) {
+      throw ArgumentError('Invalid accept');
+    }
+    final ref = _firestore
+        .collection(_followRequestsCollection)
+        .doc(followRequestDocId(requesterUid, ownerUid));
+    final snap = await ref.get();
+    if (!snap.exists) return;
+    final data = snap.data() ?? {};
+    if ((data['targetUid'] as String?) != ownerUid) {
+      throw StateError('Not your follow request');
+    }
+    if ((data['status'] as String?)?.trim() != 'pending') return;
+    await ref.update({
+      'status': 'accepted',
+      'respondedAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  /// Private-account owner declines; requester can send again later.
+  Future<void> declineFollowRequest({
+    required String ownerUid,
+    required String requesterUid,
+  }) async {
+    if (ownerUid.isEmpty || requesterUid.isEmpty) return;
+    final ref = _firestore
+        .collection(_followRequestsCollection)
+        .doc(followRequestDocId(requesterUid, ownerUid));
+    final snap = await ref.get();
+    if (!snap.exists) return;
+    final data = snap.data() ?? {};
+    if ((data['targetUid'] as String?) != ownerUid) {
+      throw StateError('Not your follow request');
+    }
+    await ref.delete();
+  }
+
+  /// Creates a follow request for a private profile (no-op if already following or pending).
+  Future<void> sendFollowRequest({
+    required String requesterUid,
+    required String targetUid,
+  }) async {
+    if (requesterUid.isEmpty || targetUid.isEmpty || requesterUid == targetUid) {
+      throw ArgumentError('Invalid follow request');
+    }
+    final target = await getUser(targetUid);
+    if (target == null) {
+      throw StateError('User not found');
+    }
+    if (!accountTypeRequiresFollowApproval(target.accountType)) {
+      await followUser(currentUid: requesterUid, targetUid: targetUid);
+      return;
+    }
+    if (await isFollowingUser(currentUid: requesterUid, targetUid: targetUid)) {
+      return;
+    }
+    if (await isUserBlocked(currentUid: requesterUid, targetUid: targetUid) ||
+        await isUserBlocked(currentUid: targetUid, targetUid: requesterUid)) {
+      throw StateError('Cannot send follow request');
+    }
+    final id = followRequestDocId(requesterUid, targetUid);
+    final ref = _firestore.collection(_followRequestsCollection).doc(id);
+    final existing = await ref.get();
+    if (existing.exists) {
+      final st = (existing.data()?['status'] as String?)?.trim() ?? '';
+      if (st == 'pending') return;
+    }
+    await ref.set({
+      'requesterUid': requesterUid,
+      'targetUid': targetUid,
+      'status': 'pending',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await NotificationService().create(
+      recipientId: targetUid,
+      type: AppNotificationType.followRequest,
+      message: 'requested to follow you.',
+      extra: {'targetUserId': targetUid},
+    );
+  }
+
+  /// Adds [targetUid] to users/{currentUid}.following for public (and non-private) accounts,
+  /// or sends a follow request when the target is [private].
+  ///
+  /// [followersCount] is maintained by [syncFollowersCountOnFollowingChange] (Cloud Function).
   Future<void> followUser({
     required String currentUid,
     required String targetUid,
   }) async {
     if (currentUid.isEmpty || targetUid.isEmpty || currentUid == targetUid) {
       throw ArgumentError('Invalid follow');
+    }
+    final target = await getUser(targetUid);
+    if (target == null) {
+      throw StateError('User not found');
+    }
+    if (accountTypeRequiresFollowApproval(target.accountType)) {
+      await sendFollowRequest(requesterUid: currentUid, targetUid: targetUid);
+      return;
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
     final meSnap = await meRef.get();
@@ -547,9 +709,6 @@ class UserService {
       'following': FieldValue.arrayUnion([targetUid]),
       'blockedUsers': FieldValue.arrayRemove([targetUid]),
     }, SetOptions(merge: true));
-    await _firestore.collection(_usersCollection).doc(targetUid).update({
-      'followersCount': FieldValue.increment(1),
-    });
     await NotificationService().create(
       recipientId: targetUid,
       type: AppNotificationType.follow,
@@ -565,13 +724,11 @@ class UserService {
     if (currentUid.isEmpty || targetUid.isEmpty || currentUid == targetUid) {
       throw ArgumentError('Invalid unfollow');
     }
+    await cancelFollowRequest(requesterUid: currentUid, targetUid: targetUid);
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
     await meRef.set({
       'following': FieldValue.arrayRemove([targetUid]),
     }, SetOptions(merge: true));
-    await _firestore.collection(_usersCollection).doc(targetUid).update({
-      'followersCount': FieldValue.increment(-1),
-    });
   }
 
   Future<void> removeFollower({
@@ -600,6 +757,7 @@ class UserService {
       throw ArgumentError('Invalid block');
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
+    await cancelFollowRequest(requesterUid: currentUid, targetUid: targetUid);
     await meRef.set({
       'blockedUsers': FieldValue.arrayUnion([targetUid]),
       'following': FieldValue.arrayRemove([targetUid]),
@@ -665,6 +823,12 @@ class UserService {
     return ordered;
   }
 
+  /// [uid] -> [accountType] for feed privacy filtering (batched reads).
+  Future<Map<String, String>> getAccountTypesByIds(Iterable<String> uids) async {
+    final users = await getUsersByIds(uids.where((e) => e.trim().isNotEmpty).toSet().toList());
+    return {for (final u in users) u.uid: u.accountType};
+  }
+
   /// Search/discover users (excluding [currentUid] and any IDs in [excludeIds]).
   Future<List<AppUserModel>> discoverUsers({
     required String currentUid,
@@ -713,6 +877,8 @@ class UserService {
       excludeIds: blocked.toSet(),
       limit: limit,
     );
+    final pendingChecks = <Future<void>>[];
+    final pendingByUid = <String, bool>{};
     final out = <UserDiscoveryItem>[];
     for (final u in users) {
       final uid = u.uid;
@@ -723,19 +889,53 @@ class UserService {
       final displayName = (u.displayName ?? '').trim().isNotEmpty
           ? u.displayName!.trim()
           : username;
+      final isFollowing = following.contains(uid);
+      if (!isFollowing && accountTypeRequiresFollowApproval(u.accountType)) {
+        pendingChecks.add(
+          outgoingFollowRequestPending(
+            requesterUid: currentUid,
+            targetUid: uid,
+          ).then((p) {
+            pendingByUid[uid] = p;
+          }),
+        );
+      }
       out.add(
         UserDiscoveryItem(
           uid: uid,
           username: username,
           displayName: displayName,
           avatarUrl: (u.profileImage ?? '').trim(),
-          isFollowing: following.contains(uid),
+          isFollowing: isFollowing,
           followerCount: u.followersCount,
           isVerified: u.isVerified,
           accountType: u.accountType,
           vipVerified: u.vipVerified,
+          outgoingFollowRequestPending: false,
         ),
       );
+    }
+    if (pendingChecks.isNotEmpty) {
+      await Future.wait(pendingChecks);
+      for (var i = 0; i < out.length; i++) {
+        final item = out[i];
+        if (!item.isFollowing &&
+            accountTypeRequiresFollowApproval(item.accountType)) {
+          final p = pendingByUid[item.uid] ?? false;
+          out[i] = UserDiscoveryItem(
+            uid: item.uid,
+            username: item.username,
+            displayName: item.displayName,
+            avatarUrl: item.avatarUrl,
+            isFollowing: item.isFollowing,
+            followerCount: item.followerCount,
+            isVerified: item.isVerified,
+            accountType: item.accountType,
+            vipVerified: item.vipVerified,
+            outgoingFollowRequestPending: p,
+          );
+        }
+      }
     }
     out.sort(
       (a, b) => a.username.toLowerCase().compareTo(b.username.toLowerCase()),

@@ -4,7 +4,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'auth_service.dart';
 import 'user_service.dart';
 
-enum AppNotificationType { follow, like, comment, share, subscribe }
+enum AppNotificationType {
+  follow,
+  followRequest,
+  followRequestAccepted,
+  like,
+  comment,
+  share,
+  subscribe,
+}
 
 class AppNotification {
   const AppNotification({
@@ -40,10 +48,13 @@ class AppNotification {
   static AppNotification fromDoc(DocumentSnapshot<Map<String, dynamic>> doc) {
     final data = doc.data() ?? {};
     final rawType = (data['type'] as String?) ?? '';
-    final type = AppNotificationType.values.firstWhere(
-      (t) => t.name == rawType,
-      orElse: () => AppNotificationType.comment,
-    );
+    AppNotificationType type = AppNotificationType.comment;
+    for (final t in AppNotificationType.values) {
+      if (t.name == rawType) {
+        type = t;
+        break;
+      }
+    }
     return AppNotification(
       id: doc.id,
       recipientId: (data['recipientId'] as String?) ?? '',

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/live_chat_message_model.dart';
 import '../models/live_stream_model.dart';
+import 'user_service.dart';
 
 /// Firestore operations for live streams.
 /// Collection: streams/{streamId}
@@ -61,7 +62,16 @@ class LiveStreamService {
       createdAt: Timestamp.now(),
       savedToProfile: false,
     );
-    await ref.set(model.toJson());
+    var authorAccountPrivate = false;
+    try {
+      final host = await UserService().getUser(hostId);
+      authorAccountPrivate =
+          UserService.accountTypeRequiresFollowApproval(host?.accountType);
+    } catch (_) {}
+    await ref.set({
+      ...model.toJson(),
+      'authorAccountPrivate': authorAccountPrivate,
+    });
     return ref.id;
   }
 

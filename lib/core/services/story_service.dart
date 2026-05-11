@@ -9,6 +9,7 @@ import 'package:flutter/foundation.dart';
 import '../models/story_highlight_model.dart';
 import '../models/story_model.dart';
 import 'notification_service.dart';
+import 'user_service.dart';
 
 /// Handles story Firestore + Storage, likes, highlights.
 /// Stories expire 24 h after upload. Filtering avoids composite-index requirements.
@@ -67,6 +68,9 @@ class StoryService {
     final userData = userDoc.data() ?? {};
     final username = userData['username'] as String? ?? '';
     final avatarUrl = userData['profileImage'] as String? ?? '';
+    final accountType = (userData['accountType'] as String?) ?? 'private';
+    final authorAccountPrivate =
+        UserService.accountTypeRequiresFollowApproval(accountType);
 
     await _db.collection(_col).add({
       'userId': uid,
@@ -82,6 +86,7 @@ class StoryService {
       'likes': 0,
       'comments': 0,
       'segmentGroupId': segmentGroupId,
+      'authorAccountPrivate': authorAccountPrivate,
     });
   }
 

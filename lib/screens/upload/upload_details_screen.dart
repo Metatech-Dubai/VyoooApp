@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+
+import '../../core/services/user_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -111,6 +113,9 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
           : user.displayName ?? user.email?.split('@').first ?? 'User';
       final profileImage = (userData['profileImage'] as String?) ?? '';
       final handle = '@${username.replaceAll(' ', '_')}';
+      final accountType = (userData['accountType'] as String?) ?? 'private';
+      final authorAccountPrivate =
+          UserService.accountTypeRequiresFollowApproval(accountType);
 
       // 4 — build caption from title + tags
       final tags = _tagsController.text.trim();
@@ -148,6 +153,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
         'profileImage': profileImage,
         'userId': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
+        'authorAccountPrivate': authorAccountPrivate,
         'isVR': _isVR,
         'moderation': {
           'provider': 'hive',

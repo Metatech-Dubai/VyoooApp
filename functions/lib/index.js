@@ -1,7 +1,7 @@
 "use strict";
 var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k, _l;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.cleanupStaleRingingCalls = exports.onCallSessionUpdate = exports.onCallSessionCreate = exports.cleanupExpiredViewOnceMessages = exports.onViewOnceMessageUpdate = exports.onChatUpdate = exports.onChatMessageCreate = exports.onChatCreate = exports.syncStoryCommentCountOnDelete = exports.syncStoryCommentCountOnCreate = exports.syncStoryLikeCount = exports.sendPushOnNotificationCreate = exports.processCreatorSubscriptionRequest = exports.processWhatsAppOtpVerifyRequest = exports.processWhatsAppOtpSendRequest = exports.processEmailOtpVerifyRequest = exports.processEmailOtpSendRequest = exports.moderateReelOnWrite = exports.moderateReelOnCreate = exports.processFollowerRemoval = exports.syncFollowersCountOnFollowingChange = exports.getCloudflareUploadUrl = exports.generateAgoraTokenOnRequest = void 0;
+exports.cleanupStaleRingingCalls = exports.onCallSessionUpdate = exports.onCallSessionCreate = exports.cleanupExpiredViewOnceMessages = exports.onViewOnceMessageUpdate = exports.onChatUpdate = exports.onChatMessageCreate = exports.onChatCreate = exports.syncStoryCommentCountOnDelete = exports.syncStoryCommentCountOnCreate = exports.syncStoryLikeCount = exports.sendPushOnNotificationCreate = exports.processCreatorSubscriptionRequest = exports.processWhatsAppOtpVerifyRequest = exports.processWhatsAppOtpSendRequest = exports.processEmailOtpVerifyRequest = exports.processEmailOtpSendRequest = exports.moderateReelOnWrite = exports.moderateReelOnCreate = exports.processFollowerRemoval = exports.applyAcceptedFollowRequest = exports.syncFollowersCountOnFollowingChange = exports.getCloudflareUploadUrl = exports.generateAgoraTokenOnRequest = void 0;
 const crypto = require("crypto");
 const admin = require("firebase-admin");
 const auth_1 = require("firebase-admin/auth");
@@ -273,6 +273,84 @@ exports.syncFollowersCountOnFollowingChange = (0, firestore_1.onDocumentWritten)
         writes.push(db.collection('users').doc(targetUid).set({ followersCount: admin.firestore.FieldValue.increment(-1) }, { merge: true }));
     }
     await Promise.all(writes);
+});
+// ── applyAcceptedFollowRequest ────────────────────────────────────────────────
+/**
+ * When a private account owner accepts a follow request, add the requester to
+ * users/{requesterUid}.following (Admin SDK). Client rules only allow users to
+ * edit their own following array; the accept write updates follow_requests only.
+ */
+exports.applyAcceptedFollowRequest = (0, firestore_1.onDocumentUpdated)({
+    document: 'follow_requests/{requestId}',
+    timeoutSeconds: 20,
+    memory: '256MiB',
+}, async (event) => {
+    var _a, _b;
+    const before = (_a = event.data) === null || _a === void 0 ? void 0 : _a.before.data();
+    const after = (_b = event.data) === null || _b === void 0 ? void 0 : _b.after.data();
+    if (!after)
+        return;
+    const prevStatus = typeof (before === null || before === void 0 ? void 0 : before.status) === 'string' ? before.status : '';
+    const nextStatus = typeof after.status === 'string' ? after.status : '';
+    if (prevStatus === 'accepted' || nextStatus !== 'accepted')
+        return;
+    const requesterUid = typeof after.requesterUid === 'string' ? after.requesterUid.trim() : '';
+    const targetUid = typeof after.targetUid === 'string' ? after.targetUid.trim() : '';
+    if (!requesterUid || !targetUid || requesterUid === targetUid) {
+        firebase_functions_1.logger.warn('applyAcceptedFollowRequest: invalid uids', { requesterUid, targetUid });
+        return;
+    }
+    const db = admin.firestore();
+    const batch = db.batch();
+    const requesterRef = db.collection('users').doc(requesterUid);
+    batch.set(requesterRef, {
+        following: admin.firestore.FieldValue.arrayUnion(targetUid),
+        blockedUsers: admin.firestore.FieldValue.arrayRemove(targetUid),
+    }, { merge: true });
+    batch.delete(event.data.after.ref);
+    try {
+        await batch.commit();
+    }
+    catch (err) {
+        firebase_functions_1.logger.error('applyAcceptedFollowRequest: batch failed', {
+            error: String(err),
+            requesterUid,
+            targetUid,
+        });
+        return;
+    }
+    let actorUsername = 'Someone';
+    let actorAvatarUrl = '';
+    try {
+        const targetSnap = await db.collection('users').doc(targetUid).get();
+        const td = targetSnap.data();
+        if (td) {
+            const u = typeof td.username === 'string' ? td.username.trim() : '';
+            const d = typeof td.displayName === 'string' ? td.displayName.trim() : '';
+            actorUsername = u || d || actorUsername;
+            const img = typeof td.profileImage === 'string' ? td.profileImage.trim() : '';
+            actorAvatarUrl = img;
+        }
+    }
+    catch (_c) {
+        // best-effort profile for notification
+    }
+    try {
+        await db.collection('notifications').add({
+            recipientId: requesterUid,
+            senderId: targetUid,
+            type: 'followRequestAccepted',
+            message: 'accepted your follow request.',
+            actorUsername,
+            actorAvatarUrl,
+            isRead: false,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            targetUserId: targetUid,
+        });
+    }
+    catch (err) {
+        firebase_functions_1.logger.warn('applyAcceptedFollowRequest: notification failed', { error: String(err) });
+    }
 });
 // ── processFollowerRemoval ────────────────────────────────────────────────────
 exports.processFollowerRemoval = (0, firestore_1.onDocumentCreated)({

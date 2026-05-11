@@ -278,6 +278,98 @@ service cloud.firestore {
         : request.resource.data.emailOtpVerified == resource.data.emailOtpVerified;
     }
 
+    // Signed-in viewer's following list (users/{uid}.following).
+    function authedFollowingList() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid))
+        .data.get('following', []);
+    }
+
+    function accountTypeIsPrivateGate(t) {
+      return t == 'private' || t == 'personal';
+    }
+
+    // [authorAccountPrivate] is stored on new reels/stories/streams for clients / future rules.
+    //
+    // IMPORTANT: Do not use per-document follower checks on [reels] / [stories] / [streams] ROOT
+    // collection reads. Broad queries (orderBy + limit) can match docs a user may not read; Firestore
+    // then rejects the ENTIRE query ("rules are not filters"). Follower-only hiding for global feeds
+    // needs scoped queries (e.g. per-user subcollections), collectionGroup + OR filters, or a
+    // server-built feed. Root reads here stay [isSignedIn] so list/get queries work.
+
+    // Path-bound userId (e.g. users/{userId}/storyHighlights): one get(users/{userId}) per query.
+    function highlightsPathReadable(userId) {
+      return isSignedIn()
+        && userId is string
+        && userId.size() > 0
+        && (
+          userId == request.auth.uid
+          || !exists(/databases/$(database)/documents/users/$(userId))
+          || !accountTypeIsPrivateGate(
+            get(/databases/$(database)/documents/users/$(userId)).data.get('accountType', 'private')
+          )
+          || (authedFollowingList() is list && userId in authedFollowingList())
+        );
+    }
+
+    // Subcollections under a single story/reel/stream id: storyId/reelId/streamId is path-bound.
+    function parentStoryReadable(storyId) {
+      let p = get(/databases/$(database)/documents/stories/$(storyId)).data;
+      return p.userId == request.auth.uid
+        || p.get('authorAccountPrivate', false) != true
+        || (
+          p.userId is string
+          && authedFollowingList() is list
+          && p.userId in authedFollowingList()
+        );
+    }
+
+    function followRequestCreateValid(requestId) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['requesterUid', 'targetUid', 'status', 'createdAt'])
+        && d.requesterUid == request.auth.uid
+        && d.requesterUid is string
+        && d.targetUid is string
+        && d.targetUid.size() > 0
+        && d.requesterUid != d.targetUid
+        && d.status == 'pending'
+        && d.createdAt != null
+        && requestId == request.auth.uid + '_' + d.targetUid;
+    }
+
+    function followRequestTargetRespond() {
+      let d = resource.data;
+      let r = request.resource.data;
+      return d.targetUid == request.auth.uid
+        && d.status == 'pending'
+        && r.requesterUid == d.requesterUid
+        && r.targetUid == d.targetUid
+        && r.createdAt == d.createdAt
+        && r.status in ['accepted', 'declined']
+        && r.respondedAt is timestamp
+        && r.respondedAt <= request.time + duration.value(24, 'h')
+        && r.respondedAt >= request.time - duration.value(24, 'h')
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['status', 'respondedAt']);
+    }
+
+    // Pending follow requests (private accounts). Doc id: requesterUid_targetUid.
+    match /follow_requests/{requestId} {
+      allow read: if isSignedIn()
+                    && (
+                      !exists(/databases/$(database)/documents/follow_requests/$(requestId))
+                      || resource.data.requesterUid == request.auth.uid
+                      || resource.data.targetUid == request.auth.uid
+                    );
+      allow create: if isSignedIn() && followRequestCreateValid(requestId);
+      allow update: if isSignedIn() && followRequestTargetRespond();
+      allow delete: if isSignedIn()
+                    && exists(/databases/$(database)/documents/follow_requests/$(requestId))
+                    && (
+                      resource.data.requesterUid == request.auth.uid
+                      || resource.data.targetUid == request.auth.uid
+                    );
+    }
+
     // ── Token requests (Firestore-based Agora token generation) ───────────────
     // Users write their own requests; Cloud Function (Admin SDK) writes back.
     match /token_requests/{requestId} {
@@ -398,6 +490,7 @@ service cloud.firestore {
         'likes',
         'comments',
         'segmentGroupId',
+        'authorAccountPrivate',
       ]);
     }
 
@@ -418,7 +511,15 @@ service cloud.firestore {
         && request.resource.data.likes == 0
         && request.resource.data.comments is int
         && request.resource.data.comments == 0
-        && request.resource.data.segmentGroupId is string;
+        && request.resource.data.segmentGroupId is string
+        && request.resource.data.authorAccountPrivate is bool
+        && request.resource.data.authorAccountPrivate
+          == accountTypeIsPrivateGate(
+            get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get(
+              'accountType',
+              'private'
+            )
+          );
     }
 
     function storyOwnerIdUnchanged() {
@@ -443,8 +544,9 @@ service cloud.firestore {
     }
 
     match /stories/{storyId}/comments/{commentId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && parentStoryReadable(storyId);
       allow create: if isSignedIn()
+                    && parentStoryReadable(storyId)
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.keys().hasOnly([
                       'userId',
@@ -465,8 +567,9 @@ service cloud.firestore {
                     && request.resource.data.createdAt is timestamp
                     && request.resource.data.isVerified is bool;
       // Subtree deletes may include reply docs by other users (same as reels pattern).
-      allow delete: if isSignedIn();
+      allow delete: if isSignedIn() && parentStoryReadable(storyId);
       allow update: if isSignedIn()
+                    && parentStoryReadable(storyId)
                     && request.resource.data.userId == resource.data.userId
                     && (
                       resource.data.userId == request.auth.uid
@@ -476,19 +579,26 @@ service cloud.firestore {
     }
 
     match /stories/{storyId}/comments/{commentId}/likes/{likerId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && parentStoryReadable(storyId);
       allow create: if isSignedIn()
+                    && parentStoryReadable(storyId)
                     && likerId == request.auth.uid
                     && request.resource.data.keys().hasOnly(['userId', 'likedAt'])
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.likedAt is timestamp;
-      allow delete: if isSignedIn() && likerId == request.auth.uid;
+      allow delete: if isSignedIn()
+                    && likerId == request.auth.uid
+                    && parentStoryReadable(storyId);
       allow update: if false;
     }
 
+    // Top-level likes index: storyId varies per doc — do not use per-row get(story) for reads
+    // (breaks queries). Create/delete still gated on the target story.
     match /storyLikes/{id} {
       allow read: if isSignedIn();
       allow create: if isSignedIn()
+                    && exists(/databases/$(database)/documents/stories/$(request.resource.data.storyId))
+                    && parentStoryReadable(request.resource.data.storyId)
                     && request.resource.data.keys().hasOnly(['userId', 'storyId', 'likedAt'])
                     && request.resource.data.userId == request.auth.uid
                     && request.resource.data.storyId is string
@@ -500,27 +610,31 @@ service cloud.firestore {
     }
 
     match /users/{userId}/storyHighlights/{highlightId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && highlightsPathReadable(userId);
       allow create, update, delete: if isOwner(userId);
     }
 
     match /users/{userId}/storyHighlights/{highlightId}/items/{itemId} {
-      allow read: if isSignedIn();
+      allow read: if isSignedIn() && highlightsPathReadable(userId);
       allow create, update, delete: if isOwner(userId);
     }
 
     match /reels/{reelId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /reels/{reelId}/{document=**} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /streams/{streamId} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
     match /streams/{streamId}/{document=**} {
-      allow read, write: if isSignedIn();
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
     }
 
     match /userLikes/{id} {

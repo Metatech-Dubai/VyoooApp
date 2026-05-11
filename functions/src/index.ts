@@ -338,6 +338,100 @@ export const syncFollowersCountOnFollowingChange = onDocumentWritten(
   },
 );
 
+// ── applyAcceptedFollowRequest ────────────────────────────────────────────────
+/**
+ * When a private account owner accepts a follow request, add the requester to
+ * users/{requesterUid}.following (Admin SDK). Client rules only allow users to
+ * edit their own following array; the accept write updates follow_requests only.
+ */
+export const applyAcceptedFollowRequest = onDocumentUpdated(
+  {
+    document: 'follow_requests/{requestId}',
+    timeoutSeconds: 20,
+    memory: '256MiB',
+  },
+  async (event) => {
+    const before = event.data?.before.data() as {
+      status?: unknown;
+      requesterUid?: unknown;
+      targetUid?: unknown;
+    } | undefined;
+    const after = event.data?.after.data() as {
+      status?: unknown;
+      requesterUid?: unknown;
+      targetUid?: unknown;
+    } | undefined;
+    if (!after) return;
+    const prevStatus = typeof before?.status === 'string' ? before.status : '';
+    const nextStatus = typeof after.status === 'string' ? after.status : '';
+    if (prevStatus === 'accepted' || nextStatus !== 'accepted') return;
+
+    const requesterUid =
+      typeof after.requesterUid === 'string' ? after.requesterUid.trim() : '';
+    const targetUid = typeof after.targetUid === 'string' ? after.targetUid.trim() : '';
+    if (!requesterUid || !targetUid || requesterUid === targetUid) {
+      logger.warn('applyAcceptedFollowRequest: invalid uids', { requesterUid, targetUid });
+      return;
+    }
+
+    const db = admin.firestore();
+    const batch = db.batch();
+    const requesterRef = db.collection('users').doc(requesterUid);
+    batch.set(
+      requesterRef,
+      {
+        following: admin.firestore.FieldValue.arrayUnion(targetUid),
+        blockedUsers: admin.firestore.FieldValue.arrayRemove(targetUid),
+      },
+      { merge: true },
+    );
+    batch.delete(event.data!.after.ref);
+
+    try {
+      await batch.commit();
+    } catch (err) {
+      logger.error('applyAcceptedFollowRequest: batch failed', {
+        error: String(err),
+        requesterUid,
+        targetUid,
+      });
+      return;
+    }
+
+    let actorUsername = 'Someone';
+    let actorAvatarUrl = '';
+    try {
+      const targetSnap = await db.collection('users').doc(targetUid).get();
+      const td = targetSnap.data();
+      if (td) {
+        const u = typeof td.username === 'string' ? td.username.trim() : '';
+        const d = typeof td.displayName === 'string' ? td.displayName.trim() : '';
+        actorUsername = u || d || actorUsername;
+        const img = typeof td.profileImage === 'string' ? td.profileImage.trim() : '';
+        actorAvatarUrl = img;
+      }
+    } catch {
+      // best-effort profile for notification
+    }
+
+    try {
+      await db.collection('notifications').add({
+        recipientId: requesterUid,
+        senderId: targetUid,
+        type: 'followRequestAccepted',
+        message: 'accepted your follow request.',
+        actorUsername,
+        actorAvatarUrl,
+        isRead: false,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        targetUserId: targetUid,
+      });
+    } catch (err) {
+      logger.warn('applyAcceptedFollowRequest: notification failed', { error: String(err) });
+    }
+  },
+);
+
 // ── processFollowerRemoval ────────────────────────────────────────────────────
 export const processFollowerRemoval = onDocumentCreated(
   {

@@ -275,6 +275,14 @@ class ReelsService {
     final username =
         AuthService().currentUser?.email?.split('@').first ?? 'Vyooo';
     int added = 0;
+    var authorAccountPrivate = false;
+    if (uid.isNotEmpty) {
+      try {
+        final u = await UserService().getUser(uid);
+        authorAccountPrivate =
+            UserService.accountTypeRequiresFollowApproval(u?.accountType);
+      } catch (_) {}
+    }
     for (var i = 0; i < videoIds.length; i++) {
       final id = videoIds[i].trim();
       if (id.isEmpty) continue;
@@ -293,6 +301,7 @@ class ReelsService {
         'shares': 0,
         'avatarUrl': '',
         'userId': uid,
+        'authorAccountPrivate': authorAccountPrivate,
         'createdAt': FieldValue.serverTimestamp(),
         'isVR': markAsVR,
         'moderation': {
