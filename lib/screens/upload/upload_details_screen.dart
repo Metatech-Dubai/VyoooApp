@@ -12,6 +12,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/services/reels_service.dart';
+import '../../core/utils/upload_tag_suggestions.dart';
 import '../../core/utils/video_upload_policy.dart';
 import 'upload_success_screen.dart';
 
@@ -29,7 +30,7 @@ class UploadDetailsScreen extends StatefulWidget {
 
 class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
   static const Color _pink = Color(0xFFDE106B);
-  static const int _maxTags = 6;
+  static const int _maxTags = 30;
   static const List<String> _categories = <String>[
     'Entertainment',
     'Education',
@@ -53,11 +54,43 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
   double _uploadProgress = 0;
   String? _selectedCategory;
   final List<String> _selectedTags = <String>[];
+  List<String> _suggestedTags = <String>[];
   File? _customThumbnailFile;
   bool get _isVideoAsset => widget.asset.type == AssetType.video;
 
   @override
+  void initState() {
+    super.initState();
+    _titleController.addListener(_refreshSuggestedTags);
+    _suggestedTags = UploadTagSuggestions.build(
+      title: _titleController.text,
+      category: _selectedCategory,
+      minCount: UploadTagSuggestions.defaultMinCount,
+    );
+  }
+
+  void _refreshSuggestedTags() {
+    final next = UploadTagSuggestions.build(
+      title: _titleController.text,
+      category: _selectedCategory,
+      minCount: UploadTagSuggestions.defaultMinCount,
+    );
+    if (!_listEq(_suggestedTags, next)) {
+      setState(() => _suggestedTags = next);
+    }
+  }
+
+  static bool _listEq(List<String> a, List<String> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
+  }
+
+  @override
   void dispose() {
+    _titleController.removeListener(_refreshSuggestedTags);
     _titleController.dispose();
     _descController.dispose();
     _tagsController.dispose();
@@ -120,7 +153,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       // 4 — build caption from title + tags
       final tags = _tagsController.text.trim();
       if (tags.isNotEmpty) {
-        _addTag(tags);
+        _addTag(tags, clearInput: true);
       }
       final tagsLine = _selectedTags.isEmpty ? '' : _selectedTags.map((t) => '#$t').join(' ');
       final caption = tagsLine.isNotEmpty ? '$title\n$tagsLine' : title;
@@ -446,6 +479,8 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
           const SizedBox(height: 24),
           _buildCategoryPicker(),
           const SizedBox(height: 24),
+          _buildSuggestedTagsSection(),
+          const SizedBox(height: 24),
           _buildTagsPicker(),
           const SizedBox(height: 30),
         ],
@@ -546,9 +581,10 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     );
     if (!mounted || picked == null) return;
     setState(() => _selectedCategory = picked);
+    _refreshSuggestedTags();
   }
 
-  void _addTag(String rawTag) {
+  void _addTag(String rawTag, {bool clearInput = false}) {
     final normalized = rawTag
         .trim()
         .toLowerCase()
@@ -558,11 +594,19 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     if (_selectedTags.contains(normalized)) return;
     if (_selectedTags.length >= _maxTags) return;
     setState(() => _selectedTags.add(normalized));
-    _tagsController.clear();
+    if (clearInput) _tagsController.clear();
   }
 
   void _removeTag(String tag) {
     setState(() => _selectedTags.remove(tag));
+  }
+
+  void _toggleSuggestedTag(String tag) {
+    if (_selectedTags.contains(tag)) {
+      _removeTag(tag);
+      return;
+    }
+    _addTag(tag, clearInput: false);
   }
 
   Widget _buildTagChips() {
@@ -650,6 +694,70 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     );
   }
 
+  Widget _buildSuggestedTagsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Suggested tags',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              '${_suggestedTags.length} ideas',
+              style: const TextStyle(color: Colors.white38, fontSize: 13),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tap to add or remove. Title and category refresh this list.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.38), fontSize: 11),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _suggestedTags
+              .map(
+                (tag) {
+                  final selected = _selectedTags.contains(tag);
+                  return GestureDetector(
+                    onTap: () => _toggleSuggestedTag(tag),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: selected ? _pink.withValues(alpha: 0.35) : Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: selected ? _pink : Colors.white24,
+                          width: selected ? 1.2 : 0.5,
+                        ),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: selected ? 1 : 0.85),
+                          fontSize: 12,
+                          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              )
+              .toList(),
+        ),
+      ],
+    );
+  }
+
   Widget _buildTagsPicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -686,7 +794,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
               Expanded(
                 child: TextField(
                   controller: _tagsController,
-                  onSubmitted: _addTag,
+                  onSubmitted: (v) => _addTag(v, clearInput: true),
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: const InputDecoration(
                     hintText: 'Enter your own tags',
@@ -700,7 +808,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
                 child: VerticalDivider(color: Colors.white10, width: 24),
               ),
               GestureDetector(
-                onTap: () => _addTag(_tagsController.text),
+                onTap: () => _addTag(_tagsController.text, clearInput: true),
                 child: const Text(
                   'Add',
                   style: TextStyle(
