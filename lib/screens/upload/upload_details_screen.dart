@@ -6,6 +6,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../core/models/post_location_model.dart';
 import '../../core/services/user_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:image_picker/image_picker.dart';
@@ -14,6 +15,7 @@ import 'package:photo_manager/photo_manager.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/utils/upload_tag_suggestions.dart';
 import '../../core/utils/video_upload_policy.dart';
+import 'location_picker_sheet.dart';
 import 'upload_success_screen.dart';
 
 /// Upload Details screen: title, description, tags, isVR.
@@ -56,6 +58,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
   final List<String> _selectedTags = <String>[];
   List<String> _suggestedTags = <String>[];
   File? _customThumbnailFile;
+  PostLocation? _selectedLocation;
   bool get _isVideoAsset => widget.asset.type == AssetType.video;
 
   @override
@@ -188,6 +191,8 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
         'createdAt': FieldValue.serverTimestamp(),
         'authorAccountPrivate': authorAccountPrivate,
         'isVR': _isVR,
+        if (_selectedLocation != null)
+          'location': _selectedLocation!.toMap(),
         'moderation': {
           'provider': 'hive',
           'status': 'pending',
@@ -479,6 +484,8 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
           const SizedBox(height: 24),
           _buildCategoryPicker(),
           const SizedBox(height: 24),
+          _buildLocationPicker(),
+          const SizedBox(height: 24),
           _buildSuggestedTagsSection(),
           const SizedBox(height: 24),
           _buildTagsPicker(),
@@ -689,6 +696,88 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
         const Text(
           'All content must be categorized for better search experience.',
           style: TextStyle(color: Colors.white38, fontSize: 11),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLocationPicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Location',
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 12),
+        GestureDetector(
+          onTap: _isUploading
+              ? null
+              : () async {
+                  final result = await showLocationPickerSheet(context);
+                  if (!mounted || result == null) return;
+                  setState(() => _selectedLocation = result);
+                },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: Colors.white10),
+            ),
+            child: _selectedLocation == null
+                ? Row(
+                    children: [
+                      Icon(Icons.location_on_outlined, color: Colors.white38, size: 20),
+                      const SizedBox(width: 10),
+                      Text(
+                        'Add location',
+                        style: TextStyle(color: Colors.white38, fontSize: 14),
+                      ),
+                      const Spacer(),
+                      const Icon(Icons.keyboard_arrow_right_rounded, color: Colors.white38, size: 22),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Icon(Icons.location_on, color: _pink, size: 20),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _selectedLocation!.name,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            if (_selectedLocation!.address != null &&
+                                _selectedLocation!.address!.isNotEmpty)
+                              Text(
+                                _selectedLocation!.address!,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: 12,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      GestureDetector(
+                        onTap: () => setState(() => _selectedLocation = null),
+                        child: Icon(Icons.close, color: Colors.white54, size: 18),
+                      ),
+                    ],
+                  ),
+          ),
         ),
       ],
     );

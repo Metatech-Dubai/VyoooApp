@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 /// App-wide flags. Set [useMockSubscriptions] to false when App Store products are approved.
 abstract final class AppConfig {
   /// Web OAuth client ID (`client_type`: 3) from Firebase Android app config — same value as
@@ -36,4 +38,9 @@ abstract final class AppConfig {
 
   /// Jamendo API client ID. Get a free key at https://devportal.jamendo.com
   static const String jamendoClientId = '78456e30';
+
+  static const String _googlePlacesApiKeyAndroid = 'AIzaSyA4IYOJ0MQWYs_IJcifxxbhAjInEYgzC8M';
+  static const String _googlePlacesApiKeyIos = 'AIzaSyCa_TszTmgHk4gQ9SE08dQSHBf6IlsXdvc';
+  static String get googlePlacesApiKey =>
+      Platform.isIOS ? _googlePlacesApiKeyIos : _googlePlacesApiKeyAndroid;
 }

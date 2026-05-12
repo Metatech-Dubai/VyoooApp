@@ -655,12 +655,57 @@ class _PostCard extends StatelessWidget {
     }
 
     final fullText = buffer.toString();
-    if (fullText.isEmpty) return const SizedBox.shrink();
 
-    return CaptionWithHashtags(
-      text: fullText,
-      maxLines: 10,
-      overflow: TextOverflow.ellipsis,
+    final locationMap = post['location'] as Map<String, dynamic>?;
+    final locationName = (locationMap?['name'] as String?)?.trim() ?? '';
+    final locationAddress = (locationMap?['address'] as String?)?.trim() ?? '';
+
+    if (fullText.isEmpty && locationName.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (fullText.isNotEmpty)
+          CaptionWithHashtags(
+            text: fullText,
+            maxLines: 10,
+            overflow: TextOverflow.ellipsis,
+          ),
+        if (locationName.isNotEmpty) ...[
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              const Icon(Icons.location_on, color: Colors.white70, size: 16),
+              const SizedBox(width: 4),
+              Flexible(
+                child: Text(
+                  locationName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          if (locationAddress.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 20),
+              child: Text(
+                locationAddress,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.5),
+                  fontSize: 12,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+        ],
+      ],
     );
   }
 

@@ -68,6 +68,7 @@ dependencies:
   flutter_local_notifications: ^21.0.0
   ffmpeg_kit_flutter_new: ^4.1.0
   connectivity_plus: ^7.1.1
+  geolocator: ^14.0.0
 
 # Pub solver only: agora_rtc_engine wants ffi ^1.x, share_plus wants ^2.x.
 # iOS: keep Agora frameworks embedded in Debug/Profile/Release to avoid dyld load failures.

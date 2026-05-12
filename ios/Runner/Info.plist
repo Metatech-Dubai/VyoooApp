@@ -66,6 +66,8 @@
 	<string>Microphone is used for live streaming audio, story videos, and voice/video calls.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Vyooo needs photo library access to add images to your story and profile.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Vyooo uses your location to tag posts with your current place. Location is only accessed when you tap "Use current location".</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
