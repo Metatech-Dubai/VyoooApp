@@ -1590,10 +1590,17 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final title = _asString(reel['title']);
     final description = _asString(reel['description']);
     final tagsList = reel['tags'] as List? ?? [];
+    final locationMap = reel['location'] as Map<String, dynamic>?;
+    final locationName = (locationMap?['name'] as String?)?.trim() ?? '';
+    final locationAddress = (locationMap?['address'] as String?)?.trim() ?? '';
 
     if (title.isEmpty && description.isEmpty && tagsList.isEmpty) {
       // Fallback for old reels that only have the 'caption' field
-      return _CaptionWithSeeMore(text: _asString(reel['caption']));
+      return _CaptionWithSeeMore(
+        text: _asString(reel['caption']),
+        locationName: locationName,
+        locationAddress: locationAddress,
+      );
     }
 
     final buffer = StringBuffer();
@@ -1612,7 +1619,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     // If description was added, we might want to distinguish the title.
     // However, CaptionWithHashtags takes a single string.
     // For now, let's just ensure it's all passed.
-    return _CaptionWithSeeMore(text: buffer.toString());
+    return _CaptionWithSeeMore(
+      text: buffer.toString(),
+      locationName: locationName,
+      locationAddress: locationAddress,
+    );
   }
 
   // bool _isVideoPlaying() {
@@ -1688,9 +1699,15 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 }
 
 class _CaptionWithSeeMore extends StatefulWidget {
-  const _CaptionWithSeeMore({required this.text});
+  const _CaptionWithSeeMore({
+    required this.text,
+    this.locationName = '',
+    this.locationAddress = '',
+  });
 
   final String text;
+  final String locationName;
+  final String locationAddress;
 
   @override
   State<_CaptionWithSeeMore> createState() => _CaptionWithSeeMoreState();
@@ -1747,6 +1764,40 @@ class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
                   ),
                 ),
               ),
+            ],
+            if (_expanded && widget.locationName.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.white70, size: 16),
+                  const SizedBox(width: 4),
+                  Flexible(
+                    child: Text(
+                      widget.locationName,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+              if (widget.locationAddress.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(left: 20),
+                  child: Text(
+                    widget.locationAddress,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
             ],
           ],
         );
