@@ -43,6 +43,9 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
   List<_ConnectionUser> _following = [];
   List<_ConnectionUser> _discoverUsers = [];
 
+  /// When non-null, this profile's connections are hidden (private / personal, viewer not following).
+  String? _privateConnectionsGate;
+
   @override
   void initState() {
     super.initState();
@@ -68,12 +71,42 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
     }
   }
 
+  /// When non-null, hide lists (private/personal profile, viewer not an accepted follower).
+  Future<({String message, int followerCount, int followingCount})?>
+      _connectionsPrivacyGate(String subject, UserService svc) async {
+    final me = (AuthService().currentUser?.uid ?? '').trim();
+    if (me.isNotEmpty && me == subject) return null;
+
+    final target = await svc.getUser(subject);
+    if (target == null) return null;
+    if (!UserService.accountTypeRequiresFollowApproval(target.accountType)) {
+      return null;
+    }
+    if (me.isEmpty) {
+      return (
+        message:
+            'Sign in and follow this account to see followers and following.',
+        followerCount: target.followersCount,
+        followingCount: target.following.length,
+      );
+    }
+    final follows =
+        await svc.isFollowingUser(currentUid: me, targetUid: subject);
+    if (follows) return null;
+    return (
+      message: 'Follow this account to see their followers and following.',
+      followerCount: target.followersCount,
+      followingCount: target.following.length,
+    );
+  }
+
   Future<void> _loadConnections() async {
     final subject = widget.profileUserId ?? AuthService().currentUser?.uid;
     if (subject == null || subject.isEmpty) {
       if (mounted) {
         setState(() {
           _loadingLists = false;
+          _privateConnectionsGate = null;
           _followers = [];
           _following = [];
           _followerCount = 0;
@@ -83,9 +116,29 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
       return;
     }
 
-    if (mounted) setState(() => _loadingLists = true);
+    if (mounted) {
+      setState(() {
+        _loadingLists = true;
+        _privateConnectionsGate = null;
+      });
+    }
 
     final svc = UserService();
+    final gate = await _connectionsPrivacyGate(subject, svc);
+    if (gate != null) {
+      if (!mounted) return;
+      setState(() {
+        _loadingLists = false;
+        _privateConnectionsGate = gate.message;
+        _followerCount = gate.followerCount;
+        _followingCount = gate.followingCount;
+        _followers = [];
+        _following = [];
+        _discoverUsers = [];
+      });
+      return;
+    }
+
     final me = AuthService().currentUser?.uid;
     var myFollowing = <String>[];
     var myBlocked = <String>[];
@@ -119,6 +172,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
     if (!mounted) return;
     setState(() {
       _loadingLists = false;
+      _privateConnectionsGate = null;
       _followerCount = fc;
       _followingCount = followingModels.length;
       _followers = followerModels
@@ -893,6 +947,34 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
     if (_loadingLists) {
       return const Center(
         child: CircularProgressIndicator(color: Colors.white54),
+      );
+    }
+
+    if (_privateConnectionsGate != null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 48,
+                color: Colors.white.withValues(alpha: 0.45),
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                _privateConnectionsGate!,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.75),
+                  fontSize: 16,
+                  height: 1.35,
+                ),
+              ),
+            ],
+          ),
+        ),
       );
     }
 

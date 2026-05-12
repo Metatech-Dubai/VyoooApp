@@ -35,6 +35,7 @@ import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
 import '../content/vr_detail_screen.dart';
+import 'followers_following_screen.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../features/reel/widgets/block_user_sheet.dart';
 import '../../features/story/highlight_viewer_screen.dart';
@@ -391,6 +392,40 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (_isViewingOwnProfile(p)) return false;
     return UserService.accountTypeRequiresFollowApproval(
       _liveAccountType ?? p.accountType,
+    );
+  }
+
+  /// Followers/following lists: visible for public/business/government, or private
+  /// once the viewer has an accepted follow (same rule as posts).
+  bool _canViewFollowersFollowingLists(UserProfilePayload p) {
+    final uid = (p.targetUserId ?? '').trim();
+    if (uid.isEmpty) return false;
+    if (_isViewingOwnProfile(p)) return true;
+    if (!_locksContentForViewer(p)) return true;
+    return _isFollowing;
+  }
+
+  void _openFollowersFollowing(UserProfilePayload p, int initialTab) {
+    final uid = (p.targetUserId ?? '').trim();
+    if (uid.isEmpty) return;
+    if (!_canViewFollowersFollowingLists(p)) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Follow this account to see their followers and following.',
+          ),
+        ),
+      );
+      return;
+    }
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => FollowersFollowingScreen(
+          initialTab: initialTab.clamp(0, 2),
+          profileUserId: uid,
+        ),
+      ),
     );
   }
 
@@ -803,6 +838,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               value: _formatCount(
                                 _liveFollowerCount ?? p.followerCount,
                               ),
+                              onTap: () => _openFollowersFollowing(p, 0),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -812,6 +848,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               value: _formatCount(
                                 _liveFollowingCount ?? p.followingCount,
                               ),
+                              onTap: () => _openFollowersFollowing(p, 1),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1760,17 +1797,22 @@ class _UserProfileStreamItem {
 }
 
 class _UserStatChip extends StatelessWidget {
-  const _UserStatChip({required this.label, required this.value});
+  const _UserStatChip({
+    required this.label,
+    required this.value,
+    this.onTap,
+  });
 
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: null,
+        onTap: onTap,
         borderRadius: BorderRadius.circular(10),
         child: Container(
           width: double.infinity,
