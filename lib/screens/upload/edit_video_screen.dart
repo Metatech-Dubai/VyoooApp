@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -5,9 +7,13 @@ import 'package:video_player/video_player.dart';
 
 import '../../core/mock/mock_music_data.dart';
 import '../../core/navigation/app_route_observer.dart';
+import '../../core/utils/reel_video_tone.dart';
+import '../../core/utils/reel_video_trimmer.dart';
 import '../../core/theme/app_spacing.dart';
 import '../music/add_audio_screen.dart';
 import 'upload_details_screen.dart';
+import 'widgets/reel_brightness_sheet.dart';
+import 'widgets/reel_trim_sheet.dart';
 
 /// Edit video screen: title, close, Next >, video preview, tool row, timeline with scrubber.
 class EditVideoScreen extends StatefulWidget {
@@ -31,6 +37,17 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   final AudioPlayer _audioPlayer = AudioPlayer();
   MusicTrack? _selectedTrack;
+
+  /// Original gallery file (used for the first trim only).
+  File? _sourceVideoFile;
+
+  /// Last FFmpeg export; uploaded on Next. Further trims use this as input.
+  File? _trimmedVideoFile;
+  Duration _trimStart = Duration.zero;
+  Duration _trimEnd = Duration.zero;
+
+  /// Last applied FFmpeg `eq` brightness (\([-1, 1]\)) for reopening the sheet.
+  double _lastBrightnessEq = 0;
 
   static const Color _pink = Color(0xFFDE106B);
 
@@ -62,7 +79,20 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     _audioPlayer.dispose();
     _controller?.removeListener(_listener);
     _controller?.dispose();
+    final trimmed = _trimmedVideoFile;
+    if (trimmed != null && _isReelExportTemp(trimmed) && trimmed.existsSync()) {
+      try {
+        trimmed.deleteSync();
+      } catch (_) {}
+    }
     super.dispose();
+  }
+
+  bool _isReelExportTemp(File f) {
+    final segments = f.uri.pathSegments;
+    if (segments.isEmpty) return false;
+    final name = segments.last;
+    return name.startsWith('vy_reel_trim_') || name.startsWith('vy_reel_adj_');
   }
 
   @override
@@ -95,15 +125,19 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     try {
       final file = await widget.asset.file;
       if (file == null || !mounted) return;
+      _sourceVideoFile = file;
       _controller = VideoPlayerController.file(file);
       _controller!.setLooping(true);
       _controller!.setVolume(_muted ? 0 : 1);
       _controller!.addListener(_listener);
       await _controller!.initialize();
       if (mounted) {
+        final d = _controller!.value.duration;
         setState(() {
           _isInitialized = true;
           _hasError = false;
+          _trimStart = Duration.zero;
+          _trimEnd = d;
         });
         _syncMediaPlayback();
       }
@@ -148,6 +182,142 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     final m = d.inMinutes.remainder(60);
     final s = d.inSeconds.remainder(60);
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  void _openTrimSheet() {
+    if (!_isInitialized || _controller == null || _sourceVideoFile == null) {
+      return;
+    }
+    final total = _controller!.value.duration;
+    if (total.inMilliseconds < 600) return;
+
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => ReelTrimSheet(
+        totalDuration: total,
+        initialStart: _trimStart,
+        initialEnd: _trimEnd,
+        onApply: _exportTrim,
+      ),
+    );
+  }
+
+  Future<void> _exportTrim(Duration start, Duration end) async {
+    final src = _trimmedVideoFile ?? _sourceVideoFile;
+    if (src == null || !mounted) return;
+
+    final previous = _trimmedVideoFile;
+    final out = await ReelVideoTrimmer.trimToMp4(
+      input: src,
+      start: start,
+      end: end,
+    );
+
+    try {
+      if (previous != null &&
+          previous.path != out.path &&
+          _isReelExportTemp(previous) &&
+          await previous.exists()) {
+        await previous.delete();
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _trimmedVideoFile = out;
+      _trimStart = start;
+      _trimEnd = end;
+      _lastBrightnessEq = 0;
+    });
+    await _reloadVideoFromFile(out);
+  }
+
+  void _openBrightnessSheet() {
+    if (!_isInitialized || _controller == null || _sourceVideoFile == null) {
+      return;
+    }
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (ctx) => ReelBrightnessSheet(
+        initialEqBrightness: _lastBrightnessEq,
+        onApply: _exportBrightness,
+      ),
+    );
+  }
+
+  Future<void> _exportBrightness(double eqBrightness) async {
+    final src = _trimmedVideoFile ?? _sourceVideoFile;
+    if (src == null || !mounted) return;
+
+    final out = await ReelVideoTone.applyBrightness(
+      input: src,
+      brightness: eqBrightness,
+    );
+
+    if (out.path == src.path) {
+      if (mounted) setState(() => _lastBrightnessEq = eqBrightness);
+      return;
+    }
+
+    final previous = _trimmedVideoFile;
+    try {
+      if (previous != null &&
+          previous.path != out.path &&
+          _isReelExportTemp(previous) &&
+          await previous.exists()) {
+        await previous.delete();
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    setState(() {
+      _trimmedVideoFile = out;
+      _lastBrightnessEq = eqBrightness;
+    });
+    await _reloadVideoFromFile(out);
+  }
+
+  Future<void> _reloadVideoFromFile(File file) async {
+    _controller?.removeListener(_listener);
+    await _controller?.dispose();
+    if (!mounted) return;
+
+    setState(() {
+      _controller = null;
+      _isInitialized = false;
+      _hasError = false;
+    });
+
+    final c = VideoPlayerController.file(file)
+      ..setLooping(true)
+      ..setVolume(_muted ? 0 : 1)
+      ..addListener(_listener);
+    _controller = c;
+
+    try {
+      await c.initialize();
+      if (!mounted) return;
+      final d = c.value.duration;
+      setState(() {
+        _isInitialized = true;
+        _hasError = false;
+        _trimStart = Duration.zero;
+        _trimEnd = d;
+      });
+      _syncMediaPlayback();
+    } catch (e) {
+      debugPrint('EditVideoScreen reload: $e');
+      if (mounted) {
+        setState(() {
+          _isInitialized = false;
+          _hasError = true;
+        });
+      }
+    }
   }
 
   @override
@@ -250,9 +420,9 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         ),
         const Spacer(),
         _headerActionPill(
-          label: 'Edit Video',
-          icon: Icons.edit_rounded,
-          onTap: () {},
+          label: 'Trim',
+          icon: Icons.content_cut_rounded,
+          onTap: _openTrimSheet,
           isPink: false,
         ),
         const SizedBox(width: 8),
@@ -262,7 +432,10 @@ class _EditVideoScreenState extends State<EditVideoScreen>
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
-                builder: (_) => UploadDetailsScreen(asset: widget.asset),
+                builder: (_) => UploadDetailsScreen(
+                  asset: widget.asset,
+                  videoFileOverride: _trimmedVideoFile,
+                ),
               ),
             );
           },
@@ -280,6 +453,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   }) {
     final isNext = label == 'Next';
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -374,27 +548,91 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               });
             },
           ),
-          _toolIconButton(icon: Icons.tune_rounded, onTap: () => _showEditorSheet('Adjustments')),
-          _toolIconButton(icon: Icons.filter_vintage_rounded, onTap: () => _showEditorSheet('Filter')),
-          _toolIconButton(icon: Icons.content_cut_rounded, onTap: () => _showEditorSheet('Trim')),
-          _toolIconButton(icon: Icons.timer_outlined, onTap: () => _showEditorSheet('Speed')),
-          _toolIconButton(icon: Icons.delete_outline_rounded, onTap: () {}),
+          _toolIconButton(
+            icon: Icons.tune_rounded,
+            onTap: _openBrightnessSheet,
+          ),
+          _toolIconButton(icon: Icons.content_cut_rounded, onTap: _openTrimSheet),
+          _toolIconButton(
+            icon: Icons.timer_outlined,
+            onTap: () => _showEditorNotAvailable('Speed'),
+          ),
+          _toolIconButton(
+            icon: Icons.delete_outline_rounded,
+            onTap: _onDiscardTrimTap,
+          ),
         ],
       ),
     );
   }
 
-  void _showEditorSheet(String type) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (_) => _EditorSheet(type: type),
+  void _showEditorNotAvailable(String name) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('$name is not available in this version yet.'),
+        behavior: SnackBarBehavior.floating,
+      ),
     );
+  }
+
+  void _onDiscardTrimTap() {
+    if (_trimmedVideoFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Apply a trim or brightness change first if you want to discard it and go back to the original clip.',
+          ),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A0020),
+        title: const Text('Discard changes?', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Remove edited video and show the original library clip again.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.85), height: 1.35),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              _discardTrimmedExport();
+            },
+            child: const Text('Discard'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _discardTrimmedExport() async {
+    final trimmed = _trimmedVideoFile;
+    final source = _sourceVideoFile;
+    if (trimmed == null || source == null || !mounted) return;
+    try {
+      if (_isReelExportTemp(trimmed) && await trimmed.exists()) {
+        await trimmed.delete();
+      }
+    } catch (_) {}
+    if (!mounted) return;
+    setState(() {
+      _trimmedVideoFile = null;
+      _lastBrightnessEq = 0;
+    });
+    await _reloadVideoFromFile(source);
   }
 
   Widget _toolIconButton({required IconData icon, required VoidCallback onTap}) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Icon(icon, color: Colors.white, size: 24),
     );
@@ -411,14 +649,29 @@ class _EditVideoScreenState extends State<EditVideoScreen>
         border: Border.all(color: _pink.withValues(alpha: 0.5)),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.music_note_rounded, color: _pink, size: 18),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(
-              '${t.title} • ${t.artist}',
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${t.title} • ${t.artist}',
+                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Preview only — the uploaded video still uses the clip\'s original audio.',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    fontSize: 11,
+                    height: 1.25,
+                  ),
+                ),
+              ],
             ),
           ),
           GestureDetector(
@@ -547,196 +800,6 @@ class _ExitSheet extends StatelessWidget {
           Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
         ],
       ),
-    );
-  }
-}
-
-// ── Editor Sheets ─────────────────────────────────────────────────────────────
-
-class _EditorSheet extends StatelessWidget {
-  const _EditorSheet({required this.type});
-  final String type;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E0A1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.only(bottom: 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 12),
-          _buildHeader(context),
-          const Divider(color: Colors.white12, height: 1),
-          _buildContent(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Text('Cancel', style: TextStyle(color: Color(0xFFDE106B), fontWeight: FontWeight.w600)),
-          ),
-          Text(type, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15)),
-          GestureDetector(
-            onTap: () => Navigator.pop(context),
-            child: const Text('Done', style: TextStyle(color: Color(0xFFDE106B), fontWeight: FontWeight.w600)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildContent() {
-    switch (type) {
-      case 'Adjustments': return _buildAdjustments();
-      case 'Filter': return _buildFilter();
-      case 'Trim': return _buildTrim();
-      case 'Speed': return _buildSpeed();
-      default: return const SizedBox(height: 100);
-    }
-  }
-
-  Widget _buildAdjustments() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 24),
-      child: Column(
-        children: [
-          const Text('Brightness', style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _adjIcon(Icons.wb_sunny_rounded, true),
-              const SizedBox(width: 24),
-              _adjIcon(Icons.contrast_rounded, false),
-              const SizedBox(width: 24),
-              _adjIcon(Icons.thermostat_rounded, false),
-            ],
-          ),
-          const SizedBox(height: 32),
-          _buildRuler(),
-        ],
-      ),
-    );
-  }
-
-  Widget _adjIcon(IconData icon, bool active) {
-    return Container(
-      width: 48, height: 48,
-      decoration: BoxDecoration(
-        color: active ? Colors.white.withValues(alpha: 0.1) : Colors.transparent,
-        shape: BoxShape.circle,
-        border: active ? null : Border.all(color: Colors.white12),
-      ),
-      child: Icon(icon, color: Colors.white, size: 24),
-    );
-  }
-
-  Widget _buildRuler() {
-    return SizedBox(
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: 60,
-        itemBuilder: (_, i) => Container(
-          width: 2,
-          height: i % 5 == 0 ? 30 : 15,
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          color: i == 30 ? const Color(0xFFDE106B) : Colors.white24,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFilter() {
-    final filters = ['Normal', 'Paris', 'Los Angeles', 'Oslo'];
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 100,
-            child: ListView.builder(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: filters.length,
-              itemBuilder: (_, i) => Column(
-                children: [
-                  Container(
-                    width: 70, height: 70,
-                    margin: const EdgeInsets.only(right: 12),
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: i == 2 ? Border.all(color: Colors.white, width: 2) : null,
-                      image: const DecorationImage(image: NetworkImage('https://picsum.photos/100'), fit: BoxFit.cover),
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 12),
-                    child: Text(filters[i], style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: i == 2 ? FontWeight.w700 : FontWeight.w500)),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildIntensitySlider(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildIntensitySlider() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 40),
-      child: SliderTheme(
-        data: const SliderThemeData(trackHeight: 2, thumbShape: RoundSliderThumbShape(enabledThumbRadius: 6), thumbColor: Colors.white, activeTrackColor: Colors.white, inactiveTrackColor: Colors.white24),
-        child: Slider(value: 0.7, onChanged: (v){}),
-      ),
-    );
-  }
-
-  Widget _buildTrim() {
-    return Container(
-      height: 120,
-      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
-      child: Stack(
-        children: [
-          Row(children: List.generate(8, (_) => Expanded(child: Container(margin: const EdgeInsets.symmetric(horizontal: 1), color: Colors.white12)))),
-          Positioned(
-            left: 40, right: 80, top: 0, bottom: 0,
-            child: Container(
-              decoration: BoxDecoration(border: Border.all(color: const Color(0xFFDE106B), width: 3)),
-            ),
-          ),
-          Positioned(bottom: 0, right: 0, child: Text('0:30', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 10))),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSpeed() {
-    final speeds = ['0.25', '0.5x', '1x (Normal)', '1.5x', '2x'];
-    return Column(
-      children: speeds.map((s) => ListTile(
-        title: Text(s, style: const TextStyle(color: Colors.white, fontSize: 14)),
-        trailing: s.contains('Normal') ? const Icon(Icons.check_circle_outline_rounded, color: Colors.green, size: 20) : null,
-        onTap: (){},
-      )).toList(),
     );
   }
 }

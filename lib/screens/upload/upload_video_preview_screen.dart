@@ -253,6 +253,25 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
     return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
   }
 
+  void _openEditor() {
+    if (_hasError || !_isInitialized || _controller == null) return;
+    final issue = _validationIssue;
+    if (issue != null && !issue.canOpenEditorFix) {
+      _showFixPrompt();
+      return;
+    }
+    _controller!.pause();
+    Navigator.of(context)
+        .push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => EditVideoScreen(asset: widget.asset),
+      ),
+    )
+        .then((_) {
+      if (mounted) _controller?.play();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -340,25 +359,29 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
               icon: const Icon(Icons.close, color: Colors.white, size: 28),
             ),
             const Spacer(),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Edit Video',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+            GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: _openEditor,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Edit Video',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 4),
-                Image.asset(
-                  'assets/vyooO_icons/Upload_Story_Live/edit_video.png',
-                  width: 16,
-                  height: 16,
-                  color: Colors.white,
-                ),
-              ],
+                  const SizedBox(width: 4),
+                  Image.asset(
+                    'assets/vyooO_icons/Upload_Story_Live/edit_video.png',
+                    width: 16,
+                    height: 16,
+                    color: Colors.white,
+                  ),
+                ],
+              ),
             ),
             const Spacer(),
             GestureDetector(
@@ -495,15 +518,23 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
             children: [
               _buildToolIcon(
                 'assets/vyooO_icons/Upload_Story_Live/audio_icon.png',
+                _openEditor,
               ),
-              _buildToolIcon('assets/vyooO_icons/Upload_Story_Live/adjust.png'),
-              _buildToolIcon('assets/vyooO_icons/Upload_Story_Live/filter.png'),
+              _buildToolIcon(
+                'assets/vyooO_icons/Upload_Story_Live/adjust.png',
+                _openEditor,
+              ),
               _buildToolIcon(
                 'assets/vyooO_icons/Upload_Story_Live/crop.png',
-              ), // Scissors placeholder if scissor icon is crop
-              _buildToolIcon('assets/vyooO_icons/Upload_Story_Live/speed.png'),
+                _openEditor,
+              ),
+              _buildToolIcon(
+                'assets/vyooO_icons/Upload_Story_Live/speed.png',
+                _openEditor,
+              ),
               _buildToolIcon(
                 'assets/vyooO_icons/Upload_Story_Live/delete_inactive.png',
+                _openEditor,
               ),
             ],
           ),
@@ -537,13 +568,11 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
               const SizedBox(width: 12),
               GestureDetector(
                 onTap: _toggleMute,
-                child: Image.asset(
-                  _muted
-                      ? 'assets/vyooO_icons/Upload_Story_Live/mute.png'
-                      : 'assets/vyooO_icons/Upload_Story_Live/microphone.png',
-                  width: 20,
-                  height: 20,
+                behavior: HitTestBehavior.opaque,
+                child: Icon(
+                  _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
                   color: Colors.white,
+                  size: 26,
                 ),
               ),
             ],
@@ -553,17 +582,26 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
     );
   }
 
-  Widget _buildToolIcon(String path) {
-    return Container(
-      width: 48,
-      height: 48,
-      margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
+  Widget _buildToolIcon(String path, VoidCallback onTap) {
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Ink(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            padding: const EdgeInsets.all(12),
+            child: Image.asset(path, color: Colors.white),
+          ),
+        ),
       ),
-      padding: const EdgeInsets.all(12),
-      child: Image.asset(path, color: Colors.white),
     );
   }
 

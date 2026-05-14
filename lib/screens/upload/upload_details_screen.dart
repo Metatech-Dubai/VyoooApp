@@ -23,9 +23,22 @@ import 'upload_success_screen.dart';
 /// Gets a direct upload URL from Cloud Function → uploads to Cloudflare Stream
 /// → saves reel doc to Firestore with Stream playback URL.
 class UploadDetailsScreen extends StatefulWidget {
-  const UploadDetailsScreen({super.key, required this.asset});
+  const UploadDetailsScreen({
+    super.key,
+    required this.asset,
+    this.photoFileOverride,
+    this.videoFileOverride,
+  });
 
   final AssetEntity asset;
+
+  /// When set for an **image** post, this file is uploaded instead of [asset.file]
+  /// (e.g. after crop on [UploadPhotoPreviewScreen]).
+  final File? photoFileOverride;
+
+  /// When set for a **video** post, this file is uploaded instead of [asset.file]
+  /// (e.g. after FFmpeg trim on [EditVideoScreen]).
+  final File? videoFileOverride;
 
   @override
   State<UploadDetailsScreen> createState() => _UploadDetailsScreenState();
@@ -118,7 +131,9 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     if (user == null) return;
 
     if (_isVideoAsset) {
-      final validation = await VideoUploadPolicy.validateAsset(widget.asset);
+      final validation = widget.videoFileOverride != null
+          ? await VideoUploadPolicy.validateFile(widget.videoFileOverride!)
+          : await VideoUploadPolicy.validateAsset(widget.asset);
       if (validation != null) {
         if (!mounted) return;
         await _showValidationFixDialog(validation);
@@ -132,8 +147,10 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     });
 
     try {
-      // 1 — get file from asset
-      final file = await widget.asset.file;
+      // 1 — resolve file (edited override or gallery asset file)
+      final File? file = _isVideoAsset
+          ? (widget.videoFileOverride ?? await widget.asset.file)
+          : (widget.photoFileOverride ?? await widget.asset.file);
       if (file == null || !mounted) {
         setState(() => _isUploading = false);
         return;

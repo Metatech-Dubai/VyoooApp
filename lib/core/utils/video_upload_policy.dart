@@ -38,6 +38,22 @@ class VideoUploadPolicy {
     }
 
     final duration = await _resolveDuration(asset, file.path);
+    return _validateResolvedDuration(duration);
+  }
+
+  /// Validates a file produced locally (e.g. FFmpeg trim) before upload.
+  static Future<VideoValidationResult?> validateFile(File file) async {
+    if (!await file.exists()) {
+      return const VideoValidationResult(
+        issue: VideoValidationIssue.inaccessibleFile,
+        message: 'Unable to access video file.',
+      );
+    }
+    final duration = await durationFromPath(file.path);
+    return _validateResolvedDuration(duration);
+  }
+
+  static VideoValidationResult? _validateResolvedDuration(Duration? duration) {
     if (duration == null) {
       return const VideoValidationResult(
         issue: VideoValidationIssue.unreadableDimensions,
@@ -53,10 +69,8 @@ class VideoUploadPolicy {
     return null;
   }
 
-  static Future<Duration?> _resolveDuration(AssetEntity asset, String filePath) async {
-    final assetDuration = asset.videoDuration;
-    if (assetDuration.inMilliseconds > 0) return assetDuration;
-    late final VideoPlayerController controller;
+  static Future<Duration?> durationFromPath(String filePath) async {
+    VideoPlayerController? controller;
     try {
       controller = VideoPlayerController.file(File(filePath));
       await controller.initialize();
@@ -65,9 +79,17 @@ class VideoUploadPolicy {
     } catch (_) {
       return null;
     } finally {
-      await controller.dispose();
+      if (controller != null) {
+        await controller.dispose();
+      }
     }
     return null;
+  }
+
+  static Future<Duration?> _resolveDuration(AssetEntity asset, String filePath) async {
+    final assetDuration = asset.videoDuration;
+    if (assetDuration.inMilliseconds > 0) return assetDuration;
+    return durationFromPath(filePath);
   }
 
   static bool isPlayableUrl(String rawUrl) {
