@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
@@ -17,28 +20,157 @@ import '../../screens/upload/creator_live_route.dart';
 import '../../screens/upload/upload_screen.dart';
 import '../../screens/upload/widgets/photo_manager_story_gallery_panel.dart';
 import '../../screens/upload/widgets/upload_create_bottom_bar.dart';
+import 'story_draft_storage.dart';
+
+int _colorToArgb32(Color color) {
+  final a = (color.a * 255.0).round() & 0xff;
+  final r = (color.r * 255.0).round() & 0xff;
+  final g = (color.g * 255.0).round() & 0xff;
+  final b = (color.b * 255.0).round() & 0xff;
+  return (a << 24) | (r << 16) | (g << 8) | b;
+}
+
+Rect _storyImageContentRect(Size layout, Size natural) {
+  final iw = natural.width;
+  final ih = natural.height;
+  if (iw <= 0 || ih <= 0) {
+    return Rect.fromLTWH(0, 0, layout.width, layout.height);
+  }
+  final s = math.min(layout.width / iw, layout.height / ih);
+  final dw = iw * s;
+  final dh = ih * s;
+  final ox = (layout.width - dw) / 2;
+  final oy = (layout.height - dh) / 2;
+  return Rect.fromLTWH(ox, oy, dw, dh);
+}
 
 /// Story camera: still capture vs video recording (same pipeline as gallery video).
 enum _StoryCameraMode { photo, video }
 
 enum _StoryFilter { normal, warm, cool, mono, vivid }
 
+/// Single ink stroke in normalized image coordinates (0–1).
+class _StoryStroke {
+  _StoryStroke({
+    required this.points,
+    required this.color,
+    required this.strokeWidthLogical,
+    required this.isEraser,
+  });
+
+  final List<Offset> points;
+  final Color color;
+  /// Reference stroke width at ~360 px min(image width, height).
+  final double strokeWidthLogical;
+  final bool isEraser;
+
+  Map<String, dynamic> toJson() => {
+        'points': points.map((o) => [o.dx, o.dy]).toList(),
+        'color': _colorToArgb32(color),
+        'width': strokeWidthLogical,
+        'isEraser': isEraser,
+      };
+
+  static _StoryStroke? fromJson(Map<String, dynamic> m) {
+    final raw = m['points'];
+    if (raw is! List<dynamic>) return null;
+    final pts = <Offset>[];
+    for (final p in raw) {
+      if (p is List && p.length >= 2) {
+        pts.add(Offset((p[0] as num).toDouble(), (p[1] as num).toDouble()));
+      }
+    }
+    if (pts.isEmpty) return null;
+    return _StoryStroke(
+      points: pts,
+      color: Color((m['color'] as num?)?.toInt() ?? 0xFFFFFFFF),
+      strokeWidthLogical: (m['width'] as num?)?.toDouble() ?? 6,
+      isEraser: m['isEraser'] == true,
+    );
+  }
+}
+
+class _StorySticker {
+  _StorySticker({
+    required this.emoji,
+    required this.nx,
+    required this.ny,
+  });
+
+  String emoji;
+  double nx;
+  double ny;
+
+  Map<String, dynamic> toJson() => {'emoji': emoji, 'nx': nx, 'ny': ny};
+
+  static _StorySticker fromJson(Map<String, dynamic> m) => _StorySticker(
+        emoji: (m['emoji'] as String?) ?? '❤️',
+        nx: (m['nx'] as num?)?.toDouble() ?? 0.5,
+        ny: (m['ny'] as num?)?.toDouble() ?? 0.5,
+      );
+}
+
 class _StoryImageEdit {
   const _StoryImageEdit({
     this.filter = _StoryFilter.normal,
     this.overlayText = '',
+    this.strokes = const [],
+    this.stickers = const [],
   });
 
   final _StoryFilter filter;
   final String overlayText;
+  final List<_StoryStroke> strokes;
+  final List<_StorySticker> stickers;
 
   _StoryImageEdit copyWith({
     _StoryFilter? filter,
     String? overlayText,
+    List<_StoryStroke>? strokes,
+    List<_StorySticker>? stickers,
   }) {
     return _StoryImageEdit(
       filter: filter ?? this.filter,
       overlayText: overlayText ?? this.overlayText,
+      strokes: strokes ?? this.strokes,
+      stickers: stickers ?? this.stickers,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'filter': filter.name,
+        'overlayText': overlayText,
+        'strokes': strokes.map((s) => s.toJson()).toList(),
+        'stickers': stickers.map((s) => s.toJson()).toList(),
+      };
+
+  static _StoryImageEdit fromJson(Map<String, dynamic> m) {
+    final filterName = (m['filter'] as String?) ?? 'normal';
+    _StoryFilter filter = _StoryFilter.normal;
+    for (final f in _StoryFilter.values) {
+      if (f.name == filterName) {
+        filter = f;
+        break;
+      }
+    }
+    final strokeMaps = m['strokes'] as List<dynamic>? ?? const [];
+    final strokes = <_StoryStroke>[];
+    for (final s in strokeMaps) {
+      if (s is Map<String, dynamic>) {
+        final st = _StoryStroke.fromJson(s);
+        if (st != null) strokes.add(st);
+      }
+    }
+    final stickerMaps = m['stickers'] as List<dynamic>? ?? const [];
+    final stickers = <_StorySticker>[];
+    for (final s in stickerMaps) {
+      if (s is Map<String, dynamic>) stickers.add(_StorySticker.fromJson(s));
+    }
+    return _StoryImageEdit(
+      filter: filter,
+      overlayText: (m['overlayText'] as String?) ?? '',
+      strokes: strokes,
+      stickers: stickers,
     );
   }
 }
@@ -73,6 +205,19 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   List<File> _videoStorySegments = [];
   final _captionCtrl = TextEditingController();
   bool _uploading = false;
+  int _videoUploadDone = 0;
+  int _videoUploadTotal = 0;
+
+  /// Natural pixel size per image path (for layout + export).
+  final Map<String, Size> _imageNaturalSize = {};
+
+  bool _drawMode = false;
+  bool _eraserMode = false;
+  Color _drawColor = Colors.white;
+  final List<Offset> _currentStrokePoints = [];
+  static const double _defaultStrokeWidth = 6;
+
+  bool _draftOffered = false;
 
   static const Map<_StoryFilter, String> _filterLabels = <_StoryFilter, String>{
     _StoryFilter.normal: 'Normal',
@@ -110,6 +255,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferDraftResume());
   }
 
   @override
@@ -276,7 +422,9 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
           _imageEdits = [const _StoryImageEdit()];
           _previewIdx = 0;
         });
+        unawaited(_preloadNaturalSizesForPaths([xFile.path]));
       }
+      unawaited(HapticFeedback.lightImpact());
     } catch (e) {
       if (mounted) _showSnack('Capture failed: $e');
     }
@@ -300,6 +448,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
           _isRecordingVideo = true;
           _recordElapsed = Duration.zero;
         });
+        unawaited(HapticFeedback.mediumImpact());
         _recordTicker?.cancel();
         _recordTicker = Timer.periodic(const Duration(seconds: 1), (_) {
           if (!mounted || !_isRecordingVideo) return;
@@ -336,6 +485,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       setState(() => _isRecordingVideo = false);
       if (save) {
         await _ingestVideoFile(File(xFile.path));
+        unawaited(HapticFeedback.lightImpact());
       }
     } catch (e) {
       if (mounted) {
@@ -465,6 +615,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         _previewIdx = 0;
       }
     });
+    unawaited(_preloadNaturalSizesForPaths(picked.map((f) => f.path)));
     return true;
   }
 
@@ -482,7 +633,11 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     if (_uploading) return;
 
     if (_videoStorySegments.isNotEmpty) {
-      setState(() => _uploading = true);
+      setState(() {
+        _uploading = true;
+        _videoUploadDone = 0;
+        _videoUploadTotal = _videoStorySegments.length;
+      });
       try {
         final caption = _captionCtrl.text.trim();
         final groupId = _videoStorySegments.length > 1
@@ -498,16 +653,28 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
           caption: caption,
           durationMsPerFile: durs,
           segmentGroupId: groupId,
+          onProgress: (done, total) {
+            if (mounted) {
+              setState(() {
+                _videoUploadDone = done;
+                _videoUploadTotal = total;
+              });
+            }
+          },
         );
         await _deleteTempVideoSegments();
+        await StoryDraftStorage.clearDraft();
         if (mounted) Navigator.of(context).pop(true);
       } catch (e) {
         if (mounted) {
           _showSnack('Upload failed: $e');
-          setState(() => _uploading = false);
+          setState(() {
+            _uploading = false;
+            _videoUploadDone = 0;
+            _videoUploadTotal = 0;
+          });
         }
       }
-      return;
     }
 
     if (_images.isEmpty) return;
@@ -518,6 +685,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         images: renderedImages,
         caption: _captionCtrl.text.trim(),
       );
+      await StoryDraftStorage.clearDraft();
       if (mounted) Navigator.of(context).pop(true);
     } catch (e) {
       if (mounted) {
@@ -565,6 +733,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       setState(() {
         _images[_previewIdx] = File(cropped.path);
       });
+      unawaited(_preloadNaturalSizesForPaths([cropped.path]));
     } catch (e) {
       if (!mounted) return;
       _showSnack('Crop failed: $e');
@@ -733,7 +902,11 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
 
   Future<List<File>> _buildUploadImages() async {
     final hasAnyEdits = _imageEdits.any(
-      (e) => e.filter != _StoryFilter.normal || e.overlayText.trim().isNotEmpty,
+      (e) =>
+          e.filter != _StoryFilter.normal ||
+          e.overlayText.trim().isNotEmpty ||
+          e.strokes.isNotEmpty ||
+          e.stickers.isNotEmpty,
     );
     if (!hasAnyEdits) return _images;
 
@@ -759,88 +932,128 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   }) async {
     try {
       final bytes = await source.readAsBytes();
-      final decoded = img.decodeImage(bytes);
+      final codec = await ui.instantiateImageCodec(bytes);
+      final fi = await codec.getNextFrame();
+      final uiImage = fi.image;
+      final w = uiImage.width;
+      final h = uiImage.height;
+
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+      final cf = _colorFilterFor(edit.filter);
+      canvas.drawImageRect(
+        uiImage,
+        Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+        Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()),
+        Paint()..colorFilter = cf,
+      );
+
+      _paintStoryOverlayTextForExport(canvas, edit.overlayText.trim(), w, h);
+
+      canvas.saveLayer(Rect.fromLTWH(0, 0, w.toDouble(), h.toDouble()), Paint());
+      final scaleRef = math.min(w, h) / 360.0;
+      for (final stroke in edit.strokes) {
+        final pw = math.max(1.0, stroke.strokeWidthLogical * scaleRef);
+        if (stroke.points.isEmpty) continue;
+        if (stroke.points.length == 1) {
+          final o = stroke.points.first;
+          final cx = o.dx * w;
+          final cy = o.dy * h;
+          final sp = Paint()
+            ..strokeWidth = pw
+            ..style = PaintingStyle.fill;
+          if (stroke.isEraser) {
+            sp.blendMode = BlendMode.clear;
+          } else {
+            sp.color = stroke.color;
+          }
+          canvas.drawCircle(Offset(cx, cy), pw / 2, sp);
+          continue;
+        }
+        final path = Path()
+          ..moveTo(stroke.points.first.dx * w, stroke.points.first.dy * h);
+        for (var i = 1; i < stroke.points.length; i++) {
+          path.lineTo(stroke.points[i].dx * w, stroke.points[i].dy * h);
+        }
+        final sp = Paint()
+          ..color = stroke.isEraser ? Colors.white : stroke.color
+          ..strokeWidth = pw
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..style = PaintingStyle.stroke
+          ..isAntiAlias = true;
+        if (stroke.isEraser) {
+          sp.blendMode = BlendMode.clear;
+        }
+        canvas.drawPath(path, sp);
+      }
+      canvas.restore();
+
+      final stickerFont = 40 * scaleRef;
+      for (final st in edit.stickers) {
+        final tp = TextPainter(
+          text: TextSpan(
+            text: st.emoji,
+            style: TextStyle(fontSize: stickerFont * 1.35),
+          ),
+          textDirection: TextDirection.ltr,
+        )..layout();
+        final cx = st.nx * w - tp.width / 2;
+        final cy = st.ny * h - tp.height / 2;
+        tp.paint(canvas, Offset(cx, cy));
+      }
+
+      final picture = recorder.endRecording();
+      final outUi = await picture.toImage(w, h);
+      uiImage.dispose();
+
+      final bd = await outUi.toByteData(format: ui.ImageByteFormat.png);
+      outUi.dispose();
+      if (bd == null) return null;
+      final decoded = img.decodePng(bd.buffer.asUint8List());
       if (decoded == null) return null;
-      _applyFilterToImage(decoded, edit.filter);
-      _drawOverlayText(decoded, edit.overlayText.trim());
       final encoded = Uint8List.fromList(img.encodeJpg(decoded, quality: 92));
       final path =
           '${outputDir.path}/story_edit_${DateTime.now().millisecondsSinceEpoch}_$index.jpg';
       final out = File(path);
       await out.writeAsBytes(encoded, flush: true);
       return out;
-    } catch (_) {
+    } catch (e, st) {
+      debugPrint('_renderEditedImage: $e $st');
       return null;
     }
   }
 
-  void _applyFilterToImage(img.Image image, _StoryFilter filter) {
-    if (filter == _StoryFilter.normal) return;
-    for (var y = 0; y < image.height; y++) {
-      for (var x = 0; x < image.width; x++) {
-        final p = image.getPixel(x, y);
-        var r = p.r;
-        var g = p.g;
-        var b = p.b;
-        switch (filter) {
-          case _StoryFilter.normal:
-            break;
-          case _StoryFilter.warm:
-            r = _clampColor(r * 1.12 + 12);
-            g = _clampColor(g * 1.03 + 4);
-            b = _clampColor(b * 0.90 - 8);
-            break;
-          case _StoryFilter.cool:
-            r = _clampColor(r * 0.92 - 6);
-            g = _clampColor(g * 1.00 + 2);
-            b = _clampColor(b * 1.10 + 12);
-            break;
-          case _StoryFilter.mono:
-            final luma = _clampColor(0.2126 * r + 0.7152 * g + 0.0722 * b);
-            r = luma;
-            g = luma;
-            b = luma;
-            break;
-          case _StoryFilter.vivid:
-            r = _clampColor((r - 128) * 1.16 + 128 + 5);
-            g = _clampColor((g - 128) * 1.16 + 128 + 5);
-            b = _clampColor((b - 128) * 1.16 + 128 + 5);
-            break;
-        }
-        image.setPixelRgba(x, y, r.round(), g.round(), b.round(), p.a.round());
-      }
-    }
-  }
-
-  double _clampColor(num value) => value.clamp(0, 255).toDouble();
-
-  void _drawOverlayText(img.Image image, String text) {
+  void _paintStoryOverlayTextForExport(
+    Canvas canvas,
+    String text,
+    int imageWidth,
+    int imageHeight,
+  ) {
     if (text.isEmpty) return;
     final lines = _splitTextLines(text, maxCharsPerLine: 16, maxLines: 3);
     if (lines.isEmpty) return;
-    final font = img.arial48;
-    final lineHeight = font.lineHeight + 10;
-    var y = math.max(20, (image.height * 0.08).round());
+    final scale = math.min(imageWidth, imageHeight) / 360.0;
+    final style = TextStyle(
+      color: Colors.white,
+      fontSize: 28 * scale,
+      fontWeight: FontWeight.w800,
+      height: 1.15,
+      shadows: const [
+        Shadow(color: Colors.black87, blurRadius: 6, offset: Offset(0, 1.5)),
+      ],
+    );
+    var y = math.max(16.0, imageHeight * 0.08);
     for (final line in lines) {
-      final estimatedWidth = (line.length * (font.lineHeight * 0.55)).round();
-      final x = math.max(16, ((image.width - estimatedWidth) / 2).round());
-      img.drawString(
-        image,
-        line,
-        font: font,
-        x: x + 2,
-        y: y + 2,
-        color: img.ColorRgb8(0, 0, 0),
-      );
-      img.drawString(
-        image,
-        line,
-        font: font,
-        x: x,
-        y: y,
-        color: img.ColorRgb8(255, 255, 255),
-      );
-      y += lineHeight;
+      final tp = TextPainter(
+        text: TextSpan(text: line, style: style),
+        textAlign: TextAlign.center,
+        textDirection: TextDirection.ltr,
+        maxLines: 1,
+      )..layout(maxWidth: imageWidth - 28.0);
+      final x = (imageWidth - tp.width) / 2;
+      tp.paint(canvas, Offset(x, y));
+      y += tp.height + 6 * scale;
     }
   }
 
@@ -870,6 +1083,273 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       return lines.take(maxLines).toList();
     }
     return lines;
+  }
+
+  Rect _contentRectForImage(Size layout, Size natural) =>
+      _storyImageContentRect(layout, natural);
+
+  Offset? _touchToImageNorm(Offset local, Rect content, Size natural) {
+    if (!content.contains(local)) return null;
+    final ix = (local.dx - content.left) / content.width * natural.width;
+    final iy = (local.dy - content.top) / content.height * natural.height;
+    return Offset(ix / natural.width, iy / natural.height);
+  }
+
+  Future<void> _preloadNaturalSizesForPaths(Iterable<String> paths) async {
+    var changed = false;
+    for (final path in paths) {
+      if (_imageNaturalSize.containsKey(path)) continue;
+      try {
+        final bytes = await File(path).readAsBytes();
+        final codec = await ui.instantiateImageCodec(bytes);
+        final frame = await codec.getNextFrame();
+        final im = frame.image;
+        _imageNaturalSize[path] = Size(im.width.toDouble(), im.height.toDouble());
+        changed = true;
+        im.dispose();
+      } catch (_) {}
+    }
+    if (changed && mounted) setState(() {});
+  }
+
+  Future<void> _maybeOfferDraftResume() async {
+    if (!mounted || _draftOffered) return;
+    _draftOffered = true;
+    final has = await StoryDraftStorage.hasDraft();
+    if (!mounted || !has) return;
+    final restore = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF171717),
+        title: const Text('Resume draft?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'You have an unfinished story draft.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Start fresh'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Resume'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted) return;
+    if (restore == false) {
+      await StoryDraftStorage.clearDraft();
+      return;
+    }
+    if (restore != true) return;
+    final data = await StoryDraftStorage.loadDraft();
+    if (!mounted || data == null) return;
+    final edits = <_StoryImageEdit>[];
+    for (final m in data.editsJson) {
+      edits.add(_StoryImageEdit.fromJson(m));
+    }
+    while (edits.length < data.imageFiles.length) {
+      edits.add(const _StoryImageEdit());
+    }
+    setState(() {
+      _images
+        ..clear()
+        ..addAll(data.imageFiles);
+      _imageEdits
+        ..clear()
+        ..addAll(edits.take(data.imageFiles.length));
+      _previewIdx = 0;
+      _captionCtrl.text = data.caption;
+      _drawMode = false;
+      _eraserMode = false;
+      _currentStrokePoints.clear();
+    });
+    unawaited(_preloadNaturalSizesForPaths(data.imageFiles.map((f) => f.path)));
+  }
+
+  Future<void> _persistDraftFromCurrent() async {
+    if (_images.isEmpty) return;
+    try {
+      final editsJson =
+          _imageEdits.take(_images.length).map((e) => e.toJson()).toList();
+      await StoryDraftStorage.saveDraft(
+        imageFiles: _images,
+        caption: _captionCtrl.text,
+        editsJson: editsJson,
+      );
+      if (mounted) _showSnack('Draft saved');
+    } catch (e) {
+      debugPrint('_persistDraftFromCurrent: $e');
+      if (mounted) _showSnack('Could not save draft.');
+    }
+  }
+
+  void _endCurrentStroke() {
+    if (_currentStrokePoints.isEmpty) return;
+    final idx = _previewIdx;
+    final stroke = _StoryStroke(
+      points: List<Offset>.from(_currentStrokePoints),
+      color: _eraserMode ? Colors.white : _drawColor,
+      strokeWidthLogical: _defaultStrokeWidth,
+      isEraser: _eraserMode,
+    );
+    _currentStrokePoints.clear();
+    setState(() {
+      final prev = _imageEdits[idx];
+      _imageEdits[idx] = prev.copyWith(strokes: [...prev.strokes, stroke]);
+    });
+  }
+
+  Future<void> _confirmLeavePreview() async {
+    if (_images.isEmpty) return;
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF171717),
+        title: const Text('Leave story?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Save a draft to finish later, or discard.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'cancel'),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'discard'),
+            child: const Text('Discard'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, 'save'),
+            child: const Text('Save draft'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || choice == null || choice == 'cancel') return;
+    if (choice == 'save') {
+      await _persistDraftFromCurrent();
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+    if (choice == 'discard') {
+      await StoryDraftStorage.clearDraft();
+      if (mounted) {
+        setState(() {
+          _images.clear();
+          _imageEdits.clear();
+          _previewIdx = 0;
+          _captionCtrl.clear();
+          _drawMode = false;
+          _eraserMode = false;
+          _currentStrokePoints.clear();
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _images.isEmpty) _initCamera();
+        });
+      }
+    }
+  }
+
+  Future<void> _openStickerPicker() async {
+    const emojis = <String>[
+      '❤️',
+      '😂',
+      '😍',
+      '🔥',
+      '👏',
+      '🎉',
+      '💯',
+      '✨',
+      '😮',
+      '😭',
+      '🙌',
+      '💪',
+      '⭐',
+      '🥳',
+      '😎',
+      '🤩',
+      '💖',
+      '👀',
+      '✅',
+      '🎵',
+      '☀️',
+      '🌙',
+      '📍',
+      '🏷️',
+    ];
+    final picked = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: const Color(0xFF151515),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 6,
+              mainAxisSpacing: 12,
+              crossAxisSpacing: 12,
+            ),
+            itemCount: emojis.length,
+            itemBuilder: (_, i) {
+              final e = emojis[i];
+              return GestureDetector(
+                onTap: () => Navigator.pop(ctx, e),
+                child: Center(
+                  child: Text(e, style: const TextStyle(fontSize: 32)),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    if (!mounted || picked == null) return;
+    final idx = _previewIdx;
+    setState(() {
+      final prev = _imageEdits[idx];
+      _imageEdits[idx] = prev.copyWith(
+        stickers: [...prev.stickers, _StorySticker(emoji: picked, nx: 0.5, ny: 0.45)],
+      );
+    });
+    unawaited(HapticFeedback.selectionClick());
+  }
+
+  Future<void> _onVideoPopInvoked(bool didPop) async {
+    if (didPop || !mounted) return;
+    if (_uploading) return;
+    if (_videoStorySegments.isEmpty) {
+      Navigator.of(context).maybePop();
+      return;
+    }
+    final discard = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF171717),
+        title: const Text('Discard video?', style: TextStyle(color: Colors.white)),
+        content: const Text(
+          'Your clips will be removed.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Discard')),
+        ],
+      ),
+    );
+    if (!mounted || discard != true) return;
+    setState(() {
+      _videoStorySegments = [];
+      _videoUploadDone = 0;
+      _videoUploadTotal = 0;
+    });
   }
 
   String _formatRecordDuration(Duration d) {
@@ -920,9 +1400,14 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
 
   Widget _buildVideoPostPreview() {
     final n = _videoStorySegments.length;
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: SafeArea(
+    return PopScope(
+      canPop: _videoStorySegments.isEmpty && !_uploading,
+      onPopInvokedWithResult: (didPop, _) async {
+        await _onVideoPopInvoked(didPop);
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -936,6 +1421,8 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                       setState(() {
                         _videoStorySegments = [];
                         _uploading = false;
+                        _videoUploadDone = 0;
+                        _videoUploadTotal = 0;
                       });
                     },
                   ),
@@ -992,6 +1479,19 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                         ),
                       ),
                     ),
+                    if (_uploading && _videoUploadTotal > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 16),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(6),
+                          child: LinearProgressIndicator(
+                            value: _videoUploadDone / _videoUploadTotal,
+                            minHeight: 6,
+                            backgroundColor: Colors.white24,
+                            color: const Color(0xFFDE106B),
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -1045,10 +1545,9 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
           ],
         ),
       ),
+    ),
     );
   }
-
-  // ── Camera ────────────────────────────────────────────────────────────────
 
   Widget _buildCameraView() {
     return Scaffold(
@@ -1311,221 +1810,495 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
 
   // ── Preview (caption + strip + Post) ───────────────────────────────────────
 
+  List<Widget> _stickerOverlayWidgets(Rect content, int frameIdx) {
+    final stickers = _imageEdits[frameIdx].stickers;
+    return List<Widget>.generate(stickers.length, (si) {
+      final st = stickers[si];
+      return Positioned(
+        left: content.left + st.nx * content.width - 30,
+        top: content.top + st.ny * content.height - 30,
+        child: GestureDetector(
+          onLongPress: () {
+            setState(() {
+              final prev = _imageEdits[frameIdx];
+              final next = List<_StorySticker>.from(prev.stickers)..removeAt(si);
+              _imageEdits[frameIdx] = prev.copyWith(stickers: next);
+            });
+            unawaited(HapticFeedback.selectionClick());
+          },
+          onPanUpdate: !_drawMode
+              ? (details) {
+                  setState(() {
+                    final cx =
+                        content.left + st.nx * content.width + details.delta.dx;
+                    final cy =
+                        content.top + st.ny * content.height + details.delta.dy;
+                    st.nx =
+                        ((cx - content.left) / content.width).clamp(0.05, 0.95);
+                    st.ny =
+                        ((cy - content.top) / content.height).clamp(0.05, 0.95);
+                  });
+                }
+              : null,
+          child: Text(st.emoji, style: const TextStyle(fontSize: 48)),
+        ),
+      );
+    });
+  }
+
   Widget _buildPreview() {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      resizeToAvoidBottomInset: true,
-      body: Stack(
-        fit: StackFit.expand,
-        children: [
-          ColoredBox(
-            color: Colors.black,
-            child: Center(
-              child: _buildEditedPreviewImage(
-                imageFile: _images[_previewIdx],
-                edit: _imageEdits[_previewIdx],
-                fit: BoxFit.contain,
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 320,
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.bottomCenter,
-                  end: Alignment.topCenter,
-                  colors: [Colors.black.withValues(alpha: 0.92), Colors.transparent],
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  children: [
-                    IconButton(
-                      icon: Image.asset(
-                        'assets/vyooO_icons/Home/chevron_left.png',
-                        width: 22,
-                        height: 22,
-                        color: Colors.white,
+    return PopScope(
+      canPop: _images.isEmpty,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _confirmLeavePreview();
+      },
+      child: Scaffold(
+        backgroundColor: Colors.black,
+        resizeToAvoidBottomInset: true,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final idx = _previewIdx;
+                  final path = _images[idx].path;
+                  final natural = _imageNaturalSize[path] ?? const Size(1080, 1920);
+                  final layoutSize = Size(constraints.maxWidth, constraints.maxHeight);
+                  final content = _contentRectForImage(layoutSize, natural);
+                  final edit = _imageEdits[idx];
+                  return Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      ColoredBox(
+                        color: Colors.black,
+                        child: Center(
+                          child: _buildEditedPreviewImage(
+                            imageFile: _images[idx],
+                            edit: edit,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
                       ),
-                      onPressed: () => setState(() {
-                        _images.clear();
-                        _imageEdits.clear();
-                        _previewIdx = 0;
-                        _captionCtrl.clear();
-                      }),
-                    ),
-                  ],
+                      Positioned.fill(
+                        child: CustomPaint(
+                          painter: _StoryInkLayerPainter(
+                            strokes: edit.strokes,
+                            naturalSize: natural,
+                            inProgressPoints:
+                                _drawMode && _currentStrokePoints.isNotEmpty
+                                    ? _currentStrokePoints
+                                    : null,
+                            inProgressIsEraser: _eraserMode,
+                            inProgressColor: _drawColor,
+                          ),
+                        ),
+                      ),
+                      ..._stickerOverlayWidgets(content, idx),
+                      if (_drawMode)
+                        Positioned.fill(
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onPanStart: (d) {
+                              final n = _touchToImageNorm(
+                                d.localPosition,
+                                content,
+                                natural,
+                              );
+                              if (n == null) return;
+                              _currentStrokePoints
+                                ..clear()
+                                ..add(n);
+                              setState(() {});
+                            },
+                            onPanUpdate: (d) {
+                              final n = _touchToImageNorm(
+                                d.localPosition,
+                                content,
+                                natural,
+                              );
+                              if (n == null) return;
+                              _currentStrokePoints.add(n);
+                              setState(() {});
+                            },
+                            onPanEnd: (_) => _endCurrentStroke(),
+                            onPanCancel: _currentStrokePoints.clear,
+                          ),
+                        ),
+                    ],
+                  );
+                },
+              ),
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 380,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.bottomCenter,
+                    end: Alignment.topCenter,
+                    colors: [Colors.black.withValues(alpha: 0.92), Colors.transparent],
+                  ),
                 ),
-                const Spacer(),
-                if (_images.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                    child: SizedBox(
-                      height: 64,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: _images.length + 1,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          if (i == _images.length) {
+              ),
+            ),
+            SafeArea(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Image.asset(
+                          'assets/vyooO_icons/Home/chevron_left.png',
+                          width: 22,
+                          height: 22,
+                          color: Colors.white,
+                        ),
+                        onPressed: () => _confirmLeavePreview(),
+                      ),
+                    ],
+                  ),
+                  const Spacer(),
+                  if (_images.length > 1)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+                      child: SizedBox(
+                        height: 64,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: _images.length + 1,
+                          separatorBuilder: (_, _) => const SizedBox(width: 8),
+                          itemBuilder: (_, i) {
+                            if (i == _images.length) {
+                              return GestureDetector(
+                                onTap: () => _pickFromLibrary(append: true),
+                                child: Container(
+                                  width: 64,
+                                  height: 64,
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.circular(10),
+                                    color: Colors.white.withValues(alpha: 0.12),
+                                    border: Border.all(color: Colors.white24),
+                                  ),
+                                  child: Image.asset(
+                                    'assets/vyooO_icons/Upload_Story_Live/gallery_camera.png',
+                                    width: 28,
+                                    height: 28,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              );
+                            }
                             return GestureDetector(
-                              onTap: () => _pickFromLibrary(append: true),
+                              onTap: () => setState(() {
+                                _previewIdx = i;
+                                _currentStrokePoints.clear();
+                              }),
                               child: Container(
                                 width: 64,
                                 height: 64,
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
-                                  color: Colors.white.withValues(alpha: 0.12),
-                                  border: Border.all(color: Colors.white24),
+                                  border: Border.all(
+                                    color: _previewIdx == i
+                                        ? const Color(0xFFDE106B)
+                                        : Colors.transparent,
+                                    width: 2.5,
+                                  ),
                                 ),
-                                child: Image.asset(
-                                  'assets/vyooO_icons/Upload_Story_Live/gallery_camera.png',
-                                  width: 28,
-                                  height: 28,
-                                  color: Colors.white,
+                                clipBehavior: Clip.antiAlias,
+                                child: _buildEditedPreviewImage(
+                                  imageFile: _images[i],
+                                  edit: _imageEdits[i],
+                                  fit: BoxFit.cover,
                                 ),
                               ),
                             );
-                          }
-                          return GestureDetector(
-                            onTap: () => setState(() => _previewIdx = i),
-                            child: Container(
-                              width: 64,
-                              height: 64,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: _previewIdx == i ? const Color(0xFFDE106B) : Colors.transparent,
-                                  width: 2.5,
-                                ),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: _buildEditedPreviewImage(
-                                imageFile: _images[i],
-                                edit: _imageEdits[i],
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                          );
-                        },
+                          },
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          _editActionButton(
+                            icon: Icons.crop_rounded,
+                            label: 'Crop',
+                            onTap: _cropCurrentImage,
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.filter_rounded,
+                            label: _filterLabels[_imageEdits[_previewIdx].filter] ??
+                                'Filter',
+                            onTap: _pickFilter,
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.text_fields_rounded,
+                            label: 'Text',
+                            onTap: _editOverlayText,
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.brush_rounded,
+                            label: _drawMode ? 'Draw ✓' : 'Draw',
+                            onTap: () => setState(() {
+                              _drawMode = !_drawMode;
+                              if (!_drawMode) _currentStrokePoints.clear();
+                            }),
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.emoji_emotions_outlined,
+                            label: 'Sticker',
+                            onTap: _openStickerPicker,
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.undo_rounded,
+                            label: 'Undo',
+                            onTap: _imageEdits[_previewIdx].strokes.isEmpty
+                                ? () {}
+                                : () {
+                                    setState(() {
+                                      final prev = _imageEdits[_previewIdx];
+                                      final next = List<_StoryStroke>.from(prev.strokes)
+                                        ..removeLast();
+                                      _imageEdits[_previewIdx] =
+                                          prev.copyWith(strokes: next);
+                                    });
+                                    unawaited(HapticFeedback.selectionClick());
+                                  },
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.layers_clear_rounded,
+                            label: 'Clear ink',
+                            onTap: _imageEdits[_previewIdx].strokes.isEmpty
+                                ? () {}
+                                : () {
+                                    setState(() {
+                                      final prev = _imageEdits[_previewIdx];
+                                      _imageEdits[_previewIdx] =
+                                          prev.copyWith(strokes: []);
+                                    });
+                                  },
+                          ),
+                          const SizedBox(width: 8),
+                          _editActionButton(
+                            icon: Icons.save_outlined,
+                            label: 'Draft',
+                            onTap: () => _persistDraftFromCurrent(),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _editActionButton(
-                        icon: Icons.crop_rounded,
-                        label: 'Crop',
-                        onTap: _cropCurrentImage,
-                      ),
-                      const SizedBox(width: 10),
-                      _editActionButton(
-                        icon: Icons.filter_rounded,
-                        label: _filterLabels[_imageEdits[_previewIdx].filter] ?? 'Filter',
-                        onTap: _pickFilter,
-                      ),
-                      const SizedBox(width: 10),
-                      _editActionButton(
-                        icon: Icons.text_fields_rounded,
-                        label: 'Text',
-                        onTap: _editOverlayText,
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.black45,
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: Colors.white24),
+                  if (_drawMode)
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                      child: Row(
+                        children: [
+                          ChoiceChip(
+                            label: const Text('Pen'),
+                            selected: !_eraserMode,
+                            onSelected: (_) =>
+                                setState(() => _eraserMode = false),
                           ),
-                          child: TextField(
-                            controller: _captionCtrl,
-                            style: const TextStyle(color: Colors.white, fontSize: 14),
-                            decoration: const InputDecoration(
-                              hintText: 'Add a caption…',
-                              hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
-                              isDense: true,
-                              contentPadding: EdgeInsets.zero,
-                              border: InputBorder.none,
+                          const SizedBox(width: 8),
+                          ChoiceChip(
+                            label: const Text('Eraser'),
+                            selected: _eraserMode,
+                            onSelected: (_) => setState(() => _eraserMode = true),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  for (final c in const [
+                                    Colors.white,
+                                    Color(0xFFFFD60A),
+                                    Color(0xFFFF375F),
+                                    Color(0xFF34C759),
+                                    Color(0xFF0A84FF),
+                                    Colors.black,
+                                  ])
+                                    Padding(
+                                      padding: const EdgeInsets.only(right: 8),
+                                      child: GestureDetector(
+                                        onTap: () => setState(() {
+                                          _drawColor = c;
+                                          _eraserMode = false;
+                                        }),
+                                        child: Container(
+                                          width: 28,
+                                          height: 28,
+                                          decoration: BoxDecoration(
+                                            color: c,
+                                            shape: BoxShape.circle,
+                                            border: Border.all(
+                                              color: _drawColor == c && !_eraserMode
+                                                  ? const Color(0xFFDE106B)
+                                                  : Colors.white38,
+                                              width: 2,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                ],
+                              ),
                             ),
-                            minLines: 1,
-                            maxLines: 3,
+                          ),
+                        ],
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.black45,
+                              borderRadius: BorderRadius.circular(24),
+                              border: Border.all(color: Colors.white24),
+                            ),
+                            child: TextField(
+                              controller: _captionCtrl,
+                              style: const TextStyle(color: Colors.white, fontSize: 14),
+                              decoration: const InputDecoration(
+                                hintText: 'Add a caption…',
+                                hintStyle: TextStyle(color: Colors.white54, fontSize: 14),
+                                isDense: true,
+                                contentPadding: EdgeInsets.zero,
+                                border: InputBorder.none,
+                              ),
+                              minLines: 1,
+                              maxLines: 3,
+                            ),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      _iconBtn(iconPath: 'assets/vyooO_icons/Upload_Story_Live/gallery.png', onTap: () => _pickFromLibrary(append: true)),
-                      const SizedBox(width: 8),
-                      _iconBtn(
-                        iconPath: 'assets/vyooO_icons/Home/nav_bar_icons/create.png',
-                        onTap: () => setState(() {
-                          _images.clear();
-                          _imageEdits.clear();
-                          _previewIdx = 0;
-                          _captionCtrl.clear();
-                        }),
-                      ),
-                      const SizedBox(width: 8),
-                      _uploading
-                          ? const SizedBox(
-                              width: 56,
-                              height: 36,
-                              child: Center(
-                                child: SizedBox(
-                                  width: 22,
-                                  height: 22,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        const SizedBox(width: 8),
+                        _iconBtn(
+                          iconPath: 'assets/vyooO_icons/Upload_Story_Live/gallery.png',
+                          onTap: () => _pickFromLibrary(append: true),
+                        ),
+                        const SizedBox(width: 8),
+                        _iconBtn(
+                          iconPath: 'assets/vyooO_icons/Home/nav_bar_icons/create.png',
+                          onTap: () async {
+                            final ok = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                backgroundColor: const Color(0xFF171717),
+                                title: const Text(
+                                  'Start over?',
+                                  style: TextStyle(color: Colors.white),
                                 ),
-                              ),
-                            )
-                          : GestureDetector(
-                              onTap: _post,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                                decoration: BoxDecoration(
-                                  gradient: const LinearGradient(
-                                    begin: Alignment.centerLeft,
-                                    end: Alignment.centerRight,
-                                    colors: [Color(0xFFDE106B), Color(0xFFF81945)],
+                                content: const Text(
+                                  'Remove all photos from this story.',
+                                  style: TextStyle(color: Colors.white70),
+                                ),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('Cancel'),
                                   ),
-                                  borderRadius: BorderRadius.circular(20),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    child: const Text('Clear'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (ok == true && mounted) {
+                              setState(() {
+                                _images.clear();
+                                _imageEdits.clear();
+                                _previewIdx = 0;
+                                _captionCtrl.clear();
+                                _drawMode = false;
+                                _eraserMode = false;
+                                _currentStrokePoints.clear();
+                              });
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                if (mounted && _images.isEmpty) _initCamera();
+                              });
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 8),
+                        _uploading
+                            ? const SizedBox(
+                                width: 56,
+                                height: 36,
+                                child: Center(
+                                  child: SizedBox(
+                                    width: 22,
+                                    height: 22,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
                                 ),
-                                child: const Text(
-                                  'Post',
-                                  style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                              )
+                            : GestureDetector(
+                                onTap: _post,
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 20,
+                                    vertical: 10,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      begin: Alignment.centerLeft,
+                                      end: Alignment.centerRight,
+                                      colors: [
+                                        Color(0xFFDE106B),
+                                        Color(0xFFF81945),
+                                      ],
+                                    ),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: const Text(
+                                    'Post',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                    ],
+                      ],
+                    ),
                   ),
-                ),
-                SafeArea(
-                  top: false,
-                  child: _buildUploadCreateBottomBar(),
-                ),
-              ],
+                  SafeArea(
+                    top: false,
+                    child: _buildUploadCreateBottomBar(),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1585,6 +2358,97 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       ),
     );
   }
+}
+
+class _StoryInkLayerPainter extends CustomPainter {
+  _StoryInkLayerPainter({
+    required this.strokes,
+    required this.naturalSize,
+    this.inProgressPoints,
+    this.inProgressIsEraser = false,
+    this.inProgressColor = Colors.white,
+  });
+
+  final List<_StoryStroke> strokes;
+  final Size naturalSize;
+  final List<Offset>? inProgressPoints;
+  final bool inProgressIsEraser;
+  final Color inProgressColor;
+
+  void _paintOne(Canvas canvas, _StoryStroke stroke, double iw, double ih) {
+    final scaleRef = math.min(iw, ih) / 360.0;
+    final pw = math.max(1.0, stroke.strokeWidthLogical * scaleRef);
+    if (stroke.points.isEmpty) return;
+    if (stroke.points.length == 1) {
+      final o = stroke.points.first;
+      final cx = o.dx * iw;
+      final cy = o.dy * ih;
+      final sp = Paint()
+        ..strokeWidth = pw
+        ..style = PaintingStyle.fill;
+      if (stroke.isEraser) {
+        sp.blendMode = BlendMode.clear;
+      } else {
+        sp.color = stroke.color;
+      }
+      canvas.drawCircle(Offset(cx, cy), pw / 2, sp);
+      return;
+    }
+    final path = Path()
+      ..moveTo(stroke.points.first.dx * iw, stroke.points.first.dy * ih);
+    for (var i = 1; i < stroke.points.length; i++) {
+      path.lineTo(stroke.points[i].dx * iw, stroke.points[i].dy * ih);
+    }
+    final sp = Paint()
+      ..color = stroke.isEraser ? Colors.white : stroke.color
+      ..strokeWidth = pw
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+    if (stroke.isEraser) {
+      sp.blendMode = BlendMode.clear;
+    }
+    canvas.drawPath(path, sp);
+  }
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final content = _storyImageContentRect(size, naturalSize);
+    final iw = naturalSize.width;
+    final ih = naturalSize.height;
+    if (iw <= 0 || ih <= 0) return;
+    canvas.save();
+    canvas.translate(content.left, content.top);
+    canvas.scale(content.width / iw, content.height / ih);
+    canvas.saveLayer(Rect.fromLTWH(0, 0, iw, ih), Paint());
+    for (final s in strokes) {
+      _paintOne(canvas, s, iw, ih);
+    }
+    if (inProgressPoints != null && inProgressPoints!.isNotEmpty) {
+      _paintOne(
+        canvas,
+        _StoryStroke(
+          points: inProgressPoints!,
+          color: inProgressColor,
+          strokeWidthLogical: 6,
+          isEraser: inProgressIsEraser,
+        ),
+        iw,
+        ih,
+      );
+    }
+    canvas.restore();
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _StoryInkLayerPainter oldDelegate) =>
+      oldDelegate.strokes != strokes ||
+      oldDelegate.inProgressPoints != inProgressPoints ||
+      oldDelegate.inProgressIsEraser != inProgressIsEraser ||
+      oldDelegate.inProgressColor != inProgressColor ||
+      oldDelegate.naturalSize != naturalSize;
 }
 
 class _SmallCircleBtn extends StatelessWidget {

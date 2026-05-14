@@ -1,4 +1,5 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Gallery access for Upload screen -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
@@ -17,6 +18,12 @@
     <!-- Location tagging for uploads (requested only on user action) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
+    <!-- Agora merges screen-share (media projection) from native SDK; Vyooo uses camera/mic live only.
+         Removing these avoids Play Console requiring media-projection demo videos for a feature we do not ship. -->
+    <uses-permission
+        android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
+        tools:node="remove" />
     <application
         android:label="vyooo"
         android:name="${applicationName}"
@@ -70,6 +77,13 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <service
+            android:name="io.agora.rtc2.extensions.MediaProjectionMgr$LocalScreenSharingService"
+            tools:node="remove" />
+        <activity
+            android:name="io.agora.rtc2.extensions.MediaProjectionMgr$LocalScreenCaptureAssistantActivity"
+            tools:node="remove" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

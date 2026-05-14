@@ -1,0 +1,59 @@
+---
+description: Implement Figma designs in Vyooo (Flutter) using Figma MCP — tokens, layout, navigation, and asset rules aligned with this repo.
+globs:
+  - "lib/**/*.dart"
+alwaysApply: false
+---
+
+# Figma → Vyooo (Flutter) implementation
+
+Vyooo is a **Flutter** app (Dart, **Material 3**, **Provider**). Figma MCP often returns **React + Tailwind** as a structural reference only — translate every layout and style into Flutter widgets and this project’s theme system.
+
+## Required Figma MCP flow (do not skip)
+
+1. **`get_design_context`** for the exact node(s) you are implementing.
+2. If the payload is large or truncated, **`get_metadata`** for the node map, then narrow **`get_design_context`** to specific nodes.
+3. **`get_screenshot`** for the variant you are matching visually.
+4. Pull assets from the MCP when provided; then implement in Dart.
+5. Validate against the screenshot (spacing, typography weight, contrast).
+
+## Design tokens (use these; do not invent parallel colors/spacing)
+
+| Concern | Source |
+|--------|--------|
+| Global theme, `ThemeData`, text theme, inputs, elevated buttons | `lib/core/theme/app_theme.dart` — `AppTheme.dark`, `Inter` |
+| Brand / semantic colors (sheets, actions, social colors) | `lib/core/constants/app_colors.dart` — `AppColors` |
+| **Gradients** (backgrounds, cards, auth) | `lib/core/theme/app_gradients.dart` — **`AppGradients` only** — do **not** define new `LinearGradient` colors inline in screens |
+| Numeric spacing (4pt grid) | `lib/core/theme/app_spacing.dart` — `AppSpacing` |
+| Common `EdgeInsets` / gap widgets | `lib/core/theme/app_padding.dart` — `AppPadding` |
+| Corner radii | `lib/core/theme/app_radius.dart` — `AppRadius` |
+
+**Opacity whites** (`White24`, `White54`, etc.) live in `app_theme.dart` — reuse them instead of raw `Color(0x…)` for white tints.
+
+## Layout and widgets
+
+- Prefer **`Theme.of(context)`** / `colorScheme` / `textTheme` where they already match the design; otherwise use `AppTheme` / `AppColors` explicitly for brand-specific UI.
+- Reuse shared widgets under **`lib/core/widgets/`** (`AppGradientBackground`, `AppBottomNavigation`, `AppInteractionButton`, etc.) before adding new primitives.
+- Feature UI belongs under **`lib/features/<feature>/`**; full screens under **`lib/screens/<area>/`**.
+- Match existing patterns: `Consumer` / `Provider.of`, `ListView` / `CustomScrollView`, bottom sheets and dialogs as used in neighboring screens.
+
+## Navigation and state
+
+- Navigation uses app keys / wrappers in **`lib/core/navigation/`** and screen composition via **`AuthWrapper`** and related entry in `lib/main.dart` — follow existing `Navigator` / route patterns in the file you are editing; do not introduce a new router package without an explicit product decision.
+
+## Assets and icons
+
+- Static assets: **`pubspec.yaml`** `flutter.assets` and project `assets/` tree — add new binaries there when the design requires them.
+- Prefer **`Icons.`** / **`Image.asset`** / **`SvgPicture`** consistent with the surrounding screen. Do not add new icon **packages** unless the design cannot be satisfied with existing assets or Material icons.
+- If Figma MCP returns a **localhost** asset URL for an export, use that source for implementation fidelity; avoid placeholder images when a real asset URL is provided.
+
+## Figma output → Flutter mapping (mental model)
+
+- Flex / auto-layout → `Row`, `Column`, `Flex`, `Expanded`, `Flexible`, `Wrap`, with `MainAxisAlignment` / `CrossAxisAlignment` aligned to Figma.
+- Fixed frames → `SizedBox`, `ConstrainedBox`, or intrinsic sizing; respect safe areas with `SafeArea` where peers do.
+- Tailwind spacing numbers → map to **`AppSpacing`** and **`AppPadding`** (not arbitrary `8.0` / `12.0` unless adding a deliberate new token with team agreement).
+
+## Quality bar
+
+- Preserve **production-security** and **iOS bundle id** workspace rules; no secrets in code.
+- After UI changes, run analyzer on touched files; keep visual parity with **`get_screenshot`** for the implemented node.

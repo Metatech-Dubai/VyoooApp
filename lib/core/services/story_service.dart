@@ -106,16 +106,19 @@ class StoryService {
   }
 
   /// Uploads several media files (e.g. FFmpeg-split video segments) with one [segmentGroupId].
+  /// [onProgress] reports 1-based [index] and [total] after each segment finishes.
   Future<void> uploadStoryMediaBatch({
     required List<File> files,
     required StoryMediaType mediaType,
     required String caption,
     required List<int> durationMsPerFile,
     required String segmentGroupId,
+    void Function(int index, int total)? onProgress,
   }) async {
     if (files.length != durationMsPerFile.length) {
       throw ArgumentError('files and durationMsPerFile length mismatch');
     }
+    final total = files.length;
     for (var i = 0; i < files.length; i++) {
       await uploadStoryMedia(
         file: files[i],
@@ -124,6 +127,7 @@ class StoryService {
         durationMs: durationMsPerFile[i],
         segmentGroupId: segmentGroupId,
       );
+      onProgress?.call(i + 1, total);
     }
   }
 

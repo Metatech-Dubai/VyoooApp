@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -29,13 +30,28 @@ void main() async {
 
   bool firebaseInitialized = false;
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    // Native layer (google-services / FCM) may create [DEFAULT] before Dart runs.
+    // Calling initializeApp again throws [core/duplicate-app] and bricks the app.
+    if (Firebase.apps.isEmpty) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    }
     // After Firebase init (recommended order). Hot restart can still log
     // "duplicate background isolate" on Android — harmless; use full app restart to clear.
     if (!kIsWeb) {
-      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+      try {
+        FirebaseMessaging.onBackgroundMessage(
+          firebaseMessagingBackgroundHandler,
+        );
+      } catch (e, st) {
+        developer.log(
+          'FCM onBackgroundMessage registration failed (non-fatal)',
+          name: 'vyooo.firebase',
+          error: e,
+          stackTrace: st,
+        );
+      }
     }
     // Local stack: `firebase emulators:start --only firestore,functions` from repo root,
     // then `flutter run --dart-define=USE_FIRESTORE_EMULATOR=true` (debug only).
@@ -64,6 +80,12 @@ void main() async {
     firebaseInitialized = true;
     await PushMessagingService.instance.configure();
   } catch (e, st) {
+    developer.log(
+      'Firebase initialization failed',
+      name: 'vyooo.firebase',
+      error: e,
+      stackTrace: st,
+    );
     debugPrint('Firebase initialization failed: $e');
     debugPrint(st.toString());
   }
@@ -271,11 +293,16 @@ class _FirebaseInitErrorScreen extends StatelessWidget {
                 textAlign: TextAlign.center,
               ),
               AppPadding.itemGap,
-              const Text(
-                'This often happens after a hot restart.\n\n'
-                'Stop the app completely, then run again from your IDE or:\n'
-                'flutter run',
-                style: TextStyle(
+              Text(
+                kReleaseMode
+                    ? 'Something blocked Firebase from starting on this device.\n\n'
+                        'Try: update Google Play services, clear app data, or reinstall '
+                        'from Play. If it persists, capture a bug report (logcat) for the '
+                        'team — look for "Firebase initialization failed".'
+                    : 'This often happens after a hot restart.\n\n'
+                        'Stop the app completely, then run again from your IDE or:\n'
+                        'flutter run',
+                style: const TextStyle(
                   color: Colors.white70,
                   fontSize: 14,
                   height: 1.4,
