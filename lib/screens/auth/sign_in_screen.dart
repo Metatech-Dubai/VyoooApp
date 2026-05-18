@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:country_picker/country_picker.dart';
+
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_padding.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import 'create_account_screen.dart';
 import 'find_account_screen.dart';
 
@@ -20,13 +21,14 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
-  static const String _loginMethodEmail = 'email';
-  static const String _loginMethodPhone = 'phone';
+  static const _loginMethodEmail = 'email';
+  static const _loginMethodPhone = 'phone';
 
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _obscurePassword = true;
+  final _auth = AuthService();
+
   bool _rememberMe = false;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
@@ -36,13 +38,13 @@ class _SignInScreenState extends State<SignInScreen> {
   String _selectedCountryDialCode = '44';
   String _selectedCountryFlag = '🇬🇧';
 
-  final AuthService _auth = AuthService();
+  bool get _isEmailLogin => _selectedLoginMethod == _loginMethodEmail;
 
   bool get _canLogin =>
-      _selectedLoginMethod == _loginMethodPhone
-          ? (_normalizedPhone().isNotEmpty &&
+      _isEmailLogin
+          ? (_usernameController.text.trim().isNotEmpty &&
               _passwordController.text.trim().isNotEmpty)
-          : (_usernameController.text.trim().isNotEmpty &&
+          : (_normalizedPhone().isNotEmpty &&
               _passwordController.text.trim().isNotEmpty);
 
   @override
@@ -53,8 +55,10 @@ class _SignInScreenState extends State<SignInScreen> {
     super.dispose();
   }
 
+  void _onFieldChanged(_) => setState(() {});
+
   Future<void> _onLogin() async {
-    if (_selectedLoginMethod == _loginMethodPhone) {
+    if (!_isEmailLogin) {
       await _onPhoneLogin();
       return;
     }
@@ -86,7 +90,6 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!mounted) return;
     setState(() => _isLoading = false);
     if (result.success) {
-      // Successful email/password is sufficient; do not require a second login OTP step.
       final uid = result.user?.uid ?? '';
       await otpSession.clearOtpRequirement();
       if (uid.isNotEmpty) {
@@ -97,13 +100,12 @@ class _SignInScreenState extends State<SignInScreen> {
       if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
       return;
-    } else {
-      otpSession.abortEmailLoginHandshake();
-      final raw = result.message ?? 'Login failed';
-      setState(() {
-        _errorMessage = _emailLoginFailureMessage(raw, identifier);
-      });
     }
+    otpSession.abortEmailLoginHandshake();
+    final raw = result.message ?? 'Login failed';
+    setState(() {
+      _errorMessage = _emailLoginFailureMessage(raw, identifier);
+    });
   }
 
   Future<void> _onPhoneLogin() async {
@@ -138,9 +140,7 @@ class _SignInScreenState extends State<SignInScreen> {
       password: _passwordController.text.trim(),
     );
     if (!mounted) return;
-    setState(() {
-      _isLoading = false;
-    });
+    setState(() => _isLoading = false);
     if (result.success) {
       OtpSessionService().abortEmailLoginHandshake();
       await OtpSessionService().clearOtpRequirement();
@@ -191,13 +191,12 @@ class _SignInScreenState extends State<SignInScreen> {
         raw.contains('@') && !raw.startsWith('@') ? raw.toLowerCase() : null;
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => CreateAccountScreen(initialEmail: initialEmail),
+        builder: (_) => CreateAccountScreen(initialEmail: initialEmail),
       ),
     );
   }
 
-  /// Firebase has no account for this email yet (parent invite is only in Firestore).
-  static const String _kNoAuthAccountForEmail = 'No account found.';
+  static const _kNoAuthAccountForEmail = 'No account found.';
 
   String _emailLoginFailureMessage(String base, String identifierTrimmed) {
     final looksLikeEmail =
@@ -221,450 +220,110 @@ class _SignInScreenState extends State<SignInScreen> {
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
         type: GradientType.auth,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: AppPadding.authFormHorizontal,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: AppSpacing.sm),
-                  _buildLogo(),
-                  SizedBox(
-                    height: AppSpacing.xl + AppSpacing.xl + AppSpacing.sm,
-                  ),
-                  const Text(
-                    'Welcome\nBack',
-                    style: TextStyle(
-                      fontSize: 38,
-                      fontWeight: FontWeight.w700,
-                      color: AppTheme.defaultTextColor,
-                      height: 1.2,
-                    ),
-                  ),
-                  SizedBox(height: AppSpacing.lg),
-                  _buildLoginMethodToggle(),
-                  SizedBox(height: AppSpacing.xl + AppSpacing.md),
-                  if (_selectedLoginMethod == _loginMethodEmail) ...[
-                    _buildUsernameField(),
-                    AppPadding.sectionGap,
-                    _buildPasswordField(),
-                    SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                    _buildRememberRow(),
-                  ] else ...[
-                    _buildPhoneField(),
-                    AppPadding.sectionGap,
-                    _buildPasswordField(),
-                    SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                    _buildRememberRow(),
-                  ],
-                  SizedBox(height: AppSpacing.xl + AppSpacing.md),
-                  if (_errorMessage != null) ...[
-                    Text(
-                      _errorMessage!,
-                      style: const TextStyle(fontSize: 12, color: Colors.red),
-                    ),
-                    SizedBox(height: AppSpacing.sm),
-                  ],
-                  _buildLoginButton(),
-                  AppPadding.itemGap,
-                  _buildRegisterRedirect(),
-                  SizedBox(height: AppSpacing.xl + AppSpacing.sm),
-                  _buildDivider(),
-                  SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                  _buildSocialIcons(),
-                  SizedBox(height: AppSpacing.xl + AppSpacing.sm),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: SizedBox(
-        height: 100,
-        child: Image.asset(
-          'assets/BrandLogo/vyooo_white_transparent.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, stackTrace) => const Text(
-            'VyooO',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUsernameField() {
-    return TextFormField(
-      controller: _usernameController,
-      onChanged: (_) => setState(() {}),
-      style: const TextStyle(
-        color: AppTheme.defaultTextColor,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-      ),
-      decoration: const InputDecoration(
-        hintText: 'Email, Username or Name',
-        prefixIcon: Icon(Icons.mail_outline, color: AppTheme.primary, size: 22),
-        suffixIconConstraints: BoxConstraints(minWidth: 40, minHeight: 40),
-      ),
-    );
-  }
-
-  Widget _buildPhoneField() {
-    return TextFormField(
-      controller: _phoneController,
-      onChanged: (_) => setState(() {}),
-      style: const TextStyle(
-        color: AppTheme.defaultTextColor,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-      ),
-      keyboardType: TextInputType.phone,
-      decoration: InputDecoration(
-        hintText: 'Phone Number',
-        prefixIcon: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: AuthCenteredScrollBody(
           children: [
-            const SizedBox(width: 12),
-            const Icon(Icons.phone_outlined, color: AppTheme.primary, size: 22),
-            const SizedBox(width: 8),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _pickCountry,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 10),
-                child: Text(
-                  '$_selectedCountryFlag +$_selectedCountryDialCode',
-                  style: const TextStyle(
-                    color: AppTheme.primary,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
+            const AuthScreenHeader(
+              centerAlign: true,
+              titleTextAlign: TextAlign.start,
+              title: 'Welcome\nBack',
             ),
-            const SizedBox(width: 2),
+            const SizedBox(height: AppSpacing.md),
+            AuthSegmentedToggle(
+                leftLabel: 'Email',
+                rightLabel: 'Phone',
+                isLeftSelected: _isEmailLogin,
+                onLeftTap: () =>
+                    setState(() => _selectedLoginMethod = _loginMethodEmail),
+                onRightTap: () =>
+                    setState(() => _selectedLoginMethod = _loginMethodPhone),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+              _buildForm(),
+              const SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+              AuthRememberForgotRow(
+                rememberMe: _rememberMe,
+                onRememberMeChanged: (v) => setState(() => _rememberMe = v),
+                onForgotPasswordTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (_) => const FindAccountScreen(),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: AppSpacing.xl + AppSpacing.md),
+              if (_errorMessage != null) ...[
+                Text(
+                  _errorMessage!,
+                  style: AppTypography.caption.copyWith(color: Colors.red),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
+              AuthPrimaryButton(
+                label: _isEmailLogin ? 'Login' : 'Continue',
+                isLoading: _isLoading,
+                enabled: _canLogin,
+                onPressed: _onLogin,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              AuthLinkPrompt(
+                prompt: "Don't have an account? ",
+                actionLabel: 'Register Here',
+                onActionTap: _onRegister,
+              ),
+              const SizedBox(height: AppSpacing.authDividerBlock),
+              const AuthLabeledDivider(label: 'Or sign in with'),
+              const SizedBox(height: AppSpacing.authDividerBlock),
+              _buildSocialRow(),
+              const SizedBox(height: AppSpacing.authDividerBlock),
           ],
         ),
-        prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
       ),
     );
   }
 
-  Widget _buildLoginMethodToggle() {
-    final isEmail = _selectedLoginMethod == _loginMethodEmail;
-    return Container(
-      height: 54,
-      padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedLoginMethod = _loginMethodEmail),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isEmail ? Colors.white : Colors.transparent,
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Text(
-                  'Email',
-                  style: TextStyle(
-                    color: isEmail
-                        ? Colors.black.withValues(alpha: 0.9)
-                        : Colors.white.withValues(alpha: 0.82),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Expanded(
-            child: GestureDetector(
-              onTap: () => setState(() => _selectedLoginMethod = _loginMethodPhone),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isEmail ? Colors.transparent : Colors.white,
-                  borderRadius: BorderRadius.circular(26),
-                ),
-                child: Text(
-                  'Phone',
-                  style: TextStyle(
-                    color: isEmail
-                        ? Colors.white.withValues(alpha: 0.82)
-                        : Colors.black.withValues(alpha: 0.9),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPasswordField() {
-    return TextFormField(
-      controller: _passwordController,
-      onChanged: (_) => setState(() {}),
-      obscureText: _obscurePassword,
-      style: const TextStyle(
-        color: AppTheme.defaultTextColor,
-        fontSize: 16,
-        fontWeight: FontWeight.w400,
-      ),
-      decoration: InputDecoration(
-        hintText: 'Password',
-        prefixIcon: const Icon(
-          Icons.lock_outline,
-          color: AppTheme.primary,
-          size: 22,
-        ),
-        suffixIcon: IconButton(
-          icon: Icon(
-            _obscurePassword ? Icons.visibility_off : Icons.visibility,
-            color: AppTheme.primary,
-            size: 22,
-          ),
-          onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
-          padding: EdgeInsets.zero,
-          constraints: const BoxConstraints(),
-          style: IconButton.styleFrom(
-            minimumSize: const Size(40, 40),
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          ),
-        ),
-        suffixIconConstraints: const BoxConstraints(
-          minWidth: 40,
-          minHeight: 40,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildRememberRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  Widget _buildForm() {
+    return AuthFieldColumn(
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: Checkbox(
-                value: _rememberMe,
-                onChanged: (v) => setState(() => _rememberMe = v ?? false),
-                activeColor: AppTheme.primary,
-                fillColor: WidgetStateProperty.resolveWith((states) {
-                  if (states.contains(WidgetState.selected)) {
-                    return AppTheme.primary;
-                  }
-                  return Colors.transparent;
-                }),
-                side: const BorderSide(color: AppTheme.primary),
-                shape: const CircleBorder(),
-              ),
-            ),
-            const SizedBox(width: 8),
-            const Text(
-              'Remember me',
-              style: TextStyle(
-                fontSize: 14,
-                color: AppTheme.primary,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-        GestureDetector(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (context) => const FindAccountScreen(),
-              ),
-            );
-          },
-          child: const Text(
-            'Forgot Password?',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.primary,
-              fontWeight: FontWeight.w500,
-            ),
+        if (_isEmailLogin)
+          AuthLoginIdentifierField(
+            controller: _usernameController,
+            onChanged: _onFieldChanged,
+          )
+        else
+          AuthPhoneField(
+            controller: _phoneController,
+            countryFlag: _selectedCountryFlag,
+            countryDialCode: _selectedCountryDialCode,
+            onCountryTap: _pickCountry,
+            onChanged: _onFieldChanged,
           ),
+        AuthPasswordField(
+          controller: _passwordController,
+          onChanged: _onFieldChanged,
         ),
       ],
     );
   }
 
-  Widget _buildLoginButton() {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: (_canLogin && !_isLoading) ? _onLogin : null,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.buttonBackground,
-          foregroundColor: AppTheme.buttonTextColor,
-          disabledBackgroundColor: Colors.white.withValues(alpha: 0.4),
-          disabledForegroundColor: AppTheme.secondaryTextColor,
-          shape: RoundedRectangleBorder(borderRadius: AppRadius.buttonRadius),
-        ),
-        child: _isLoading
-            ? const SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(
-                  strokeWidth: 2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Colors.black),
-                ),
-              )
-            : Text(
-                _selectedLoginMethod == _loginMethodPhone ? 'Continue' : 'Login',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-      ),
-    );
-  }
-
-  Widget _buildRegisterRedirect() {
-    return Center(
-      child: GestureDetector(
-        onTap: _onRegister,
-        child: const Text.rich(
-          TextSpan(
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.primary,
-              fontWeight: FontWeight.w400,
-            ),
-            children: [
-              TextSpan(text: "Don't have an account? "),
-              TextSpan(
-                text: 'Register Here',
-                style: TextStyle(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDivider() {
-    return Row(
-      children: [
-        Expanded(child: Container(height: 1, color: White24.value)),
-        Padding(
-          padding: EdgeInsets.only(
-            left: AppSpacing.storyItem,
-            right: AppSpacing.storyItem,
-          ),
-          child: const Text(
-            'Or sign in with',
-            style: TextStyle(
-              fontSize: 14,
-              color: AppTheme.primary,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-        ),
-        Expanded(child: Container(height: 1, color: White24.value)),
-      ],
-    );
-  }
-
-  Widget _buildSocialIcons() {
-    Widget iconFrame(Widget child) {
-      return SizedBox(
-        width: 28,
-        height: 28,
-        child: Center(child: child),
-      );
-    }
-
+  Widget _buildSocialRow() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        GestureDetector(
+        AuthSocialIconButton(
+          icon: FontAwesomeIcons.google,
+          isLoading: _isGoogleLoading,
           onTap: _onGoogleSignIn,
-          child: _isGoogleLoading
-              ? iconFrame(
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                )
-              : iconFrame(
-                  const FaIcon(
-                    FontAwesomeIcons.google,
-                    color: AppTheme.primary,
-                    size: 24,
-                  ),
-                ),
         ),
-        const SizedBox(width: 40),
-        GestureDetector(
+        const SizedBox(width: AppSpacing.socialRowGap),
+        AuthSocialIconButton(
+          icon: FontAwesomeIcons.apple,
+          isLoading: _isAppleLoading,
           onTap: _onAppleSignIn,
-          child: _isAppleLoading
-              ? iconFrame(
-                  const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: AppTheme.primary,
-                    ),
-                  ),
-                )
-              : iconFrame(
-                  const FaIcon(
-                    FontAwesomeIcons.apple,
-                    color: AppTheme.primary,
-                    size: 26,
-                  ),
-                ),
         ),
-        const SizedBox(width: 40),
-        iconFrame(
-          const FaIcon(
-            FontAwesomeIcons.facebook,
-            color: AppTheme.primary,
-            size: 24,
-          ),
-        ),
+        const SizedBox(width: AppSpacing.socialRowGap),
+        AuthSocialIconButton(icon: FontAwesomeIcons.facebook),
       ],
     );
   }
@@ -711,5 +370,4 @@ class _SignInScreenState extends State<SignInScreen> {
     final safe = normalized.replaceAll(RegExp(r'[^a-z0-9+]'), '');
     return '${safe.replaceAll('+', 'p')}-phone@vyooo.app';
   }
-
 }

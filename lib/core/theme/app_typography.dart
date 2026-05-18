@@ -85,6 +85,17 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
+  /// Accent link (e.g. "Can't reset your password?") — DM Sans Medium 12.
+  static const Color authAccentLinkColor = Color(0xFFD10057);
+
+  static const TextStyle authAccentLink = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+    color: authAccentLinkColor,
+  );
+
   /// "Or sign up with" — Ag Small body (3): DM Sans 10 @ 90%.
   static const TextStyle authDividerLabel = TextStyle(
     fontFamily: AppFonts.body,

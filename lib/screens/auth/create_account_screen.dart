@@ -11,13 +11,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_gradient_background.dart';
-import '../../core/widgets/auth/auth_labeled_divider.dart';
-import '../../core/widgets/auth/auth_link_prompt.dart';
-import '../../core/widgets/auth/auth_password_visibility_button.dart';
-import '../../core/widgets/auth/auth_primary_button.dart';
-import '../../core/widgets/auth/auth_segmented_toggle.dart';
-import '../../core/widgets/auth/auth_social_icon_button.dart';
-import '../../core/widgets/auth/auth_underline_text_field.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import 'sign_in_screen.dart';
 import 'verify_code_screen.dart';
@@ -46,8 +40,6 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final _confirmPasswordController = TextEditingController();
   final _auth = AuthService();
 
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
   bool _isLoading = false;
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
@@ -139,9 +131,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(width: AppSpacing.storyItem),
         const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-        const         Text('Create an\nAccount', style: AppTypography.authHeadline),
+        const SizedBox(height: AppSpacing.md),
+        const Text('Create an\nAccount', style: AppTypography.authHeadline),
       ],
     );
   }
@@ -149,89 +141,24 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   Widget _buildForm() {
     return Form(
       key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: AuthFieldColumn(
         children: [
-          AuthUnderlineTextField(
-            controller: _nameController,
-            icon: Icons.person_outline,
-            hint: 'Name',
-            keyboardType: TextInputType.name,
-            textCapitalization: TextCapitalization.words,
-          ),
-          AppPadding.authFieldGap,
-          AuthUnderlineTextField(
-            controller: _surnameController,
-            icon: Icons.person_outline,
-            hint: 'Surname',
-            keyboardType: TextInputType.name,
-            textCapitalization: TextCapitalization.words,
-          ),
-          AppPadding.authFieldGap,
+          AuthNameField(controller: _nameController),
+          AuthSurnameField(controller: _surnameController),
           if (_isEmailSignup)
-            AuthUnderlineTextField(
-              controller: _emailController,
-              icon: Icons.mail_outline,
-              hint: 'Email',
-              keyboardType: TextInputType.emailAddress,
-            )
+            AuthEmailField(controller: _emailController)
           else
-            _buildPhoneField(),
-          AppPadding.authFieldGap,
-          AuthUnderlineTextField(
-            controller: _passwordController,
-            icon: Icons.lock_outline,
-            hint: 'Password',
-            obscureText: _obscurePassword,
-            suffixIcon: AuthPasswordVisibilityButton(
-              obscured: _obscurePassword,
-              onToggle: () =>
-                  setState(() => _obscurePassword = !_obscurePassword),
+            AuthPhoneField(
+              controller: _phoneController,
+              countryFlag: _selectedCountryFlag,
+              countryDialCode: _selectedCountryDialCode,
+              onCountryTap: _pickCountry,
             ),
-          ),
-          AppPadding.authFieldGap,
-          AuthUnderlineTextField(
+          AuthPasswordField(controller: _passwordController),
+          AuthPasswordField(
             controller: _confirmPasswordController,
-            icon: Icons.lock_outline,
             hint: 'Confirm Password',
-            obscureText: _obscureConfirmPassword,
-            suffixIcon: AuthPasswordVisibilityButton(
-              obscured: _obscureConfirmPassword,
-              onToggle: () => setState(
-                () => _obscureConfirmPassword = !_obscureConfirmPassword,
-              ),
-            ),
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPhoneField() {
-    return AuthUnderlineTextField(
-      controller: _phoneController,
-      hint: 'Phone Number',
-      keyboardType: TextInputType.phone,
-      prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
-      prefix: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(width: AppSpacing.storyItem),
-          const Icon(
-            Icons.phone_outlined,
-            color: AppTheme.primary,
-            size: AppSizes.fieldIcon,
-          ),
-          const SizedBox(width: AppSpacing.sm),
-          GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTap: _pickCountry,
-            child: Text(
-              '$_selectedCountryFlag +$_selectedCountryDialCode',
-              style: AppTypography.authSmallBodyBold,
-            ),
-          ),
-          const SizedBox(width: AppSpacing.xs),
         ],
       ),
     );

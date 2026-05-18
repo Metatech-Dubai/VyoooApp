@@ -19,6 +19,7 @@ class AuthUnderlineTextField extends StatelessWidget {
     this.suffixIcon,
     this.prefixIconConstraints,
     this.onTap,
+    this.onChanged,
   });
 
   final TextEditingController? controller;
@@ -32,6 +33,7 @@ class AuthUnderlineTextField extends StatelessWidget {
   final bool obscureText;
   final Widget? suffixIcon;
   final VoidCallback? onTap;
+  final ValueChanged<String>? onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -39,6 +41,7 @@ class AuthUnderlineTextField extends StatelessWidget {
       controller: controller,
       focusNode: focusNode,
       onTap: onTap,
+      onChanged: onChanged,
       obscureText: obscureText,
       keyboardType: keyboardType,
       textCapitalization: textCapitalization,

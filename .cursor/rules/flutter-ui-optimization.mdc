@@ -46,11 +46,20 @@ Default `ThemeData.fontFamily` is **DM Sans**; headlines use `AppTypography.auth
 
 Check `lib/core/widgets/` and `lib/core/widgets/auth/` before duplicating UI.
 
+**Auth fields** — import `auth_widgets.dart`:
+
+- `AuthNameField`, `AuthSurnameField`, `AuthEmailField`, `AuthPhoneField`, `AuthPasswordField`, `AuthLoginIdentifierField`, `AuthUsernameField`
+- `AuthRememberForgotRow` — sign-in remember / forgot row
+- `AuthFieldColumn` — auto spacing between fields
+- Low-level: `AuthUnderlineTextField` for one-off fields
+
 ## Auth screen shell
 
 `AppGradientBackground` already applies `SafeArea` — do not nest another.
 
 ## Migration order
 
-1. **In progress:** `create_account_screen.dart`
-2. **Next:** `sign_in_screen.dart`, then `verify_code_screen.dart`
+1. **Done:** `create_account_screen.dart`
+2. **Done:** `sign_in_screen.dart`
+3. **Done:** `find_account_screen.dart`, `reset_password_screen.dart`, `reset_password_otp_screen.dart`, `password_updated_screen.dart`
+4. **Next:** `verify_code_screen.dart`

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
-import '../../core/theme/app_theme.dart';
+
+import '../../core/theme/app_padding.dart';
+import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import 'reset_password_screen.dart';
 
-/// OTP verification for reset password. After successful verification, navigates to ResetPasswordScreen.
-/// When opening from Firebase reset email link, pass [oobCode] so ResetPasswordScreen can confirm the reset.
+/// OTP step for password reset — navigates to [ResetPasswordScreen] after verify.
 class ResetPasswordOTPScreen extends StatelessWidget {
   const ResetPasswordOTPScreen({
     super.key,
@@ -13,14 +16,12 @@ class ResetPasswordOTPScreen extends StatelessWidget {
   });
 
   final String? emailOrUsername;
-
-  /// Code from Firebase password reset email link. Pass through to ResetPasswordScreen.
   final String? oobCode;
 
   void _onOtpVerified(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => ResetPasswordScreen(
+        builder: (_) => ResetPasswordScreen(
           emailOrUsername: emailOrUsername,
           oobCode: oobCode,
         ),
@@ -31,59 +32,30 @@ class ResetPasswordOTPScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: AppGradientBackground(
         type: GradientType.auth,
-        child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Reset Password',
-                    style: TextStyle(
-                      color: AppTheme.defaultTextColor,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (emailOrUsername != null) ...[
-                    const SizedBox(height: 8),
-                    Text(
-                      'OTP sent to $emailOrUsername',
-                      style: const TextStyle(
-                        color: AppTheme.secondaryTextColor,
-                        fontSize: 14,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                  const SizedBox(height: 32),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 56,
-                    child: ElevatedButton(
-                      onPressed: () => _onOtpVerified(context),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.buttonBackground,
-                        foregroundColor: AppTheme.buttonTextColor,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                      ),
-                      child: const Text(
-                        'Verify & Continue',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+        child: SingleChildScrollView(
+          padding: AppPadding.authFormHorizontal,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: AppSpacing.sm),
+              const AuthScreenHeader(title: 'Reset Password'),
+              if (emailOrUsername != null) ...[
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  'OTP sent to $emailOrUsername',
+                  style: AppTypography.authSmallBody,
+                  textAlign: TextAlign.center,
+                ),
+              ],
+              const SizedBox(height: AppSpacing.xxl),
+              AuthPrimaryButton(
+                label: 'Verify & Continue',
+                onPressed: () => _onOtpVerified(context),
               ),
-            ),
+            ],
           ),
         ),
       ),
