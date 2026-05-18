@@ -20,6 +20,18 @@ abstract final class AppSpacing {
   /// Extra large (section spacing)
   static const double xl = 24;
 
+  /// 2× large (auth section gaps, 32 = 8×4pt)
+  static const double xxl = 32;
+
   /// Story row item spacing (12 = 3×4pt)
   static const double storyItem = 12;
+
+  /// Space above primary auth CTA (50 = xl + lg + xs)
+  static const double authCtaTop = xl + lg + xs;
+
+  /// Horizontal gap between social sign-in icons (40 = xl + md)
+  static const double socialRowGap = xl + md;
+
+  /// Divider / social block vertical rhythm (32 = xxl)
+  static const double authDividerBlock = xxl;
 }

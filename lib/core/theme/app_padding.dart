@@ -26,4 +26,10 @@ class AppPadding {
   /// Auth/onboarding form (wider horizontal)
   static const authFormHorizontal =
       EdgeInsets.symmetric(horizontal: 28);
+
+  /// Gap after auth headline before form controls
+  static const authBelowHeadlineGap = SizedBox(height: 24);
+
+  /// Gap between underline auth fields
+  static const authFieldGap = sectionGap;
 }

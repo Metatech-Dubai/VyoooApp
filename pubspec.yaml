@@ -150,6 +150,16 @@ flutter:
           weight: 800
         - asset: assets/font/Inter_18pt-Black.ttf
           weight: 900
+    - family: DM Sans
+      fonts:
+        - asset: assets/font/DMSans-400.ttf
+          weight: 400
+        - asset: assets/font/DMSans-500.ttf
+          weight: 500
+        - asset: assets/font/DMSans-600.ttf
+          weight: 600
+        - asset: assets/font/DMSans-700.ttf
+          weight: 700
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package

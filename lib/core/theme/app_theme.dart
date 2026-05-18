@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import 'app_fonts.dart';
 import 'app_spacing.dart';
+import 'app_typography.dart';
 
 /// Global theme for Vyooo app.
 /// Scaffold background: Black, primary: White, underline-only inputs.
@@ -23,7 +25,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      fontFamily: 'Inter',
+      fontFamily: AppFonts.body,
       scaffoldBackgroundColor: scaffoldBackground,
       primaryColor: primary,
       colorScheme: const ColorScheme.dark(
@@ -32,35 +34,17 @@ class AppTheme {
         onPrimary: buttonTextColor,
         onSurface: defaultTextColor,
       ),
-      textTheme: const TextTheme(
-        bodyLarge: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w400,
-        ),
-        bodyMedium: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w400,
-        ),
-        bodySmall: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w400,
-        ),
-        titleLarge: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w700,
-        ),
-        titleMedium: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w500,
-        ),
-        titleSmall: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w400,
-        ),
-        labelLarge: TextStyle(
-          color: defaultTextColor,
-          fontWeight: FontWeight.w500,
-        ),
+      textTheme: TextTheme(
+        displayLarge: AppTypography.authHeadline,
+        bodyLarge: AppTypography.input,
+        bodyMedium: AppTypography.input,
+        bodySmall: AppTypography.label,
+        titleLarge: AppTypography.authHeadline.copyWith(fontSize: 32),
+        titleMedium: AppTypography.toggleLabel,
+        titleSmall: AppTypography.label,
+        labelLarge: AppTypography.primaryButton,
+        labelMedium: AppTypography.authSmallBody,
+        labelSmall: AppTypography.authDividerLabel,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: false,
@@ -68,16 +52,9 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(
           vertical: AppSpacing.storyItem,
         ),
-        hintStyle: const TextStyle(
-          color: hintTextColor,
-          fontSize: 16,
-          fontWeight: FontWeight.w400,
-        ),
-        labelStyle: const TextStyle(color: defaultTextColor, fontSize: 16),
-        floatingLabelStyle: const TextStyle(
-          color: defaultTextColor,
-          fontSize: 16,
-        ),
+        hintStyle: AppTypography.inputHint,
+        labelStyle: AppTypography.input,
+        floatingLabelStyle: AppTypography.input,
         enabledBorder: const UnderlineInputBorder(
           borderSide: BorderSide(color: unfocusedUnderlineColor),
         ),

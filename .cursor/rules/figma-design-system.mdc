@@ -21,7 +21,8 @@ Vyooo is a **Flutter** app (Dart, **Material 3**, **Provider**). Figma MCP often
 
 | Concern | Source |
 |--------|--------|
-| Global theme, `ThemeData`, text theme, inputs, elevated buttons | `lib/core/theme/app_theme.dart` — `AppTheme.dark`, `Inter` |
+| Global theme, `ThemeData`, inputs, buttons | `lib/core/theme/app_theme.dart` — `AppTheme.dark` |
+| **Typography** (Inter headlines, DM Sans UI) | `lib/core/theme/app_typography.dart`, `app_fonts.dart` |
 | Brand / semantic colors (sheets, actions, social colors) | `lib/core/constants/app_colors.dart` — `AppColors` |
 | **Gradients** (backgrounds, cards, auth) | `lib/core/theme/app_gradients.dart` — **`AppGradients` only** — do **not** define new `LinearGradient` colors inline in screens |
 | Numeric spacing (4pt grid) | `lib/core/theme/app_spacing.dart` — `AppSpacing` |

@@ -1,0 +1,56 @@
+---
+description: Flutter UI optimization — tokens, typography, shared widgets, one screen at a time
+alwaysApply: true
+---
+
+# Flutter UI optimization (Vyooo)
+
+Work **one screen/file at a time** until fully migrated before moving to the next.
+
+## Design tokens (required)
+
+| Need | Use | Never |
+|------|-----|--------|
+| **Typography** | `AppTypography` + `AppFonts` | Inline `fontFamily`, `fontSize`, `fontWeight` |
+| Gaps / vertical rhythm | `AppSpacing`, `AppPadding` | `SizedBox(height: 24)` |
+| Control / icon dimensions | `AppSizes` | Magic width/height for UI chrome |
+| Corner radius | `AppRadius` | `BorderRadius.circular(30)` |
+| Gradients | `AppGradients` / `AppGradientBackground` | Inline `LinearGradient` |
+| Auth form inset | `AppPadding.authFormHorizontal` | `horizontal: 28` |
+
+Add new values to the token file first; no screen-local layout constants.
+
+## Typography standard (Figma)
+
+| Role | Family | Weight | Size |
+|------|--------|--------|------|
+| Auth headline | **Inter** | 600 | 52 (−3% letter spacing) |
+| Inputs, toggles | **DM Sans** | 400–500 | 16 |
+| Primary button ("Register") | **DM Sans** | 400 | 20 |
+| Footer prompt ("Already have…") | **DM Sans** | 400 | 12 @ 90% white |
+| Footer action ("Sign in") | **DM Sans** | 700 | 12 |
+| Divider ("Or sign up with") | **DM Sans** | 400 | 10 @ 90% white |
+
+```dart
+Text('Create an\nAccount', style: AppTypography.authHeadline);
+TextFormField(style: AppTypography.input, ...);
+Text('Register', style: AppTypography.primaryButton);
+Text('Already have an account? ', style: AppTypography.authSmallBody);
+Text('Sign in', style: AppTypography.authSmallBodyBold);
+Text('Or sign up with', style: AppTypography.authDividerLabel);
+```
+
+Default `ThemeData.fontFamily` is **DM Sans**; headlines use `AppTypography.authHeadline` (Inter).
+
+## Shared widgets
+
+Check `lib/core/widgets/` and `lib/core/widgets/auth/` before duplicating UI.
+
+## Auth screen shell
+
+`AppGradientBackground` already applies `SafeArea` — do not nest another.
+
+## Migration order
+
+1. **In progress:** `create_account_screen.dart`
+2. **Next:** `sign_in_screen.dart`, then `verify_code_screen.dart`
