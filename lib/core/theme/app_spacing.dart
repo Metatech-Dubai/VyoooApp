@@ -26,9 +26,6 @@ abstract final class AppSpacing {
   /// Story row item spacing (12 = 3×4pt)
   static const double storyItem = 12;
 
-  /// Gap between home feed header tabs when all fit on one row.
-  static const double feedTabGap = sm;
-
   /// Space above primary auth CTA (50 = xl + lg + xs)
   static const double authCtaTop = xl + lg + xs;
 

@@ -80,17 +80,9 @@ class AppFeedTabSelector extends StatelessWidget {
   final int selectedIndex;
   final void Function(int)? onTabSelected;
 
-  static EdgeInsets _tabPadding(bool isSelected) {
-    if (isSelected) return AppPadding.feedTabChip;
-    return const EdgeInsets.symmetric(vertical: 6);
-  }
-
-  static double _estimateTabsWidth(
-    List<String> labels,
-    int selectedIndex, {
-    required double gap,
-  }) {
+  static double _estimateTabsWidth(List<String> labels, int selectedIndex) {
     var total = 0.0;
+    final chipPadding = AppPadding.feedTabChip.horizontal * 2;
     for (var i = 0; i < labels.length; i++) {
       final isSelected = selectedIndex == i;
       final painter = TextPainter(
@@ -103,10 +95,9 @@ class AppFeedTabSelector extends StatelessWidget {
         textDirection: TextDirection.ltr,
         maxLines: 1,
       )..layout();
-      final pad = _tabPadding(isSelected);
-      total += painter.width + pad.horizontal;
+      total += painter.width + chipPadding;
       if (i < labels.length - 1) {
-        total += gap;
+        total += AppSpacing.xs;
       }
     }
     return total;
@@ -119,7 +110,7 @@ class AppFeedTabSelector extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: _tabPadding(isSelected),
+        padding: AppPadding.feedTabChip,
         decoration: isSelected
             ? BoxDecoration(
                 color: White15.value,
@@ -137,22 +128,12 @@ class AppFeedTabSelector extends StatelessWidget {
     );
   }
 
-  Widget _groupedTabs({required double gap}) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: _tabChildren(gap: gap),
-      ),
-    );
-  }
-
-  List<Widget> _tabChildren({required double gap}) {
+  List<Widget> _tabChildren({required bool compactGaps}) {
     return List.generate(labels.length, (index) {
       final tab = _buildTab(index);
-      if (index == 0) return tab;
+      if (!compactGaps || index == 0) return tab;
       return Padding(
-        padding: EdgeInsets.only(left: gap),
+        padding: const EdgeInsets.only(left: AppSpacing.xs),
         child: tab,
       );
     });
@@ -163,26 +144,22 @@ class AppFeedTabSelector extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
-        const wideGap = AppSpacing.feedTabGap;
-        const narrowGap = AppSpacing.xs;
-        final wideWidth =
-            _estimateTabsWidth(labels, selectedIndex, gap: wideGap);
-        final narrowWidth =
-            _estimateTabsWidth(labels, selectedIndex, gap: narrowGap);
+        final needsScroll =
+            _estimateTabsWidth(labels, selectedIndex) > maxWidth;
 
-        if (wideWidth <= maxWidth) {
-          return _groupedTabs(gap: wideGap);
-        }
-        if (narrowWidth <= maxWidth) {
-          return _groupedTabs(gap: narrowGap);
+        if (needsScroll) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: _tabChildren(compactGaps: true),
+            ),
+          );
         }
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: _tabChildren(gap: narrowGap),
-          ),
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: _tabChildren(compactGaps: false),
         );
       },
     );
