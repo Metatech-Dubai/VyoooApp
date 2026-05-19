@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import 'app_fonts.dart';
 import 'app_theme.dart';
 
@@ -18,6 +19,11 @@ abstract final class AppTypography {
   static const double smallBodySize = 12;
   static const double smallBody3Size = 10;
   static const double buttonLabelSize = 20;
+  static const double onboardingSectionTitleSize = 24;
+  static const double onboardingSectionTitleLetterSpacingPercent = -0.03;
+
+  /// White @ 52% — username field floating label (Figma).
+  static const Color usernameFieldLabelColor = Color(0x84FFFFFF);
 
   /// White @ 90% — Figma layer opacity on small body copy.
   static const Color smallBodyColor = Color(0xE6FFFFFF);
@@ -29,6 +35,80 @@ abstract final class AppTypography {
     height: 1.0,
     fontWeight: FontWeight.w600,
     letterSpacing: authHeadlineSize * authHeadlineLetterSpacingPercent,
+    color: AppTheme.defaultTextColor,
+  );
+
+  /// Onboarding step title — Inter Semi Bold 24 / 98% line height / −3%.
+  static const TextStyle onboardingSectionTitle = TextStyle(
+    fontFamily: AppFonts.display,
+    fontSize: onboardingSectionTitleSize,
+    height: 0.98,
+    fontWeight: FontWeight.w600,
+    letterSpacing:
+        onboardingSectionTitleSize * onboardingSectionTitleLetterSpacingPercent,
+    color: AppTheme.defaultTextColor,
+  );
+
+  /// Username pill floating label — DM Sans Semi Bold 12 @ 52% white.
+  static const TextStyle usernameFieldLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: usernameFieldLabelColor,
+  );
+
+  /// Username pill value — DM Sans Semi Bold 16.
+  static const TextStyle usernameFieldValue = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: AppTheme.defaultTextColor,
+  );
+
+  /// Username unavailable — DM Sans Regular 10 @ brand pink.
+  static const TextStyle usernameAvailabilityError = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBody3Size,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.brandPink,
+  );
+
+  /// Auth modal title — DM Sans Semi Bold 18.
+  static const TextStyle authDialogTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 18,
+    height: 1.2,
+    fontWeight: FontWeight.w600,
+    color: AppTheme.defaultTextColor,
+  );
+
+  /// Auth modal option row — DM Sans Medium 16.
+  static const TextStyle authDialogOption = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.25,
+    fontWeight: FontWeight.w500,
+    color: AppTheme.defaultTextColor,
+  );
+
+  /// Auth modal cancel — DM Sans Regular 16 @ 70% white.
+  static const TextStyle authDialogCancel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.25,
+    fontWeight: FontWeight.w400,
+    color: White70.value,
+  );
+
+  /// Username suggestion row — DM Sans Semi Bold 16.
+  static const TextStyle usernameSuggestion = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
     color: AppTheme.defaultTextColor,
   );
 

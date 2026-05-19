@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../core/constants/app_colors.dart';
@@ -7,16 +6,17 @@ import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_background_assets.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/firestore_username_service.dart';
 import '../../services/username_service.dart';
 import '../../services/username_validation.dart';
-
-enum _OnboardingAccountType { private, public, business, government }
 
 class CreateUsernameScreen extends StatefulWidget {
   const CreateUsernameScreen({super.key, this.usernameService});
@@ -34,6 +34,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   static const Duration _borderAnimationDuration = Duration(milliseconds: 200);
 
   late final TextEditingController _usernameController;
+  late final FocusNode _usernameFocusNode;
   Timer? _debounceTimer;
   StreamSubscription<UsernameCheckResult>? _availabilitySub;
   bool _isChecking = false;
@@ -50,7 +51,12 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   void initState() {
     super.initState();
     _usernameController = TextEditingController();
+    _usernameFocusNode = FocusNode()..addListener(_onUsernameFocusChanged);
     _usernameController.addListener(_onUsernameChanged);
+  }
+
+  void _onUsernameFocusChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -59,11 +65,14 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     _debounceTimer?.cancel();
     _availabilitySub?.cancel();
     _usernameController.removeListener(_onUsernameChanged);
+    _usernameFocusNode.removeListener(_onUsernameFocusChanged);
     _usernameController.dispose();
+    _usernameFocusNode.dispose();
     super.dispose();
   }
 
   void _onUsernameChanged() {
+    if (mounted) setState(() {});
     final raw = _usernameController.text;
     final normalized = UsernameValidation.normalize(raw);
     final withoutSpaces = raw.replaceAll(RegExp(r'\s'), '');
@@ -193,11 +202,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                     const SizedBox(height: 30),
                     const Text(
                       "Let's get you started",
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.defaultTextColor,
-                      ),
+                      style: AppTypography.onboardingSectionTitle,
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 30),
@@ -284,82 +289,108 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Username',
-          style: TextStyle(
-            fontSize: 13,
-            color: AppTheme.secondaryTextColor,
-            fontWeight: FontWeight.w400,
-          ),
-        ),
-        const SizedBox(height: 8),
         _buildUsernameInput(),
         if (_available == false &&
             UsernameValidation.shouldCheckAvailability(
               UsernameValidation.normalize(_usernameController.text),
             )) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Text(
-            'This username is not available (someone else may have just taken it)',
-            style: const TextStyle(
-              fontSize: 12,
-              color: Colors.red,
-              fontWeight: FontWeight.w400,
-            ),
+            'The Username ${UsernameValidation.normalize(_usernameController.text)} is not available',
+            style: AppTypography.usernameAvailabilityError,
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.md),
         ],
         if (_suggestions.isNotEmpty) _buildSuggestions(),
       ],
     );
   }
 
-  Widget _buildUsernameInput() {
-    final hasError = _available == false;
-    final hasSuccess = _available == true;
-    final borderColor = hasError
-        ? Colors.red
-        : hasSuccess
-        ? Colors.green
-        : Colors.transparent;
-    final borderWidth = (hasError || hasSuccess) ? 1.5 : 0.0;
+  bool get _usernameShowsAvailabilityError =>
+      _available == false &&
+      UsernameValidation.shouldCheckAvailability(
+        UsernameValidation.normalize(_usernameController.text),
+      );
 
-    return AnimatedContainer(
-      duration: _borderAnimationDuration,
-      curve: Curves.easeInOut,
-      height: 60,
-      decoration: BoxDecoration(
-        color: AppColors.brandPurple.withValues(alpha: 0.25),
-        borderRadius: BorderRadius.circular(20),
-        border: borderWidth > 0
-            ? Border.all(color: borderColor, width: borderWidth)
-            : null,
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 20),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _usernameController,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppTheme.defaultTextColor,
-                fontWeight: FontWeight.w400,
+  ({Color color, double width}) _usernameFieldBorder() {
+    if (_usernameShowsAvailabilityError) {
+      return (color: AppColors.brandPink, width: 1.5);
+    }
+    if (_available == true) {
+      return (color: Colors.green, width: 1.5);
+    }
+    if (_usernameFocusNode.hasFocus) {
+      return (color: White40.value, width: 1.5);
+    }
+    return (color: White10.value, width: 1);
+  }
+
+  Widget _buildUsernameInput() {
+    final hasError = _usernameShowsAvailabilityError;
+    final hasSuccess = _available == true;
+    final isFocused = _usernameFocusNode.hasFocus;
+    final hasText = _usernameController.text.isNotEmpty;
+    final showInsetLabel = isFocused || hasText;
+    final border = _usernameFieldBorder();
+
+    return GestureDetector(
+      onTap: () => _usernameFocusNode.requestFocus(),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: _borderAnimationDuration,
+        curve: Curves.easeInOut,
+        height: 60,
+        decoration: BoxDecoration(
+          color: AppColors.brandPurple.withValues(alpha: 0.25),
+          borderRadius: AppRadius.pillRadius,
+          border: Border.all(color: border.color, width: border.width),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AnimatedSize(
+                    duration: _borderAnimationDuration,
+                    curve: Curves.easeInOut,
+                    alignment: Alignment.topLeft,
+                    child: showInsetLabel
+                        ? const Padding(
+                            padding: EdgeInsets.only(bottom: 2),
+                            child: Text(
+                              'Username',
+                              style: AppTypography.usernameFieldLabel,
+                            ),
+                          )
+                        : const SizedBox.shrink(),
+                  ),
+                  TextField(
+                    controller: _usernameController,
+                    focusNode: _usernameFocusNode,
+                    style: AppTypography.usernameFieldValue,
+                    decoration: InputDecoration(
+                      hintText: showInsetLabel ? null : 'Username',
+                      hintStyle: AppTypography.usernameFieldLabel,
+                      border: InputBorder.none,
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
+                      contentPadding: EdgeInsets.zero,
+                      isDense: true,
+                      isCollapsed: showInsetLabel,
+                    ),
+                    inputFormatters: [
+                      FilteringTextInputFormatter.allow(
+                        RegExp(r'[a-zA-Z0-9_.]'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-              decoration: const InputDecoration(
-                border: InputBorder.none,
-                enabledBorder: InputBorder.none,
-                focusedBorder: InputBorder.none,
-                errorBorder: InputBorder.none,
-                focusedErrorBorder: InputBorder.none,
-                contentPadding: EdgeInsets.zero,
-                isDense: true,
-              ),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
-              ],
             ),
-          ),
           if (_isChecking)
             const SizedBox(
               width: 24,
@@ -370,10 +401,25 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               ),
             )
           else if (hasError)
-            const Icon(Icons.close, color: Colors.grey, size: 22)
+            GestureDetector(
+              onTap: () {
+                _usernameController.clear();
+                _availabilityFromLength(0);
+              },
+              child: Icon(
+                Icons.close,
+                color: AppTheme.secondaryTextColor.withValues(alpha: 0.8),
+                size: AppSizes.fieldIcon,
+              ),
+            )
           else if (hasSuccess)
-            const Icon(Icons.check, color: Colors.green, size: 22),
-        ],
+            const Icon(
+              Icons.check,
+              color: Colors.green,
+              size: AppSizes.fieldIcon,
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -438,7 +484,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       }
 
       String? publicPersonaUpdate;
-      if (selectedType == _OnboardingAccountType.public) {
+      if (selectedType == AuthOnboardingAccountType.public) {
         final persona = await _promptPublicPersona();
         if (!mounted) return;
         if (persona == null) {
@@ -576,91 +622,13 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     );
   }
 
-  Future<_OnboardingAccountType?> _showAccountTypeDialog() async {
-    final platform = Theme.of(context).platform;
-    final isCupertino =
-        platform == TargetPlatform.iOS || platform == TargetPlatform.macOS;
-    if (isCupertino) {
-      return _showCupertinoAccountTypeDialog();
-    }
-
-    return _showMaterialAccountTypeDialog();
-  }
-
-  Future<_OnboardingAccountType?> _showCupertinoAccountTypeDialog() {
-    return showCupertinoModalPopup<_OnboardingAccountType>(
-      context: context,
-      builder: (ctx) => CupertinoActionSheet(
-        title: const Text('Select account type'),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.private),
-            child: const Text('Private account'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.public),
-            child: const Text('Public account'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () =>
-                Navigator.of(ctx).pop(_OnboardingAccountType.business),
-            child: const Text('Business account'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () =>
-                Navigator.of(ctx).pop(_OnboardingAccountType.government),
-            child: const Text('Government account'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.of(ctx).pop(),
-          child: const Text('Cancel'),
-        ),
-      ),
-    );
-  }
-
-  Future<_OnboardingAccountType?> _showMaterialAccountTypeDialog() {
-    return showDialog<_OnboardingAccountType>(
-      context: context,
-      barrierDismissible: true,
-      builder: (ctx) => SimpleDialog(
-        title: const Text('Select account type'),
-        children: [
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.private),
-            child: const Text('Private account'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.public),
-            child: const Text('Public account'),
-          ),
-          SimpleDialogOption(
-            onPressed: () => Navigator.of(ctx).pop(_OnboardingAccountType.business),
-            child: const Text('Business account'),
-          ),
-          SimpleDialogOption(
-            onPressed: () =>
-                Navigator.of(ctx).pop(_OnboardingAccountType.government),
-            child: const Text('Government account'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('Cancel'),
-          ),
-        ],
-      ),
-    );
+  Future<AuthOnboardingAccountType?> _showAccountTypeDialog() {
+    return AuthAccountTypePickerDialog.show(context);
   }
 
   /// After choosing a public account, collect how they describe their profile.
   Future<String?> _promptPublicPersona() {
-    return showDialog<String>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => const _PublicPersonaDialog(),
-    );
+    return AuthPublicPersonaDialog.show(context);
   }
 
   Widget _buildSuggestions() {
@@ -690,11 +658,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                       Expanded(
                         child: Text(
                           suggestion,
-                          style: const TextStyle(
-                            fontSize: 18,
-                            color: Colors.white,
-                            fontWeight: FontWeight.w500,
-                          ),
+                          style: AppTypography.usernameSuggestion,
                         ),
                       ),
                       Container(
@@ -731,71 +695,3 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 }
 
-/// Owns [TextEditingController] for the persona field so it is disposed only after
-/// the route removes the dialog (avoids "used after being disposed" on pop/hot restart).
-class _PublicPersonaDialog extends StatefulWidget {
-  const _PublicPersonaDialog();
-
-  @override
-  State<_PublicPersonaDialog> createState() => _PublicPersonaDialogState();
-}
-
-class _PublicPersonaDialogState extends State<_PublicPersonaDialog> {
-  final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _controller;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = TextEditingController();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Describe your public profile'),
-      content: SingleChildScrollView(
-        child: Form(
-          key: _formKey,
-          child: TextFormField(
-            controller: _controller,
-            autofocus: true,
-            textCapitalization: TextCapitalization.sentences,
-            maxLength: UserService.publicPersonaMaxLength,
-            decoration: const InputDecoration(
-              hintText: 'e.g. Entrepreneur, Content creator, Celebrity',
-              border: OutlineInputBorder(),
-            ),
-            validator: (raw) {
-              final normalized = UserService.normalizePublicPersona(raw ?? '');
-              if (normalized.length < 2) {
-                return 'Enter at least 2 characters.';
-              }
-              return null;
-            },
-          ),
-        ),
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Back'),
-        ),
-        TextButton(
-          onPressed: () {
-            if (_formKey.currentState?.validate() != true) return;
-            final out = UserService.normalizePublicPersona(_controller.text);
-            Navigator.of(context).pop(out);
-          },
-          child: const Text('Continue'),
-        ),
-      ],
-    );
-  }
-}
