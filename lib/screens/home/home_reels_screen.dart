@@ -10,6 +10,7 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/feed_interaction_assets.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/story_model.dart';
 import '../../core/navigation/app_route_observer.dart';
@@ -24,6 +25,8 @@ import '../../core/utils/internet_availability.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_feed_header.dart';
 import '../../core/widgets/app_feed_notification_button.dart';
 import '../../screens/notifications/notification_screen.dart';
@@ -1314,7 +1317,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             icon: Icons.visibility_outlined,
             count: _formatCount(_asInt(reel['views'])),
             iconSize: 24,
-            textSize: 10,
+            countTextStyle: AppTypography.feedReelMetric,
             spacing: 3,
           ),
           const SizedBox(height: 12),
@@ -1323,38 +1326,41 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             count: _formatCount(_asInt(reel['likes'])),
             isActive: isLiked,
             activeColor: const Color(0xFFEF4444),
+            countColor: AppTheme.primary,
             onTap: () => _onLike(reelId, isLiked),
             iconSize: 24,
-            textSize: 10,
+            countTextStyle: AppTypography.feedReelMetric,
             spacing: 3,
           ),
           const SizedBox(height: 12),
           AppInteractionButton(
-            icon: Icons.chat_bubble_outline,
+            iconAsset: FeedInteractionAssets.comments,
             count: _formatCount(_asInt(reel['comments'])),
             onTap: () => _onComment(reelId),
             iconSize: 24,
-            textSize: 10,
+            countTextStyle: AppTypography.feedReelMetric,
             spacing: 3,
           ),
           const SizedBox(height: 12),
           AppInteractionButton(
-            icon: isFavorite ? Icons.star : Icons.star_border,
+            iconAsset: FeedInteractionAssets.unsavePost,
+            iconAssetActive: FeedInteractionAssets.savePost,
             count: _formatCount(_asInt(reel['saves'])),
             isActive: isFavorite,
-            activeColor: const Color(0xFFFFD700),
+            colorizeAsset: false,
+            countColor: AppTheme.primary,
             onTap: () => _onFavorite(reelId, isFavorite),
             iconSize: 24,
-            textSize: 10,
+            countTextStyle: AppTypography.feedReelMetric,
             spacing: 3,
           ),
           const SizedBox(height: 12),
           AppInteractionButton(
-            icon: Icons.reply,
+            iconAsset: FeedInteractionAssets.share,
             count: _formatCount(_asInt(reel['shares'])),
             onTap: () => _onShare(reelId),
             iconSize: 24,
-            textSize: 10,
+            countTextStyle: AppTypography.feedReelMetric,
             spacing: 3,
           ),
           const SizedBox(height: 12),
@@ -1519,13 +1525,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                         GestureDetector(
                           onTap: () => _openReelAuthorProfile(reel),
                           child: Text(
-                            _asString(reel['username'], fallback: 'User'),
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.white,
-                              letterSpacing: 0.2,
-                            ),
+                            _reelDisplayName(reel),
+                            style: AppTypography.feedReelDisplayName,
                           ),
                         ),
                         const SizedBox(width: 6),
@@ -1546,12 +1547,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     GestureDetector(
                       onTap: () => _openReelAuthorProfile(reel),
                       child: Text(
-                        _asString(reel['handle'], fallback: '@user'),
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.7),
-                          fontWeight: FontWeight.w400,
-                        ),
+                        _reelHandle(reel),
+                        style: AppTypography.feedReelHandle,
                       ),
                     ),
                   ],
@@ -1628,6 +1625,21 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     return text.isEmpty ? fallback : text;
   }
 
+  String _reelDisplayName(Map<String, dynamic> reel) {
+    final display = _asString(reel['displayName']);
+    if (display.isNotEmpty) return display;
+    return _asString(reel['username'], fallback: 'User');
+  }
+
+  String _reelHandle(Map<String, dynamic> reel) {
+    final handle = _asString(reel['handle']);
+    if (handle.isNotEmpty) return handle.startsWith('@') ? handle : '@$handle';
+    final username = _asString(reel['username'])
+        .replaceAll(' ', '_')
+        .toLowerCase();
+    return username.isNotEmpty ? '@$username' : '@user';
+  }
+
   int _asInt(dynamic value, {int fallback = 0}) {
     if (value is int) return value;
     if (value is num) return value.toInt();
@@ -1697,12 +1709,7 @@ class _CaptionWithSeeMore extends StatefulWidget {
 class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
   bool _expanded = false;
 
-  static const _captionStyle = TextStyle(
-    fontSize: 15,
-    color: Colors.white,
-    fontWeight: FontWeight.w400,
-    height: 1.4,
-  );
+  static const _captionStyle = AppTypography.feedReelCaption;
 
   bool _isOverflowing(String text, double maxWidth) {
     final painter = TextPainter(
@@ -1736,13 +1743,9 @@ class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
               const SizedBox(height: 6),
               GestureDetector(
                 onTap: () => setState(() => _expanded = true),
-                child: Text(
+                child: const Text(
                   'See More',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: AppTypography.feedReelCaptionSeeMore,
                 ),
               ),
             ],
@@ -1755,11 +1758,7 @@ class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
                   Flexible(
                     child: Text(
                       widget.locationName,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
+                      style: AppTypography.feedReelLocation,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -1771,9 +1770,8 @@ class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
                   padding: const EdgeInsets.only(left: 20),
                   child: Text(
                     widget.locationAddress,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
-                      fontSize: 12,
+                    style: AppTypography.feedReelHandle.copyWith(
+                      color: White54.value,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,

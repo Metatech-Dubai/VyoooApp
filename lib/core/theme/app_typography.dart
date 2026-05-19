@@ -160,6 +160,60 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
+  // — Reel feed overlay (Figma) —
+  static const double feedReelDisplayNameSize = 20;
+  static const double feedReelHandleSize = 14;
+  static const double feedReelCaptionSize = 16;
+  static const double feedReelMetricSize = 10;
+
+  /// Author display name on reel — DM Sans Regular 20.
+  static const TextStyle feedReelDisplayName = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelDisplayNameSize,
+    fontWeight: FontWeight.w400,
+    color: AppTheme.primary,
+  );
+
+  /// @handle under display name — DM Sans Regular 14.
+  static const TextStyle feedReelHandle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelHandleSize,
+    fontWeight: FontWeight.w400,
+    color: White70.value,
+  );
+
+  /// Reel caption body — DM Sans Regular 16.
+  static const TextStyle feedReelCaption = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelCaptionSize,
+    fontWeight: FontWeight.w400,
+    height: 1.25,
+    color: AppTheme.primary,
+  );
+
+  /// "See more" on collapsed caption — DM Sans Regular 16 @ 90% white.
+  static const TextStyle feedReelCaptionSeeMore = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelCaptionSize,
+    fontWeight: FontWeight.w400,
+    color: smallBodyColor,
+  );
+
+  /// Like / comment counts — DM Sans Regular 10 (Icons/active).
+  static const TextStyle feedReelMetric = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelMetricSize,
+    fontWeight: FontWeight.w400,
+  );
+
+  /// Expanded location label on reel caption.
+  static const TextStyle feedReelLocation = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelHandleSize,
+    fontWeight: FontWeight.w500,
+    color: AppTheme.primary,
+  );
+
   /// Logo text fallback — Inter Bold.
   static const TextStyle brandFallback = TextStyle(
     fontFamily: AppFonts.display,

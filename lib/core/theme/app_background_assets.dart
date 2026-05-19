@@ -14,6 +14,9 @@ class AppBackgroundAssets {
     'assets/bgImages/usernameBG.png',
   ];
 
+  /// Main shell bottom nav (Home, Search, Create, Chat, Profile).
+  static const String mainNavBar = 'assets/bgImages/Nav bar.png';
+
   static String randomAuthFlowBackground() {
     return authFlowBackgrounds[_random.nextInt(authFlowBackgrounds.length)];
   }

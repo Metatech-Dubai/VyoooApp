@@ -8,7 +8,9 @@ import 'dart:async';
 import '../../core/config/app_config.dart';
 import '../../core/config/deep_link_config.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/feed_interaction_assets.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -2744,6 +2746,7 @@ class _UserProfileReelFeedScreenState
             count: _formatCount(_asInt(reel['likes'])),
             isActive: isLiked,
             activeColor: const Color(0xFFEF4444),
+            countColor: Colors.white,
             onTap: () => _onLike(reelId, isLiked),
             iconSize: 24,
             textSize: 10,
@@ -2760,10 +2763,12 @@ class _UserProfileReelFeedScreenState
           ),
           const SizedBox(height: 12),
           AppInteractionButton(
-            icon: isFavorite ? Icons.star : Icons.star_border,
+            iconAsset: FeedInteractionAssets.unsavePost,
+            iconAssetActive: FeedInteractionAssets.savePost,
             count: _formatCount(_asInt(reel['saves'])),
             isActive: isFavorite,
-            activeColor: const Color(0xFFFFD700),
+            colorizeAsset: false,
+            countColor: AppTheme.primary,
             onTap: () => _onFavorite(reelId, isFavorite),
             iconSize: 24,
             textSize: 10,

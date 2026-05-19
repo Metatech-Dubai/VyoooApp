@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../theme/app_background_assets.dart';
+
 class _NavAssets {
   static const _base = 'assets/vyooO_icons/Home/nav_bar_icons';
   static const homeSelected = '$_base/home.png';
@@ -31,9 +33,10 @@ class AppBottomNavigation extends StatelessWidget {
   final int unreadNotificationCount;
   final int unreadChatCount;
 
-  static const double _iconSize = 25;
+  static const double _iconSize = 21.25; // 25 × 0.85 (−15%)
   /// Profile tab avatar is 50% larger than other nav icons.
   static double get _profileIconSize => _iconSize * 1.5;
+  static const double _profileBorderWidth = 1.53; // 1.8 × 0.85
   static const Color _activeIconColor = Colors.white;
   static const Color _inactiveIconColor = Color(0xFF8C8C96);
   static const Color _splashColor = Color(0x44DE106B);
@@ -68,7 +71,9 @@ class AppBottomNavigation extends StatelessWidget {
       height: _profileIconSize,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: isSelected ? Border.all(color: Colors.white, width: 1.8) : null,
+        border: isSelected
+            ? Border.all(color: Colors.white, width: _profileBorderWidth)
+            : null,
       ),
       child: ClipOval(
         child: hasProfileImage
@@ -133,8 +138,8 @@ class AppBottomNavigation extends StatelessWidget {
           isSelected
               ? _NavAssets.settingsSelected
               : _NavAssets.settingsUnselected,
-          width: 25,
-          height: 25,
+          width: _iconSize,
+          height: _iconSize,
           color: isSelected ? _activeIconColor : _inactiveIconColor,
         ),
         if (showBadge)
@@ -173,7 +178,7 @@ class AppBottomNavigation extends StatelessWidget {
       children: [
         Icon(
           isSelected ? Icons.chat_bubble : Icons.chat_bubble_outline,
-          size: 25,
+          size: _iconSize,
           color: isSelected ? _activeIconColor : _inactiveIconColor,
         ),
         if (showBadge)
@@ -203,73 +208,73 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
+  /// Bar content height — same on iOS and Android (no extra SafeArea bottom inset).
+  static const double barHeight = 79;
+
+  static const LinearGradient _fallbackBarGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [Color(0xFF1A061E), Color(0xFF77105D), Color(0xFF6D0D45)],
+    stops: [0.1, 0.62, 1.0],
+  );
+
+  Widget _buildBarBackground() {
+    return Image.asset(
+      AppBackgroundAssets.mainNavBar,
+      fit: BoxFit.fill,
+      width: double.infinity,
+      height: barHeight,
+      errorBuilder: (_, error, stackTrace) => const DecoratedBox(
+        decoration: BoxDecoration(gradient: _fallbackBarGradient),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final isIOS = Theme.of(context).platform == TargetPlatform.iOS;
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A061E), Color(0xFF77105D), Color(0xFF6D0D45)],
-          stops: [0.1, 0.62, 1.0],
-        ),
-        border: Border.all(
-          color: const Color(0xFFDE106B).withValues(alpha: 0.2),
-          width: 0.9,
-        ),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x4D000000),
-            blurRadius: 14,
-            offset: Offset(0, 6),
+    return SizedBox(
+      height: barHeight,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildBarBackground(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _NavItem(
+                unselectedAsset: _NavAssets.homeUnselected,
+                selectedAsset: _NavAssets.homeSelected,
+                isSelected: currentIndex == 0,
+                onTap: () => onTap(0),
+                splashColor: _splashColor,
+              ),
+              _NavItem(
+                unselectedAsset: _NavAssets.searchUnselected,
+                selectedAsset: _NavAssets.searchSelected,
+                isSelected: currentIndex == 1,
+                onTap: () => onTap(1),
+                splashColor: _splashColor,
+              ),
+              _NavItem(
+                unselectedAsset: _NavAssets.addUnselected,
+                selectedAsset: _NavAssets.addSelected,
+                isSelected: currentIndex == 2,
+                onTap: () => onTap(2),
+                splashColor: _splashColor,
+              ),
+              _NavItem(
+                isSelected: currentIndex == 3,
+                onTap: () => onTap(3),
+                splashColor: _splashColor,
+                customChild: _buildChatIcon(currentIndex == 3),
+              ),
+              _buildNavTap(
+                onPressed: () => onTap(4),
+                child: _buildProfileIcon(currentIndex == 4),
+              ),
+            ],
           ),
         ],
-      ),
-      child: ClipRRect(
-        child: SafeArea(
-          top: false,
-          minimum: EdgeInsets.only(bottom: isIOS ? 4 : 0),
-          child: SizedBox(
-            height: 79,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _NavItem(
-                  unselectedAsset: _NavAssets.homeUnselected,
-                  selectedAsset: _NavAssets.homeSelected,
-                  isSelected: currentIndex == 0,
-                  onTap: () => onTap(0),
-                  splashColor: _splashColor,
-                ),
-                _NavItem(
-                  unselectedAsset: _NavAssets.searchUnselected,
-                  selectedAsset: _NavAssets.searchSelected,
-                  isSelected: currentIndex == 1,
-                  onTap: () => onTap(1),
-                  splashColor: _splashColor,
-                ),
-                _NavItem(
-                  unselectedAsset: _NavAssets.addUnselected,
-                  selectedAsset: _NavAssets.addSelected,
-                  isSelected: currentIndex == 2,
-                  onTap: () => onTap(2),
-                  splashColor: _splashColor,
-                ),
-                _NavItem(
-                  isSelected: currentIndex == 3,
-                  onTap: () => onTap(3),
-                  splashColor: _splashColor,
-                  customChild: _buildChatIcon(currentIndex == 3),
-                ),
-                _buildNavTap(
-                  onPressed: () => onTap(4),
-                  child: _buildProfileIcon(currentIndex == 4),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -311,8 +316,8 @@ class _NavItem extends StatelessWidget {
                 customChild ??
                 Image.asset(
                   isSelected ? selectedAsset! : unselectedAsset!,
-                  width: 25,
-                  height: 25,
+                  width: AppBottomNavigation._iconSize,
+                  height: AppBottomNavigation._iconSize,
                   color: isSelected
                       ? AppBottomNavigation._activeIconColor
                       : AppBottomNavigation._inactiveIconColor,
