@@ -9,7 +9,7 @@ import '../theme/app_typography.dart';
 import 'vyooo_brand_logo.dart';
 
 /// Common header for feed screens: VyooO logo + tab selector.
-/// Tabs share one chip style (Figma: 15% capsule, radius 20, padding 14×6).
+/// Selected tab: pill + border (15% fill). Unselected: text only, no background.
 /// Typography: unselected DM Sans Regular 14 @ 60% white; selected Bold 16 white.
 class AppFeedHeader extends StatelessWidget {
   const AppFeedHeader({
@@ -96,13 +96,13 @@ class AppFeedTabSelector extends StatelessWidget {
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 padding: AppPadding.feedTabChip,
-                decoration: BoxDecoration(
-                  color: White15.value,
-                  borderRadius: AppRadius.pillRadius,
-                  border: isSelected
-                      ? Border.all(color: AppTheme.primary, width: 1)
-                      : null,
-                ),
+                decoration: isSelected
+                    ? BoxDecoration(
+                        color: White15.value,
+                        borderRadius: AppRadius.pillRadius,
+                        border: Border.all(color: AppTheme.primary, width: 1),
+                      )
+                    : null,
                 child: Text(
                   labels[index],
                   style: isSelected
