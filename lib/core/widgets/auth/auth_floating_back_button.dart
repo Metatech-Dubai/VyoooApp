@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../theme/app_spacing.dart';
 import 'auth_floating_circle_button.dart';
+import 'auth_floating_nav_visibility.dart';
 
 /// Bottom-left floating back control (find-account / forgot-password placement).
 class AuthFloatingBackButton extends StatelessWidget {
@@ -9,16 +10,28 @@ class AuthFloatingBackButton extends StatelessWidget {
     super.key,
     required this.onPressed,
     this.enabled = true,
+    this.alwaysShowBack = false,
   });
 
   final VoidCallback? onPressed;
   final bool enabled;
+  final bool alwaysShowBack;
 
   @override
   Widget build(BuildContext context) {
+    final showBack = shouldShowAuthFloatingBack(
+      context,
+      hasBackHandler: onPressed != null,
+      alwaysShowBack: alwaysShowBack,
+    );
+    if (!showBack) {
+      return const SizedBox.shrink();
+    }
     return Positioned(
       left: AppSpacing.xl,
-      bottom: AppSpacing.authFloatingNavBottom,
+      bottom:
+          AppSpacing.authFloatingNavBottom +
+          MediaQuery.paddingOf(context).bottom,
       child: AuthFloatingCircleButton.back(
         onPressed: onPressed,
         enabled: enabled,

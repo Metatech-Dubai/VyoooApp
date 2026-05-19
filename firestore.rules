@@ -37,6 +37,12 @@ service cloud.firestore {
         == int(resource.data.get('followersCount', 0));
     }
 
+    function monetizationEnabledUnchanged() {
+      return !('monetizationEnabled' in request.resource.data)
+        || request.resource.data.monetizationEnabled
+          == resource.data.get('monetizationEnabled', false);
+    }
+
     function validUserDoc(userId) {
       return request.resource.data.keys().hasOnly([
         'uid',
@@ -58,6 +64,7 @@ service cloud.firestore {
         'accountType',
         'publicPersona',
         'vipVerified',
+        'monetizationEnabled',
         'phoneNumber',
         'normalizedPhone',
         'orgProfileCompleted',
@@ -68,6 +75,8 @@ service cloud.firestore {
         'parentInviteEmail',
         'parentInvitePhone',
         'parentConsentAt',
+        'location',
+        'locationSetupComplete',
       ]) &&
       request.resource.data.uid == userId &&
       request.resource.data.email is string &&
@@ -96,6 +105,8 @@ service cloud.firestore {
         request.resource.data.publicPersona is string) &&
       (!('vipVerified' in request.resource.data) ||
         request.resource.data.vipVerified is bool) &&
+      (!('monetizationEnabled' in request.resource.data) ||
+        request.resource.data.monetizationEnabled is bool) &&
       (!('phoneNumber' in request.resource.data) ||
         request.resource.data.phoneNumber is string) &&
       (!('normalizedPhone' in request.resource.data) ||
@@ -115,7 +126,11 @@ service cloud.firestore {
       (!('parentInvitePhone' in request.resource.data) ||
         request.resource.data.parentInvitePhone is string) &&
       (!('parentConsentAt' in request.resource.data) ||
-        request.resource.data.parentConsentAt is timestamp);
+        request.resource.data.parentConsentAt is timestamp) &&
+      (!('location' in request.resource.data) ||
+        request.resource.data.location is map) &&
+      (!('locationSetupComplete' in request.resource.data) ||
+        request.resource.data.locationSetupComplete is bool);
     }
 
     function parentalConsentCreateValid() {
@@ -464,6 +479,7 @@ service cloud.firestore {
                         isOwner(userId)
                         && validUserDoc(userId)
                         && followersCountUnchanged()
+                        && monetizationEnabledUnchanged()
                         && emailOtpVerifiedUnchanged()
                         && parentalContactFieldsUnchanged()
                       )
@@ -850,6 +866,16 @@ service cloud.firestore {
                     && request.resource.data.creatorId.size() > 0
                     && request.resource.data.action is string
                     && request.resource.data.action in ['subscribe', 'cancel', 'resume']
+                    && request.resource.data.status == 'pending';
+      allow read, delete: if isSignedIn()
+                          && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
+    match /creator_monetization_requests/{requestId} {
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.enabled is bool
                     && request.resource.data.status == 'pending';
       allow read, delete: if isSignedIn()
                           && resource.data.userId == request.auth.uid;

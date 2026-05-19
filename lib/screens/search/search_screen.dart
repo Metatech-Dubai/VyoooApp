@@ -252,6 +252,7 @@ class SearchScreenState extends State<SearchScreen>
               isVerified: i.isVerified,
               accountType: i.accountType,
               vipVerified: i.vipVerified,
+              monetizationEnabled: i.monetizationEnabled,
               isFollowing: i.isFollowing,
               outgoingFollowRequestPending: i.outgoingFollowRequestPending,
             ),
@@ -1141,11 +1142,11 @@ class SearchScreenState extends State<SearchScreen>
             isVerified: user.isVerified,
             accountType: user.accountType,
             vipVerified: user.vipVerified,
+            monetizationEnabled: user.monetizationEnabled,
             postCount: 0,
             followerCount: user.followerCount,
             followingCount: 0,
             bio: '',
-            isCreator: true,
             targetUserId: user.uid,
             isFollowing: user.isFollowing,
           ),
@@ -2285,6 +2286,7 @@ class _UserSearchItem {
     this.isVerified = false,
     this.accountType = 'personal',
     this.vipVerified = false,
+    this.monetizationEnabled = false,
     this.isFollowing = false,
     this.outgoingFollowRequestPending = false,
   });
@@ -2296,6 +2298,7 @@ class _UserSearchItem {
   final bool isVerified;
   final String accountType;
   final bool vipVerified;
+  final bool monetizationEnabled;
   final bool isFollowing;
   final bool outgoingFollowRequestPending;
 
@@ -2308,6 +2311,7 @@ class _UserSearchItem {
     bool? isVerified,
     String? accountType,
     bool? vipVerified,
+    bool? monetizationEnabled,
     bool? isFollowing,
     bool? outgoingFollowRequestPending,
   }) {
@@ -2320,6 +2324,7 @@ class _UserSearchItem {
       isVerified: isVerified ?? this.isVerified,
       accountType: accountType ?? this.accountType,
       vipVerified: vipVerified ?? this.vipVerified,
+      monetizationEnabled: monetizationEnabled ?? this.monetizationEnabled,
       isFollowing: isFollowing ?? this.isFollowing,
       outgoingFollowRequestPending:
           outgoingFollowRequestPending ?? this.outgoingFollowRequestPending,

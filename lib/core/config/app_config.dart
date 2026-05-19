@@ -16,10 +16,8 @@ abstract final class AppConfig {
   /// Set to false before production so VR is gated by Subscriber/Creator.
   static const bool devBypassVRAccess = false;
 
-  // Temporary product decision:
-  // Creator subscribe button on public profiles is hidden for now.
-  // Subscription code remains intact — this will return for
-  // VR streaming / premium creator monetization.
+  /// Legacy global kill-switch (prefer per-profile [monetizationEnabled] gating).
+  /// Kept for emergency rollout control; normally leave false — UI uses Firestore flag.
   static const bool showCreatorSubscribeButton = false;
 
   /// Local tier override screen for development only.

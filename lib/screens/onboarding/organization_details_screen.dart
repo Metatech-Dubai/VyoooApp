@@ -5,8 +5,6 @@ import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
-import 'select_dob_screen.dart';
-
 class OrganizationDetailsScreen extends StatefulWidget {
   const OrganizationDetailsScreen({
     super.key,
@@ -128,9 +126,8 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
         },
       );
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const SelectDobScreen()),
-      );
+      setState(() => _saving = false);
+      // [AuthWrapper] / [OnboardingGate] advance via user stream (DOB or establishment).
     } catch (_) {
       if (!mounted) return;
       setState(() {

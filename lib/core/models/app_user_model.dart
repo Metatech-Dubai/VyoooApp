@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'parent_consent_constants.dart';
+import 'post_location_model.dart';
 
 String _readFirestoreString(dynamic value, {String fallback = ''}) {
   if (value == null) return fallback;
@@ -56,6 +57,7 @@ class AppUserModel {
     this.accountType = 'private',
     this.publicPersona = '',
     this.vipVerified = false,
+    this.monetizationEnabled = false,
     this.orgProfileCompleted = false,
     this.organizationDetails = const {},
     required this.createdAt,
@@ -68,6 +70,8 @@ class AppUserModel {
     this.parentInviteEmail = '',
     this.parentInvitePhone = '',
     this.parentConsentAt,
+    this.profileLocation,
+    this.locationSetupComplete = false,
   });
 
   final String uid;
@@ -88,6 +92,8 @@ class AppUserModel {
   /// Free-text label for [accountType] `public` (e.g. creator, entrepreneur).
   final String publicPersona;
   final bool vipVerified;
+  /// When true (and account type is eligible), others can subscribe to this profile.
+  final bool monetizationEnabled;
   final bool orgProfileCompleted;
   final Map<String, dynamic> organizationDetails;
   final Timestamp createdAt;
@@ -112,6 +118,12 @@ class AppUserModel {
   /// When parental consent was granted or denied.
   final Timestamp? parentConsentAt;
 
+  /// Profile location (city/place). Distinct from org office text in [organizationDetails].
+  final PostLocation? profileLocation;
+
+  /// True after onboarding location step is saved or skipped.
+  final bool locationSetupComplete;
+
   Map<String, dynamic> toJson() {
     return {
       'uid': uid,
@@ -130,6 +142,7 @@ class AppUserModel {
       'accountType': accountType,
       'publicPersona': publicPersona,
       'vipVerified': vipVerified,
+      'monetizationEnabled': monetizationEnabled,
       'orgProfileCompleted': orgProfileCompleted,
       'organizationDetails': organizationDetails,
       'createdAt': createdAt,
@@ -142,6 +155,8 @@ class AppUserModel {
       'parentInviteEmail': parentInviteEmail,
       'parentInvitePhone': parentInvitePhone,
       if (parentConsentAt != null) 'parentConsentAt': parentConsentAt,
+      if (profileLocation != null) 'location': profileLocation!.toMap(),
+      'locationSetupComplete': locationSetupComplete,
     };
   }
 
@@ -187,6 +202,14 @@ class AppUserModel {
       return null;
     }
 
+    PostLocation? profileLocationField() {
+      final locRaw = json['location'];
+      if (locRaw is Map<String, dynamic>) {
+        return PostLocation.fromMap(locRaw);
+      }
+      return null;
+    }
+
     return AppUserModel(
       uid: _readFirestoreString(json['uid']),
       email: _readFirestoreString(json['email']),
@@ -213,6 +236,10 @@ class AppUserModel {
       publicPersona:
           _readFirestoreString(json['publicPersona']).trim(),
       vipVerified: _readFirestoreBool(json['vipVerified'], fallback: false),
+      monetizationEnabled: _readFirestoreBool(
+        json['monetizationEnabled'],
+        fallback: false,
+      ),
       orgProfileCompleted: _readFirestoreBool(
         json['orgProfileCompleted'],
         fallback: false,
@@ -232,6 +259,11 @@ class AppUserModel {
       parentInviteEmail: parentString('parentInviteEmail'),
       parentInvitePhone: parentString('parentInvitePhone'),
       parentConsentAt: parentConsentAtField(),
+      profileLocation: profileLocationField(),
+      locationSetupComplete: _readFirestoreBool(
+        json['locationSetupComplete'],
+        fallback: false,
+      ),
     );
   }
 
@@ -252,6 +284,7 @@ class AppUserModel {
     String? accountType,
     String? publicPersona,
     bool? vipVerified,
+    bool? monetizationEnabled,
     bool? orgProfileCompleted,
     Map<String, dynamic>? organizationDetails,
     Timestamp? createdAt,
@@ -264,6 +297,8 @@ class AppUserModel {
     String? parentInviteEmail,
     String? parentInvitePhone,
     Timestamp? parentConsentAt,
+    PostLocation? profileLocation,
+    bool? locationSetupComplete,
   }) {
     return AppUserModel(
       uid: uid ?? this.uid,
@@ -282,6 +317,7 @@ class AppUserModel {
       accountType: accountType ?? this.accountType,
       publicPersona: publicPersona ?? this.publicPersona,
       vipVerified: vipVerified ?? this.vipVerified,
+      monetizationEnabled: monetizationEnabled ?? this.monetizationEnabled,
       orgProfileCompleted: orgProfileCompleted ?? this.orgProfileCompleted,
       organizationDetails: organizationDetails ?? this.organizationDetails,
       createdAt: createdAt ?? this.createdAt,
@@ -294,6 +330,9 @@ class AppUserModel {
       parentInviteEmail: parentInviteEmail ?? this.parentInviteEmail,
       parentInvitePhone: parentInvitePhone ?? this.parentInvitePhone,
       parentConsentAt: parentConsentAt ?? this.parentConsentAt,
+      profileLocation: profileLocation ?? this.profileLocation,
+      locationSetupComplete:
+          locationSetupComplete ?? this.locationSetupComplete,
     );
   }
 }

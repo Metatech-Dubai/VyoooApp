@@ -5,8 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:async';
 
-import '../../core/config/app_config.dart';
 import '../../core/config/deep_link_config.dart';
+import '../../core/profile/creator_monetization.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/feed_interaction_assets.dart';
 import '../../core/theme/app_gradients.dart';
@@ -73,11 +73,44 @@ class UserProfilePayload {
     required this.followerCount,
     this.followingCount = 0,
     this.bio = '',
-    this.isCreator = true,
+    this.monetizationEnabled = false,
     this.isFollowing = false,
     this.isSubscribed = false,
     this.targetUserId,
   });
+
+  factory UserProfilePayload.fromAppUser(
+    AppUserModel user, {
+    int postCount = 0,
+    int followerCount = 0,
+    int followingCount = 0,
+    bool isFollowing = false,
+    bool isSubscribed = false,
+  }) {
+    final username = (user.username ?? '').trim();
+    final handle = username.isNotEmpty
+        ? username
+        : (user.email.contains('@') ? user.email.split('@').first : user.uid);
+    final displayName = (user.displayName ?? '').trim().isNotEmpty
+        ? user.displayName!.trim()
+        : handle;
+    return UserProfilePayload(
+      targetUserId: user.uid,
+      username: handle,
+      displayName: displayName,
+      avatarUrl: user.profileImage ?? '',
+      isVerified: user.isVerified,
+      accountType: user.accountType,
+      vipVerified: user.vipVerified,
+      monetizationEnabled: user.monetizationEnabled,
+      postCount: postCount,
+      followerCount: followerCount,
+      followingCount: followingCount,
+      bio: user.bio ?? '',
+      isFollowing: isFollowing,
+      isSubscribed: isSubscribed,
+    );
+  }
 
   /// When set, Follow/Following updates Firestore (users/{currentUser}.following).
   final String? targetUserId;
@@ -87,15 +120,18 @@ class UserProfilePayload {
   final bool isVerified;
   final String accountType;
   final bool vipVerified;
+  final bool monetizationEnabled;
   final int postCount;
   final int followerCount;
   final int followingCount;
   final String bio;
-
-  /// If true, show Follow + Subscribe + Share. If false, show Follow + Share only (standard user).
-  final bool isCreator;
   final bool isFollowing;
   final bool isSubscribed;
+
+  bool get showSubscribeFeatures => showProfileSubscribeFeatures(
+        accountType: accountType,
+        monetizationEnabled: monetizationEnabled,
+      );
 }
 
 /// Other person's profile: same top (avatar, stats, buttons), Posts/VR/Streams + star, content by tab.
@@ -142,6 +178,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   String? _liveAccountType;
   String? _liveBio;
   bool? _liveVipVerified;
+  bool? _liveMonetizationEnabled;
   StreamSubscription<int>? _followerCountSub;
   StreamSubscription<int>? _postCountSub;
   StreamSubscription<AppUserModel?>? _targetUserSub;
@@ -182,6 +219,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _liveAccountType = null;
       _liveBio = null;
       _liveVipVerified = null;
+      _liveMonetizationEnabled = null;
       _otherHighlightsStreamUid = null;
       _otherHighlightsStream = null;
       unawaited(_refreshFollowFromFirestore(server: true));
@@ -254,8 +292,17 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _liveAccountType = u?.accountType;
         _liveBio = u?.bio;
         _liveVipVerified = u?.vipVerified;
+        _liveMonetizationEnabled = u?.monetizationEnabled;
       });
     });
+  }
+
+  bool _showSubscribeFeatures(UserProfilePayload p) {
+    return showProfileSubscribeFeatures(
+      accountType: _liveAccountType ?? p.accountType,
+      monetizationEnabled:
+          _liveMonetizationEnabled ?? p.monetizationEnabled,
+    );
   }
 
   Future<void> _loadPublicCounts() async {
@@ -753,11 +800,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   Widget build(BuildContext context) {
     final p = widget.payload;
     final isVerified = _liveIsVerified ?? p.isVerified;
-    final badgeColor = verificationBadgeColor(
-      isVerified: isVerified,
-      accountType: _liveAccountType ?? p.accountType,
-      vipVerified: _liveVipVerified ?? p.vipVerified,
-    );
+    final showCreatorMonetization = _showSubscribeFeatures(p);
+    final badgeColor = showCreatorMonetization
+        ? const Color(0xFFFACC15)
+        : verificationBadgeColor(
+            isVerified: isVerified,
+            accountType: _liveAccountType ?? p.accountType,
+            vipVerified: _liveVipVerified ?? p.vipVerified,
+          );
+    final showVerificationBadge = isVerified || showCreatorMonetization;
     return Scaffold(
       backgroundColor: Colors.transparent,
       bottomNavigationBar: Column(
@@ -838,7 +889,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          if (isVerified) ...[
+                          if (showVerificationBadge) ...[
                             const SizedBox(width: 8),
                             Container(
                               width: 18,
@@ -1193,7 +1244,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   onPressed: _followActionBusy ? () {} : _onFollowTap,
                 ),
               ),
-              if (p.isCreator && AppConfig.showCreatorSubscribeButton) ...[
+              if (_showSubscribeFeatures(p) && !_isViewingOwnProfile(p)) ...[
                 const SizedBox(width: 8),
                 Expanded(
                   child: _ProfileSubscribeButton(

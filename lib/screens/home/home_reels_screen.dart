@@ -1700,11 +1700,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             isVerified: (reel['isVerified'] as bool?) ?? false,
             accountType: (reel['accountType'] as String?) ?? 'personal',
             vipVerified: (reel['vipVerified'] as bool?) ?? false,
+            monetizationEnabled:
+                (reel['monetizationEnabled'] as bool?) ?? false,
             postCount: 0,
             followerCount: 0,
             followingCount: 0,
             bio: '',
-            isCreator: true,
             isFollowing: isFollowing,
             targetUserId: targetUid.isNotEmpty ? targetUid : null,
           ),

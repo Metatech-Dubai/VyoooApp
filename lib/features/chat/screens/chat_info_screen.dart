@@ -55,17 +55,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UserProfileScreen(
-          payload: UserProfilePayload(
-            targetUserId: u.uid,
-            username: u.username ?? '',
-            displayName: u.displayName ?? u.username ?? '',
-            avatarUrl: u.profileImage ?? '',
-            isVerified: u.isVerified,
-            accountType: u.accountType,
-            vipVerified: u.vipVerified,
-            followerCount: 0,
-            bio: u.bio ?? '',
-          ),
+          payload: UserProfilePayload.fromAppUser(u),
         ),
       ),
     );

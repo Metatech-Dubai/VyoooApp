@@ -36,5 +36,6 @@ abstract final class AppSpacing {
   static const double authDividerBlock = xxl;
 
   /// Bottom inset for floating auth back/forward row (above home indicator).
+  /// Add [MediaQuery.paddingOf](context).bottom in the widget for safe area.
   static const double authFloatingNavBottom = xl + md;
 }

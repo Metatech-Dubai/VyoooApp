@@ -38,6 +38,9 @@ abstract final class AppTypography {
     color: AppTheme.defaultTextColor,
   );
 
+  /// DOB privacy footnote — DM Sans 12 @ 61% white (Figma).
+  static const Color onboardingPrivacyTextColor = Color(0x9CFFFFFF);
+
   /// Onboarding step title — Inter Semi Bold 24 / 98% line height / −3%.
   static const TextStyle onboardingSectionTitle = TextStyle(
     fontFamily: AppFonts.display,
@@ -47,6 +50,42 @@ abstract final class AppTypography {
     letterSpacing:
         onboardingSectionTitleSize * onboardingSectionTitleLetterSpacingPercent,
     color: AppTheme.defaultTextColor,
+  );
+
+  /// DOB privacy body — DM Sans Regular 12 @ 61% white.
+  static const TextStyle onboardingPrivacyBody = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.25,
+    fontWeight: FontWeight.w400,
+    color: onboardingPrivacyTextColor,
+  );
+
+  /// DOB privacy link — DM Sans Extra Bold 12 @ 61% white.
+  static const TextStyle onboardingPrivacyLink = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.25,
+    fontWeight: FontWeight.w800,
+    color: onboardingPrivacyTextColor,
+  );
+
+  /// DOB picker — selected row (DM Sans Semi Bold 20).
+  static const TextStyle dobPickerSelected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 20,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: AppTheme.defaultTextColor,
+  );
+
+  /// DOB picker — unselected row (DM Sans Regular 16 @ 35% white).
+  static const TextStyle dobPickerUnselected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0x59FFFFFF),
   );
 
   /// Username pill floating label — DM Sans Semi Bold 12 @ 52% white.

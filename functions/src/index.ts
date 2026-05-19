@@ -1257,6 +1257,77 @@ export const processWhatsAppOtpVerifyRequest = onDocumentCreated(
  *
  * Clients never write creatorSubscriptions directly; this keeps mutation rules strict.
  */
+const SUBSCRIBE_ELIGIBLE_ACCOUNT_TYPES = new Set([
+  'business',
+  'government',
+  'public',
+  'content_creator',
+  'entrepreneur',
+  'celebrity',
+  'sports_celebrity',
+  'musician',
+]);
+
+function isSubscribeEligibleAccountType(accountType: string): boolean {
+  return SUBSCRIBE_ELIGIBLE_ACCOUNT_TYPES.has(accountType.trim().toLowerCase());
+}
+
+export const processCreatorMonetizationRequest = onDocumentCreated(
+  {
+    document: 'creator_monetization_requests/{requestId}',
+    timeoutSeconds: 30,
+    memory: '256MiB',
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const db = admin.firestore();
+    const req = snap.data() as Record<string, unknown>;
+
+    const fail = async (message: string) => {
+      await snap.ref.update({
+        status: 'error',
+        error: message,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+    };
+
+    const userId = typeof req.userId === 'string' ? req.userId.trim() : '';
+    const enabled = req.enabled === true;
+    if (!userId) {
+      await fail('Invalid monetization request.');
+      return;
+    }
+
+    const userRef = db.collection('users').doc(userId);
+    const userSnap = await userRef.get();
+    if (!userSnap.exists) {
+      await fail('User not found.');
+      return;
+    }
+    const userData = userSnap.data() as Record<string, unknown>;
+    const accountType =
+      typeof userData.accountType === 'string' ? userData.accountType : '';
+    if (!isSubscribeEligibleAccountType(accountType)) {
+      await fail('This account type cannot enable creator subscriptions.');
+      return;
+    }
+
+    await userRef.set(
+      {
+        monetizationEnabled: enabled,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true },
+    );
+
+    await snap.ref.update({
+      status: 'done',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+  },
+);
+
 export const processCreatorSubscriptionRequest = onDocumentCreated(
   {
     document: 'creator_subscription_requests/{requestId}',
@@ -1298,6 +1369,22 @@ export const processCreatorSubscriptionRequest = onDocumentCreated(
     const existing = await subscriptionRef.get();
 
     if (action === 'subscribe') {
+      const creatorSnap = await db.collection('users').doc(creatorId).get();
+      if (!creatorSnap.exists) {
+        await fail('Creator not found.');
+        return;
+      }
+      const creatorData = creatorSnap.data() as Record<string, unknown>;
+      const creatorAccountType =
+        typeof creatorData.accountType === 'string' ? creatorData.accountType : '';
+      if (!isSubscribeEligibleAccountType(creatorAccountType)) {
+        await fail('This creator cannot accept subscriptions.');
+        return;
+      }
+      if (creatorData.monetizationEnabled !== true) {
+        await fail('This creator is not accepting subscriptions.');
+        return;
+      }
       const creatorName = typeof req.creatorName === 'string' ? req.creatorName.trim() : '';
       const creatorHandle =
         typeof req.creatorHandle === 'string' ? req.creatorHandle.trim() : '';

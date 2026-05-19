@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:vyooo/core/theme/app_gradients.dart';
 import '../../core/models/app_user_model.dart';
+import '../../core/profile/creator_monetization.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/subscription/subscription_controller.dart';
+import 'creator_monetization_screen.dart';
 import '../../core/utils/dob_validation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/widgets/app_gradient_background.dart';
@@ -69,6 +73,7 @@ class SettingsScreen extends StatelessWidget {
                           children: [
                             _settingsCard(
                               context,
+                              user: snapshot.data,
                               showFamilyApprovals:
                                   _showFamilyApprovalsTile(snapshot.data),
                             ),
@@ -85,8 +90,17 @@ class SettingsScreen extends StatelessWidget {
 
   Widget _settingsCard(
     BuildContext context, {
+    AppUserModel? user,
     required bool showFamilyApprovals,
   }) {
+    final subscription = context.watch<SubscriptionController>();
+    final showCreatorMonetization = user != null &&
+        (canManageProfileMonetization(
+              accountType: user.accountType,
+              hasVyoooCreatorPlan: subscription.canOfferSubscriptions,
+            ) ||
+            user.monetizationEnabled) &&
+        isSubscribeEligibleAccountType(user.accountType);
     return Container(
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.03),
@@ -130,6 +144,19 @@ class SettingsScreen extends StatelessWidget {
                             ),
                           ),
                         ),
+                        if (showCreatorMonetization)
+                          _SettingsTile(
+                            iconPath:
+                                'assets/vyooO_icons/Settings/Subscription.png',
+                            label: 'Creator subscriptions',
+                            isPremium: true,
+                            onTap: () => Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    const CreatorMonetizationScreen(),
+                              ),
+                            ),
+                          ),
                         _SettingsTile(
                           iconPath: 'assets/vyooO_icons/Settings/Wallet.png',
                           label: 'VyooO Wallet',

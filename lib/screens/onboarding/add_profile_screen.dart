@@ -9,11 +9,10 @@ import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/profile_photo_source_sheet.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/image_picker_service.dart';
 import '../../state/onboarding_state.dart';
-import 'select_interests_screen.dart';
-
 class AddProfileScreen extends StatefulWidget {
   const AddProfileScreen({
     super.key,
@@ -61,51 +60,11 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
   Future<void> _pickImage() async {
     if (_isPicking) return;
-    final source = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (context) => SafeArea(
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 24),
-          decoration: BoxDecoration(
-            color: AppColors.brandPurple,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextButton.icon(
-                onPressed: () => Navigator.pop(context, 'camera'),
-                icon: const Icon(Icons.camera_alt, color: Colors.white),
-                label: const Text(
-                  'Camera',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              TextButton.icon(
-                onPressed: () => Navigator.pop(context, 'gallery'),
-                icon: const Icon(Icons.photo_library, color: Colors.white),
-                label: const Text(
-                  'Gallery',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: White70.value),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final source = await showProfilePhotoSourceSheet(context);
     if (source == null || !mounted) return;
     setState(() => _isPicking = true);
     try {
-      final pickedPath = source == 'camera'
+      final pickedPath = source == ProfilePhotoPickSource.camera
           ? await _imageService.pickFromCamera()
           : await _imageService.pickFromGallery();
       if (!mounted || pickedPath == null) return;
@@ -171,21 +130,12 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
           await UserService().updateUserProfile(uid: uid, profileImage: '');
         } catch (_) {}
         if (mounted) setState(() => _isUploading = false);
-        if (!mounted) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const SelectInterestsScreen(),
-          ),
-        );
         return;
       }
       if (!mounted) return;
       setState(() => _isUploading = false);
     }
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const SelectInterestsScreen()),
-    );
+    // Gate advances to location / interests after Firestore profileImage updates.
   }
 
   @override

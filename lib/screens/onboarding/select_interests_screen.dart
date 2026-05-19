@@ -1,45 +1,23 @@
 import 'package:flutter/material.dart';
+
+import '../../core/onboarding/interest_vibes_catalog.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
-import '../../core/widgets/vyooo_brand_logo.dart';
-import '../../core/widgets/interest_chip.dart';
+import '../../core/widgets/interest/auto_sliding_chip_row.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../state/onboarding_state.dart';
-import 'onboarding_complete_screen.dart';
-
-/// Default interest options. Replace with API-driven list when ready.
-const List<String> _defaultInterests = [
-  'Music',
-  'Gaming',
-  'Sports',
-  'Travel',
-  'Food',
-  'Tech',
-  'Art',
-  'Fashion',
-  'Fitness',
-  'Movies',
-  'Books',
-  'Photography',
-  'Dance',
-  'Cooking',
-  'Nature',
-  'Comedy',
-  'Podcasts',
-  'DIY',
-  'Pets',
-];
 
 class SelectInterestsScreen extends StatefulWidget {
   const SelectInterestsScreen({
     super.key,
     this.onboardingState,
-    this.interests = _defaultInterests,
-  });
+    List<String>? interests,
+  }) : interests = interests ?? InterestVibesCatalog.all;
 
   final OnboardingState? onboardingState;
   final List<String> interests;
@@ -51,6 +29,10 @@ class SelectInterestsScreen extends StatefulWidget {
 class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
   static const double _horizontalPadding = 28;
   static const int _minSelections = 3;
+  static const int _horizontalRowCount = 6;
+  static const double _chipRowHeight = 48;
+  static const double _chipRowGap = 12;
+  static const double _chipGap = 10;
 
   OnboardingState get _state => widget.onboardingState ?? _defaultState;
   static final OnboardingState _defaultState = OnboardingState();
@@ -62,7 +44,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
   @override
   void initState() {
     super.initState();
-    _interests = List.from(widget.interests);
+    _interests = List<String>.from(widget.interests)..shuffle();
     _searchController = TextEditingController();
     _searchController.addListener(() {
       setState(
@@ -83,9 +65,11 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
 
   List<String> get _filteredInterests {
     if (_searchQuery.isEmpty) return _interests;
-    return _interests
+    final matches = _interests
         .where((s) => s.toLowerCase().contains(_searchQuery))
         .toList();
+    matches.sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    return matches;
   }
 
   int get _selectedCount => _state.selectedInterests.length;
@@ -111,20 +95,18 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
           interests: _state.selectedInterests,
         );
       } catch (_) {
-        // Still navigate so onboarding isn't blocked by Firestore errors
         if (!mounted) return;
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => const OnboardingCompleteScreen(),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not save interests. Check your connection and try again.',
+            ),
           ),
         );
         return;
       }
     }
-    if (!mounted) return;
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => const OnboardingCompleteScreen()),
-    );
+    // [OnboardingGate] shows terms / complete screen when interests are saved.
   }
 
   @override
@@ -234,7 +216,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
                 fontSize: 16,
               ),
               decoration: InputDecoration(
-                hintText: 'Search interests...',
+                hintText: 'Search vibes...',
                 hintStyle: const TextStyle(color: White50.value, fontSize: 16),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -255,48 +237,32 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
     );
   }
 
-  static const int _chipsPerRow = 7;
-
   Widget _buildChipsRows() {
-    final list = _filteredInterests;
-    final chunks = <List<String>>[];
-    for (var i = 0; i < list.length; i += _chipsPerRow) {
-      chunks.add(
-        list.sublist(
-          i,
-          i + _chipsPerRow > list.length ? list.length : i + _chipsPerRow,
+    final rows = InterestVibesCatalog.rowsFor(
+      _filteredInterests,
+      rowCount: _horizontalRowCount,
+    );
+    if (rows.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.only(top: 24),
+        child: Center(
+          child: Text(
+            'No vibes match your search',
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.white.withValues(alpha: 0.6),
+            ),
+          ),
         ),
       );
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        for (var r = 0; r < chunks.length; r++) ...[
-          if (r > 0) const SizedBox(height: 12),
-          SizedBox(
-            height: 48,
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < chunks[r].length; i++) ...[
-                    if (i > 0) const SizedBox(width: 10),
-                    InterestChip(
-                      label: chunks[r][i],
-                      isSelected: _state.selectedInterests.contains(
-                        chunks[r][i],
-                      ),
-                      onTap: () => _toggleInterest(chunks[r][i]),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-        ],
-      ],
+    return AutoSlidingChipRows(
+      rows: rows,
+      rowHeight: _chipRowHeight,
+      rowGap: _chipRowGap,
+      chipGap: _chipGap,
+      isSelected: _state.selectedInterests.contains,
+      onToggle: _toggleInterest,
     );
   }
 
@@ -306,7 +272,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
       opacity: _canContinue ? 0.6 : 1.0,
       child: Center(
         child: Text(
-          'Select at least 3 interests to continue',
+          'Select at least 3 vibes to continue',
           style: const TextStyle(
             fontSize: 12,
             color: White60.value,

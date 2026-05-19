@@ -134,8 +134,10 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             ),
           ),
           Positioned(
-            right: 24,
-            bottom: 24,
+            right: AppSpacing.xl,
+            bottom:
+                AppSpacing.authFloatingNavBottom +
+                MediaQuery.paddingOf(context).bottom,
             child: AuthFloatingCircleButton.forward(
               onPressed: _onContinue,
               enabled: _isValid && !_isLoading,

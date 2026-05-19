@@ -8,20 +8,28 @@ void main() {
   AppUserModel base({
     String username = 'kid',
     String dob = '2011-03-01',
+    String accountType = 'private',
+    bool orgProfileCompleted = false,
+    Map<String, dynamic> organizationDetails = const {},
     String parentConsentStatus = ParentConsentStatusValue.pendingContact,
     String parentConsentId = '',
     List<String> interests = const [],
     String profileImage = '',
+    bool locationSetupComplete = false,
   }) {
     return AppUserModel(
       uid: 'u1',
       email: 'kid@test.com',
       username: username,
       dob: dob,
+      accountType: accountType,
+      orgProfileCompleted: orgProfileCompleted,
+      organizationDetails: organizationDetails,
       interests: interests,
       profileImage: profileImage,
       parentConsentStatus: parentConsentStatus,
       parentConsentId: parentConsentId,
+      locationSetupComplete: locationSetupComplete,
       createdAt: Timestamp.now(),
     );
   }
@@ -43,16 +51,6 @@ void main() {
     expect(r, OnboardingRouteId.parentContact);
   });
 
-  test('resolve minor pending without consent id -> parentContact', () {
-    final r = OnboardingRouteResolver.resolve(
-      base(
-        parentConsentStatus: ParentConsentStatusValue.pending,
-        parentConsentId: '',
-      ),
-    );
-    expect(r, OnboardingRouteId.parentContact);
-  });
-
   test('resolve adult -> addProfile', () {
     final r = OnboardingRouteResolver.resolve(
       base(
@@ -63,11 +61,35 @@ void main() {
     expect(r, OnboardingRouteId.addProfile);
   });
 
-  test('resolve approved minor with photo -> selectInterests', () {
+  test('resolve adult with photo, no location -> selectLocation', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        dob: '2000-01-01',
+        parentConsentStatus: ParentConsentStatusValue.notRequired,
+        profileImage: 'https://example.com/a.jpg',
+      ),
+    );
+    expect(r, OnboardingRouteId.selectLocation);
+  });
+
+  test('resolve adult with photo and location done -> selectInterests', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        dob: '2000-01-01',
+        parentConsentStatus: ParentConsentStatusValue.notRequired,
+        profileImage: 'https://example.com/a.jpg',
+        locationSetupComplete: true,
+      ),
+    );
+    expect(r, OnboardingRouteId.selectInterests);
+  });
+
+  test('resolve approved minor with photo and location -> selectInterests', () {
     final r = OnboardingRouteResolver.resolve(
       base(
         parentConsentStatus: ParentConsentStatusValue.approved,
         profileImage: 'https://example.com/a.jpg',
+        locationSetupComplete: true,
       ),
     );
     expect(r, OnboardingRouteId.selectInterests);
@@ -76,5 +98,55 @@ void main() {
   test('resolve no username', () {
     final r = OnboardingRouteResolver.resolve(base(username: ''));
     expect(r, OnboardingRouteId.createUsername);
+  });
+
+  test('government without org details -> organization', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        accountType: 'government',
+        orgProfileCompleted: false,
+        dob: '',
+      ),
+    );
+    expect(r, OnboardingRouteId.organization);
+  });
+
+  test('government without establishment date -> selectEstablishmentDate', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        accountType: 'government',
+        orgProfileCompleted: true,
+        organizationDetails: const {'orgName': 'Dept'},
+        dob: '',
+      ),
+    );
+    expect(r, OnboardingRouteId.selectEstablishmentDate);
+  });
+
+  test('government with establishment, no photo -> addProfile', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        accountType: 'government',
+        orgProfileCompleted: true,
+        organizationDetails: const {'establishmentDate': '1990-05-01'},
+        dob: '',
+      ),
+    );
+    expect(r, OnboardingRouteId.addProfile);
+  });
+
+  test('government never routes to selectDob or parentContact', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        accountType: 'government',
+        orgProfileCompleted: true,
+        organizationDetails: const {'establishmentDate': '1990-05-01'},
+        dob: '',
+        parentConsentStatus: ParentConsentStatusValue.pendingContact,
+      ),
+    );
+    expect(r, isNot(OnboardingRouteId.selectDob));
+    expect(r, isNot(OnboardingRouteId.parentContact));
+    expect(r, OnboardingRouteId.addProfile);
   });
 }

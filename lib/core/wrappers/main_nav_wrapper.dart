@@ -140,20 +140,11 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => UserProfileScreen(
-          payload: UserProfilePayload(
-            username: appUser.username ?? '',
-            displayName: appUser.displayName ?? appUser.username ?? 'User',
-            avatarUrl: appUser.profileImage ?? '',
-            isVerified: appUser.isVerified,
-            accountType: appUser.accountType,
-            vipVerified: appUser.vipVerified,
+          payload: UserProfilePayload.fromAppUser(
+            appUser,
             postCount: postCount,
             followerCount: followerCount,
             followingCount: appUser.following.length,
-            bio: appUser.bio ?? '',
-            isCreator: true,
-            isFollowing: false,
-            targetUserId: appUser.uid,
           ),
         ),
       ),

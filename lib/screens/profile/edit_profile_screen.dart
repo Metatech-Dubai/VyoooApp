@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_cropper/image_cropper.dart';
@@ -12,6 +11,7 @@ import '../../core/services/storage_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/profile_photo_source_sheet.dart';
 import '../../services/firestore_username_service.dart';
 import '../../services/image_picker_service.dart';
 import '../../services/username_validation.dart';
@@ -332,32 +332,11 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   }
 
   Future<void> _onEditPicture() async {
-    final source = await showCupertinoModalPopup<String>(
-      context: context,
-      builder: (context) => CupertinoActionSheet(
-        title: const Text('Profile Photo'),
-        message: const Text('Choose where to pick your photo from'),
-        actions: [
-          CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(context).pop('camera'),
-            child: const Text('Take Photo'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(context).pop('gallery'),
-            child: const Text('Choose from Library'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          isDefaultAction: true,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
-        ),
-      ),
-    );
+    final source = await showProfilePhotoSourceSheet(context);
     if (!mounted || source == null) return;
 
     final picker = ImagePickerService();
-    final path = source == 'camera'
+    final path = source == ProfilePhotoPickSource.camera
         ? await picker.pickFromCamera()
         : await picker.pickFromGallery();
     if (!mounted || path == null) return;

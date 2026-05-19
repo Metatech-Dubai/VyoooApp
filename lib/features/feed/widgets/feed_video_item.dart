@@ -409,7 +409,6 @@ class _FeedVideoItemState extends State<FeedVideoItem>
             followerCount: widget.post.likeCount,
             followingCount: 0,
             bio: '',
-            isCreator: true,
             isFollowing: false,
           ),
         ),

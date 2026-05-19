@@ -214,6 +214,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
             onForward: _onVerify,
             forwardEnabled: _isOtpComplete,
             forwardLoading: _verifyInFlight,
+            alwaysShowBack: true,
           ),
         ],
       ),

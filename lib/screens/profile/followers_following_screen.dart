@@ -164,6 +164,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
             isVerified: i.isVerified,
             accountType: i.accountType,
             vipVerified: i.vipVerified,
+            monetizationEnabled: i.monetizationEnabled,
             isFollowing: i.isFollowing,
           ),
         )
@@ -208,6 +209,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
       isVerified: m.isVerified,
       accountType: m.accountType,
       vipVerified: m.vipVerified,
+      monetizationEnabled: m.monetizationEnabled,
       isFollowing: myFollowing.contains(m.uid),
     );
   }
@@ -922,11 +924,11 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                         isVerified: user.isVerified,
                         accountType: user.accountType,
                         vipVerified: user.vipVerified,
+                        monetizationEnabled: user.monetizationEnabled,
                         postCount: 0,
                         followerCount: 0,
                         followingCount: 0,
                         bio: '',
-                        isCreator: true,
                         isFollowing: user.isFollowing,
                         isSubscribed: true,
                         targetUserId: user.targetUserId,
@@ -1050,11 +1052,11 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                           isVerified: user.isVerified,
                           accountType: user.accountType,
                           vipVerified: user.vipVerified,
+                          monetizationEnabled: user.monetizationEnabled,
                           postCount: 0,
                           followerCount: 0,
                           followingCount: 0,
                           bio: '',
-                          isCreator: true,
                           isFollowing: user.isFollowing,
                           isSubscribed: false,
                           targetUserId: id,
@@ -1078,6 +1080,7 @@ class _ConnectionUser {
     this.isVerified = false,
     this.accountType = 'personal',
     this.vipVerified = false,
+    this.monetizationEnabled = false,
     this.isFollowing = false,
   });
   final String? targetUserId;
@@ -1087,6 +1090,7 @@ class _ConnectionUser {
   final bool isVerified;
   final String accountType;
   final bool vipVerified;
+  final bool monetizationEnabled;
 
   /// Whether the signed-in user follows this row (for button state).
   final bool isFollowing;

@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
-import '../../core/models/parent_consent_constants.dart';
+
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_background_assets.dart';
@@ -9,6 +8,7 @@ import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
+import '../../core/utils/establishment_date_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
@@ -28,17 +28,17 @@ const List<String> _monthNames = [
   'December',
 ];
 
-class SelectDobScreen extends StatefulWidget {
-  const SelectDobScreen({super.key, this.onDobSelected});
-
-  /// Called with selected valid date when user taps Next.
-  final void Function(DateTime date)? onDobSelected;
+/// Government onboarding: when the department/agency was established (not personal DOB).
+class SelectEstablishmentDateScreen extends StatefulWidget {
+  const SelectEstablishmentDateScreen({super.key});
 
   @override
-  State<SelectDobScreen> createState() => _SelectDobScreenState();
+  State<SelectEstablishmentDateScreen> createState() =>
+      _SelectEstablishmentDateScreenState();
 }
 
-class _SelectDobScreenState extends State<SelectDobScreen> {
+class _SelectEstablishmentDateScreenState
+    extends State<SelectEstablishmentDateScreen> {
   static const double _horizontalPadding = 28;
   static const double _progressFill = 0.4;
   static const double _pickerHeight = 190;
@@ -58,13 +58,14 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
   int get _day => _days[_dayIndex];
 
   DateTime get _selectedDate => DateTime(_year, _month, _day);
-  bool get _isValid => DobValidation.isValidBirthDate(_selectedDate);
+  bool get _isValid =>
+      EstablishmentDateValidation.isValidEstablishmentDate(_selectedDate);
 
   @override
   void initState() {
     super.initState();
-    _years = DobValidation.allowedYears;
-    final defaultYear = DateTime.now().year - 25;
+    _years = EstablishmentDateValidation.allowedYears;
+    final defaultYear = DateTime.now().year - 20;
     _yearIndex = _years.indexOf(defaultYear).clamp(0, _years.length - 1);
     if (_yearIndex < 0) _yearIndex = _years.length ~/ 2;
     _monthIndex = 0;
@@ -117,26 +118,21 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
 
   Future<void> _onNext() async {
     if (!_isValid) return;
-    widget.onDobSelected?.call(_selectedDate);
     final uid = AuthService().currentUser?.uid;
-    final needsParent = DobValidation.requiresParentalConsent(_selectedDate);
     if (uid != null && uid.isNotEmpty) {
       try {
-        final dobString =
+        final iso =
             '${_year.toString().padLeft(4, '0')}-${_month.toString().padLeft(2, '0')}-${_day.toString().padLeft(2, '0')}';
-        await UserService().updateUserProfile(
+        await UserService().patchOrganizationDetails(
           uid: uid,
-          dob: dobString,
-          parentConsentStatus: needsParent
-              ? ParentConsentStatusValue.pendingContact
-              : ParentConsentStatusValue.notRequired,
+          patch: {'establishmentDate': iso},
         );
       } catch (_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
-              'Could not save your date of birth. Check your connection and try again.',
+              'Could not save establishment date. Check your connection and try again.',
             ),
           ),
         );
@@ -144,13 +140,18 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
       }
     }
     if (!mounted) return;
-    // Do not push ParentContact / AddProfile here. [AuthWrapper] rebuilds from the user
-    // stream after DOB saves and [OnboardingRouteResolver] already picks the next screen.
-    // Pushing duplicated routes (e.g. two ParentContact screens) broke navigation after
-    // "Send request" — the gate showed one instance while another stayed underneath.
     if (Navigator.of(context).canPop()) {
       Navigator.of(context).pop();
     }
+  }
+
+  Future<void> _onBack() async {
+    final nav = Navigator.of(context);
+    if (nav.canPop()) {
+      nav.pop();
+      return;
+    }
+    await AuthService().signOut();
   }
 
   @override
@@ -178,14 +179,22 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                     _buildAvatar(),
                     const SizedBox(height: 30),
                     const Text(
-                      'Select your Date of birth',
+                      'When was your department\nestablished?',
                       style: AppTypography.onboardingSectionTitle,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Use the official founding or establishment date',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppTheme.secondaryTextColor.withValues(alpha: 0.9),
+                        fontWeight: FontWeight.w400,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 30),
                     _buildPicker(),
-                    const SizedBox(height: 16),
-                    _buildPrivacyText(),
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -220,7 +229,7 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   child: Container(
                     height: 3,
                     decoration: const BoxDecoration(
-                      color: AppColors.brandPink,
+                      color: Color(0xFFDE106B),
                       borderRadius: BorderRadius.horizontal(
                         left: Radius.circular(10),
                         right: Radius.zero,
@@ -251,14 +260,8 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
     return Container(
       height: _pickerHeight,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      // decoration: BoxDecoration(
-      //   borderRadius: BorderRadius.circular(20),
-      //   color: Colors.transparent,
-      //   border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      // ),
       child: Stack(
         children: [
-          /// PICKERS
           Row(
             children: [
               Expanded(
@@ -270,7 +273,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   childCount: 12,
                   itemBuilder: (context, index) {
                     final selected = _monthIndex == index;
-
                     return Center(
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
@@ -283,7 +285,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   },
                 ),
               ),
-
               Expanded(
                 child: CupertinoPicker.builder(
                   scrollController: _dayController,
@@ -293,7 +294,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   childCount: _days.length,
                   itemBuilder: (context, index) {
                     final selected = _dayIndex == index;
-
                     return Center(
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
@@ -306,7 +306,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   },
                 ),
               ),
-
               Expanded(
                 child: CupertinoPicker.builder(
                   scrollController: _yearController,
@@ -316,7 +315,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   childCount: _years.length,
                   itemBuilder: (context, index) {
                     final selected = _yearIndex == index;
-
                     return Center(
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
@@ -331,8 +329,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
               ),
             ],
           ),
-
-          /// CENTER SELECTION HIGHLIGHT
           Center(
             child: IgnorePointer(
               child: Container(
@@ -344,93 +340,8 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
               ),
             ),
           ),
-
-          /// TOP FADE
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 60,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.45),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          /// BOTTOM FADE
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 60,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.45),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );
-  }
-
-  Widget _buildPrivacyText() {
-    return Center(
-      child: RichText(
-        textAlign: TextAlign.center,
-        text: TextSpan(
-          style: AppTypography.onboardingPrivacyBody,
-          children: [
-            const TextSpan(
-              text: 'Please refer to our ',
-              style: AppTypography.onboardingPrivacyBody,
-            ),
-            WidgetSpan(
-              child: GestureDetector(
-                onTap: () {
-                  // TODO: open Privacy Policy
-                },
-                child: const Text(
-                  'Privacy Policy',
-                  style: AppTypography.onboardingPrivacyLink,
-                ),
-              ),
-            ),
-            const TextSpan(
-              text: ' for further information on how we process this data.',
-              style: AppTypography.onboardingPrivacyBody,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _onBack() async {
-    final nav = Navigator.of(context);
-    if (nav.canPop()) {
-      nav.pop();
-      return;
-    }
-    await AuthService().signOut();
   }
 }

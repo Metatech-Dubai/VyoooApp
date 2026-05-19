@@ -54,6 +54,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _dobController = TextEditingController();
+  final _establishmentDateController = TextEditingController();
   final _orgNameController = TextEditingController();
   final _workEmailController = TextEditingController();
   final _websiteController = TextEditingController();
@@ -71,6 +72,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
 
   bool get _showOrgFields =>
       _selectedAccountType == 'business' || _selectedAccountType == 'government';
+
+  bool get _isGovernment => _selectedAccountType == 'government';
 
   DateTime? _parseDob(String raw) {
     final value = raw.trim();
@@ -101,6 +104,57 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     final m = date.month.toString().padLeft(2, '0');
     final d = date.day.toString().padLeft(2, '0');
     return '$y-$m-$d';
+  }
+
+  Future<void> _pickEstablishmentDate() async {
+    final now = DateTime.now();
+    final initial =
+        _parseDob(_establishmentDateController.text) ??
+        DateTime(now.year - 20, 1, 1);
+    DateTime selected = initial;
+    final picked = await showModalBottomSheet<DateTime>(
+      context: context,
+      backgroundColor: const Color(0xFF1E1E1E),
+      builder: (context) {
+        return SafeArea(
+          child: SizedBox(
+            height: 320,
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.pop(context, selected),
+                        child: const Text('Done'),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: CupertinoDatePicker(
+                    mode: CupertinoDatePickerMode.date,
+                    initialDateTime: initial,
+                    maximumDate: now,
+                    minimumDate: DateTime(1800),
+                    onDateTimeChanged: (d) => selected = d,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    if (picked != null) {
+      _establishmentDateController.text = _formatDob(picked);
+    }
   }
 
   Future<void> _pickDob() async {
@@ -164,6 +218,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _emailController.dispose();
     _phoneController.dispose();
     _dobController.dispose();
+    _establishmentDateController.dispose();
     _orgNameController.dispose();
     _workEmailController.dispose();
     _websiteController.dispose();
@@ -210,6 +265,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     _descriptionController.text = (org['description'] ?? '').toString();
     _industryController.text = (org['industry'] ?? '').toString();
     _locationController.text = (org['location'] ?? '').toString();
+    _establishmentDateController.text = (org['establishmentDate'] ?? '').toString();
     _contactPhoneController.text = (org['contactPhone'] ?? '').toString();
     _publicPersonaController.text = (user?.publicPersona ?? '').trim();
     _selectedInterests = List<String>.from(user?.interests ?? const <String>[]);
@@ -256,12 +312,16 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         'contactPhone': _contactPhoneController.text.trim(),
         'orgType': _selectedAccountType,
       };
+      if (_isGovernment) {
+        orgDetails['establishmentDate'] =
+            _establishmentDateController.text.trim();
+      }
       final hasOrgData = orgDetails.values.any((v) => v.toString().isNotEmpty);
       await UserService().updateUserProfile(
         uid: uid,
         email: _emailController.text.trim(),
         phoneNumber: _phoneController.text.trim(),
-        dob: _dobController.text.trim(),
+        dob: _isGovernment ? '' : _dobController.text.trim(),
         accountType: _selectedAccountType,
         publicPersona: accountKey == 'public'
             ? UserService.normalizePublicPersona(_publicPersonaController.text)
@@ -384,11 +444,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           hint: 'name@example.com',
         ),
         _EditableFieldRow(label: 'Phone', controller: _phoneController),
-        _DatePickerFieldRow(
-          label: 'Date of Birth',
-          controller: _dobController,
-          onTap: _pickDob,
-        ),
+        if (!_isGovernment)
+          _DatePickerFieldRow(
+            label: 'Date of Birth',
+            controller: _dobController,
+            onTap: _pickDob,
+          ),
         _AccountTypeRow(
           value: _selectedAccountType,
           onChanged: (value) {
@@ -454,6 +515,12 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           ),
           const SizedBox(height: AppSpacing.sm),
           _EditableFieldRow(label: 'Org name', controller: _orgNameController),
+          if (_isGovernment)
+            _DatePickerFieldRow(
+              label: 'Establishment date',
+              controller: _establishmentDateController,
+              onTap: _pickEstablishmentDate,
+            ),
           _EditableFieldRow(label: 'Work email', controller: _workEmailController),
           _EditableFieldRow(label: 'Website', controller: _websiteController),
           _EditableFieldRow(label: 'Industry', controller: _industryController),

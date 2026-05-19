@@ -34,6 +34,9 @@ class AuthFloatingCircleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (onPressed == null && !isLoading) {
+      return const SizedBox.shrink();
+    }
     final canTap = enabled && onPressed != null && !isLoading;
     final showActiveStyle = canTap || isLoading;
     return Material(

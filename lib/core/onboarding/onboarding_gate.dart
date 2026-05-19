@@ -11,7 +11,9 @@ import '../../screens/onboarding/organization_details_screen.dart';
 import '../../screens/onboarding/parent_contact_screen.dart';
 import '../../screens/onboarding/parental_pending_screen.dart';
 import '../../screens/onboarding/select_dob_screen.dart';
+import '../../screens/onboarding/select_establishment_date_screen.dart';
 import '../../screens/onboarding/select_interests_screen.dart';
+import '../../screens/onboarding/select_location_screen.dart';
 
 /// Maps [AppUserModel] to the next onboarding screen (before [onboardingCompleted]).
 class OnboardingGate {
@@ -29,6 +31,7 @@ class OnboardingGate {
       // back to the wrong onboarding step.
       const postParentMinor = <String>{
         OnboardingRouteId.addProfile,
+        OnboardingRouteId.selectLocation,
         OnboardingRouteId.selectInterests,
         OnboardingRouteId.onboardingComplete,
       };
@@ -53,6 +56,8 @@ class OnboardingGate {
         return OrganizationDetailsScreen(accountType: accountType);
       case OnboardingRouteId.selectDob:
         return const SelectDobScreen();
+      case OnboardingRouteId.selectEstablishmentDate:
+        return const SelectEstablishmentDateScreen();
       case OnboardingRouteId.parentContact:
         final denied =
             user.parentConsentStatus == ParentConsentStatusValue.denied;
@@ -61,6 +66,8 @@ class OnboardingGate {
         return ParentalPendingScreen(consentId: user.parentConsentId.trim());
       case OnboardingRouteId.addProfile:
         return const AddProfileScreen();
+      case OnboardingRouteId.selectLocation:
+        return const SelectLocationScreen();
       case OnboardingRouteId.selectInterests:
         return const SelectInterestsScreen();
       case OnboardingRouteId.onboardingComplete:

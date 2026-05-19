@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import '../../services/username_validation.dart';
 import '../models/app_user_model.dart';
 import '../models/parent_consent_constants.dart';
+import '../models/post_location_model.dart';
 import 'notification_service.dart';
 
 class UserDiscoveryItem {
@@ -17,6 +18,7 @@ class UserDiscoveryItem {
     required this.isVerified,
     required this.accountType,
     required this.vipVerified,
+    this.monetizationEnabled = false,
     this.outgoingFollowRequestPending = false,
   });
 
@@ -29,6 +31,7 @@ class UserDiscoveryItem {
   final bool isVerified;
   final String accountType;
   final bool vipVerified;
+  final bool monetizationEnabled;
   /// True when [accountType] is private and we sent a follow request not yet accepted.
   final bool outgoingFollowRequestPending;
 }
@@ -106,6 +109,7 @@ class UserService {
     'accountType': 'private',
     'publicPersona': '',
     'vipVerified': false,
+    'monetizationEnabled': false,
     'orgProfileCompleted': false,
     'organizationDetails': <String, dynamic>{},
     'createdAt': FieldValue.serverTimestamp(),
@@ -117,6 +121,7 @@ class UserService {
     'parentUid': '',
     'parentInviteEmail': '',
     'parentInvitePhone': '',
+    'locationSetupComplete': false,
   };
 
   /// Creates the initial user document. Call after AuthService.registerWithEmail success.
@@ -153,6 +158,20 @@ class UserService {
     }
   }
 
+  /// Merges [patch] into the user's existing [organizationDetails] map.
+  Future<void> patchOrganizationDetails({
+    required String uid,
+    required Map<String, dynamic> patch,
+  }) async {
+    final snap = await _firestore.collection(_usersCollection).doc(uid).get();
+    final raw = snap.data()?['organizationDetails'];
+    final base = raw is Map
+        ? Map<String, dynamic>.from(raw)
+        : <String, dynamic>{};
+    base.addAll(patch);
+    await updateUserProfile(uid: uid, organizationDetails: base);
+  }
+
   /// Updates user profile fields. Uses set with merge so the doc is created if it doesn't exist yet.
   Future<void> updateUserProfile({
     required String uid,
@@ -175,6 +194,8 @@ class UserService {
     String? parentUid,
     String? parentInviteEmail,
     String? parentInvitePhone,
+    PostLocation? profileLocation,
+    bool? locationSetupComplete,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -229,6 +250,12 @@ class UserService {
       }
       if (parentInvitePhone != null) {
         data['parentInvitePhone'] = normalizePhone(parentInvitePhone);
+      }
+      if (profileLocation != null) {
+        data['location'] = profileLocation.toMap();
+      }
+      if (locationSetupComplete != null) {
+        data['locationSetupComplete'] = locationSetupComplete;
       }
       if (data.isEmpty) return;
       await _firestore
@@ -992,6 +1019,7 @@ class UserService {
           isVerified: u.isVerified,
           accountType: u.accountType,
           vipVerified: u.vipVerified,
+          monetizationEnabled: u.monetizationEnabled,
           outgoingFollowRequestPending: false,
         ),
       );
@@ -1013,6 +1041,7 @@ class UserService {
             isVerified: item.isVerified,
             accountType: item.accountType,
             vipVerified: item.vipVerified,
+            monetizationEnabled: item.monetizationEnabled,
             outgoingFollowRequestPending: p,
           );
         }
