@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui' show ImageFilter;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -7,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_gradients.dart';
+import '../../../core/theme/app_background_assets.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/comment_service.dart';
 import '../../../core/services/story_comment_service.dart';
@@ -639,27 +638,17 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
         const sheetRadius = BorderRadius.vertical(top: Radius.circular(16));
         return ClipRRect(
           borderRadius: sheetRadius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 17.75, sigmaY: 17.75),
-            child: Padding(
-              padding: EdgeInsets.only(bottom: keyboardBottom),
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: sheetRadius,
-                  gradient: AppGradients.commentsSheetGlassGradient,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.white.withValues(alpha: 0.25),
-                      offset: const Offset(0, -1),
-                      blurRadius: 2,
-                    ),
-                  ],
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboardBottom),
+            child: Container(
+              decoration: BoxDecoration(
+                borderRadius: sheetRadius,
+                image: const DecorationImage(
+                  image: AssetImage(AppBackgroundAssets.commentsSection),
+                  fit: BoxFit.cover,
                 ),
-                foregroundDecoration: const BoxDecoration(
-                  borderRadius: sheetRadius,
-                  gradient: AppGradients.commentsSheetGlassHighlight,
-                ),
-                child: LayoutBuilder(
+              ),
+              child: LayoutBuilder(
                   builder: (context, constraints) {
                     final compact = constraints.maxHeight < 260;
                     final hideTitle = constraints.maxHeight < 210;
@@ -749,7 +738,6 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
                 ),
               ),
             ),
-          ),
         );
       },
     );

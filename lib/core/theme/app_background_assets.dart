@@ -20,6 +20,9 @@ class AppBackgroundAssets {
   /// Home feed — Following tab behind stories + reels.
   static const String followingFeed = 'assets/bgImages/usernameBG.png';
 
+  /// Comments bottom sheet (gradient card).
+  static const String commentsSection = 'assets/bgImages/Comment_section.png';
+
   static String randomAuthFlowBackground() {
     return authFlowBackgrounds[_random.nextInt(authFlowBackgrounds.length)];
   }
