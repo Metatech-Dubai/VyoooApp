@@ -4,10 +4,13 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/parent_consent_constants.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
+
 const List<String> _monthNames = [
   'January',
   'February',
@@ -165,7 +168,7 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    _buildLogo(),
+                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
                     const SizedBox(height: 16),
                     _buildProgressBar(),
                     const SizedBox(height: 40),
@@ -190,30 +193,12 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
               ),
             ),
           ),
-          AuthFloatingBackButton(onPressed: () => _onBack()),
-          Positioned(right: 24, bottom: 24, child: _buildFab()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: SizedBox(
-        height: 100,
-        child: Image.asset(
-          'assets/BrandLogo/vyooo_white_transparent.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, stackTrace) => const Text(
-            'VyooO',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
+          AuthFloatingNavRow(
+            onBack: _onBack,
+            onForward: _onNext,
+            forwardEnabled: _isValid,
           ),
-        ),
+        ],
       ),
     );
   }
@@ -494,28 +479,6 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFab() {
-    return Material(
-      elevation: 2,
-      shape: const CircleBorder(),
-      color: AppTheme.buttonBackground,
-      child: InkWell(
-        onTap: _isValid ? _onNext : null,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.arrow_forward,
-            color: _isValid ? AppTheme.buttonTextColor : Colors.grey,
-            size: 28,
-          ),
         ),
       ),
     );

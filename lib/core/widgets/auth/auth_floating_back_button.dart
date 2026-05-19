@@ -18,7 +18,7 @@ class AuthFloatingBackButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return Positioned(
       left: AppSpacing.xl,
-      bottom: AppSpacing.xl,
+      bottom: AppSpacing.authFloatingNavBottom,
       child: AuthFloatingCircleButton.back(
         onPressed: onPressed,
         enabled: enabled,

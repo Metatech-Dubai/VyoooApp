@@ -4,6 +4,7 @@ library;
 export 'auth_centered_scroll_body.dart';
 export 'auth_floating_back_button.dart';
 export 'auth_floating_circle_button.dart';
+export 'auth_floating_nav_row.dart';
 export 'auth_labeled_divider.dart';
 export 'auth_screen_header.dart';
 export 'auth_link_prompt.dart';

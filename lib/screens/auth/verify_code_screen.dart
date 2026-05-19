@@ -3,10 +3,13 @@ import 'package:flutter/services.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
+import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   const VerifyCodeScreen({
@@ -95,7 +98,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 8),
-                    _buildLogo(),
+                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
                   const SizedBox(height: 60),
                   const Text(
                     'Verify Code',
@@ -182,47 +185,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 28),
-                    child: SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: _isOtpComplete && !_verifyInFlight
-                            ? _onVerify
-                            : null,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.buttonBackground,
-                          foregroundColor: AppTheme.buttonTextColor,
-                          disabledBackgroundColor: Colors.white.withValues(
-                            alpha: 0.4,
-                          ),
-                          disabledForegroundColor: AppTheme.secondaryTextColor,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                        ),
-                        child: _verifyInFlight
-                            ? const SizedBox(
-                                height: 22,
-                                width: 22,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppTheme.buttonTextColor,
-                                ),
-                              )
-                            : const Text(
-                                'Verify',
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
                   if (!widget.forPhoneLogin && _usePhone)
                     Center(
                       child: GestureDetector(
@@ -237,13 +199,22 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 30),
+                  SizedBox(
+                    height: AppSpacing.authFloatingNavBottom +
+                        AppSizes.buttonHeight +
+                        AppSpacing.md,
+                  ),
                 ],
               ),
             ),
           ),
         ),
-          AuthFloatingBackButton(onPressed: () => _onBack()),
+          AuthFloatingNavRow(
+            onBack: _onBack,
+            onForward: _onVerify,
+            forwardEnabled: _isOtpComplete,
+            forwardLoading: _verifyInFlight,
+          ),
         ],
       ),
     );
@@ -254,27 +225,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       if (c.text.isEmpty) return false;
     }
     return true;
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: SizedBox(
-        height: 100,
-        child: Image.asset(
-          'assets/BrandLogo/vyooo_white_transparent.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, stackTrace) => const Text(
-            'VyooO',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
-      ),
-    );
   }
 
   Widget _buildOtpBox(int index) {
@@ -310,6 +260,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
             onChanged: (value) {
               if (value.isNotEmpty && index < _otpLength - 1) {
                 _focusNodes[index + 1].requestFocus();
+              } else if (value.isNotEmpty && index == _otpLength - 1) {
+                FocusScope.of(context).unfocus();
               }
               if (mounted) setState(() {});
             },

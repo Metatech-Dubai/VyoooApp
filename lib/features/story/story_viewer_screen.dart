@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/platform/app_system_ui.dart';
 import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/story_service.dart';
@@ -62,7 +64,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    unawaited(AppSystemUi.enterImmersiveFullscreen());
     _groupIndex = widget.initialGroupIndex;
     _storyIndex = widget.initialStoryIndex;
     _prefetchLikes();
@@ -93,7 +95,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
 
   @override
   void dispose() {
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    unawaited(AppSystemUi.exitImmersiveFullscreen());
     _disposePlayback();
     super.dispose();
   }

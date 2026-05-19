@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../core/platform/app_system_ui.dart';
 import '../../core/models/story_model.dart';
 import '../../core/services/story_service.dart';
 import '../../core/utils/story_video_splitter.dart';
@@ -252,7 +253,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   @override
   void initState() {
     super.initState();
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    unawaited(AppSystemUi.enterImmersiveFullscreen());
     WidgetsBinding.instance.addObserver(this);
     _initCamera();
     WidgetsBinding.instance.addPostFrameCallback((_) => _maybeOfferDraftResume());
@@ -261,7 +262,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    unawaited(AppSystemUi.exitImmersiveFullscreen());
     _recordTicker?.cancel();
     _recordMaxTimer?.cancel();
     _camCtrl?.dispose();

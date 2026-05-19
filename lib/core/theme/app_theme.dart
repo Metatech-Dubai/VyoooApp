@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import 'app_fonts.dart';
 import 'app_spacing.dart';
@@ -21,11 +22,25 @@ class AppTheme {
   static const Color secondaryTextColor = White70.value;
   static const Color searchBarColor = White24.value;
 
+  /// Edge-to-edge overlay: icon brightness only (no status/navigation bar colors).
+  static const SystemUiOverlayStyle edgeToEdgeOverlay = SystemUiOverlayStyle(
+    statusBarIconBrightness: Brightness.light,
+    statusBarBrightness: Brightness.dark,
+    systemNavigationBarIconBrightness: Brightness.light,
+    systemNavigationBarContrastEnforced: false,
+  );
+
   static ThemeData get dark {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       fontFamily: AppFonts.body,
+      appBarTheme: const AppBarTheme(
+        systemOverlayStyle: edgeToEdgeOverlay,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       scaffoldBackgroundColor: scaffoldBackground,
       primaryColor: primary,
       colorScheme: const ColorScheme.dark(

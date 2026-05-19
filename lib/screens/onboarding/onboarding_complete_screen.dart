@@ -6,10 +6,12 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_radius.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../services/onboarding_storage.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
@@ -97,7 +99,7 @@ class OnboardingCompleteScreen extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                  _buildLogo(),
+                  const VyoooBrandLogo(size: AppSizes.authLogoHeight),
                 AppPadding.itemGap,
                 const OnboardingProgressBar(progress: 1.0),
                 SizedBox(height: AppSpacing.xl + AppSpacing.md),
@@ -123,27 +125,6 @@ class OnboardingCompleteScreen extends StatelessWidget {
         ),
           AuthFloatingBackButton(onPressed: () => _onBack(context)),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: SizedBox(
-        height: 100,
-        child: Image.asset(
-          'assets/BrandLogo/vyooo_white_transparent.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, stackTrace) => const Text(
-            'VyooO',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
       ),
     );
   }

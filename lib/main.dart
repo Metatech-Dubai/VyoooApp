@@ -8,11 +8,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
 
 import 'core/config/app_config.dart';
+import 'core/platform/app_system_ui.dart';
 import 'core/navigation/app_keys.dart';
 import 'core/navigation/app_route_observer.dart';
 import 'core/services/deep_link_service.dart';
@@ -20,13 +20,13 @@ import 'core/services/push_messaging_service.dart';
 import 'core/subscription/subscription_controller.dart';
 import 'core/theme/app_padding.dart';
 import 'core/theme/app_theme.dart';
+import 'core/wrappers/app_version_gate.dart';
 import 'core/wrappers/auth_wrapper.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  await AppSystemUi.configureAtStartup();
 
   bool firebaseInitialized = false;
   try {
@@ -180,6 +180,10 @@ class VyoooApp extends StatelessWidget {
     return MaterialApp(
       title: 'Vyooo',
       theme: AppTheme.dark,
+      builder: (context, child) {
+        AppSystemUi.setEdgeToEdgeOverlayStyle();
+        return child ?? const SizedBox.shrink();
+      },
       debugShowCheckedModeBanner: false,
       navigatorKey: appNavigatorKey,
       scaffoldMessengerKey: appScaffoldMessengerKey,
@@ -227,7 +231,7 @@ class _SplashVideoScreenState extends State<_SplashVideoScreen> {
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            const AuthWrapper(),
+            const AppVersionGate(child: AuthWrapper()),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },

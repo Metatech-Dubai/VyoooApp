@@ -34,4 +34,7 @@ abstract final class AppSpacing {
 
   /// Divider / social block vertical rhythm (32 = xxl)
   static const double authDividerBlock = xxl;
+
+  /// Bottom inset for floating auth back/forward row (above home indicator).
+  static const double authFloatingNavBottom = xl + md;
 }

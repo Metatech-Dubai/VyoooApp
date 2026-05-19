@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../core/widgets/interest_chip.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../state/onboarding_state.dart';
@@ -146,7 +148,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 20),
-                        _buildLogo(),
+                        const VyoooBrandLogo(size: AppSizes.authLogoHeight),
                         const SizedBox(height: 16),
                         const OnboardingProgressBar(progress: 0.85),
                         const SizedBox(height: 40),
@@ -168,30 +170,12 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
               ),
             ),
           ),
-          AuthFloatingBackButton(onPressed: () => _onBack()),
-          Positioned(right: 24, bottom: 24, child: _buildNextButton()),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: SizedBox(
-        height: 100,
-        child: Image.asset(
-          'assets/BrandLogo/vyooo_white_transparent.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, stackTrace) => const Text(
-            'VyooO',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
+          AuthFloatingNavRow(
+            onBack: _onBack,
+            onForward: _onNext,
+            forwardEnabled: _canContinue,
           ),
-        ),
+        ],
       ),
     );
   }
@@ -327,30 +311,6 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
             fontSize: 12,
             color: White60.value,
             fontWeight: FontWeight.w400,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildNextButton() {
-    return Material(
-      elevation: 2,
-      shape: const CircleBorder(),
-      color: _canContinue
-          ? AppTheme.buttonBackground
-          : Colors.white.withValues(alpha: 0.4),
-      child: InkWell(
-        onTap: _onNext,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.arrow_forward,
-            color: _canContinue ? AppTheme.buttonTextColor : White50.value,
-            size: 28,
           ),
         ),
       ),

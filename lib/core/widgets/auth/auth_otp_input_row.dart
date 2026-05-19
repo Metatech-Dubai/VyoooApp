@@ -25,11 +25,11 @@ class AuthOtpInputRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(length, _buildOtpBox),
+      children: List.generate(length, (index) => _buildOtpBox(context, index)),
     );
   }
 
-  Widget _buildOtpBox(int index) {
+  Widget _buildOtpBox(BuildContext context, int index) {
     return ListenableBuilder(
       listenable: focusNodes[index],
       builder: (_, _) {
@@ -64,6 +64,8 @@ class AuthOtpInputRow extends StatelessWidget {
             onChanged: (value) {
               if (value.isNotEmpty && index < length - 1) {
                 focusNodes[index + 1].requestFocus();
+              } else if (value.isNotEmpty && index == length - 1) {
+                FocusScope.of(context).unfocus();
               }
               onChanged?.call();
             },

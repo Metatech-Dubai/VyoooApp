@@ -9,10 +9,12 @@ import '../../core/onboarding/parental_submit_handoff.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/parental_consent_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart' show AppTheme, White24;
 import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 
 /// Collects parent/guardian contact so a minor can send a consent request.
 ///
@@ -317,24 +319,8 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 8),
-                                Center(
-                                  child: SizedBox(
-                                    height: 72,
-                                    child: Image.asset(
-                                      'assets/BrandLogo/vyooo_white_transparent.png',
-                                      fit: BoxFit.contain,
-                                      errorBuilder:
-                                          (context, error, stackTrace) =>
-                                              const Text(
-                                        'VyooO',
-                                        style: TextStyle(
-                                          color: AppTheme.primary,
-                                          fontSize: 32,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                                const VyoooBrandLogo(
+                                  size: AppSizes.authLogoHeight,
                                 ),
                                 const SizedBox(height: 28),
                                 Text(

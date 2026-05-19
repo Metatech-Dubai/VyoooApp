@@ -1097,6 +1097,12 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── App config (version policy — public read, admin write via console/CI) ─
+    match /app_config/{docId} {
+      allow read: if docId == 'version_policy';
+      allow write: if false;
+    }
+
     // Deny everything not explicitly allowed above.
     match /{document=**} {
       allow read, write: if false;

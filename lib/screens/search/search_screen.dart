@@ -12,6 +12,7 @@ import '../../core/services/reels_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/utils/verification_badge.dart';
+import '../../core/theme/app_background_assets.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/live_now_strip.dart';
 import '../../core/theme/app_radius.dart';
@@ -589,7 +590,8 @@ class SearchScreenState extends State<SearchScreen>
     super.build(context);
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
+        type: GradientType.authFlow,
+        backgroundAsset: AppBackgroundAssets.search,
         child: Column(
           children: [
             _buildSearchBar(

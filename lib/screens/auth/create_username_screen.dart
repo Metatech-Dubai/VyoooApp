@@ -6,9 +6,12 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/theme/app_background_assets.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/firestore_username_service.dart';
 import '../../services/username_service.dart';
 import '../../services/username_validation.dart';
@@ -172,6 +175,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         children: [
           AppGradientBackground(
             type: GradientType.authFlow,
+            backgroundAsset: AppBackgroundAssets.otpScreen,
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -181,7 +185,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    _buildLogo(),
+                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
                     const SizedBox(height: 16),
                     _buildProgressBar(),
                     const SizedBox(height: 40),
@@ -207,8 +211,11 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               ),
             ),
           ),
-          AuthFloatingBackButton(onPressed: () => _onBack()),
-          Positioned(right: 24, bottom: 36, child: _buildNextButton()),
+          AuthFloatingNavRow(
+            onBack: _onBack,
+            onForward: _onNext,
+            forwardEnabled: _isUsernameValid,
+          ),
           if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
           // Temporary logout
           // Positioned(
@@ -224,27 +231,6 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           //   ),
           // ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildLogo() {
-    return Center(
-      child: SizedBox(
-        height: 100,
-        child: Image.asset(
-          'assets/BrandLogo/vyooo_white_transparent.png',
-          fit: BoxFit.contain,
-          errorBuilder: (_, error, stackTrace) => const Text(
-            'VyooO',
-            style: TextStyle(
-              color: AppTheme.primary,
-              fontSize: 42,
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-            ),
-          ),
-        ),
       ),
     );
   }
@@ -285,34 +271,11 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
 
   Widget _buildAvatar() {
     return Center(
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            width: 150,
-            height: 150,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: .05),
-              border: Border.all(color: White10.value, width: 1),
-            ),
-            alignment: Alignment.center,
-            child: const Icon(
-              Icons.person_outline,
-              size: 72,
-              color: AppColors.brandPink,
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            child: Icon(
-              Icons.auto_awesome,
-              size: 24,
-              color: AppColors.lightGold,
-            ),
-          ),
-        ],
+      child: Image.asset(
+        'assets/vyooO_icons/Onboarding/username_profile_avatar.png',
+        width: 150,
+        height: 150,
+        fit: BoxFit.contain,
       ),
     );
   }
@@ -411,28 +374,6 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           else if (hasSuccess)
             const Icon(Icons.check, color: Colors.green, size: 22),
         ],
-      ),
-    );
-  }
-
-  Widget _buildNextButton() {
-    return Material(
-      elevation: 2,
-      shape: const CircleBorder(),
-      color: AppTheme.buttonBackground,
-      child: InkWell(
-        onTap: _isUsernameValid ? _onNext : null,
-        customBorder: const CircleBorder(),
-        child: Container(
-          width: 56,
-          height: 56,
-          alignment: Alignment.center,
-          child: Icon(
-            Icons.arrow_forward,
-            color: _isUsernameValid ? AppTheme.buttonTextColor : Colors.grey,
-            size: 28,
-          ),
-        ),
       ),
     );
   }

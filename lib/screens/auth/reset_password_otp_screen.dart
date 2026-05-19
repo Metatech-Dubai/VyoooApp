@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/auth_service.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_gradient_background.dart';
@@ -193,19 +194,19 @@ class _ResetPasswordOTPScreenState extends State<ResetPasswordOTPScreen> {
                     textAlign: TextAlign.center,
                   ),
                 ),
-                const SizedBox(height: AppSpacing.xxl),
-                AuthPrimaryButton(
-                  label: 'Verify & Continue',
-                  isLoading: _verifyInFlight,
-                  enabled: _isOtpComplete,
-                  onPressed: _onVerify,
+                SizedBox(
+                  height: AppSpacing.authFloatingNavBottom +
+                      AppSizes.buttonHeight +
+                      AppSpacing.md,
                 ),
-                const SizedBox(height: AppSpacing.authDividerBlock),
               ],
             ),
           ),
-          AuthFloatingBackButton(
-            onPressed: () => Navigator.of(context).pop(),
+          AuthFloatingNavRow(
+            onBack: () => Navigator.of(context).pop(),
+            onForward: _onVerify,
+            forwardEnabled: _isOtpComplete,
+            forwardLoading: _verifyInFlight,
           ),
         ],
       ),

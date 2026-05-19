@@ -23,6 +23,12 @@ class AppBackgroundAssets {
   /// Comments bottom sheet (gradient card).
   static const String commentsSection = 'assets/bgImages/Comment_section.png';
 
+  /// OTP verify, username onboarding, and search tab.
+  static const String otpScreen = 'assets/bgImages/OTPScreenBG.png';
+
+  /// Search tab (Live, Posts, VR, Users).
+  static const String search = otpScreen;
+
   static String randomAuthFlowBackground() {
     return authFlowBackgrounds[_random.nextInt(authFlowBackgrounds.length)];
   }

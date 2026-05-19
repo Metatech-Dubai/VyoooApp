@@ -1,0 +1,69 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
+
+/// Central Android/iOS system UI setup for edge-to-edge and phone portrait.
+abstract final class AppSystemUi {
+  /// Logical width threshold: below = phone (portrait lock), at/above = large screen.
+  static const double phoneShortestSideDp = 600;
+
+  /// Call once from [main] after [WidgetsFlutterBinding.ensureInitialized].
+  static Future<void> configureAtStartup() async {
+    if (kIsWeb) return;
+
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await applyPhonePortraitLockIfNeeded();
+    setEdgeToEdgeOverlayStyle();
+  }
+
+  /// Transparent system bars; icon brightness only (no deprecated bar colors on Android 15+).
+  static void setEdgeToEdgeOverlayStyle() {
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarContrastEnforced: false,
+      ),
+    );
+  }
+
+  /// Portrait on phones only; large screens (tablets/foldables) stay unrestricted for Play/Android 16.
+  static Future<void> applyPhonePortraitLockIfNeeded() async {
+    if (kIsWeb) return;
+    if (!isPhoneLayout) {
+      await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+      return;
+    }
+    await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+  }
+
+  static bool get isPhoneLayout {
+    final views = PlatformDispatcher.instance.views;
+    if (views.isEmpty) return true;
+    final view = views.first;
+    final logicalSize = view.physicalSize / view.devicePixelRatio;
+    return logicalSize.shortestSide < phoneShortestSideDp;
+  }
+
+  static Future<void> enterImmersiveFullscreen() async {
+    if (kIsWeb) return;
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  static Future<void> exitImmersiveFullscreen() async {
+    if (kIsWeb) return;
+    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    setEdgeToEdgeOverlayStyle();
+    await applyPhonePortraitLockIfNeeded();
+  }
+
+  /// Re-apply portrait after leaving a route that cleared orientation (e.g. crop).
+  static Future<void> onReturnToAppShell() async {
+    if (kIsWeb) return;
+    if (Platform.isIOS || Platform.isAndroid) {
+      await applyPhonePortraitLockIfNeeded();
+    }
+  }
+}
