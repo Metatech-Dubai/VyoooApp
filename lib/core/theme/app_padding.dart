@@ -32,4 +32,8 @@ class AppPadding {
 
   /// Gap between underline auth fields
   static const authFieldGap = sectionGap;
+
+  /// Home feed tab chips (Figma horizontal 14, vertical 6).
+  static const feedTabChip =
+      EdgeInsets.symmetric(horizontal: 14, vertical: 6);
 }

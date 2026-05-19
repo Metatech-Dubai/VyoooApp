@@ -140,6 +140,26 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w400,
   );
 
+  /// Home feed tab label sizes (Figma Nav Bar).
+  static const double feedTabLabelSize = 14;
+  static const double feedTabLabelSelectedSize = 16;
+
+  /// Home feed tab — unselected (Figma: DM Sans Regular 14, white 60%).
+  static const TextStyle feedTabLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedTabLabelSize,
+    fontWeight: FontWeight.w400,
+    color: White60.value,
+  );
+
+  /// Home feed tab — selected (Figma: DM Sans Bold 16, white).
+  static const TextStyle feedTabLabelSelected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedTabLabelSelectedSize,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.primary,
+  );
+
   /// Logo text fallback — Inter Bold.
   static const TextStyle brandFallback = TextStyle(
     fontFamily: AppFonts.display,

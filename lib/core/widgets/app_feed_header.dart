@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_padding.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_sizes.dart';
 import '../theme/app_spacing.dart';
+import '../theme/app_theme.dart';
+import '../theme/app_typography.dart';
+import 'vyooo_brand_logo.dart';
 
 /// Common header for feed screens: VyooO logo + tab selector.
-/// Same design everywhere (Figma: selected = white + capsule 15%, radius 20, padding 14; unselected = white 60%).
+/// Tabs share one chip style (Figma: 15% capsule, radius 20, padding 14×6).
+/// Typography: unselected DM Sans Regular 14 @ 60% white; selected Bold 16 white.
 class AppFeedHeader extends StatelessWidget {
   const AppFeedHeader({
     super.key,
@@ -54,31 +60,14 @@ class AppFeedHeader extends StatelessWidget {
   }
 
   Widget _buildLogo(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final logoHeight = screenWidth < 360
-        ? 54.0
-        : (screenWidth < 420 ? 104.0 : 28.0);
-
-    return SizedBox(
-      height: logoHeight,
-      child: Image.asset(
-        'assets/BrandLogo/Vyooo logo (2).png',
-        fit: BoxFit.contain,
-        errorBuilder: (_, error, stackTrace) => const Text(
-          'VyooO',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 28,
-            fontWeight: FontWeight.w700,
-            letterSpacing: -0.5,
-          ),
-        ),
-      ),
+    return const VyoooBrandLogo(
+      size: AppSizes.feedLogoHeight,
+      center: false,
     );
   }
 }
 
-/// Tab selector: selected = white pill with black text; unselected = white text with 60% opacity.
+/// Tab selector for Trending / VR / Following / For You.
 class AppFeedTabSelector extends StatelessWidget {
   const AppFeedTabSelector({
     super.key,
@@ -100,28 +89,25 @@ class AppFeedTabSelector extends StatelessWidget {
         children: List.generate(labels.length, (index) {
           final isSelected = selectedIndex == index;
           return Padding(
-            padding: const EdgeInsets.only(right: 6),
+            padding: const EdgeInsets.only(right: AppSpacing.xs),
             child: GestureDetector(
               onTap: () => onTabSelected?.call(index),
+              behavior: HitTestBehavior.opaque,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
+                padding: AppPadding.feedTabChip,
                 decoration: BoxDecoration(
-                  color: isSelected
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(20),
+                  color: White15.value,
+                  borderRadius: AppRadius.pillRadius,
+                  border: isSelected
+                      ? Border.all(color: AppTheme.primary, width: 1)
+                      : null,
                 ),
                 child: Text(
                   labels[index],
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                    color: isSelected ? Colors.black : Colors.white,
-                  ),
+                  style: isSelected
+                      ? AppTypography.feedTabLabelSelected
+                      : AppTypography.feedTabLabel,
                 ),
               ),
             ),

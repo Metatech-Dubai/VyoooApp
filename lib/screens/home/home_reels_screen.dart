@@ -22,7 +22,10 @@ import '../../core/services/reel_download_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/utils/internet_availability.dart';
 import '../../core/utils/user_facing_errors.dart';
+import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_feed_header.dart';
+import '../../core/widgets/app_feed_notification_button.dart';
 import '../../screens/notifications/notification_screen.dart';
 import '../../core/widgets/app_interaction_button.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
@@ -806,11 +809,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final isVrTab = currentTab == HomeTab.vr;
     final isFollowing = currentTab == HomeTab.following;
 
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final logoHeight = screenWidth < 360
-        ? 44.0
-        : (screenWidth < 420 ? 54.0 : 64.0);
-    final headerEstimate = logoHeight + 24; // sm(8) + md(16) from AppFeedHeader
+    final headerEstimate =
+        AppSizes.feedHeaderRowHeight + AppSpacing.sm + AppSpacing.md;
     final topPadding = MediaQuery.paddingOf(context).top;
 
     final followingStoriesTop = topPadding + headerEstimate + 12;
@@ -1251,7 +1251,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         final count = snapshot.data ?? 0;
         final showBadge = count > 0;
         final label = count > 99 ? '99+' : '$count';
-        return GestureDetector(
+        return AppFeedNotificationButton(
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -1259,54 +1259,35 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               ),
             );
           },
-          child: SizedBox(
-            width: 32,
-            height: 32,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                const Center(
-                  child: Icon(
-                    Icons.notifications_none_rounded,
-                    color: Colors.white,
-                    size: 26,
+          badge: showBadge
+              ? Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 16,
+                    minHeight: 16,
                   ),
-                ),
-                if (showBadge)
-                  Positioned(
-                    right: -4,
-                    top: -2,
-                    child: Container(
-                      constraints: const BoxConstraints(
-                        minWidth: 16,
-                        minHeight: 16,
-                      ),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 4,
-                        vertical: 1,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFF2D55),
-                        borderRadius: BorderRadius.circular(9),
-                        border: Border.all(
-                          color: const Color(0xFF14001F),
-                          width: 1,
-                        ),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 9,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 1,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF2D55),
+                    borderRadius: BorderRadius.circular(9),
+                    border: Border.all(
+                      color: const Color(0xFF14001F),
+                      width: 1,
                     ),
                   ),
-              ],
-            ),
-          ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              : null,
         );
       },
     );

@@ -114,3 +114,14 @@ class White60 {
   White60._();
   static const Color value = Color(0x99FFFFFF);
 }
+
+class White15 {
+  White15._();
+  static const Color value = Color(0x26FFFFFF);
+}
+
+/// Figma feed notification circle fill (#FFFFFF @ 30%).
+class White30 {
+  White30._();
+  static const Color value = Color(0x4DFFFFFF);
+}
