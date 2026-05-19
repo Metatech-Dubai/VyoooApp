@@ -4,6 +4,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import 'select_dob_screen.dart';
 
 class OrganizationDetailsScreen extends StatefulWidget {
@@ -145,20 +146,17 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
     final stepTitle = _step == 1 ? 'Step 1 of 2' : 'Step 2 of 2';
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.onboarding,
-        child: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                IconButton(
-                  onPressed: _saving ? null : () => Navigator.of(context).maybePop(),
-                  icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
-                ),
-                const SizedBox(height: 12),
-                Text(
+      body: Stack(
+        children: [
+          AppGradientBackground(
+            type: GradientType.authFlow,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 12),
+                  Text(
                   title,
                   style: const TextStyle(
                     color: Colors.white,
@@ -274,6 +272,13 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
             ),
           ),
         ),
+          AuthFloatingBackButton(
+            onPressed: _saving
+                ? null
+                : () => Navigator.of(context).maybePop(),
+            enabled: !_saving,
+          ),
+        ],
       ),
     );
   }

@@ -87,7 +87,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.auth,
+            type: GradientType.authFlow,
             child: SingleChildScrollView(
               padding: AppPadding.authFormHorizontal,
               child: Column(

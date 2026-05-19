@@ -9,6 +9,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../services/onboarding_storage.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
@@ -86,30 +87,17 @@ class OnboardingCompleteScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.profile,
-        child: SafeArea(
-          child: Padding(
-            padding: AppPadding.authFormHorizontal,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                IconButton(
-                  onPressed: () => _onBack(context),
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white,
-                    size: 19,
-                  ),
-                  tooltip: 'Back',
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(
-                    minWidth: 40,
-                    minHeight: 40,
-                  ),
-                ),
-                _buildLogo(),
+      body: Stack(
+        children: [
+          AppGradientBackground(
+            type: GradientType.authFlow,
+            child: Padding(
+              padding: AppPadding.authFormHorizontal,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+                  _buildLogo(),
                 AppPadding.itemGap,
                 const OnboardingProgressBar(progress: 1.0),
                 SizedBox(height: AppSpacing.xl + AppSpacing.md),
@@ -133,6 +121,8 @@ class OnboardingCompleteScreen extends StatelessWidget {
             ),
           ),
         ),
+          AuthFloatingBackButton(onPressed: () => _onBack(context)),
+        ],
       ),
     );
   }

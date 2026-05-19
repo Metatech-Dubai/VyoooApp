@@ -219,7 +219,7 @@ class _SignInScreenState extends State<SignInScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.auth,
+        type: GradientType.authFlow,
         child: AuthCenteredScrollBody(
           children: [
             const AuthScreenHeader(

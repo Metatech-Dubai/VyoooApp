@@ -12,6 +12,7 @@ import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart' show AppTheme, White24;
 import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 
 /// Collects parent/guardian contact so a minor can send a consent request.
 ///
@@ -284,8 +285,10 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
       canPop: Navigator.of(context).canPop(),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: AppGradientBackground(
-              type: GradientType.dob,
+        body: Stack(
+          children: [
+            AppGradientBackground(
+              type: GradientType.authFlow,
               child: SafeArea(
                 minimum: const EdgeInsets.only(bottom: 20),
                 child: LayoutBuilder(
@@ -313,17 +316,6 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                               mainAxisSize: MainAxisSize.min,
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: IconButton(
-                                    onPressed: _submitting ? null : _onBack,
-                                    icon: const Icon(
-                                      Icons.arrow_back_ios_new_rounded,
-                                      color: Colors.white,
-                                      size: 19,
-                                    ),
-                                  ),
-                                ),
                                 const SizedBox(height: 8),
                                 Center(
                                   child: SizedBox(
@@ -428,6 +420,12 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                 ),
               ),
             ),
+            AuthFloatingBackButton(
+              onPressed: _submitting ? null : () => _onBack(),
+              enabled: !_submitting,
+            ),
+          ],
+        ),
       ),
     );
   }

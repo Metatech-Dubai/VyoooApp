@@ -11,6 +11,7 @@ import '../../core/services/parental_consent_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 
 /// Minor waits here until a parent approves or denies in [ParentalApprovalsScreen].
 class ParentalPendingScreen extends StatefulWidget {
@@ -183,26 +184,16 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
       canPop: Navigator.of(context).canPop(),
       child: Scaffold(
         backgroundColor: Colors.transparent,
-        body: AppGradientBackground(
-          type: GradientType.dob,
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Align(
-                    alignment: Alignment.centerLeft,
-                    child: IconButton(
-                      onPressed: _onBack,
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 19,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+        body: Stack(
+          children: [
+            AppGradientBackground(
+              type: GradientType.authFlow,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const SizedBox(height: 24),
                   const Text(
                     'Waiting for parent',
                     style: TextStyle(
@@ -414,6 +405,8 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
               ),
             ),
           ),
+            AuthFloatingBackButton(onPressed: () => _onBack()),
+          ],
         ),
       ),
     );

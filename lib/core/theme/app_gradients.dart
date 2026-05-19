@@ -24,8 +24,62 @@ class AppGradients {
     stops: const [0.0, 0.15, 0.25, 0.45, 0.65, 0.80, 0.90, 1.0],
   );
 
-  /// Auth (maps to main background for consistency)
-  static final LinearGradient authGradient = mainBackgroundGradient;
+  /// Figma auth base fill (sign-up layered background).
+  static const Color authScreenBaseColor = Color(0xFF020109);
+
+  /// Layered sign-up: main bottom pink/red glow.
+  static const RadialGradient authRadialMainGlow = RadialGradient(
+    center: Alignment(-0.75, 0.95),
+    radius: 1.15,
+    stops: [0.0, 0.28, 0.55, 0.82, 1.0],
+    colors: [
+      Color(0xFFF81945),
+      Color(0xFFE11066),
+      Color(0xFF490038),
+      Color(0xFF21002B),
+      Color(0x00020109),
+    ],
+  );
+
+  /// Layered sign-up: subtle top-left purple/magenta glow.
+  static const RadialGradient authRadialTopLeftGlow = RadialGradient(
+    center: Alignment(-0.55, -0.65),
+    radius: 0.85,
+    stops: [0.0, 0.45, 1.0],
+    colors: [
+      Color(0x66490038),
+      Color(0x3321002B),
+      Color(0x00020109),
+    ],
+  );
+
+  /// Single radial for other auth screens (sign in, reset password, etc.).
+  static const RadialGradient authScreenRadialGradient = RadialGradient(
+    center: Alignment(-0.75, 0.85),
+    radius: 1.35,
+    stops: [0.0, 0.16, 0.47, 0.63, 1.0],
+    colors: [
+      Color(0xFFF81945),
+      Color(0xFFE11066),
+      Color(0xFF490038),
+      Color(0xFF21002B),
+      Color(0xFF020109),
+    ],
+  );
+
+  /// Auth screens (compact surfaces e.g. settings tiles).
+  static const RadialGradient authGradient = authScreenRadialGradient;
+
+  /// Sign-up screen — vertical fill (#1E0014 → #4B002A → #A5004F).
+  static const LinearGradient signUpBackgroundGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFF1E0014),
+      Color(0xFF4B002A),
+      Color(0xFFA5004F),
+    ],
+  );
 
   static const LinearGradient onboardingGradient = LinearGradient(
     begin: Alignment.topLeft,
@@ -178,3 +232,4 @@ class AppGradients {
     colors: [Color(0x0AFFFFFF), Color(0x0AFFFFFF)],
   );
 }
+

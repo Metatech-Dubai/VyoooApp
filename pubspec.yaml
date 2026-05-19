@@ -101,6 +101,7 @@ flutter:
 
   assets:
     - assets/images/
+    - assets/bgImages/
     - assets/videos/splash.mp4
     - assets/BrandLogo/
     - assets/BottomNavBar/

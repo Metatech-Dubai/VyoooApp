@@ -8,6 +8,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import '../../services/firestore_username_service.dart';
 import '../../services/username_service.dart';
 import '../../services/username_validation.dart';
@@ -170,7 +171,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.onboarding,
+            type: GradientType.authFlow,
             child: SingleChildScrollView(
               child: Padding(
                 padding: const EdgeInsets.symmetric(
@@ -180,23 +181,6 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: IconButton(
-                        onPressed: _onBack,
-                        icon: const Icon(
-                          Icons.arrow_back_ios_new_rounded,
-                          color: Colors.white,
-                          size: 19,
-                        ),
-                        tooltip: 'Back',
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(
-                          minWidth: 40,
-                          minHeight: 40,
-                        ),
-                      ),
-                    ),
                     _buildLogo(),
                     const SizedBox(height: 16),
                     _buildProgressBar(),
@@ -223,6 +207,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               ),
             ),
           ),
+          AuthFloatingBackButton(onPressed: () => _onBack()),
           Positioned(right: 24, bottom: 36, child: _buildNextButton()),
           if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
           // Temporary logout

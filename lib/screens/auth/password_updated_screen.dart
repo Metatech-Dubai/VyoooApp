@@ -25,7 +25,7 @@ class PasswordUpdatedScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.auth,
+        type: GradientType.authFlow,
         child: Padding(
           padding: AppPadding.authFormHorizontal,
           child: Column(

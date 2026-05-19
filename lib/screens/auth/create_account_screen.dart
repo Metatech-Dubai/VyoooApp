@@ -76,54 +76,56 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.auth,
+        type: GradientType.authFlow,
         child: SingleChildScrollView(
           padding: AppPadding.authFormHorizontal,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: AppSpacing.sm),
-              _buildHeader(),
-              const SizedBox(height: AppSpacing.md),
-              AuthSegmentedToggle(
-                leftLabel: 'Email',
-                rightLabel: 'Phone',
-                isLeftSelected: _isEmailSignup,
-                onLeftTap: () =>
-                    setState(() => _selectedSignupMethod = _signupMethodEmail),
-                onRightTap: () =>
-                    setState(() => _selectedSignupMethod = _signupMethodPhone),
-              ),
-              const SizedBox(height: AppSpacing.md),
-              _buildForm(),
-              if (_errorMessage != null) ...[
-                const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
-                Text(
-                  _errorMessage!,
-                  style: AppTypography.caption.copyWith(color: Colors.red),
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: AppSpacing.sm),
+                _buildHeader(),
+                const SizedBox(height: AppSpacing.md),
+                AuthSegmentedToggle(
+                  leftLabel: 'Email',
+                  rightLabel: 'Phone',
+                  isLeftSelected: _isEmailSignup,
+                  onLeftTap: () => setState(
+                    () => _selectedSignupMethod = _signupMethodEmail,
+                  ),
+                  onRightTap: () => setState(
+                    () => _selectedSignupMethod = _signupMethodPhone,
+                  ),
                 ),
+                const SizedBox(height: AppSpacing.md),
+                _buildForm(),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
+                  Text(
+                    _errorMessage!,
+                    style: AppTypography.caption.copyWith(color: Colors.red),
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.authCtaTop),
+                AuthPrimaryButton(
+                  label: 'Register',
+                  isLoading: _isLoading,
+                  onPressed: _onRegister,
+                ),
+                const SizedBox(height: AppSpacing.md),
+                AuthLinkPrompt(
+                  prompt: 'Already have an account? ',
+                  actionLabel: 'Sign in',
+                  onActionTap: _onSignIn,
+                ),
+                const SizedBox(height: AppSpacing.authDividerBlock),
+                const AuthLabeledDivider(label: 'Or sign up with'),
+                const SizedBox(height: AppSpacing.authDividerBlock),
+                _buildSocialRow(),
+                const SizedBox(height: AppSpacing.authDividerBlock),
               ],
-              const SizedBox(height: AppSpacing.authCtaTop),
-              AuthPrimaryButton(
-                label: 'Register',
-                isLoading: _isLoading,
-                onPressed: _onRegister,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AuthLinkPrompt(
-                prompt: 'Already have an account? ',
-                actionLabel: 'Sign in',
-                onActionTap: _onSignIn,
-              ),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-              const AuthLabeledDivider(label: 'Or sign up with'),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-              _buildSocialRow(),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-            ],
+            ),
           ),
         ),
-      ),
     );
   }
 

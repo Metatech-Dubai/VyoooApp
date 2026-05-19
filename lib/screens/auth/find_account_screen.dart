@@ -84,7 +84,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.auth,
+            type: GradientType.authFlow,
             child: AuthCenteredScrollBody(
               children: [
                 AuthScreenHeader(
@@ -146,12 +146,8 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
               ],
             ),
           ),
-          Positioned(
-            left: 24,
-            bottom: 24,
-            child: AuthFloatingCircleButton.back(
-              onPressed: () => Navigator.of(context).pop(),
-            ),
+          AuthFloatingBackButton(
+            onPressed: () => Navigator.of(context).pop(),
           ),
         ],
       ),

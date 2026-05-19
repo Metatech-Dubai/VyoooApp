@@ -7,6 +7,7 @@ import '../../core/services/storage_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/auth/auth_widgets.dart';
 import '../../services/image_picker_service.dart';
 import '../../state/onboarding_state.dart';
 import 'select_interests_screen.dart';
@@ -189,34 +190,17 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.profile,
-        child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                /// TOP SECTION
-                const SizedBox(height: 20),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: IconButton(
-                    onPressed: _onBack,
-                    icon: const Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
-                      size: 19,
-                    ),
-                    tooltip: 'Back',
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 40,
-                    ),
-                  ),
-                ),
-                _buildLogo(),
+      body: Stack(
+        children: [
+          AppGradientBackground(
+            type: GradientType.authFlow,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  const SizedBox(height: 20),
+                  _buildLogo(),
                 const SizedBox(height: 16),
                 _buildProgressBar(),
 
@@ -265,6 +249,8 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
             ),
           ),
         ),
+          AuthFloatingBackButton(onPressed: () => _onBack()),
+        ],
       ),
     );
   }
