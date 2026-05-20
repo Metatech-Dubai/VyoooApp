@@ -15,8 +15,8 @@ import '../services/push_messaging_service.dart';
 import '../services/signup_draft_service.dart';
 import '../services/user_service.dart';
 import '../utils/account_message.dart';
-import '../../screens/auth/create_account_screen.dart';
 import '../../screens/auth/create_username_screen.dart';
+import '../../screens/auth/sign_in_screen.dart';
 import '../../screens/auth/verify_code_screen.dart';
 import '../../screens/debug/tier_picker_screen.dart';
 import '../../screens/onboarding/organization_details_screen.dart';
@@ -24,8 +24,8 @@ import '../onboarding/onboarding_gate.dart';
 import '../subscription/subscription_controller.dart';
 import 'main_nav_wrapper.dart';
 
-/// Flow guard: routes to Register, Onboarding, or Home based on Firebase Auth + Firestore user doc.
-/// When not logged in, show Register first. Do NOT allow access to onboarding if onboardingCompleted is true.
+/// Flow guard: routes to Sign-in, Onboarding, or Home based on Firebase Auth + Firestore user doc.
+/// When not logged in, show Sign-in first. Do NOT allow access to onboarding if onboardingCompleted is true.
 class AuthWrapper extends StatefulWidget {
   const AuthWrapper({super.key});
 
@@ -88,12 +88,12 @@ class _AuthWrapperState extends State<AuthWrapper> {
           return const _AuthDeterminingScaffold();
         }
         if (user == null) {
-          return const CreateAccountScreen();
+          return const SignInScreen();
         }
         if (user.isAnonymous) {
           final draft = SignupDraftService().current;
           if (draft == null) {
-            return const CreateAccountScreen();
+            return const SignInScreen();
           }
           return FutureBuilder<(String channel, String destination)>(
             future: OtpSessionService().getSignupOtpPreference(),
