@@ -6,8 +6,11 @@ class AppBackgroundAssets {
 
   static final Random _random = Random();
 
-  /// Help center (Contact Support).
+  /// Help center (Contact Support) and profile post list (grid → Posts).
   static const String contactSupport = 'assets/bgImages/2.png';
+
+  /// Full-screen list opened from profile post grid.
+  static const String postFeed = contactSupport;
 
   /// Auth, registration, OTP, password recovery, and post-sign-up onboarding.
   static const List<String> authFlowBackgrounds = [

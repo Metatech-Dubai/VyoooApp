@@ -15,9 +15,10 @@ void main() {
         placements.every((p) => p.span == ProfileGridSpan.unit),
         isTrue,
       );
+      expect(placements.map((p) => p.sourceIndex).toList(), [0, 1, 2, 3, 4]);
     });
 
-    test('artistModern promotes highest views in chunk to double', () {
+    test('artistModern promotes highest views in chunk at same index', () {
       final views = List<int>.generate(12, (i) => i);
       views[11] = 1000;
       final placements = ProfileGridLayoutEngine.layout(
@@ -26,32 +27,35 @@ void main() {
         mode: ProfileGridLayoutMode.artistModern,
       );
       expect(placements.length, 12);
-      final doubles =
-          placements.where((p) => p.span == ProfileGridSpan.double);
-      expect(doubles.length, 1);
-      expect(doubles.first.sourceIndex, 11);
+      expect(placements[11].span, ProfileGridSpan.double);
+      expect(
+        placements.where((p) => p.span == ProfileGridSpan.double).length,
+        1,
+      );
     });
 
-    test('artistModern honors profileGridSpan double override', () {
-      final views = List<int>.generate(5, (i) => i);
+    test('manual double stays at post index in grid order', () {
+      final views = List<int>.generate(12, (i) => i + 1);
       final overrides = List<ProfileGridSpanOverride>.filled(
-        5,
+        12,
         ProfileGridSpanOverride.auto,
       );
-      overrides[0] = ProfileGridSpanOverride.double;
+      overrides[3] = ProfileGridSpanOverride.double;
       final placements = ProfileGridLayoutEngine.layout(
-        itemCount: 5,
+        itemCount: 12,
         viewsByIndex: views,
         mode: ProfileGridLayoutMode.artistModern,
         spanOverrideByIndex: overrides,
       );
-      final doubles =
-          placements.where((p) => p.span == ProfileGridSpan.double);
-      expect(doubles.length, 1);
-      expect(doubles.first.sourceIndex, 0);
+      expect(placements[3].sourceIndex, 3);
+      expect(placements[3].span, ProfileGridSpan.double);
+      expect(
+        placements.where((p) => p.span == ProfileGridSpan.double).length,
+        1,
+      );
     });
 
-    test('artistModern honors profileGridSpan unit override on top views', () {
+    test('manual unit prevents auto double on that post', () {
       final views = List<int>.generate(12, (i) => i + 1);
       final overrides = List<ProfileGridSpanOverride>.filled(
         12,
@@ -64,12 +68,26 @@ void main() {
         mode: ProfileGridLayoutMode.artistModern,
         spanOverrideByIndex: overrides,
       );
+      expect(placements[11].span, ProfileGridSpan.unit);
       expect(
-        placements.any(
-          (p) => p.sourceIndex == 11 && p.span == ProfileGridSpan.double,
-        ),
-        isFalse,
+        placements.any((p) => p.span == ProfileGridSpan.double),
+        isTrue,
       );
+    });
+
+    test('uniform honors manual double', () {
+      final overrides = [
+        ProfileGridSpanOverride.unit,
+        ProfileGridSpanOverride.double,
+      ];
+      final placements = ProfileGridLayoutEngine.layout(
+        itemCount: 2,
+        viewsByIndex: [0, 100],
+        mode: ProfileGridLayoutMode.uniform,
+        spanOverrideByIndex: overrides,
+      );
+      expect(placements[0].span, ProfileGridSpan.unit);
+      expect(placements[1].span, ProfileGridSpan.double);
     });
   });
 }

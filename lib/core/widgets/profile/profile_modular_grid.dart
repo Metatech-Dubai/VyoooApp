@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 import '../../models/reel_count_privacy.dart';
 import '../../theme/app_spacing.dart';
@@ -8,6 +7,7 @@ import 'profile_grid_layout_engine.dart';
 import 'profile_grid_models.dart';
 import 'profile_grid_posts.dart';
 import 'profile_grid_tile.dart';
+import 'profile_span_grid_layout.dart';
 
 /// Modular square grid (1×1 and 2×2) for profile Posts / VR / Saved tabs.
 class ProfileModularGrid extends StatelessWidget {
@@ -15,6 +15,7 @@ class ProfileModularGrid extends StatelessWidget {
     super.key,
     required this.items,
     required this.onItemTap,
+    this.onItemLongPress,
     this.layoutMode = ProfileGridLayoutMode.artistModern,
     this.crossAxisCount = 3,
     this.gap = AppSpacing.xs,
@@ -24,31 +25,12 @@ class ProfileModularGrid extends StatelessWidget {
 
   final List<ProfileGridItem> items;
   final void Function(int sourceIndex) onItemTap;
+  final void Function(int sourceIndex)? onItemLongPress;
   final ProfileGridLayoutMode layoutMode;
   final int crossAxisCount;
   final double gap;
   final int minViewsForDouble;
   final EdgeInsetsGeometry padding;
-
-  /// 12-tile artist block: 2×2 hero + four 1×1 + seven 1×1 rows (3-wide).
-  static const List<QuiltedGridTile> artistQuiltedPattern = [
-    QuiltedGridTile(2, 2),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-    QuiltedGridTile(1, 1),
-  ];
-
-  static const List<QuiltedGridTile> uniformQuiltedPattern = [
-    QuiltedGridTile(1, 1),
-  ];
 
   @override
   Widget build(BuildContext context) {
@@ -78,54 +60,80 @@ class ProfileModularGrid extends StatelessWidget {
       for (final item in items) item.sourceIndex: item,
     };
 
-    final pattern = placements
-        .map(
-          (p) => p.span == ProfileGridSpan.double
-              ? const QuiltedGridTile(2, 2)
-              : const QuiltedGridTile(1, 1),
-        )
-        .toList(growable: false);
-
-    if (pattern.isEmpty) return const SizedBox.shrink();
+    final slots = ProfileSpanGridLayout.pack(
+      placements: placements,
+      crossAxisCount: crossAxisCount,
+    );
+    if (slots.isEmpty) return const SizedBox.shrink();
 
     return Padding(
       padding: padding,
-      child: GridView.custom(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        gridDelegate: SliverQuiltedGridDelegate(
-          crossAxisCount: crossAxisCount,
-          mainAxisSpacing: gap,
-          crossAxisSpacing: gap,
-          repeatPattern: QuiltedGridRepeatPattern.same,
-          pattern: pattern,
-        ),
-        childrenDelegate: SliverChildBuilderDelegate(
-          (context, visualIndex) {
-            if (visualIndex >= placements.length) {
-              return const SizedBox.shrink();
-            }
-            final placement = placements[visualIndex];
-            final gridItem = bySourceIndex[placement.sourceIndex];
-            if (gridItem == null) return const SizedBox.shrink();
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final width = constraints.maxWidth;
+          if (!width.isFinite || width <= 0) {
+            return const SizedBox.shrink();
+          }
 
-            final isHero = placement.span == ProfileGridSpan.double;
+          final cellSize =
+              (width - gap * (crossAxisCount - 1)) / crossAxisCount;
+          final rowCount = ProfileSpanGridLayout.rowCount(slots);
+          final height = rowCount * cellSize + (rowCount - 1) * gap;
 
-            return ProfileGridTile(
-              thumbnailUrl: gridItem.thumbnailUrl,
-              isVideo: gridItem.isVideo,
-              showVrBadge: gridItem.showVrBadge,
-              viewCount: gridItem.views,
-              likeCount: gridItem.likes,
-              shareCount: gridItem.shares,
-              privacy: gridItem.privacy,
-              isHero: isHero,
-              isRepost: gridItem.isRepost,
-              onTap: () => onItemTap(gridItem.sourceIndex),
-            );
-          },
-          childCount: placements.length,
-        ),
+          return SizedBox(
+            height: height,
+            width: width,
+            child: Stack(
+              children: [
+                for (final slot in slots)
+                  _positionedTile(
+                    slot: slot,
+                    cellSize: cellSize,
+                    gap: gap,
+                    gridItem: bySourceIndex[slot.placement.sourceIndex],
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _positionedTile({
+    required ProfileSpanGridSlot slot,
+    required double cellSize,
+    required double gap,
+    required ProfileGridItem? gridItem,
+  }) {
+    if (gridItem == null) return const SizedBox.shrink();
+
+    final left = slot.column * (cellSize + gap);
+    final top = slot.row * (cellSize + gap);
+    final tileWidth =
+        slot.columnSpan * cellSize + (slot.columnSpan - 1) * gap;
+    final tileHeight = slot.rowSpan * cellSize + (slot.rowSpan - 1) * gap;
+    final isHero = slot.placement.span == ProfileGridSpan.double;
+
+    return Positioned(
+      left: left,
+      top: top,
+      width: tileWidth,
+      height: tileHeight,
+      child: ProfileGridTile(
+        thumbnailUrl: gridItem.thumbnailUrl,
+        isVideo: gridItem.isVideo,
+        showVrBadge: gridItem.showVrBadge,
+        viewCount: gridItem.views,
+        likeCount: gridItem.likes,
+        shareCount: gridItem.shares,
+        privacy: gridItem.privacy,
+        isHero: isHero,
+        isRepost: gridItem.isRepost,
+        onTap: () => onItemTap(gridItem.sourceIndex),
+        onLongPress: onItemLongPress != null
+            ? () => onItemLongPress!(gridItem.sourceIndex)
+            : null,
       ),
     );
   }
@@ -136,9 +144,19 @@ ProfileGridSpanOverride profileGridSpanOverrideFromReel(
 ) {
   final raw = ((reel['profileGridSpan'] as String?) ?? '').toLowerCase().trim();
   return switch (raw) {
-    'double' || 'large' || 'hero' => ProfileGridSpanOverride.double,
+    'double' || 'large' || 'hero' || 'big' => ProfileGridSpanOverride.double,
     'unit' || 'small' => ProfileGridSpanOverride.unit,
+    'auto' || '' => ProfileGridSpanOverride.auto,
     _ => ProfileGridSpanOverride.auto,
+  };
+}
+
+/// Firestore value for [profileGridSpan].
+String profileGridSpanToFirestore(ProfileGridSpanOverride override) {
+  return switch (override) {
+    ProfileGridSpanOverride.double => 'double',
+    ProfileGridSpanOverride.unit => 'unit',
+    ProfileGridSpanOverride.auto => 'auto',
   };
 }
 

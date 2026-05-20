@@ -22,14 +22,16 @@ Add new values to the token file first; no screen-local layout constants.
 
 ## Typography standard (Figma)
 
-| Role | Family | Weight | Size |
-|------|--------|--------|------|
-| Auth headline | **Inter** | 600 | 52 (−3% letter spacing) |
-| Inputs, toggles | **DM Sans** | 400–500 | 16 |
-| Primary button ("Register") | **DM Sans** | 400 | 20 |
-| Footer prompt ("Already have…") | **DM Sans** | 400 | 12 @ 90% white |
-| Footer action ("Sign in") | **DM Sans** | 700 | 12 |
-| Divider ("Or sign up with") | **DM Sans** | 400 | 10 @ 90% white |
+**Family:** **DM Sans** everywhere (`AppFonts.body`, `ThemeData.fontFamily`). Bundled weights: **400, 500, 600, 700** only.
+
+| Role | Weight | Size |
+|------|--------|------|
+| Auth headline | 600 | 30 (−3% letter spacing; use `AppTypography.authHeadline`) |
+| Inputs, toggles | 400–500 | 16 |
+| Primary button ("Register") | 400 | 20 |
+| Footer prompt ("Already have…") | 400 | 12 @ 90% white |
+| Footer action ("Sign in") | 700 | 12 |
+| Divider ("Or sign up with") | 400 | 10 @ 90% white |
 
 ```dart
 Text('Create an\nAccount', style: AppTypography.authHeadline);
@@ -40,7 +42,7 @@ Text('Sign in', style: AppTypography.authSmallBodyBold);
 Text('Or sign up with', style: AppTypography.authDividerLabel);
 ```
 
-Default `ThemeData.fontFamily` is **DM Sans**; headlines use `AppTypography.authHeadline` (Inter).
+Default `ThemeData.fontFamily` is **DM Sans**; use `AppTypography.*` — never **Inter** or inline `fontFamily` on screens.
 
 ## Shared widgets
 

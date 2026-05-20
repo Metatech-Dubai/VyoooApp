@@ -18,6 +18,7 @@ class ProfileGridTile extends StatelessWidget {
     this.isHero = false,
     this.isRepost = false,
     this.onTap,
+    this.onLongPress,
   });
 
   final String thumbnailUrl;
@@ -30,6 +31,7 @@ class ProfileGridTile extends StatelessWidget {
   final bool isHero;
   final bool isRepost;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   static String formatViewCount(int n) => ReelCountPrivacy.formatCount(n);
 
@@ -37,6 +39,7 @@ class ProfileGridTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: Stack(
         fit: StackFit.expand,

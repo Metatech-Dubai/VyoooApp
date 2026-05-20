@@ -4,6 +4,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/models/reel_count_privacy.dart';
 import '../../../core/theme/app_background_assets.dart';
 import '../../../core/theme/app_spacing.dart';
+import 'profile_grid_span_sheet.dart';
 
 /// Bottom sheet for posts you own: caption, delete, and counter privacy toggles.
 Future<void> showOwnerPostOptionsSheet({
@@ -160,6 +161,23 @@ Future<void> showOwnerPostOptionsSheet({
                       Divider(
                         color: Colors.white.withValues(alpha: 0.12),
                         height: 1,
+                      ),
+                      ListTile(
+                        leading: const Icon(
+                          Icons.grid_view_rounded,
+                          color: Colors.white,
+                        ),
+                        title: const Text(
+                          'Profile grid size',
+                          style: TextStyle(color: Colors.white),
+                        ),
+                        onTap: () {
+                          Navigator.of(ctx).pop();
+                          showProfileGridSpanSheet(
+                            context: context,
+                            post: post,
+                          );
+                        },
                       ),
                       ListTile(
                         leading: const Icon(

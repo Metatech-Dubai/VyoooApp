@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
-import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/post_feed_screen_background.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
 import '../../features/reel/widgets/not_interested_sheet.dart';
@@ -568,74 +568,79 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
     final p = widget.payload ?? const PostFeedPayload();
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.feed,
-        child: Column(
-          children: [
-            SafeArea(child: _buildAppBar(context)),
-            Expanded(
-              child: _orderedPosts.isEmpty
-                  ? Center(
-                      child: Text(
-                        'No posts found',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          const PostFeedScreenBackground(),
+          SafeArea(
+            child: Column(
+              children: [
+                _buildAppBar(context),
+                Expanded(
+                  child: _orderedPosts.isEmpty
+                      ? Center(
+                          child: Text(
+                            'No posts found',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        )
+                      : NotificationListener<ScrollNotification>(
+                          onNotification: (notification) {
+                            if (notification is ScrollUpdateNotification ||
+                                notification is ScrollEndNotification) {
+                              WidgetsBinding.instance.addPostFrameCallback((_) {
+                                _updateActiveVideoIndex();
+                              });
+                            }
+                            return false;
+                          },
+                          child: ListView.builder(
+                            key: _listKey,
+                            padding: const EdgeInsets.only(bottom: 10, top: 2),
+                            itemCount: _orderedPosts.length,
+                            itemBuilder: (context, index) {
+                              final post = _orderedPosts[index];
+                              final engagementId =
+                                  ReelEngagement.sourceReelId(post);
+                              return _PostCard(
+                                key: _keyFor(index),
+                                index: index,
+                                activeIndex: _activeVideoIndex,
+                                post: post,
+                                fallbackCreatorName: p.creatorName,
+                                fallbackAvatarUrl: p.avatarUrl,
+                                fallbackIsVerified: p.isVerified,
+                                isLiked: _likedReels[engagementId] ?? false,
+                                isSaved: _favoriteReels[engagementId] ?? false,
+                                showRepost: _canRepostPost(post),
+                                isReposted:
+                                    _repostedSourceReels[engagementId] ?? false,
+                                onLike: () => _onLike(post),
+                                onComment: () => _onComment(post),
+                                onSave: () => _onSave(post),
+                                onRepost: () => _onRepostToggle(post),
+                                onShare: () => _onShare(post),
+                                onMore: () => _onMoreOptions(post),
+                              );
+                            },
+                          ),
                         ),
-                      ),
-                    )
-                  : NotificationListener<ScrollNotification>(
-                      onNotification: (notification) {
-                        if (notification is ScrollUpdateNotification ||
-                            notification is ScrollEndNotification) {
-                          WidgetsBinding.instance.addPostFrameCallback((_) {
-                            _updateActiveVideoIndex();
-                          });
-                        }
-                        return false;
-                      },
-                      child: ListView.builder(
-                        key: _listKey,
-                        padding: const EdgeInsets.only(bottom: 10, top: 2),
-                        itemCount: _orderedPosts.length,
-                        itemBuilder: (context, index) {
-                          final post = _orderedPosts[index];
-                          final engagementId =
-                              ReelEngagement.sourceReelId(post);
-                          return _PostCard(
-                            key: _keyFor(index),
-                            index: index,
-                            activeIndex: _activeVideoIndex,
-                            post: post,
-                            fallbackCreatorName: p.creatorName,
-                            fallbackAvatarUrl: p.avatarUrl,
-                            fallbackIsVerified: p.isVerified,
-                            isLiked: _likedReels[engagementId] ?? false,
-                            isSaved: _favoriteReels[engagementId] ?? false,
-                            showRepost: _canRepostPost(post),
-                            isReposted:
-                                _repostedSourceReels[engagementId] ?? false,
-                            onLike: () => _onLike(post),
-                            onComment: () => _onComment(post),
-                            onSave: () => _onSave(post),
-                            onRepost: () => _onRepostToggle(post),
-                            onShare: () => _onShare(post),
-                            onMore: () => _onMoreOptions(post),
-                          );
-                        },
-                      ),
-                    ),
+                ),
+                AppBottomNavigation(
+                  currentIndex: _currentBottomNavIndex,
+                  onTap: (index) {
+                    if (index == 4) return;
+                    setState(() => _currentBottomNavIndex = index);
+                    _navigateFromBottomNav(context, index);
+                  },
+                  profileImageUrl: p.avatarUrl,
+                ),
+              ],
             ),
-            AppBottomNavigation(
-              currentIndex: _currentBottomNavIndex,
-              onTap: (index) {
-                if (index == 4) return;
-                setState(() => _currentBottomNavIndex = index);
-                _navigateFromBottomNav(context, index);
-              },
-              profileImageUrl: p.avatarUrl,
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

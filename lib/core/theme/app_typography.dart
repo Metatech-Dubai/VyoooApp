@@ -8,9 +8,9 @@ import 'app_theme.dart';
 // Do NOT set fontFamily / fontSize inline in screens.
 // Use [AppTypography] styles or [Theme.of(context).textTheme].
 
-/// Figma-aligned text styles for Vyooo (auth + shared UI).
+/// Figma-aligned text styles for Vyooo (auth + shared UI). All use DM Sans.
 abstract final class AppTypography {
-  // — Figma auth display (Inter) —
+  // — Auth / section titles (DM Sans) —
   static const double authHeadlineSize = 30;
   static const double authHeadlineLetterSpacingPercent = -0.03;
 
@@ -28,9 +28,9 @@ abstract final class AppTypography {
   /// White @ 90% — Figma layer opacity on small body copy.
   static const Color smallBodyColor = Color(0xE6FFFFFF);
 
-  /// "Create an Account" — Inter Semi Bold 52 / −3% tracking.
+  /// "Create an Account" — DM Sans Semi Bold / −3% tracking.
   static const TextStyle authHeadline = TextStyle(
-    fontFamily: AppFonts.display,
+    fontFamily: AppFonts.body,
     fontSize: authHeadlineSize,
     height: 1.0,
     fontWeight: FontWeight.w600,
@@ -41,9 +41,9 @@ abstract final class AppTypography {
   /// DOB privacy footnote — DM Sans 12 @ 61% white (Figma).
   static const Color onboardingPrivacyTextColor = Color(0x9CFFFFFF);
 
-  /// Onboarding step title — Inter Semi Bold 24 / 98% line height / −3%.
+  /// Onboarding step title — DM Sans Semi Bold 24 / 98% line height / −3%.
   static const TextStyle onboardingSectionTitle = TextStyle(
-    fontFamily: AppFonts.display,
+    fontFamily: AppFonts.body,
     fontSize: onboardingSectionTitleSize,
     height: 0.98,
     fontWeight: FontWeight.w600,
@@ -61,12 +61,12 @@ abstract final class AppTypography {
     color: onboardingPrivacyTextColor,
   );
 
-  /// DOB privacy link — DM Sans Extra Bold 12 @ 61% white.
+  /// DOB privacy link — DM Sans Bold 12 @ 61% white.
   static const TextStyle onboardingPrivacyLink = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: smallBodySize,
     height: 1.25,
-    fontWeight: FontWeight.w800,
+    fontWeight: FontWeight.w700,
     color: onboardingPrivacyTextColor,
   );
 
@@ -342,9 +342,9 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
-  /// Logo text fallback — Inter Bold.
+  /// Logo text fallback — DM Sans Bold.
   static const TextStyle brandFallback = TextStyle(
-    fontFamily: AppFonts.display,
+    fontFamily: AppFonts.body,
     fontWeight: FontWeight.w700,
     letterSpacing: -0.5,
     color: AppTheme.primary,

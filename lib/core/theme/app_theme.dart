@@ -49,18 +49,25 @@ class AppTheme {
         onPrimary: buttonTextColor,
         onSurface: defaultTextColor,
       ),
-      textTheme: TextTheme(
-        displayLarge: AppTypography.authHeadline,
-        bodyLarge: AppTypography.input,
-        bodyMedium: AppTypography.input,
-        bodySmall: AppTypography.label,
-        titleLarge: AppTypography.authHeadline.copyWith(fontSize: 32),
-        titleMedium: AppTypography.toggleLabel,
-        titleSmall: AppTypography.label,
-        labelLarge: AppTypography.primaryButton,
-        labelMedium: AppTypography.authSmallBody,
-        labelSmall: AppTypography.authDividerLabel,
-      ),
+      textTheme: Typography.material2021(platform: TargetPlatform.iOS)
+          .white
+          .apply(
+            fontFamily: AppFonts.body,
+            bodyColor: defaultTextColor,
+            displayColor: defaultTextColor,
+          )
+          .copyWith(
+            displayLarge: AppTypography.authHeadline,
+            bodyLarge: AppTypography.input,
+            bodyMedium: AppTypography.input,
+            bodySmall: AppTypography.label,
+            titleLarge: AppTypography.authHeadline.copyWith(fontSize: 32),
+            titleMedium: AppTypography.toggleLabel,
+            titleSmall: AppTypography.label,
+            labelLarge: AppTypography.primaryButton,
+            labelMedium: AppTypography.authSmallBody,
+            labelSmall: AppTypography.authDividerLabel,
+          ),
       inputDecorationTheme: InputDecorationTheme(
         filled: false,
         fillColor: Colors.transparent,

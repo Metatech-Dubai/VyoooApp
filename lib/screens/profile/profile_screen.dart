@@ -43,6 +43,7 @@ import 'profile_figma_tokens.dart';
 import 'profile_figma_widgets.dart';
 import '../settings/settings_screen.dart';
 import '../../core/widgets/profile/profile_grid.dart';
+import '../../features/reel/widgets/profile_grid_span_sheet.dart';
 import '../settings/payout_screen.dart';
 import '../settings/wallet/wallet_screen.dart';
 import '../../core/widgets/profile/profile_menu_bottom_sheet.dart';
@@ -1048,6 +1049,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           userId: uid,
           thumbnailFor: _thumbnailFromReel,
           onItemTap: _openPostFeedFromReels,
+          onItemLongPress: (context, posts, index) {
+            showProfileGridSpanSheet(context: context, post: posts[index]);
+          },
           empty: _buildEmptyPostsPrompt(context),
         ),
       ),
