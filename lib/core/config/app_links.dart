@@ -7,6 +7,10 @@ class AppLinks {
   static const String termsOfUse = 'https://www.vyooo.com/terms';
   static const String privacyPolicy = 'https://www.vyooo.com/privacy';
 
+  /// Public TestFlight beta (fallback when Firestore `ios.updateUrl` is unset).
+  static const String iosTestFlightJoin =
+      'https://testflight.apple.com/join/NjQVQ2nD';
+
   /// Apple’s standard Licensed Application EULA. If you rely on it, Apple expects
   /// a functional link in App Store metadata (often in the App Description).
   /// See: https://www.apple.com/legal/internet-services/itunes/dev/stdeula/

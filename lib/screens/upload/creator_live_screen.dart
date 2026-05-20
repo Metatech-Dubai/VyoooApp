@@ -1142,11 +1142,6 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             ],
           ),
         ),
-        const SizedBox(width: 12),
-        Transform.scale(
-          scaleX: -1,
-          child: const Icon(Icons.reply_rounded, color: Colors.white, size: 22),
-        ),
       ],
     );
   }

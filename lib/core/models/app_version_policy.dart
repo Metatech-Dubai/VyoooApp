@@ -2,6 +2,8 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/foundation.dart';
 
+import '../config/app_links.dart';
+
 /// Remote policy from Firestore `app_config/version_policy`.
 @immutable
 class AppVersionPolicy {
@@ -107,7 +109,7 @@ class AppVersionPolicy {
     if (storeId != null && storeId.isNotEmpty) {
       return 'https://apps.apple.com/app/id$storeId';
     }
-    return '';
+    return AppLinks.iosTestFlightJoin;
   }
 }
 
