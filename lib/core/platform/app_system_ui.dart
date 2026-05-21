@@ -47,9 +47,13 @@ abstract final class AppSystemUi {
     return logicalSize.shortestSide < phoneShortestSideDp;
   }
 
+  /// Hides system overlays without [SystemUiMode.immersiveSticky] (deprecated bar-color APIs on Android 15+).
   static Future<void> enterImmersiveFullscreen() async {
     if (kIsWeb) return;
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    await SystemChrome.setEnabledSystemUIMode(
+      SystemUiMode.edgeToEdge,
+      overlays: const <SystemUiOverlay>[],
+    );
   }
 
   static Future<void> exitImmersiveFullscreen() async {

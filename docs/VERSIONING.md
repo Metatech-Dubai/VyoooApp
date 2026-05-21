@@ -22,13 +22,16 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 | Field | Value |
 |-------|--------|
 | Marketing version | **1.2.0** |
-| Build number | **36** |
-| `pubspec.yaml` | `1.2.0+36` |
+| Build number | **39** |
+| `pubspec.yaml` | `1.2.0+39` |
 
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |
 |-----------|-------|------|----------|--------|
+| 1.2.0 | 39 | 2026-05-21 | Play Store | AD_ID permission for RevenueCat; Play Advertising ID declaration Yes |
+| 1.2.0 | 38 | 2026-05-21 | Play Store | Android 15 edge-to-edge + large-screen/orientation Play Console fixes |
+| 1.2.0 | 37 | 2026-05-21 | Play Store | (uploaded to Console — superseded by 38) |
 | 1.2.0 | 36 | 2026-05-20 | Play Store | Repost to profile, post counter privacy, feed repost button |
 | 1.2.0 | 35 | 2026-05-20 | Play Store | (rejected — versionCode 35 already used) |
 | 1.2.0 | 34 | 2026-05-20 | Play Store, TestFlight / Xcode | Version gate, profile grid, TestFlight update URL |
@@ -40,7 +43,7 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 2. Run `flutter pub get` (regenerates iOS `Generated.xcconfig`).
 3. Add a row to **Release history** above.
 4. **Android:** build app bundle (`flutter build appbundle`) — version comes from pubspec.
-5. **iOS:** Archive in Xcode — version/build come from pubspec via Flutter; confirm **Runner → General** shows 1.2.0 (36).
+5. **iOS:** Archive in Xcode — version/build come from pubspec via Flutter; confirm **Runner → General** shows **1.2.0** and build **38** (or current `+N` from pubspec).
 
 ## After the build is live (version gate)
 

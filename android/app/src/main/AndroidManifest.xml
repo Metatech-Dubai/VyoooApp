@@ -19,17 +19,20 @@
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- RevenueCat (purchases_flutter) reads AdvertisingIdClient for purchase attribution (declare Yes in Play Console). -->
+    <uses-permission android:name="com.google.android.gms.permission.AD_ID" />
+
     <!-- Agora merges screen-share (media projection) from native SDK; Vyooo uses camera/mic live only.
          Removing these avoids Play Console requiring media-projection demo videos for a feature we do not ship. -->
     <uses-permission
         android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION"
         tools:node="remove" />
-    <!-- Phone-first: avoid tablet/xlarge as primary targets (portrait lock is Dart-side on phones). -->
+    <!-- Portrait on phones only — enforced in Dart ([AppSystemUi]); no manifest screenOrientation. -->
     <supports-screens
         android:smallScreens="true"
         android:normalScreens="true"
-        android:largeScreens="false"
-        android:xlargeScreens="false" />
+        android:largeScreens="true"
+        android:xlargeScreens="true" />
 
     <application
         android:label="vyooo"
@@ -37,14 +40,10 @@
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
         android:resizeableActivity="true">
-        <!-- Android 16+: keep orientation/resizability restrictions on large screens until tablet UI exists. -->
-        <property
-            android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
-            android:value="true" />
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+            android:theme="@style/UCropTheme" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -54,9 +53,6 @@
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
             android:windowSoftInputMode="adjustResize">
-            <property
-                android:name="android.window.PROPERTY_COMPAT_ALLOW_RESTRICTED_RESIZABILITY"
-                android:value="true" />
             <!-- Specifies an Android theme to apply to this Activity as soon as
                  the Android process has started. This theme is visible to the user
                  while the Flutter UI initializes. After that, this theme continues

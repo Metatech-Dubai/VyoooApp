@@ -6,7 +6,8 @@ import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        // FlutterActivity is not a ComponentActivity — use WindowCompat (Android 15+ edge-to-edge).
         WindowCompat.setDecorFitsSystemWindows(window, false)
+        super.onCreate(savedInstanceState)
     }
 }
