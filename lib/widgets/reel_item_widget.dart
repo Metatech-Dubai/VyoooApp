@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
@@ -475,10 +476,12 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   Widget _buildLoadingBackground() {
     final thumb = (widget.thumbnailUrl ?? '').trim();
     if (thumb.isNotEmpty) {
-      return Image.network(
-        thumb,
+      return CachedNetworkImage(
+        imageUrl: thumb,
         fit: BoxFit.cover,
-        errorBuilder: (_, _, _) => const ColoredBox(color: Colors.black),
+        fadeInDuration: const Duration(milliseconds: 120),
+        placeholder: (_, _) => const ColoredBox(color: Colors.black),
+        errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
       );
     }
     return const ColoredBox(color: Colors.black);

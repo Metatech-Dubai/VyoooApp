@@ -17,6 +17,7 @@ import '../../core/utils/reel_engagement.dart';
 import '../../core/models/story_model.dart';
 import '../../core/navigation/app_route_observer.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/feed_reels_cache_service.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
@@ -35,6 +36,7 @@ import '../../core/widgets/app_feed_notification_button.dart';
 import '../../screens/notifications/notification_screen.dart';
 import '../../core/widgets/app_interaction_button.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
+import '../../features/home/widgets/feed_reels_loading_skeleton.dart';
 import '../../features/home/widgets/following_header_stories.dart';
 import '../../features/home/widgets/for_you_ai_verified_badge.dart';
 import '../../features/story/story_upload_screen.dart';
@@ -155,6 +157,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   /// Set when the feed cannot load (e.g. offline); cleared on successful refresh.
   String? _reelsLoadError;
 
+  /// True from [_loadReels] start until [_loadReelsSupplement] finishes.
+  bool _feedRefreshInProgress = false;
+
+  /// Bumps to ignore stale async completions after a newer [_loadReels] starts.
+  int _loadGeneration = 0;
+
   bool _autoScrollEnabled = true;
   bool _userHoldingToPause = false;
   bool _isBottomSheetOpen = false;
@@ -175,7 +183,20 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       if (mounted) setState(() {});
     });
     _loadAutoScrollPref();
-    _loadReels();
+    unawaited(_bootstrapFeed());
+  }
+
+  Future<void> _bootstrapFeed() async {
+    final cached = await FeedReelsCacheService.instance.loadForYou();
+    if (!mounted) return;
+    if (cached.isNotEmpty) {
+      setState(() {
+        _reelsForYou = cached;
+        _feedRefreshInProgress = false;
+        _reelsLoadError = null;
+      });
+    }
+    await _loadReels();
   }
 
   Future<void> _loadAutoScrollPref() async {
@@ -231,28 +252,114 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Future<void> _loadReels() async {
-    _reelsLoadError = null;
+    final generation = ++_loadGeneration;
+    if (mounted) {
+      setState(() {
+        _reelsLoadError = null;
+        _feedRefreshInProgress = true;
+      });
+    }
+
     if (!await hasInternetAccess()) {
-      if (mounted) {
-        setState(() => _reelsLoadError = kNoInternetUserMessage);
+      if (!mounted || generation != _loadGeneration) return;
+      if (_reelsForYou.isNotEmpty) {
+        setState(() => _feedRefreshInProgress = false);
+        return;
       }
+      setState(() {
+        _reelsLoadError = kNoInternetUserMessage;
+        _feedRefreshInProgress = false;
+      });
       return;
     }
+
     try {
-      final forYou = await _reelsService.getReelsForYou();
-      final following = await _reelsService.getReelsFollowing();
-      final trending = await _reelsService.getReelsTrending();
-      final vr = await _reelsService.getReelsVR();
-      final storyGroups = await StoryService().getActiveStoryGroups();
-      final myStories = await StoryService().getMyStories();
       final uid = AuthService().currentUser?.uid ?? '';
-      String avatarUrl = '';
-      var followingIds = <String>[];
-      var blockedIds = <String>[];
+      List<String> blockedIds = const [];
+      if (uid.isNotEmpty) {
+        blockedIds = await UserService().getBlockedUserIds(uid);
+      }
+      if (!mounted || generation != _loadGeneration) return;
+
+      bool allowedByBlock(Map<String, dynamic> r) =>
+          _isReelAllowedByBlock(r, blockedIds);
+
+      final forYouRaw = await _reelsService.getReelsForYou();
+      if (!mounted || generation != _loadGeneration) return;
+
+      final filteredForYou = forYouRaw.where(allowedByBlock).toList();
+      final hydratedForYou =
+          await _reelsService.hydrateRepostEngagementStats(filteredForYou);
+      if (!mounted || generation != _loadGeneration) return;
+
+      setState(() {
+        _reelsLoadError = null;
+        _reelsForYou = hydratedForYou;
+        _tabCycleOrders.clear();
+      });
+      if (hydratedForYou.isNotEmpty) {
+        unawaited(FeedReelsCacheService.instance.saveForYou(hydratedForYou));
+      }
+      _handleIncomingDeepLink();
+
+      await _loadReelsSupplement(
+        generation: generation,
+        uid: uid,
+        blockedIds: blockedIds,
+        allowedByBlock: allowedByBlock,
+      );
+    } catch (e) {
+      if (!mounted || generation != _loadGeneration) return;
+      if (_reelsForYou.isNotEmpty) {
+        setState(() => _feedRefreshInProgress = false);
+        return;
+      }
+      setState(() {
+        _reelsLoadError = messageForFirestore(e);
+        _feedRefreshInProgress = false;
+      });
+    }
+  }
+
+  static bool _isReelAllowedByBlock(
+    Map<String, dynamic> r,
+    List<String> blockedIds,
+  ) {
+    final id = (r['userId'] as String?) ?? '';
+    if (id.isEmpty) return true;
+    return !blockedIds.contains(id);
+  }
+
+  Future<void> _loadReelsSupplement({
+    required int generation,
+    required String uid,
+    required List<String> blockedIds,
+    required bool Function(Map<String, dynamic> r) allowedByBlock,
+  }) async {
+    try {
+      final followingFuture = _reelsService.getReelsFollowing();
+      final trendingFuture = _reelsService.getReelsTrending();
+      final vrFuture = _reelsService.getReelsVR();
+      final storyGroupsFuture = StoryService().getActiveStoryGroups();
+      final myStoriesFuture = StoryService().getMyStories();
+
       if (uid.isNotEmpty) {
         try {
           await _reelsController.migrateLegacyUserSavesIfNeeded();
         } catch (_) {}
+      }
+
+      final following = await followingFuture;
+      final trending = await trendingFuture;
+      final vr = await vrFuture;
+      final storyGroups = await storyGroupsFuture;
+      final myStories = await myStoriesFuture;
+
+      if (!mounted || generation != _loadGeneration) return;
+
+      String avatarUrl = '';
+      var followingIds = <String>[];
+      if (uid.isNotEmpty) {
         try {
           final userDoc = await FirebaseFirestore.instance
               .collection('users')
@@ -261,26 +368,21 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           avatarUrl = userDoc.data()?['profileImage'] as String? ?? '';
         } catch (_) {}
         followingIds = await UserService().getFollowing(uid);
-        blockedIds = await UserService().getBlockedUserIds(uid);
       }
-      bool allowedByBlock(Map<String, dynamic> r) {
-        final id = (r['userId'] as String?) ?? '';
-        if (id.isEmpty) return true;
-        return !blockedIds.contains(id);
-      }
+      if (!mounted || generation != _loadGeneration) return;
 
-      final filteredForYou = forYou.where(allowedByBlock).toList();
       final filteredFollowing = following.where(allowedByBlock).toList();
       final filteredTrending = trending.where(allowedByBlock).toList();
       final filteredVr = vr.where(allowedByBlock).toList();
       final reelUserIds = <String>{
-        ...filteredForYou.map((r) => (r['userId'] as String?) ?? ''),
+        ..._reelsForYou.map((r) => (r['userId'] as String?) ?? ''),
         ...filteredFollowing.map((r) => (r['userId'] as String?) ?? ''),
         ...filteredTrending.map((r) => (r['userId'] as String?) ?? ''),
         ...filteredVr.map((r) => (r['userId'] as String?) ?? ''),
       }..removeWhere((id) => id.isEmpty);
       final latestAvatarByUid = await _fetchLatestProfileImages(reelUserIds);
-      // Following tab story strip: only people you follow (+ your own group for viewer indexing).
+      if (!mounted || generation != _loadGeneration) return;
+
       final followingSet = followingIds.toSet();
       final filteredStories = storyGroups.where((g) {
         if (blockedIds.contains(g.userId)) return false;
@@ -288,16 +390,17 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         if (g.userId == uid) return true;
         return followingSet.contains(g.userId);
       }).toList();
-      final reelIds = <String>{
-        ...filteredForYou.map((r) => _asString(r['id'])),
-        ...filteredFollowing.map((r) => _asString(r['id'])),
-        ...filteredTrending.map((r) => _asString(r['id'])),
-        ...filteredVr.map((r) => _asString(r['id'])),
-      }..removeWhere((id) => id.isEmpty);
+
       final engagementIds = <String>{
-        for (final r in [...filteredForYou, ...filteredFollowing, ...filteredTrending, ...filteredVr])
+        for (final r in [
+          ..._reelsForYou,
+          ...filteredFollowing,
+          ...filteredTrending,
+          ...filteredVr,
+        ])
           ReelEngagement.sourceReelId(r),
       }..removeWhere((id) => id.isEmpty);
+
       final likedIds = await _reelsController.getLikedReelIds(engagementIds);
       final favoriteIds =
           await _reelsController.getFavoriteReelIds(engagementIds);
@@ -306,8 +409,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       final repostedIds =
           await _reelsController.getRepostedSourceReelIds(engagementIds);
 
-      final hydratedForYou =
-          await _reelsService.hydrateRepostEngagementStats(filteredForYou);
       final hydratedFollowing = await _reelsService.hydrateRepostEngagementStats(
         filteredFollowing,
       );
@@ -315,57 +416,66 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           await _reelsService.hydrateRepostEngagementStats(filteredTrending);
       final hydratedVr =
           await _reelsService.hydrateRepostEngagementStats(filteredVr);
-      if (mounted) {
-        setState(() {
-          _reelsLoadError = null;
-          List<Map<String, dynamic>> withLatestAvatars(
-            List<Map<String, dynamic>> src,
-          ) {
-            return src.map((r) {
-              final id = _asString(r['id']);
-              if (id.isEmpty) return r;
-              final cloned = Map<String, dynamic>.from(r);
-              final reelUid = (cloned['userId'] as String?) ?? '';
-              final latestAvatar = latestAvatarByUid[reelUid];
-              if (latestAvatar != null && latestAvatar.isNotEmpty) {
-                cloned['avatarUrl'] = latestAvatar;
-                cloned['profileImage'] = latestAvatar;
-              }
-              return cloned;
-            }).toList();
-          }
+      final hydratedForYou =
+          await _reelsService.hydrateRepostEngagementStats(_reelsForYou);
 
-          // Always assign so empty API results clear lists (avoids stale / black feed).
-          _reelsForYou = withLatestAvatars(hydratedForYou);
-          _reelsFollowing = withLatestAvatars(hydratedFollowing);
-          if (hydratedTrending.isNotEmpty) {
-            _reelsTrending = withLatestAvatars(hydratedTrending);
-          }
-          if (hydratedVr.isNotEmpty) _reelsVR = withLatestAvatars(hydratedVr);
-          _storyGroups = filteredStories;
-          _myStories = myStories;
-          _myAvatarUrl = avatarUrl;
-          _followingIds = followingIds;
-          _tabCycleOrders.clear();
-          _likedReels
-            ..clear()
-            ..addEntries(likedIds.map((id) => MapEntry(id, true)));
-          _favoriteReels
-            ..clear()
-            ..addEntries(favoriteIds.map((id) => MapEntry(id, true)));
-          _privateSavedReels
-            ..clear()
-            ..addEntries(privateIds.map((id) => MapEntry(id, true)));
-          _repostedSourceReels
-            ..clear()
-            ..addEntries(repostedIds.map((id) => MapEntry(id, true)));
-        });
-        _handleIncomingDeepLink();
+      if (!mounted || generation != _loadGeneration) return;
+
+      setState(() {
+        _reelsLoadError = null;
+        _feedRefreshInProgress = false;
+        _reelsForYou = _withLatestAvatars(hydratedForYou, latestAvatarByUid);
+        _reelsFollowing = _withLatestAvatars(hydratedFollowing, latestAvatarByUid);
+        if (hydratedTrending.isNotEmpty) {
+          _reelsTrending = _withLatestAvatars(hydratedTrending, latestAvatarByUid);
+        }
+        if (hydratedVr.isNotEmpty) {
+          _reelsVR = _withLatestAvatars(hydratedVr, latestAvatarByUid);
+        }
+        _storyGroups = filteredStories;
+        _myStories = myStories;
+        _myAvatarUrl = avatarUrl;
+        _followingIds = followingIds;
+        _likedReels
+          ..clear()
+          ..addEntries(likedIds.map((id) => MapEntry(id, true)));
+        _favoriteReels
+          ..clear()
+          ..addEntries(favoriteIds.map((id) => MapEntry(id, true)));
+        _privateSavedReels
+          ..clear()
+          ..addEntries(privateIds.map((id) => MapEntry(id, true)));
+        _repostedSourceReels
+          ..clear()
+          ..addEntries(repostedIds.map((id) => MapEntry(id, true)));
+      });
+      if (_reelsForYou.isNotEmpty) {
+        unawaited(FeedReelsCacheService.instance.saveForYou(_reelsForYou));
       }
+      _handleIncomingDeepLink();
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _reelsLoadError = messageForFirestore(e));
+      if (!mounted || generation != _loadGeneration) return;
+      debugPrint('Feed supplement load failed: $e');
+      setState(() => _feedRefreshInProgress = false);
     }
+  }
+
+  List<Map<String, dynamic>> _withLatestAvatars(
+    List<Map<String, dynamic>> src,
+    Map<String, String> latestAvatarByUid,
+  ) {
+    return src.map((r) {
+      final id = _asString(r['id']);
+      if (id.isEmpty) return r;
+      final cloned = Map<String, dynamic>.from(r);
+      final reelUid = (cloned['userId'] as String?) ?? '';
+      final latestAvatar = latestAvatarByUid[reelUid];
+      if (latestAvatar != null && latestAvatar.isNotEmpty) {
+        cloned['avatarUrl'] = latestAvatar;
+        cloned['profileImage'] = latestAvatar;
+      }
+      return cloned;
+    }).toList();
   }
 
   Future<Map<String, String>> _fetchLatestProfileImages(
@@ -1069,10 +1179,16 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Widget _buildReelsFeed() {
-    if (_reelsLoadError != null) {
+    final reels = _currentReels;
+    if (_feedRefreshInProgress && reels.isEmpty && _reelsLoadError == null) {
+      final radius = currentTab == HomeTab.following
+          ? BorderRadius.circular(24)
+          : BorderRadius.zero;
+      return FeedReelsLoadingSkeleton(borderRadius: radius);
+    }
+    if (_reelsLoadError != null && reels.isEmpty) {
       return _buildFeedLoadErrorPlaceholder(_reelsLoadError!);
     }
-    final reels = _currentReels;
     if (reels.isEmpty) {
       return _buildEmptyReelsPlaceholder();
     }

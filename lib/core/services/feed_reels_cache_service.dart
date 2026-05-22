@@ -1,0 +1,135 @@
+import 'dart:convert';
+
+import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+/// Persists the last successful For You feed for instant paint on next launch.
+class FeedReelsCacheService {
+  FeedReelsCacheService._();
+  static final FeedReelsCacheService instance = FeedReelsCacheService._();
+
+  static const String _prefKey = 'vyooo_feed_for_you_cache_v1';
+  static const int _maxItems = 12;
+
+  static const Set<String> _persistedKeys = {
+    'id',
+    'mediaType',
+    'videoUrl',
+    'imageUrl',
+    'thumbnailUrl',
+    'username',
+    'handle',
+    'caption',
+    'description',
+    'title',
+    'tags',
+    'isVR',
+    'likes',
+    'comments',
+    'saves',
+    'views',
+    'shares',
+    'reposts',
+    'avatarUrl',
+    'profileImage',
+    'userId',
+    'isRepost',
+    'repostOf',
+    'repostOfUserId',
+    'repostOfUsername',
+    'repostOfHandle',
+    'hideLikeCount',
+    'hideViewCount',
+    'hideShareCount',
+    'hideCommentCount',
+    'hideSaveCount',
+  };
+
+  Future<List<Map<String, dynamic>>> loadForYou() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_prefKey);
+      if (raw == null || raw.isEmpty) return const [];
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) return const [];
+      final out = <Map<String, dynamic>>[];
+      for (final item in decoded) {
+        if (item is! Map) continue;
+        final map = Map<String, dynamic>.from(
+          item.map((k, v) => MapEntry(k.toString(), v)),
+        );
+        final sanitized = _sanitize(map);
+        if (_isPlayableCachedReel(sanitized)) {
+          out.add(sanitized);
+        }
+        if (out.length >= _maxItems) break;
+      }
+      return out;
+    } catch (e, st) {
+      debugPrint('FeedReelsCacheService.loadForYou failed: $e');
+      debugPrint(st.toString());
+      return const [];
+    }
+  }
+
+  Future<void> saveForYou(List<Map<String, dynamic>> reels) async {
+    if (reels.isEmpty) return;
+    try {
+      final payload = reels
+          .take(_maxItems)
+          .map(_sanitize)
+          .where(_isPlayableCachedReel)
+          .toList(growable: false);
+      if (payload.isEmpty) return;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_prefKey, jsonEncode(payload));
+    } catch (e, st) {
+      debugPrint('FeedReelsCacheService.saveForYou failed: $e');
+      debugPrint(st.toString());
+    }
+  }
+
+  Future<void> clear() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_prefKey);
+    } catch (_) {}
+  }
+
+  static bool _isPlayableCachedReel(Map<String, dynamic> reel) {
+    final id = (reel['id'] as String?)?.trim() ?? '';
+    if (id.isEmpty) return false;
+    final mediaType = ((reel['mediaType'] as String?) ?? 'video').toLowerCase();
+    if (mediaType == 'image') {
+      final imageUrl = ((reel['imageUrl'] as String?) ?? '').trim();
+      if (imageUrl.isNotEmpty) return true;
+      final thumb = ((reel['thumbnailUrl'] as String?) ?? '').trim();
+      return thumb.isNotEmpty;
+    }
+    final videoUrl = ((reel['videoUrl'] as String?) ?? '').trim();
+    return videoUrl.isNotEmpty;
+  }
+
+  static Map<String, dynamic> _sanitize(Map<String, dynamic> reel) {
+    final out = <String, dynamic>{};
+    for (final key in _persistedKeys) {
+      if (!reel.containsKey(key)) continue;
+      final value = reel[key];
+      if (value == null) continue;
+      if (value is String || value is num || value is bool) {
+        out[key] = value;
+      } else if (value is List) {
+        out[key] = value.map((e) => e.toString()).toList(growable: false);
+      }
+    }
+    if (!out.containsKey('thumbnailUrl') || (out['thumbnailUrl'] as String).isEmpty) {
+      final image = (out['imageUrl'] as String?) ?? '';
+      if (image.isNotEmpty) out['thumbnailUrl'] = image;
+    }
+    if (!out.containsKey('avatarUrl') || (out['avatarUrl'] as String).isEmpty) {
+      final profile = (out['profileImage'] as String?) ?? '';
+      if (profile.isNotEmpty) out['avatarUrl'] = profile;
+    }
+    return out;
+  }
+}
