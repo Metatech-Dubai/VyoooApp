@@ -21,14 +21,15 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 
 | Field | Value |
 |-------|--------|
-| Marketing version | **1.2.0** |
-| Build number | **40** |
-| `pubspec.yaml` | `1.2.0+40` |
+| Marketing version | **1.2.1** |
+| Build number | **41** |
+| `pubspec.yaml` | `1.2.1+41` |
 
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |
 |-----------|-------|------|----------|--------|
+| 1.2.1 | 41 | 2026-05-22 | TestFlight / App Store, Play Store | iOS: new train (1.2.0 closed); profile grid + coming soon screens |
 | 1.2.0 | 40 | 2026-05-22 | Play Store | Profile grid title/thumbnail; Vyooo coin, wallet, and revenue coming soon |
 | 1.2.0 | 39 | 2026-05-21 | Play Store | AD_ID permission for RevenueCat; Play Advertising ID declaration Yes |
 | 1.2.0 | 38 | 2026-05-21 | Play Store | Android 15 edge-to-edge + large-screen/orientation Play Console fixes |
@@ -44,7 +45,11 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 2. Run `flutter pub get` (regenerates iOS `Generated.xcconfig`).
 3. Add a row to **Release history** above.
 4. **Android:** build app bundle (`flutter build appbundle`) — version comes from pubspec.
-5. **iOS:** Archive in Xcode — version/build come from pubspec via Flutter; confirm **Runner → General** shows **1.2.0** and build **38** (or current `+N` from pubspec).
+5. **iOS:** Archive in Xcode — version/build come from pubspec via Flutter; confirm **Runner → General** shows current marketing (e.g. **1.2.1**) and build **41** (or current `+N` from pubspec). If App Store says *train 1.2.0 is closed* or *CFBundleShortVersionString must be higher than 1.2.0*, bump **marketing** in `pubspec.yaml` (e.g. `1.2.0` → `1.2.1`) and align `MARKETING_VERSION` in `ios/Runner.xcodeproj` for Runner.
+
+### iOS: Agora / FFmpeg “Upload Symbols Failed” (dSYM)
+
+Third-party binaries (Agora RTC extensions, ffmpegkit) often ship **without** dSYM files. After a successful version bump, Organizer may list many *Upload Symbols Failed* lines for those frameworks. That is **usually a warning**, not a rejection — Vyooo and Flutter still symbolicate your app code via Firebase/Crashlytics. If upload is blocked, archive again with **1.2.1+41**; do not lower `DEBUG_INFORMATION_FORMAT` on the Runner target.
 
 ## After the build is live (version gate)
 
