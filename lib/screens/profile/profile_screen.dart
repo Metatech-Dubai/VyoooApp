@@ -1017,21 +1017,8 @@ class _ProfileScreenState extends State<ProfileScreen>
     return _thumbnailFromVideoUrl(videoUrl);
   }
 
-  static String _thumbnailFromReel(Map<String, dynamic> reel) {
-    final mediaType = ((reel['mediaType'] as String?) ?? '').toLowerCase();
-    final imageUrl = (reel['imageUrl'] as String?)?.trim() ?? '';
-    final explicitThumb = (reel['thumbnailUrl'] as String?)?.trim() ?? '';
-    final videoUrl = (reel['videoUrl'] as String?)?.trim() ?? '';
-    if (mediaType == 'image') {
-      if (imageUrl.isNotEmpty) return imageUrl;
-      if (explicitThumb.isNotEmpty) return explicitThumb;
-      return '';
-    }
-    if (explicitThumb.isNotEmpty) return explicitThumb;
-    if (imageUrl.isNotEmpty) return imageUrl;
-    if (videoUrl.isEmpty) return '';
-    return _thumbnailFromVideoUrl(videoUrl);
-  }
+  static String _thumbnailFromReel(Map<String, dynamic> reel) =>
+      ProfileReelGridNavigation.thumbnailFromReel(reel);
 
   List<Widget> _buildPostsGridSlivers({required String uid}) {
     if (uid.isEmpty) {

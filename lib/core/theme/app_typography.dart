@@ -327,6 +327,27 @@ abstract final class AppTypography {
     color: smallBodyColor,
   );
 
+  static const double profileGridTitleSize = 10;
+  static const double profileGridTitleHeroSize = 11;
+
+  /// Short label on profile grid tiles — DM Sans SemiBold 10.
+  static const TextStyle profileGridTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: profileGridTitleSize,
+    fontWeight: FontWeight.w600,
+    height: 1.1,
+    color: AppTheme.primary,
+  );
+
+  /// Profile grid title on 2×2 hero tiles.
+  static const TextStyle profileGridTitleHero = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: profileGridTitleHeroSize,
+    fontWeight: FontWeight.w600,
+    height: 1.1,
+    color: AppTheme.primary,
+  );
+
   /// Like / comment counts — DM Sans Regular 10 (Icons/active).
   static const TextStyle feedReelMetric = TextStyle(
     fontFamily: AppFonts.body,

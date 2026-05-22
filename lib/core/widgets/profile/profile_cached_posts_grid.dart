@@ -57,7 +57,9 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
   static void patchPostInCache({
     required String uid,
     required String reelId,
-    required String profileGridSpan,
+    String? profileGridSpan,
+    String? profileGridTitle,
+    String? profileGridThumbnailUrl,
   }) {
     final key = uid.trim();
     final future = _cache[key];
@@ -70,7 +72,15 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
         (p) => (p['id'] as String? ?? '').trim() == reelId.trim(),
       );
       if (index >= 0) {
-        posts[index]['profileGridSpan'] = profileGridSpan;
+        if (profileGridSpan != null) {
+          posts[index]['profileGridSpan'] = profileGridSpan;
+        }
+        if (profileGridTitle != null) {
+          posts[index]['profileGridTitle'] = profileGridTitle;
+        }
+        if (profileGridThumbnailUrl != null) {
+          posts[index]['profileGridThumbnailUrl'] = profileGridThumbnailUrl;
+        }
       }
       _notifyReload(key);
     });

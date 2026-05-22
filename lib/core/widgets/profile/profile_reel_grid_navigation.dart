@@ -34,6 +34,8 @@ abstract final class ProfileReelGridNavigation {
       'createdAt': data['createdAt'],
       'isVR': data['isVR'] == true,
       'profileGridSpan': data['profileGridSpan'] as String? ?? '',
+      'profileGridTitle': data['profileGridTitle'] as String? ?? '',
+      'profileGridThumbnailUrl': data['profileGridThumbnailUrl'] as String? ?? '',
       'hideLikeCount': data['hideLikeCount'] == true,
       'hideViewCount': data['hideViewCount'] == true,
       'hideShareCount': data['hideShareCount'] == true,
@@ -50,6 +52,14 @@ abstract final class ProfileReelGridNavigation {
   }
 
   static String thumbnailFromReel(Map<String, dynamic> reel) {
+    final gridThumb =
+        (reel['profileGridThumbnailUrl'] as String?)?.trim() ?? '';
+    if (gridThumb.isNotEmpty) return gridThumb;
+    return defaultThumbnailFromReel(reel);
+  }
+
+  /// Post thumbnail without [profileGridThumbnailUrl] override.
+  static String defaultThumbnailFromReel(Map<String, dynamic> reel) {
     final mediaType = ((reel['mediaType'] as String?) ?? '').toLowerCase();
     final imageUrl = (reel['imageUrl'] as String?)?.trim() ?? '';
     final explicitThumb = (reel['thumbnailUrl'] as String?)?.trim() ?? '';

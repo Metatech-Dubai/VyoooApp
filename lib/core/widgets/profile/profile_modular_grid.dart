@@ -7,6 +7,7 @@ import 'profile_grid_layout_engine.dart';
 import 'profile_grid_models.dart';
 import 'profile_grid_posts.dart';
 import 'profile_grid_tile.dart';
+import 'profile_grid_title.dart';
 import 'profile_span_grid_layout.dart';
 
 /// Modular square grid (1×1 and 2×2) for profile Posts / VR / Saved tabs.
@@ -130,6 +131,7 @@ class ProfileModularGrid extends StatelessWidget {
         privacy: gridItem.privacy,
         isHero: isHero,
         isRepost: gridItem.isRepost,
+        gridTitle: gridItem.gridTitle,
         onTap: () => onItemTap(gridItem.sourceIndex),
         onLongPress: onItemLongPress != null
             ? () => onItemLongPress!(gridItem.sourceIndex)
@@ -179,6 +181,7 @@ List<ProfileGridItem> profileGridItemsFromReels({
       showVrBadge: showVrBadge || reel['isVR'] == true,
       isRepost: reel['isRepost'] == true,
       spanOverride: profileGridSpanOverrideFromReel(reel),
+      gridTitle: ProfileGridTitle.fromReel(reel),
     );
   });
 }

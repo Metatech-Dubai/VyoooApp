@@ -29,6 +29,7 @@ class ProfileGridItem {
     this.showVrBadge = false,
     this.isRepost = false,
     this.spanOverride = ProfileGridSpanOverride.auto,
+    this.gridTitle = '',
   });
 
   final int sourceIndex;
@@ -41,6 +42,7 @@ class ProfileGridItem {
   final bool showVrBadge;
   final bool isRepost;
   final ProfileGridSpanOverride spanOverride;
+  final String gridTitle;
 }
 
 /// Visual placement produced by [ProfileGridLayoutEngine].

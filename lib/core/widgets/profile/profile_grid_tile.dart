@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/reel_count_privacy.dart';
 import '../../theme/app_spacing.dart';
 import 'profile_grid_metric_overlay.dart';
+import 'profile_grid_title_overlay.dart';
 
 /// Square thumbnail for profile modular grids.
 class ProfileGridTile extends StatelessWidget {
@@ -17,6 +18,7 @@ class ProfileGridTile extends StatelessWidget {
     this.privacy = ReelCountPrivacy.visible,
     this.isHero = false,
     this.isRepost = false,
+    this.gridTitle = '',
     this.onTap,
     this.onLongPress,
   });
@@ -30,6 +32,7 @@ class ProfileGridTile extends StatelessWidget {
   final ReelCountPrivacy privacy;
   final bool isHero;
   final bool isRepost;
+  final String gridTitle;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
 
@@ -113,6 +116,11 @@ class ProfileGridTile extends StatelessWidget {
               privacy: privacy,
               isHero: isHero,
             ),
+          ProfileGridTitleOverlay(
+            title: gridTitle,
+            isHero: isHero,
+            reservePlayIcon: isVideo,
+          ),
           if (isVideo)
             const Align(
               alignment: Alignment.bottomRight,
