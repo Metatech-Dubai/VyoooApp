@@ -22,13 +22,14 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 | Field | Value |
 |-------|--------|
 | Marketing version | **1.2.0** |
-| Build number | **39** |
-| `pubspec.yaml` | `1.2.0+39` |
+| Build number | **40** |
+| `pubspec.yaml` | `1.2.0+40` |
 
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |
 |-----------|-------|------|----------|--------|
+| 1.2.0 | 40 | 2026-05-22 | Play Store | Profile grid title/thumbnail; Vyooo coin, wallet, and revenue coming soon |
 | 1.2.0 | 39 | 2026-05-21 | Play Store | AD_ID permission for RevenueCat; Play Advertising ID declaration Yes |
 | 1.2.0 | 38 | 2026-05-21 | Play Store | Android 15 edge-to-edge + large-screen/orientation Play Console fixes |
 | 1.2.0 | 37 | 2026-05-21 | Play Store | (uploaded to Console — superseded by 38) |
