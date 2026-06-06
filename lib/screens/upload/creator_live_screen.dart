@@ -11,17 +11,23 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/services/agora_token_service.dart';
+import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/story/story_upload_screen.dart';
+import '../../widgets/insta360_preview_view.dart';
 import 'upload_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
 
 // ── State enum ─────────────────────────────────────────────────────────────────
 
 enum _LiveState { initializing, permissionDenied, offline, countdown, live }
+
+/// Active broadcast camera source. `phone` = Agora's built-in camera (default);
+/// `insta360` = the Insta360 360° camera pushed in as an Agora external video source.
+enum _CameraSource { phone, insta360 }
 
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +60,15 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   bool _isCommentsOff = false;
   bool _isFrontCamera = true;
 
+  // ── Camera source (phone ↔ Insta360 360°) ─────────────────────────────────────
+  final Insta360LiveService _insta = Insta360LiveService();
+  _CameraSource _cameraSource = _CameraSource.phone;
+  bool _insta360Supported = false;
+  bool _insta360Switching = false;
+  bool _instaWasConnected = false;
+  StreamSubscription<Insta360Frame>? _instaFrameSub;
+  Timer? _instaConnectTimer;
+
   // ── Toast ─────────────────────────────────────────────────────────────────────
   String? _toast;
   Timer? _toastTimer;
@@ -83,6 +98,30 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   void initState() {
     super.initState();
     _init();
+    // Probe Insta360 capability + watch for mid-stream camera drop (fallback to phone).
+    _insta.start();
+    _insta.state.addListener(_onInstaState);
+    _insta.isSupported().then((ok) {
+      if (mounted) setState(() => _insta360Supported = ok);
+    });
+  }
+
+  /// Reflect Insta360 status changes in the UI and handle a real mid-session disconnect.
+  /// Only falls back on a genuine connected→disconnected transition (never during the initial
+  /// OPENING window, which would abort a connection that is still in progress).
+  void _onInstaState() {
+    final connected = _insta.state.value.connected;
+    if (connected) _instaConnectTimer?.cancel();
+    final droppedMidSession = _cameraSource == _CameraSource.insta360 &&
+        _instaWasConnected &&
+        !connected &&
+        !_insta360Switching;
+    _instaWasConnected = connected;
+    if (mounted) setState(() {}); // gate the preview / refresh status chip
+    if (droppedMidSession) {
+      _showToast('360 camera disconnected — switched to phone');
+      _disableInsta360();
+    }
   }
 
   @override
@@ -94,6 +133,14 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _chatSub?.cancel();
     _chatCtrl.dispose();
     _chatScrollCtrl.dispose();
+    _instaConnectTimer?.cancel();
+    _instaFrameSub?.cancel();
+    _insta.state.removeListener(_onInstaState);
+    if (_cameraSource == _CameraSource.insta360) {
+      _insta.setFrameStreaming(false).catchError((_) {});
+      _insta.disconnect().catchError((_) {});
+    }
+    _insta.dispose();
     _disposeEngine();
     super.dispose();
   }
@@ -345,6 +392,119 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     setState(() => _isFrontCamera = !_isFrontCamera);
   }
 
+  // ── Camera source switching (phone ↔ Insta360 360°) ───────────────────────────
+
+  /// Opens the "Select camera" sheet. See [ADR-001].
+  Future<void> _openCameraPicker() async {
+    if (!_engineReady || _insta360Switching) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A0A1F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => _CameraPickerSheet(
+        current: _cameraSource,
+        insta360Supported: _insta360Supported,
+        onSelectPhone: () {
+          Navigator.of(sheetCtx).pop();
+          if (_cameraSource == _CameraSource.insta360) _disableInsta360();
+        },
+        onSelectInsta360: (type) {
+          Navigator.of(sheetCtx).pop();
+          if (_cameraSource == _CameraSource.phone) _enableInsta360(type);
+        },
+      ),
+    );
+  }
+
+  Future<void> _enableInsta360(Insta360ConnectType type) async {
+    if (_insta360Switching) return;
+    setState(() => _insta360Switching = true);
+    try {
+      // BLE discovery + connect permissions (Wi-Fi/USB control both rely on these on 12+).
+      await Permission.bluetoothScan.request();
+      await Permission.bluetoothConnect.request();
+
+      final ok = await _insta.connect(type);
+      if (!ok) {
+        // Surfaces the native reason, e.g. "Join the camera's Wi-Fi … in Settings, then try again."
+        _showToast(_insta.state.value.lastError ?? 'Could not connect to the 360 camera');
+        return;
+      }
+
+      // Route the Insta360 ERP frames into Agora as the video source instead of the phone camera.
+      await _engine.stopPreview();
+      await _engine.getMediaEngine().setExternalVideoSource(
+            enabled: true,
+            useTexture: false,
+            sourceType: ExternalVideoSourceType.videoFrame,
+          );
+      _instaFrameSub = _insta.frames().listen(_pushInstaFrame);
+      await _insta.setFrameStreaming(true);
+
+      if (!mounted) return;
+      // openCamera() is async: the ERP preview only mounts once the connection event arrives
+      // (see _onInstaState → _buildBackground). Until then show a "connecting" state, and arm a
+      // timeout so a camera that never opens falls back to the phone instead of hanging.
+      _instaWasConnected = false;
+      _instaConnectTimer?.cancel();
+      _instaConnectTimer = Timer(const Duration(seconds: 15), () {
+        if (mounted &&
+            _cameraSource == _CameraSource.insta360 &&
+            !_insta.state.value.connected) {
+          _showToast(_insta.state.value.lastError ??
+              '360 camera didn’t start — check it’s on and its Wi-Fi is joined');
+          _disableInsta360();
+        }
+      });
+      setState(() => _cameraSource = _CameraSource.insta360);
+      _showToast('Connecting to 360 camera…');
+    } catch (e) {
+      _showToast('360 switch failed: $e');
+      await _disableInsta360();
+    } finally {
+      if (mounted) setState(() => _insta360Switching = false);
+    }
+  }
+
+  Future<void> _disableInsta360() async {
+    _instaConnectTimer?.cancel();
+    _instaWasConnected = false;
+    try {
+      await _insta.setFrameStreaming(false);
+    } catch (_) {}
+    await _instaFrameSub?.cancel();
+    _instaFrameSub = null;
+    try {
+      await _engine.getMediaEngine().setExternalVideoSource(
+            enabled: false,
+            useTexture: false,
+            sourceType: ExternalVideoSourceType.videoFrame,
+          );
+      await _insta.disconnect();
+      await _engine.startPreview(); // resume phone camera preview
+    } catch (_) {}
+    if (mounted) setState(() => _cameraSource = _CameraSource.phone);
+  }
+
+  void _pushInstaFrame(Insta360Frame frame) {
+    if (_cameraSource != _CameraSource.insta360) return;
+    _engine
+        .getMediaEngine()
+        .pushVideoFrame(
+          frame: ExternalVideoFrame(
+            type: VideoBufferType.videoBufferRawData,
+            format: VideoPixelFormat.videoPixelRgba,
+            buffer: frame.bytes,
+            stride: frame.width,
+            height: frame.height,
+            timestamp: frame.ptsUs ~/ 1000,
+          ),
+        )
+        .catchError((_) {});
+  }
+
   Future<void> _sendChatMessage() async {
     final text = _chatCtrl.text.trim();
     if (text.isEmpty || _streamId == null) return;
@@ -485,10 +645,63 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     );
   }
 
+  /// Small "360 • Wi-Fi/USB" badge shown while the Insta360 is the active source.
+  Widget _source360Chip() {
+    if (_cameraSource != _CameraSource.insta360) return const SizedBox.shrink();
+    final via = _insta.state.value.connectType == 1 ? 'USB' : 'Wi-Fi';
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.threesixty_rounded, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            '360 • $via',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildBackground() {
     if (!_engineReady) return Container(color: const Color(0xFF0A000F));
     if (_isVideoOff && _liveState == _LiveState.live) {
       return Container(color: const Color(0xFF0A000F));
+    }
+    // 360° source: host previews the SDK's stitched ERP view directly (remote viewers
+    // receive the frames pushed via [_pushInstaFrame]). The preview is mounted only once the
+    // camera is actually connected — mounting it earlier would start the preview stream before
+    // the camera session exists.
+    if (_cameraSource == _CameraSource.insta360) {
+      if (_insta.state.value.connected) {
+        return const Insta360PreviewView(extractWidth: 1920, extractHeight: 960);
+      }
+      return const ColoredBox(
+        color: Color(0xFF0A000F),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text('Connecting to 360 camera…',
+                  style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+        ),
+      );
     }
     return AgoraVideoView(
       key: ValueKey(_engineVersion),
@@ -607,24 +820,30 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             left: 0,
             right: 0,
             child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'OFFLINE',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'OFFLINE',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                  _source360Chip(),
+                ],
               ),
             ),
           ),
@@ -642,6 +861,12 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _CircleIconButton(
+                    icon: Icons.threesixty_rounded,
+                    onTap: _openCameraPicker,
+                    active: _cameraSource == _CameraSource.insta360,
+                    size: 38,
+                  ),
+                  _CircleIconButton(
                     icon: Icons.mic_none_rounded,
                     onTap: _toggleMute,
                     size: 38,
@@ -651,11 +876,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     onTap: _toggleVideo,
                     size: 38,
                   ),
-                  _CircleIconButton(
-                    icon: Icons.refresh_rounded,
-                    onTap: _flipCamera,
-                    size: 38,
-                  ),
+                  // Flip (front/back) only applies to the phone camera.
+                  if (_cameraSource == _CameraSource.phone)
+                    _CircleIconButton(
+                      icon: Icons.refresh_rounded,
+                      onTap: _flipCamera,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.chat_bubble_outline_rounded,
                     onTap: _toggleComments,
@@ -868,6 +1095,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     ),
                   ),
                 ),
+                _source360Chip(),
               ],
             ),
           ),
@@ -884,6 +1112,12 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   _CircleIconButton(
+                    icon: Icons.threesixty_rounded,
+                    onTap: _openCameraPicker,
+                    active: _cameraSource == _CameraSource.insta360,
+                    size: 38,
+                  ),
+                  _CircleIconButton(
                     icon: _isMuted
                         ? Icons.mic_off_outlined
                         : Icons.mic_none_rounded,
@@ -899,11 +1133,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     active: _isVideoOff,
                     size: 38,
                   ),
-                  _CircleIconButton(
-                    icon: Icons.refresh_rounded,
-                    onTap: _flipCamera,
-                    size: 38,
-                  ),
+                  // Flip (front/back) only applies to the phone camera.
+                  if (_cameraSource == _CameraSource.phone)
+                    _CircleIconButton(
+                      icon: Icons.refresh_rounded,
+                      onTap: _flipCamera,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.chat_bubble_outline_rounded,
                     onTap: _toggleComments,
@@ -1483,6 +1719,209 @@ class _ConfirmDialog extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Camera-source picker sheet ─────────────────────────────────────────────────
+
+/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, Wi-Fi/USB).
+/// See ADR-001 and the live-screen 360 feature spec.
+class _CameraPickerSheet extends StatelessWidget {
+  const _CameraPickerSheet({
+    required this.current,
+    required this.insta360Supported,
+    required this.onSelectPhone,
+    required this.onSelectInsta360,
+  });
+
+  final _CameraSource current;
+  final bool insta360Supported;
+  final VoidCallback onSelectPhone;
+  final void Function(Insta360ConnectType type) onSelectInsta360;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8, left: 4),
+              child: Text(
+                'Select camera',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            // Phone camera
+            _tile(
+              icon: Icons.smartphone_rounded,
+              title: 'Phone camera',
+              subtitle: 'Built-in front/back camera',
+              selected: current == _CameraSource.phone,
+              enabled: true,
+              onTap: onSelectPhone,
+            ),
+            const SizedBox(height: 8),
+            // Insta360 360°
+            _tile(
+              icon: Icons.threesixty_rounded,
+              title: 'Insta360 (360°)',
+              subtitle: insta360Supported
+                  ? 'Stitched panoramic feed'
+                  : 'Requires an arm64 device (Android 10+)',
+              selected: current == _CameraSource.insta360,
+              enabled: insta360Supported,
+              onTap: insta360Supported
+                  ? () => onSelectInsta360(Insta360ConnectType.wifi)
+                  : null,
+            ),
+            if (insta360Supported) ...[
+              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.only(left: 4, bottom: 6),
+                child: Text(
+                  'Join the camera\'s Wi-Fi in Settings first, then connect via',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _connectButton(
+                      icon: Icons.wifi_rounded,
+                      label: 'Wi-Fi',
+                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _connectButton(
+                      icon: Icons.usb_rounded,
+                      label: 'USB',
+                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool selected,
+    required bool enabled,
+    required VoidCallback? onTap,
+  }) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: selected ? 0.12 : 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.brandPink : Colors.white12,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 24),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(Icons.check_circle_rounded,
+                    color: AppColors.brandPink, size: 20)
+              else
+                const SizedBox.shrink(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _connectButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
