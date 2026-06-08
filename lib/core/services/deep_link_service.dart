@@ -94,9 +94,11 @@ class DeepLinkService {
   }
 
   String? _extractReelId(Uri uri) {
+    // Legacy `/open?reel=` bridge.
     final q = uri.queryParameters['reel']?.trim();
     if (q != null && q.isNotEmpty) return q;
 
+    // Custom scheme: vyooo://reel/<id>
     if (uri.scheme == 'vyooo' &&
         uri.host == 'reel' &&
         uri.pathSegments.isNotEmpty) {
@@ -104,8 +106,9 @@ class DeepLinkService {
       if (id.isNotEmpty) return id;
     }
 
+    // HTTPS paths: /r/<id> (canonical) or legacy /reel/<id>.
     final path = uri.pathSegments;
-    if (path.length >= 2 && path.first == 'reel') {
+    if (path.length >= 2 && (path.first == 'r' || path.first == 'reel')) {
       final id = path[1].trim();
       if (id.isNotEmpty) return id;
     }
@@ -113,9 +116,11 @@ class DeepLinkService {
   }
 
   String? _extractProfileRef(Uri uri) {
+    // Legacy `/open?profile=` bridge.
     final q = uri.queryParameters['profile']?.trim();
     if (q != null && q.isNotEmpty) return q;
 
+    // Custom scheme: vyooo://profile/<ref>
     if (uri.scheme == 'vyooo' &&
         uri.host == 'profile' &&
         uri.pathSegments.isNotEmpty) {
@@ -124,8 +129,16 @@ class DeepLinkService {
     }
 
     final path = uri.pathSegments;
-    if (path.length >= 2 && path.first == 'profile') {
+
+    // HTTPS canonical: /u/<username> (or legacy /profile/<ref>).
+    if (path.length >= 2 && (path.first == 'u' || path.first == 'profile')) {
       final id = path[1].trim();
+      if (id.isNotEmpty) return id;
+    }
+
+    // HTTPS Instagram-style: /@<username>
+    if (path.isNotEmpty && path.first.startsWith('@') && path.first.length > 1) {
+      final id = path.first.substring(1).trim();
       if (id.isNotEmpty) return id;
     }
     return null;

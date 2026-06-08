@@ -65,14 +65,22 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Verified HTTPS App Links (Universal Links). Scoped to deep-link
+                 paths only so marketing routes (/terms, /privacy, …) still open
+                 in the browser. Host is www only: the apex vyooo.com 307-redirects
+                 to www, which fails Google/Apple domain verification. All shared
+                 links use www.vyooo.com. -->
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="www.vyooo.com" />
+                <data android:scheme="https" />
+                <data android:host="www.vyooo.com" />
+                <data android:pathPrefix="/u/" />
+                <data android:pathPrefix="/r/" />
+                <data android:pathPrefix="/open" />
             </intent-filter>
+            <!-- Custom scheme: internal bridge target only (never shared as text). -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -88,14 +96,6 @@
                 <data
                     android:scheme="vyooo"
                     android:host="profile" />
-            </intent-filter>
-            <intent-filter android:autoVerify="true">
-                <action android:name="android.intent.action.VIEW" />
-                <category android:name="android.intent.category.DEFAULT" />
-                <category android:name="android.intent.category.BROWSABLE" />
-                <data
-                    android:scheme="https"
-                    android:host="vyooo.com" />
             </intent-filter>
         </activity>
         <!-- Don't delete the meta-data below.
