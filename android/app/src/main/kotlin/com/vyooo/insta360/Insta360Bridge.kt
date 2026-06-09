@@ -15,6 +15,7 @@ import com.vyooo.Insta360Support
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.view.TextureRegistry
 
 /**
  * Native bridge for the Insta360 capture foundation (Phase 0).
@@ -30,7 +31,10 @@ import io.flutter.plugin.common.MethodChannel
 class Insta360Bridge(
     private val context: Context,
     messenger: BinaryMessenger,
+    private val textureRegistry: TextureRegistry,
 ) : MethodChannel.MethodCallHandler {
+
+    private var glRenderer: Insta360GlRenderer? = null
 
     private val main = Handler(Looper.getMainLooper())
     private val methodChannel = MethodChannel(messenger, "vyooo/insta360")
@@ -83,6 +87,9 @@ class Insta360Bridge(
         frameChannel.setStreamHandler(null)
         Insta360FrameSink.onStats = null
         Insta360FrameSink.onFrame = null
+        Insta360FrameSink.onYuvFrame = null
+        glRenderer?.dispose()
+        glRenderer = null
         events = null
     }
 
@@ -144,6 +151,37 @@ class Insta360Bridge(
 
             "setFrameStreaming" -> {
                 Insta360FrameSink.streamingEnabled = call.argument<Boolean>("enabled") ?: false
+                result.success(null)
+            }
+
+            "setPipelineEnabled" -> {
+                // A/B toggle for the optimisation pipeline (e.g. bitrate-reduction validation).
+                Insta360FrameSink.pipelineEnabled = call.argument<Boolean>("enabled") ?: true
+                result.success(null)
+            }
+
+            "getPipelineMetrics" -> result.success(Insta360FrameSink.metrics())
+
+            "createProcessedTexture" -> {
+                // Host-visible Flutter texture fed by the GPU renderer: YUV→RGB + forward-mask in a
+                // GL shader, straight to the texture (M1-D4, 30 fps target).
+                val renderer = glRenderer
+                    ?: Insta360GlRenderer(textureRegistry).also { glRenderer = it }
+                val id = renderer.create()
+                Insta360FrameSink.onYuvFrame = { frame -> renderer.submit(frame) }
+                result.success(id)
+            }
+
+            "disposeProcessedTexture" -> {
+                Insta360FrameSink.onYuvFrame = null
+                glRenderer?.dispose()
+                glRenderer = null
+                result.success(null)
+            }
+
+            "setMaskEnabled" -> {
+                // Toggle forward-only masking on the live feed (true = masked, false = full 360°).
+                glRenderer?.maskEnabled = call.argument<Boolean>("enabled") ?: true
                 result.success(null)
             }
 

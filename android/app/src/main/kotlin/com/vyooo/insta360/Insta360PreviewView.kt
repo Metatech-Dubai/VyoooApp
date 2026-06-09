@@ -41,7 +41,6 @@ class Insta360PreviewView(
     private val extractWidth = (creationParams?.get("width") as? Int) ?: 1920
     private val extractHeight = (creationParams?.get("height") as? Int) ?: 960
     private var disposed = false
-    private var firstFrameLogged = false
 
     init {
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
@@ -177,13 +176,10 @@ class Insta360PreviewView(
             EXTRACT_FPS,
             EXTRACT_QUEUE,
             IMediaFrameCallback { mediaFrame ->
-                if (mediaFrame != null) {
-                    if (!firstFrameLogged) {
-                        firstFrameLogged = true
-                        Log.i(TAG, "first extracted MediaFrame ${mediaFrame.width}x${mediaFrame.height}")
-                    }
-                    Insta360FrameSink.submit(mediaFrame.planes.firstOrNull(), mediaFrame.width, mediaFrame.height)
-                }
+                // The SDK delivers YUV420P. Feed it to the GPU display path (YUV→RGB + forward-mask
+                // happen in a GL shader). The CPU pipeline/converter remain available for the
+                // transport path (Agora, deferred) but are not run per-frame here.
+                mediaFrame?.let { Insta360FrameSink.submitYuv(it) }
             },
         )
     }

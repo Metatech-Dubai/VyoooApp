@@ -18,6 +18,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/story/story_upload_screen.dart';
 import '../../widgets/insta360_preview_view.dart';
+import '../../widgets/insta360_processed_view.dart';
 import 'upload_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
 
@@ -66,6 +67,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   bool _insta360Supported = false;
   bool _insta360Switching = false;
   bool _instaWasConnected = false;
+  bool _maskEnabled = true;
   StreamSubscription<Insta360Frame>? _instaFrameSub;
   Timer? _instaConnectTimer;
 
@@ -488,6 +490,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     if (mounted) setState(() => _cameraSource = _CameraSource.phone);
   }
 
+  /// Toggle forward-only masking on the live 360 feed (masked ↔ full 360°).
+  Future<void> _toggleMask() async {
+    setState(() => _maskEnabled = !_maskEnabled);
+    await _insta.setMaskEnabled(_maskEnabled);
+    _showToast(_maskEnabled ? 'Forward mask on' : 'Full 360° (unmasked)');
+  }
+
   void _pushInstaFrame(Insta360Frame frame) {
     if (_cameraSource != _CameraSource.insta360) return;
     _engine
@@ -686,7 +695,15 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     // the camera session exists.
     if (_cameraSource == _CameraSource.insta360) {
       if (_insta.state.value.connected) {
-        return const Insta360PreviewView(extractWidth: 1920, extractHeight: 960);
+        // Frame source (SDK ERP preview) runs behind; the host sees the pipeline's processed
+        // output (downscaled + forward-masked) on top via a Flutter texture (M1-D4).
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const Insta360PreviewView(extractWidth: 1920, extractHeight: 960),
+            Insta360ProcessedView(service: _insta),
+          ],
+        );
       }
       return const ColoredBox(
         color: Color(0xFF0A000F),
@@ -866,6 +883,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     active: _cameraSource == _CameraSource.insta360,
                     size: 38,
                   ),
+                  // Masked (forward-only) ↔ full 360° toggle — only for the 360 feed.
+                  if (_cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _maskEnabled
+                          ? Icons.vignette
+                          : Icons.panorama_horizontal_rounded,
+                      onTap: _toggleMask,
+                      active: _maskEnabled,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.mic_none_rounded,
                     onTap: _toggleMute,
@@ -1117,6 +1144,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     active: _cameraSource == _CameraSource.insta360,
                     size: 38,
                   ),
+                  // Masked (forward-only) ↔ full 360° toggle — only for the 360 feed.
+                  if (_cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _maskEnabled
+                          ? Icons.vignette
+                          : Icons.panorama_horizontal_rounded,
+                      onTap: _toggleMask,
+                      active: _maskEnabled,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: _isMuted
                         ? Icons.mic_off_outlined

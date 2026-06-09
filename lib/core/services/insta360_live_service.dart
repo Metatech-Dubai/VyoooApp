@@ -135,6 +135,31 @@ class Insta360LiveService {
     return raw == null ? <String, dynamic>{} : raw.cast<String, dynamic>();
   }
 
+  /// Toggle the capture-side optimisation pipeline (Downscale → ForwardMask → …).
+  /// Off = raw pass-through, used for A/B bitrate-reduction validation.
+  Future<void> setPipelineEnabled(bool enabled) =>
+      _methods.invokeMethod<void>('setPipelineEnabled', {'enabled': enabled});
+
+  /// Latest pipeline metrics (fps, per-stage latency, spatial reduction); empty when off.
+  Future<Map<String, dynamic>> getPipelineMetrics() async {
+    final raw =
+        await _methods.invokeMethod<Map<dynamic, dynamic>>('getPipelineMetrics');
+    return raw == null ? <String, dynamic>{} : raw.cast<String, dynamic>();
+  }
+
+  /// Allocate a Flutter texture fed by the pipeline's processed frames (host preview, M1-D4).
+  /// Returns the texture id for a `Texture(textureId: …)` widget, or null on failure.
+  Future<int?> createProcessedTexture() =>
+      _methods.invokeMethod<int>('createProcessedTexture');
+
+  /// Release the processed-frame texture and stop host-side rendering.
+  Future<void> disposeProcessedTexture() =>
+      _methods.invokeMethod<void>('disposeProcessedTexture');
+
+  /// Toggle forward-only masking on the live 360 feed (true = masked, false = full 360°).
+  Future<void> setMaskEnabled(bool enabled) =>
+      _methods.invokeMethod<void>('setMaskEnabled', {'enabled': enabled});
+
   /// Raw ERP frames for the spike. Enable forwarding first via [setFrameStreaming].
   Stream<Insta360Frame> frames() {
     return _frames.receiveBroadcastStream().map((dynamic e) {

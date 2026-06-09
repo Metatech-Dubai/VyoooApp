@@ -37,20 +37,36 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
   final TextEditingController _channelCtrl =
       TextEditingController(text: 'insta360_spike');
 
+  // ── Pipeline (Milestone 1) state ───────────────────────────────────────────
+  bool _pipelineEnabled = true;
+  Map<String, dynamic> _metrics = const {};
+  Timer? _metricsTimer;
+
   @override
   void initState() {
     super.initState();
     _service.start();
     _service.isSupported();
+    // Poll pipeline metrics ~1×/sec for the real-time validation readout.
+    _metricsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      final m = await _service.getPipelineMetrics();
+      if (mounted) setState(() => _metrics = m);
+    });
   }
 
   @override
   void dispose() {
+    _metricsTimer?.cancel();
     _stopSpike();
     _service.disconnect();
     _service.dispose();
     _channelCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _togglePipeline(bool enabled) async {
+    setState(() => _pipelineEnabled = enabled);
+    await _service.setPipelineEnabled(enabled);
   }
 
   // ── Connection ───────────────────────────────────────────────────────────────
@@ -190,12 +206,60 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              _pipelineCard(),
+              const SizedBox(height: 16),
               _spikeCard(s),
             ],
           );
         },
       ),
     );
+  }
+
+  // ── Pipeline metrics (Milestone 1 — real-time validation) ───────────────────
+  Widget _pipelineCard() {
+    final fps = _metrics['fps'];
+    final totalMs = (_metrics['totalMs'] as num?)?.toDouble();
+    final reduction = (_metrics['spatialReduction'] as num?)?.toDouble();
+    final framesIn = _metrics['framesIn'];
+    final framesOut = _metrics['framesOut'];
+    final dropped = _metrics['framesDropped'];
+    final stages = (_metrics['stagesMs'] as Map?)?.cast<String, dynamic>();
+
+    return _card([
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('Optimisation pipeline',
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+          Switch(
+            value: _pipelineEnabled,
+            onChanged: _togglePipeline,
+            activeThumbColor: const Color(0xFFDE106B),
+          ),
+        ],
+      ),
+      const Text('Off = raw pass-through (A/B for bitrate-reduction validation).',
+          style: TextStyle(color: Colors.white54, fontSize: 12)),
+      const SizedBox(height: 8),
+      _row('Pipeline fps', '${fps ?? 0}'),
+      _row('Total latency', totalMs == null ? '—' : '${totalMs.toStringAsFixed(2)} ms'),
+      _row(
+        'Spatial reduction',
+        reduction == null ? '—' : '${(reduction * 100).toStringAsFixed(0)}% px kept',
+      ),
+      _row('Frames in / out', '${framesIn ?? 0} / ${framesOut ?? 0}'),
+      _row('Dropped', '${dropped ?? 0}'),
+      if (stages != null && stages.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        const Text('Per-stage (ms)',
+            style: TextStyle(color: Colors.white54, fontSize: 12)),
+        for (final e in stages.entries)
+          _row('  ${e.key}',
+              '${(e.value as num).toDouble().toStringAsFixed(2)} ms'),
+      ],
+    ]);
   }
 
   Widget _statusCard(Insta360State s) {
