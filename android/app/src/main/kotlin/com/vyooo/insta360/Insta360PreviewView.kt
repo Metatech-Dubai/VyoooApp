@@ -50,11 +50,9 @@ class Insta360PreviewView(
         val mgr = InstaCameraManager.getInstance()
         mgr.setPreviewStatusChangedListener(this)
         // The camera is already connected (Dart mounts this view only once connected). Run the SDK's
-        // required pre-preview init before starting the stream — mirrors the demo's
-        // CaptureViewModel.initCapture(): fetchCameraOptions → ensure panorama (dual-sensor) →
-        // initCameraSupportConfig → setStreamEncode → startPreviewStream. Skipping these leaves the
-        // stream open but producing no decodable frames. The process stays bound to the camera Wi-Fi
-        // for the whole session (Phase 0 decision D6), which the preview stream requires.
+        // required pre-preview init before starting the stream: fetchCameraOptions → ensure panorama
+        // (dual-sensor) → initCameraSupportConfig → setStreamEncode → startPreviewStream. Skipping
+        // these leaves the stream open but producing no decodable frames.
         beginPreviewSequence(mgr)
     }
 
@@ -168,8 +166,7 @@ class Insta360PreviewView(
         Log.i(TAG, "onLoadingFinish → setPipeline + startExtractMediaFrame ${extractWidth}x$extractHeight")
         val mgr = InstaCameraManager.getInstance()
         mgr.setPipeline(player.pipeline)
-        // Extract the stitched ERP result as ARGB MediaFrames. This is the capture-side hand-off
-        // point; the optimisation pipeline will later sit between here and the sink.
+        // Extract the stitched ERP result as MediaFrames and hand them to the sink/pipeline.
         player.startExtractMediaFrame(
             extractWidth,
             extractHeight,

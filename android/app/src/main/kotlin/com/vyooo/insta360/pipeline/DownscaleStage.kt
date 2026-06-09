@@ -1,18 +1,14 @@
 package com.vyooo.insta360.pipeline
 
 /**
- * Capture-side resolution normalisation — 8K/4K → 2K (Patent §2).
+ * Capture-side resolution normalisation (8K/4K → 2K).
  *
- * **Realisation in this POC:** the actual GPU downscale is performed upstream by the Insta360 SDK's
- * `startExtractMediaFrame(W_t, H_t, …)`, which extracts the stitched ERP at our chosen target
- * resolution on the GPU (Patent §2: "hardware-accelerated or GPU-based scaling"). This stage is the
- * **authority + recorder** for that target: it owns the target dimensions and reports the
- * source→target reduction, keeping the patent stage explicit and tunable.
+ * The actual scaling is performed upstream by the Insta360 SDK's `startExtractMediaFrame(W_t, H_t, …)`,
+ * which extracts the stitched ERP at the chosen target resolution on the GPU. This stage owns that
+ * target and reports the source→target reduction; the incoming frame already arrives at the target
+ * resolution, so it passes through. (For a non-SDK / planar source it would downscale here.)
  *
- * For non-SDK / planar inputs (a future extension) this stage would perform an explicit deterministic
- * downscale here; for M1 the incoming frame is already at the target resolution, so it passes through.
- *
- * Aspect ratio is preserved (Patent §2: `W_t < W_in`, ratio preserved).
+ * Aspect ratio is preserved (`W_t < W_in`).
  */
 class DownscaleStage(
     /** Target width/height set on the SDK extract (the 2K target). */
@@ -33,8 +29,8 @@ class DownscaleStage(
         }
 
     override fun process(frame: PipelineFrame, hints: PipelineHints): PipelineFrame {
-        // The SDK already delivered the frame at the extract target. If a future source ever delivers
-        // a larger frame, an explicit deterministic downscale would happen here. No-op for M1.
+        // Frame already arrives at the extract target; an explicit downscale would go here for a
+        // larger source. Pass through.
         return frame
     }
 }

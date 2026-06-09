@@ -3,9 +3,9 @@ package com.vyooo.insta360.pipeline
 /**
  * A single deterministic transformation in the capture-side pipeline.
  *
- * Implementations are deterministic (Patent: AI only *guides* parameters, it never performs the
- * transform). A stage returns the (possibly mutated) frame, or `null` to **drop** it — used by the
- * temporal-dedup stage (Milestone 2) to enforce the 1-in-N frame budget.
+ * AI may guide parameters, but a stage always performs the transform itself. A stage returns the
+ * (possibly mutated) frame, or `null` to drop it (e.g. the temporal-dedup stage enforcing a 1-in-N
+ * frame budget).
  */
 interface FrameStage {
     val name: String

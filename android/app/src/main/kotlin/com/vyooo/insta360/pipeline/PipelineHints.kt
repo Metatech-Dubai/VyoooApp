@@ -1,28 +1,25 @@
 package com.vyooo.insta360.pipeline
 
 /**
- * Side-channel decision signals for the pipeline (Patent "Optional AI Assistance").
- *
- * **Metadata only — no pixel data ever passes through here.** Milestone 1 uses [DeterministicHints]
- * (no AI); Milestone 3 supplies an AI-backed implementation ([MutableHints], updated live by the
- * on-device AI layer). The pipeline must run fully ("fall open") when a hint is `null`, so every
- * field is nullable and stages treat `null` as "use the deterministic default".
+ * Optional decision signals for the pipeline — metadata only, no pixel data. An on-device AI layer
+ * may supply these; the pipeline runs fully when a hint is `null` (each field is nullable and stages
+ * treat `null` as "use the deterministic default").
  */
 interface PipelineHints {
-    /** Stabilised forward direction θ₀ (degrees); `null` → use the frame default. (M3 / ForwardMask) */
+    /** Stabilised forward direction θ₀ (degrees); `null` → use the frame default. */
     val forwardThetaDeg: Float?
 
-    /** Classification override for panoramic-vs-planar; `null` → let the detector decide. (M3 / PanoramaDetect) */
+    /** Classification override for panoramic-vs-planar; `null` → let the detector decide. */
     val isPanoramic: Boolean?
 
-    /** Perceptual-salience hint guiding the downscale target; `null` → fixed target. (M3 / Downscale) */
+    /** Perceptual-salience hint guiding the downscale target; `null` → fixed target. */
     val perceptualScale: Float?
 
-    /** Motion metric ∈ [0,1] for temporal gating; `null` → the stage computes its own. (M2–M3 / TemporalDedup) */
+    /** Motion metric in [0,1] for temporal gating; `null` → the stage computes its own. */
     val motion: Float?
 }
 
-/** No-AI defaults (Milestone 1): every hint absent, so stages use deterministic behaviour. */
+/** Defaults with no AI: every hint absent, so stages use deterministic behaviour. */
 object DeterministicHints : PipelineHints {
     override val forwardThetaDeg: Float? = null
     override val isPanoramic: Boolean? = null
@@ -31,8 +28,8 @@ object DeterministicHints : PipelineHints {
 }
 
 /**
- * Live-updatable hints written by the on-device AI layer (Milestone 3) and read by the pipeline once
- * per frame. The AI sets only what it has; everything left `null` falls open to deterministic logic.
+ * Live-updatable hints written by an on-device AI layer and read by the pipeline once per frame.
+ * Only what the AI sets is applied; everything left `null` falls back to deterministic logic.
  */
 class MutableHints : PipelineHints {
     @Volatile override var forwardThetaDeg: Float? = null

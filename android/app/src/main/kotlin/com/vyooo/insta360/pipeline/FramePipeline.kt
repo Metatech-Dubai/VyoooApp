@@ -3,16 +3,15 @@ package com.vyooo.insta360.pipeline
 import android.util.Log
 
 /**
- * The capture-side pre-encoding optimisation pipeline (Patent 1, Figs 1–3).
+ * The capture-side, pre-encoding optimisation pipeline.
  *
  * Runs an ordered list of deterministic [FrameStage]s on each captured frame, upstream of the
  * encoder. A stage may drop a frame (return `null`); the pipeline then stops and reports the drop.
- * **Fall-open discipline:** if a stage throws, the error is logged and the frame passes through
- * unchanged — the pipeline never crashes the capture path (Patent: must remain functional without AI
- * and under real-time constraints).
+ * If a stage throws, the error is logged and the frame passes through unchanged, so the pipeline
+ * never crashes the capture path.
  *
- * Milestone 1 chain: Downscale → PanoramaDetect → ForwardMask → (TemporalDedup placeholder).
- * AI hints are supplied via [PipelineHints]; M1 uses [DeterministicHints] (no AI).
+ * Default chain: Downscale → PanoramaDetect → ForwardMask → TemporalDedup. AI hints are supplied via
+ * [PipelineHints]; [DeterministicHints] runs the pipeline with no AI.
  */
 class FramePipeline(
     private val stages: List<FrameStage>,
@@ -45,18 +44,7 @@ class FramePipeline(
         return current
     }
 
-    companion object {
-        private const val TAG = "FramePipeline"
-
-        /** The Milestone-1 default chain (no AI; temporal-dedup is a no-op placeholder for M2). */
-        fun defaultM1(hints: PipelineHints = DeterministicHints): FramePipeline = FramePipeline(
-            listOf(
-                DownscaleStage(),
-                PanoramaDetectStage(),
-                ForwardMaskStage(),
-                TemporalDedupStage(),
-            ),
-            hints,
-        )
+    private companion object {
+        const val TAG = "FramePipeline"
     }
 }

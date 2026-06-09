@@ -12,7 +12,7 @@ import com.vyooo.insta360.pipeline.TemporalDedupStage
 /**
  * The single insertion point **and** processing hub for extracted Insta360 frames.
  *
- * One deterministic, patent-aligned path:
+ * One deterministic processing path:
  *
  * ```
  * MediaFrame (YUV420P) → YUV→RGB → FramePipeline[ Downscale → PanoramaDetect → ForwardMask →
@@ -22,9 +22,8 @@ import com.vyooo.insta360.pipeline.TemporalDedupStage
  * ```
  *
  * A stage may drop a frame (pipeline returns null) — nothing is forwarded for that frame, so the
- * display and the transmitted stream stay in lock-step ("what you see is what's transmitted"). The
- * GPU [Insta360GlRenderer] is now only a texture **uploader** of the processed RGBA — the pipeline is
- * the single source of truth for the optimisation (downscale / mask / temporal / AI).
+ * display and the transmitted stream stay in lock-step. [Insta360GlRenderer] only uploads the
+ * processed RGBA to the texture; the pipeline is the single source of truth for the optimisation.
  *
  * Frames arrive on the SDK extract thread; listeners marshal to the main thread as needed.
  */
@@ -44,7 +43,7 @@ object Insta360FrameSink {
     // ── The capture-side optimisation pipeline (single source of truth) ──────────
     private val forwardMask = ForwardMaskStage()
 
-    /** AI-fed decision hints (Milestone 3); deterministic (all null) until the AI layer writes them. */
+    /** AI-fed decision hints; deterministic (all null) until an AI layer writes them. */
     val hints = MutableHints()
 
     val pipeline = FramePipeline(

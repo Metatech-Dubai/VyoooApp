@@ -1,17 +1,16 @@
 package com.vyooo.insta360.pipeline
 
 /**
- * Forward-only panoramic retention (Patent §4).
+ * Forward-only panoramic retention.
  *
  * Keeps a forward angular field of view [forwardFovDeg] (≈180–220°, default 200°) of the
- * equirectangular frame and suppresses the rear to a neutral value (opaque black), with an optional
- * feathered boundary [featherDeg] to reduce visual discontinuity.
+ * equirectangular frame and suppresses the rear to opaque black, with an optional feathered boundary
+ * [featherDeg] to reduce visual discontinuity.
  *
- * **ERP geometry:** the horizontal axis is longitude θ ∈ [−180°, +180°] mapped linearly to columns
+ * ERP geometry: the horizontal axis is longitude θ ∈ [−180°, +180°] mapped linearly to columns
  * x ∈ [0, W). The forward direction θ₀ (default 0) is the centre column; the rear (±180°) is at the
  * left/right edges. So forward retention keeps a centred horizontal band of width `(F/360)·W` and
- * blacks out the two edge bands. Deterministic; AI may stabilise θ₀ over time (M3) but must not
- * change the field size (Patent §4).
+ * blacks out the two edge bands. AI may stabilise θ₀ over time but must not change the field size.
  *
  * Per-column suppression factors are precomputed and cached (recomputed only when the geometry
  * changes), so the per-frame cost is: kept columns skipped, suppressed columns set to black, and a
@@ -41,7 +40,7 @@ class ForwardMaskStage(
 
     override fun process(frame: PipelineFrame, hints: PipelineHints): PipelineFrame {
         if (!enabled) return frame // unmasked view (full 360°)
-        // Planar bypass (Patent §3/§4): never mask non-panoramic input.
+        // Planar bypass: never mask non-panoramic input.
         if (frame.meta.isPanoramic == false) return frame
 
         val keepFrac = retainedFraction

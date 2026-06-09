@@ -1,15 +1,12 @@
 package com.vyooo.insta360.pipeline
 
 /**
- * Panoramic-vs-planar detection (Patent §3).
+ * Panoramic-vs-planar detection.
  *
- * Determines whether the frame is panoramic (equirectangular) so the forward-mask stage can apply
- * (or be bypassed for planar input). For this POC the source is always the Insta360 stitched ERP, so
- * detection is a **deterministic geometric heuristic**: a ~2:1 aspect ratio ⇒ panoramic. An explicit
- * AI classifier is Milestone 3 (supplied via [PipelineHints.isPanoramic]); when absent we fall open
- * to the heuristic.
- *
- * The planar-bypass branch is intentionally preserved even though the Insta360 path never takes it.
+ * Determines whether the frame is panoramic (equirectangular) so the forward-mask stage applies (or
+ * is bypassed for planar input). Detection is a deterministic geometric heuristic: a ~2:1 aspect
+ * ratio ⇒ panoramic. An AI classifier may override via [PipelineHints.isPanoramic]; when absent the
+ * heuristic is used. The planar-bypass branch is kept even though the Insta360 source never takes it.
  */
 class PanoramaDetectStage : FrameStage {
 

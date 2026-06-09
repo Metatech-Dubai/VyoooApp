@@ -1,11 +1,10 @@
 package com.vyooo.insta360.pipeline
 
 /**
- * Real-time validation metrics for the pipeline (Milestone 1 deliverable: "real-time validation").
+ * Runtime metrics for the pipeline: per-stage latency, throughput, and the spatial-reduction ratio.
  *
- * Captures per-stage latency, throughput, and the spatial-reduction ratio. Recorded on the SDK
- * extract thread inside [FramePipeline.process]; [snapshot] may be read from another thread.
- * Bitrate-reduction (the encoder-side KPI) is measured separately via Agora `localVideoStats`.
+ * Recorded on the SDK extract thread inside [FramePipeline.process]; [snapshot] may be read from
+ * another thread. Bitrate reduction (the encoder-side KPI) is measured separately via Agora stats.
  */
 class PipelineMetrics {
 

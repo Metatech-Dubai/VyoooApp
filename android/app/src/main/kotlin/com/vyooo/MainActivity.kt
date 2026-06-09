@@ -18,9 +18,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
-        // Insta360 capture foundation (Phase 0). Additive; does not affect existing plugins.
         val messenger = flutterEngine.dartExecutor.binaryMessenger
-        // flutterEngine.renderer is the TextureRegistry — used for the processed-frame texture (M1-D4).
+        // flutterEngine.renderer is the TextureRegistry for the processed-frame texture.
         insta360Bridge = Insta360Bridge(applicationContext, messenger, flutterEngine.renderer)
         flutterEngine.platformViewsController.registry
             .registerViewFactory("vyooo/insta360_preview", Insta360PreviewViewFactory())

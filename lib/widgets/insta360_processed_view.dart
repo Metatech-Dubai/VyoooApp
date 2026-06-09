@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 
 import '../core/services/insta360_live_service.dart';
 
-/// Displays the capture-side pipeline's **processed** output (downscaled + forward-masked) for the
-/// host, via a Flutter [Texture] fed natively (Milestone 1 decision M1-D4).
+/// Displays the capture-side pipeline's processed output (downscaled + forward-masked) for the host,
+/// via a Flutter [Texture] fed natively.
 ///
-/// The SDK preview ([Insta360PreviewView]) must remain mounted as the frame *source*; this widget is
+/// The SDK preview ([Insta360PreviewView]) must remain mounted as the frame source; this widget is
 /// what the host actually sees. Mounting allocates the native texture; unmounting releases it.
 class Insta360ProcessedView extends StatefulWidget {
   const Insta360ProcessedView({super.key, required this.service});

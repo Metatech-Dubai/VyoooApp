@@ -396,7 +396,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
 
   // ── Camera source switching (phone ↔ Insta360 360°) ───────────────────────────
 
-  /// Opens the "Select camera" sheet. See [ADR-001].
+  /// Opens the "Select camera" sheet.
   Future<void> _openCameraPicker() async {
     if (!_engineReady || _insta360Switching) return;
     await showModalBottomSheet<void>(
@@ -696,7 +696,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     if (_cameraSource == _CameraSource.insta360) {
       if (_insta.state.value.connected) {
         // Frame source (SDK ERP preview) runs behind; the host sees the pipeline's processed
-        // output (downscaled + forward-masked) on top via a Flutter texture (M1-D4).
+        // output (downscaled + forward-masked) on top via a Flutter texture.
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -1767,7 +1767,6 @@ class _ConfirmDialog extends StatelessWidget {
 // ── Camera-source picker sheet ─────────────────────────────────────────────────
 
 /// "Select camera" bottom sheet: phone camera vs Insta360 (360°, Wi-Fi/USB).
-/// See ADR-001 and the live-screen 360 feature spec.
 class _CameraPickerSheet extends StatelessWidget {
   const _CameraPickerSheet({
     required this.current,
