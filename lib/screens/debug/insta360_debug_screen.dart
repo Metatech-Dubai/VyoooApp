@@ -8,16 +8,15 @@ import '../../core/config/agora_config.dart';
 import '../../core/services/insta360_live_service.dart';
 import '../../widgets/insta360_preview_view.dart';
 
-/// Phase 0 test harness for the Insta360 capture foundation.
+/// Test harness for the Insta360 capture feature.
 ///
 /// Not wired into production navigation — push it explicitly while testing, e.g.:
 ///   Navigator.of(context).push(MaterialPageRoute(builder: (_) => const Insta360DebugScreen()));
 ///
-/// Validates: connect → ERP preview → frame extraction stats → (spike) frames into an Agora channel.
+/// Validates: connect → ERP preview → frame-extraction stats → frames into an Agora channel.
 ///
-/// TODO(pre-production): intentionally retained as a debugging aid during development (decision D8 /
-/// open item O1 in "Insta360 On-Device Bring-Up — Activity Log & Decisions.md"). REMOVE or gate behind
-/// a debug-only build flag before the production release — it is dead code at runtime today.
+/// TODO(pre-production): retained as a debugging aid; remove or gate behind a debug-only build flag
+/// before release — it is dead code at runtime today.
 class Insta360DebugScreen extends StatefulWidget {
   const Insta360DebugScreen({super.key});
 
@@ -37,15 +36,25 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
   final TextEditingController _channelCtrl =
       TextEditingController(text: 'insta360_spike');
 
+  // ── Pipeline metrics state ─────────────────────────────────────────────────
+  Map<String, dynamic> _metrics = const {};
+  Timer? _metricsTimer;
+
   @override
   void initState() {
     super.initState();
     _service.start();
     _service.isSupported();
+    // Poll pipeline metrics ~1×/sec for the real-time validation readout.
+    _metricsTimer = Timer.periodic(const Duration(seconds: 1), (_) async {
+      final m = await _service.getPipelineMetrics();
+      if (mounted) setState(() => _metrics = m);
+    });
   }
 
   @override
   void dispose() {
+    _metricsTimer?.cancel();
     _stopSpike();
     _service.disconnect();
     _service.dispose();
@@ -60,7 +69,7 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
     await _service.connect(type);
   }
 
-  // ── Agora de-risk spike ────────────────────────────────────────────────────
+  // ── Agora test push ─────────────────────────────────────────────────────────
   // EXPERIMENTAL: pushes extracted ERP frames into Agora as an external video source.
   // Validate end-to-end on device with a second viewer; tune resolution if bandwidth-bound.
   Future<void> _startSpike() async {
@@ -157,7 +166,7 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFF0A000F),
       appBar: AppBar(
-        title: const Text('Insta360 — Phase 0'),
+        title: const Text('Insta360 — Debug'),
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
       ),
@@ -190,12 +199,49 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
                 ),
               ),
               const SizedBox(height: 16),
+              _pipelineCard(),
+              const SizedBox(height: 16),
               _spikeCard(s),
             ],
           );
         },
       ),
     );
+  }
+
+  // ── Pipeline metrics ────────────────────────────────────────────────────────
+  Widget _pipelineCard() {
+    final fps = _metrics['fps'];
+    final totalMs = (_metrics['totalMs'] as num?)?.toDouble();
+    final reduction = (_metrics['spatialReduction'] as num?)?.toDouble();
+    final framesIn = _metrics['framesIn'];
+    final framesOut = _metrics['framesOut'];
+    final dropped = _metrics['framesDropped'];
+    final stages = (_metrics['stagesMs'] as Map?)?.cast<String, dynamic>();
+
+    return _card([
+      const Text('Optimisation pipeline',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      const Text('Single processing path: Downscale → PanoramaDetect → ForwardMask → TemporalDedup.',
+          style: TextStyle(color: Colors.white54, fontSize: 12)),
+      const SizedBox(height: 8),
+      _row('Pipeline fps', '${fps ?? 0}'),
+      _row('Total latency', totalMs == null ? '—' : '${totalMs.toStringAsFixed(2)} ms'),
+      _row(
+        'Spatial reduction',
+        reduction == null ? '—' : '${(reduction * 100).toStringAsFixed(0)}% px kept',
+      ),
+      _row('Frames in / out', '${framesIn ?? 0} / ${framesOut ?? 0}'),
+      _row('Dropped', '${dropped ?? 0}'),
+      if (stages != null && stages.isNotEmpty) ...[
+        const SizedBox(height: 6),
+        const Text('Per-stage (ms)',
+            style: TextStyle(color: Colors.white54, fontSize: 12)),
+        for (final e in stages.entries)
+          _row('  ${e.key}',
+              '${(e.value as num).toDouble().toStringAsFixed(2)} ms'),
+      ],
+    ]);
   }
 
   Widget _statusCard(Insta360State s) {
@@ -247,7 +293,7 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
 
   Widget _spikeCard(Insta360State s) {
     return _card([
-      const Text('Agora de-risk spike',
+      const Text('Agora test push',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
       const SizedBox(height: 4),
       const Text('Pushes extracted frames into an Agora channel as an external video source.',
