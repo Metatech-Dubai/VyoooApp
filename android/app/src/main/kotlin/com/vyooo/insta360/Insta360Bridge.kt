@@ -87,7 +87,7 @@ class Insta360Bridge(
         frameChannel.setStreamHandler(null)
         Insta360FrameSink.onStats = null
         Insta360FrameSink.onFrame = null
-        Insta360FrameSink.onYuvFrame = null
+        Insta360FrameSink.onProcessedFrame = null
         glRenderer?.dispose()
         glRenderer = null
         events = null
@@ -154,12 +154,6 @@ class Insta360Bridge(
                 result.success(null)
             }
 
-            "setPipelineEnabled" -> {
-                // A/B toggle for the optimisation pipeline (e.g. bitrate-reduction validation).
-                Insta360FrameSink.pipelineEnabled = call.argument<Boolean>("enabled") ?: true
-                result.success(null)
-            }
-
             "getPipelineMetrics" -> result.success(Insta360FrameSink.metrics())
 
             "createProcessedTexture" -> {
@@ -168,20 +162,20 @@ class Insta360Bridge(
                 val renderer = glRenderer
                     ?: Insta360GlRenderer(textureRegistry).also { glRenderer = it }
                 val id = renderer.create()
-                Insta360FrameSink.onYuvFrame = { frame -> renderer.submit(frame) }
+                Insta360FrameSink.onProcessedFrame = { b, w, h, _ -> renderer.submit(b, w, h) }
                 result.success(id)
             }
 
             "disposeProcessedTexture" -> {
-                Insta360FrameSink.onYuvFrame = null
+                Insta360FrameSink.onProcessedFrame = null
                 glRenderer?.dispose()
                 glRenderer = null
                 result.success(null)
             }
 
             "setMaskEnabled" -> {
-                // Toggle forward-only masking on the live feed (true = masked, false = full 360°).
-                glRenderer?.maskEnabled = call.argument<Boolean>("enabled") ?: true
+                // Toggle forward-only masking in the pipeline (true = masked, false = full 360°).
+                Insta360FrameSink.setMaskEnabled(call.argument<Boolean>("enabled") ?: true)
                 result.success(null)
             }
 

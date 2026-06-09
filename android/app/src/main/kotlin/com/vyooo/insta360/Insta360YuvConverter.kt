@@ -1,17 +1,17 @@
 package com.vyooo.insta360
 
 import com.arashivision.graphicpath.insmedia.common.MediaFrame
-import java.nio.ByteBuffer
 
 /**
- * Converts the SDK's extracted **YUV420P (I420)** [MediaFrame] to RGBA8888.
+ * Converts the SDK's extracted **YUV420P (I420)** [MediaFrame] to packed RGBA8888.
  *
  * `startExtractMediaFrame` delivers a 3-plane planar frame (`pixFmt=0`): Y at full resolution and
- * U/V at quarter resolution (4:2:0). The capture-side pipeline, the host texture and Agora all expect
- * a single tightly-packed RGBA buffer, so we convert here at ingestion (BT.601 limited range).
+ * U/V at quarter resolution (4:2:0). The capture-side [com.vyooo.insta360.pipeline.FramePipeline]
+ * works on a single tightly-packed RGBA buffer, so this normalises the frame at ingestion (BT.601
+ * limited range). The returned array is **reused** across frames — consume it before the next frame.
  *
- * Buffers are reused across frames to avoid per-frame allocation. Not thread-safe; called serially on
- * the SDK extract thread.
+ * Not thread-safe; called serially on the SDK extract thread. (CPU path; a `libyuv`/NEON or GPU
+ * conversion can replace this if 30 fps full-rate processing is required.)
  */
 object Insta360YuvConverter {
 
@@ -19,10 +19,9 @@ object Insta360YuvConverter {
     private var uBuf = ByteArray(0)
     private var vBuf = ByteArray(0)
     private var rgba = ByteArray(0)
-    private var out: ByteBuffer? = null
 
-    /** Returns an RGBA [ByteBuffer] (capacity `w*h*4`, position 0), or null if not a 3-plane I420. */
-    fun toRgba(frame: MediaFrame): ByteBuffer? {
+    /** Returns the packed RGBA bytes (length `w*h*4`, reused), or null if not a 3-plane I420. */
+    fun toRgba(frame: MediaFrame): ByteArray? {
         val w = frame.width
         val h = frame.height
         if (w <= 0 || h <= 0) return null
@@ -81,15 +80,6 @@ object Insta360YuvConverter {
                 di += 4
             }
         }
-
-        var buffer = out
-        if (buffer == null || buffer.capacity() < need) {
-            buffer = ByteBuffer.allocateDirect(need)
-            out = buffer
-        }
-        buffer.clear()
-        buffer.put(dst, 0, need)
-        buffer.position(0)
-        return buffer
+        return dst
     }
 }

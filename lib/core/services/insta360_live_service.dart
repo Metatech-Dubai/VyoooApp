@@ -135,11 +135,6 @@ class Insta360LiveService {
     return raw == null ? <String, dynamic>{} : raw.cast<String, dynamic>();
   }
 
-  /// Toggle the capture-side optimisation pipeline (Downscale → ForwardMask → …).
-  /// Off = raw pass-through, used for A/B bitrate-reduction validation.
-  Future<void> setPipelineEnabled(bool enabled) =>
-      _methods.invokeMethod<void>('setPipelineEnabled', {'enabled': enabled});
-
   /// Latest pipeline metrics (fps, per-stage latency, spatial reduction); empty when off.
   Future<Map<String, dynamic>> getPipelineMetrics() async {
     final raw =

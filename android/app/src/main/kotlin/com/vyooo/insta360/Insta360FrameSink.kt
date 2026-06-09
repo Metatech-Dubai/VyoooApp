@@ -1,53 +1,61 @@
 package com.vyooo.insta360
 
 import com.arashivision.graphicpath.insmedia.common.MediaFrame
+import com.vyooo.insta360.pipeline.DownscaleStage
+import com.vyooo.insta360.pipeline.ForwardMaskStage
 import com.vyooo.insta360.pipeline.FramePipeline
+import com.vyooo.insta360.pipeline.MutableHints
+import com.vyooo.insta360.pipeline.PanoramaDetectStage
 import com.vyooo.insta360.pipeline.PipelineFrame
-import java.nio.ByteBuffer
+import com.vyooo.insta360.pipeline.TemporalDedupStage
 
 /**
- * The single insertion point for extracted Insta360 frames. Two paths share it:
+ * The single insertion point **and** processing hub for extracted Insta360 frames.
  *
- * 1. **GPU display path (live, Milestone 1).** [submitYuv] forwards the raw I420 frame to
- *    [onYuvFrame] → [Insta360GlRenderer], which does YUV→RGB + forward-mask in a GL shader. This is
- *    what the host actually sees; it does no CPU per-pixel work.
+ * One deterministic, patent-aligned path:
  *
- * 2. **CPU pipeline path (reference / transport).** [submit] runs an extracted RGBA frame through the
- *    capture-side optimisation [FramePipeline] (Downscale → PanoramaDetect → ForwardMask →
- *    TemporalDedup placeholder), then forwards via [onFrame] (Dart → Agora `pushVideoFrame`). This is
- *    the deterministic, modular reference implementation of the patent stages and the transport path
- *    for when Agora push is re-enabled; it is currently dormant (the live host display uses path 1).
+ * ```
+ * MediaFrame (YUV420P) → YUV→RGB → FramePipeline[ Downscale → PanoramaDetect → ForwardMask →
+ *                                                  TemporalDedup ] → processed RGBA
+ *      ├─► onProcessedFrame  (host display — the Flutter texture; always)
+ *      └─► onFrame           (encoder / transport — Agora; when streamingEnabled)
+ * ```
  *
- * [onStats] reports resolution + fps + count (~1×/sec). Frames arrive on an SDK thread; listeners
- * marshal to the main thread.
+ * A stage may drop a frame (pipeline returns null) — nothing is forwarded for that frame, so the
+ * display and the transmitted stream stay in lock-step ("what you see is what's transmitted"). The
+ * GPU [Insta360GlRenderer] is now only a texture **uploader** of the processed RGBA — the pipeline is
+ * the single source of truth for the optimisation (downscale / mask / temporal / AI).
+ *
+ * Frames arrive on the SDK extract thread; listeners marshal to the main thread as needed.
  */
 object Insta360FrameSink {
+
+    /** Processed RGBA for the host display. (rgba, w, h, ptsUs). The buffer is reused — read it now. */
+    @Volatile var onProcessedFrame: ((ByteArray, Int, Int, Long) -> Unit)? = null
+
+    /** Processed RGBA for the encoder/transport. Only when [streamingEnabled]; receives its own copy. */
+    @Volatile var onFrame: ((ByteArray, Int, Int, Long) -> Unit)? = null
 
     /** (width, height, fps, totalCount) — emitted ~1×/sec. */
     @Volatile var onStats: ((Int, Int, Int, Long) -> Unit)? = null
 
-    /** (rgbaBytes, width, height, ptsUs). Only invoked when [streamingEnabled]. */
-    @Volatile var onFrame: ((ByteArray, Int, Int, Long) -> Unit)? = null
-
     @Volatile var streamingEnabled: Boolean = false
 
-    /** The optimisation pipeline. Defaults to the Milestone-1 chain; null = raw pass-through. */
-    @Volatile var pipeline: FramePipeline? = FramePipeline.defaultM1()
+    // ── The capture-side optimisation pipeline (single source of truth) ──────────
+    private val forwardMask = ForwardMaskStage()
 
-    /** Toggle the pipeline off for A/B comparison (e.g. bitrate-reduction validation). */
-    @Volatile var pipelineEnabled: Boolean = true
+    /** AI-fed decision hints (Milestone 3); deterministic (all null) until the AI layer writes them. */
+    val hints = MutableHints()
 
-    /**
-     * Raw-YUV passthrough for the **GPU display path** ([Insta360GlRenderer]). Invoked synchronously
-     * on the SDK extract thread with the I420 [MediaFrame] (valid only for the call). The GL renderer
-     * does YUV→RGB + forward-mask on the GPU, so this path skips the CPU pipeline entirely.
-     */
-    @Volatile var onYuvFrame: ((MediaFrame) -> Unit)? = null
+    val pipeline = FramePipeline(
+        listOf(DownscaleStage(), PanoramaDetectStage(), forwardMask, TemporalDedupStage()),
+        hints,
+    )
 
-    private var yuvCount: Long = 0
-    private var yuvWindowNs: Long = 0
-    private var yuvFramesWindow: Int = 0
-    @Volatile private var yuvFps: Int = 0
+    /** Live masked/unmasked toggle (forward-only suppression on/off). */
+    fun setMaskEnabled(enabled: Boolean) {
+        forwardMask.enabled = enabled
+    }
 
     private var count: Long = 0
     private var windowStartNs: Long = 0
@@ -55,86 +63,43 @@ object Insta360FrameSink {
     private var lastFps: Int = 0
     private var basePtsNs: Long = 0
 
-    // Reusable working buffer so the pipeline owns the pixels (the SDK plane may be recycled).
-    private var work: ByteArray = ByteArray(0)
-
     @Synchronized
     fun reset() {
         count = 0; windowStartNs = 0; framesThisWindow = 0; lastFps = 0; basePtsNs = 0
+        pipeline.metrics.reset()
     }
 
-    /** Live metrics: GPU display fps/count plus the CPU pipeline snapshot (empty while GPU path runs). */
+    /** Live metrics: output fps + the pipeline snapshot (per-stage latency, spatial reduction, drops). */
     fun metrics(): Map<String, Any> {
         val m = HashMap<String, Any>()
-        m["displayFps"] = yuvFps
-        m["displayFrames"] = yuvCount
-        pipeline?.metrics?.snapshot()?.let { m.putAll(it) }
+        m["fps"] = lastFps
+        m["framesOut"] = count
+        m.putAll(pipeline.metrics.snapshot())
         return m
     }
 
     /**
-     * Submit one raw I420 frame for the GPU display path. Counts fps and forwards to [onYuvFrame].
-     * Used instead of [submit] when the GL renderer is active (no CPU YUV→RGB / pipeline work).
+     * Submit one extracted I420 [frame]: convert → run the pipeline → fan out to display + encoder.
+     * Returns early (nothing forwarded) if conversion fails or a stage drops the frame.
      */
     @Synchronized
-    fun submitYuv(frame: MediaFrame) {
-        yuvCount++
-        val now = System.nanoTime()
-        if (yuvWindowNs == 0L) yuvWindowNs = now
-        yuvFramesWindow++
-        if (now - yuvWindowNs >= 1_000_000_000L) {
-            yuvFps = yuvFramesWindow
-            yuvFramesWindow = 0
-            yuvWindowNs = now
-        }
-        onYuvFrame?.invoke(frame)
-    }
+    fun submit(frame: MediaFrame) {
+        val w = frame.width
+        val h = frame.height
+        if (w <= 0 || h <= 0) return
 
-    /**
-     * Submit one extracted frame. [plane] is the RGBA buffer from the SDK's MediaFrame
-     * (`mediaFrame.planes[0]`); it is only read here and may be reused by the SDK afterwards.
-     */
-    @Synchronized
-    fun submit(plane: ByteBuffer?, width: Int, height: Int) {
-        if (plane == null || width <= 0 || height <= 0) return
-        val needed = width * height * 4
-        // Guard on capacity, not remaining(): the SDK hands us the plane with its position at the
-        // end (remaining == 0), so a remaining()-based check would drop every frame.
-        if (plane.capacity() < needed) return
+        val rgba = Insta360YuvConverter.toRgba(frame) ?: return
 
         val now = System.nanoTime()
         if (basePtsNs == 0L) basePtsNs = now
         val ptsUs = (now - basePtsNs) / 1000
 
-        val frameCb = onFrame
-        val needStream = streamingEnabled && frameCb != null
-        val p = pipeline
-
-        var outW = width
-        var outH = height
-        var bytes: ByteArray? = null // materialised RGBA in [work] when needed
-
-        // Copy the plane into our own buffer (read from position 0) so stages may mutate it and the
-        // SDK may recycle the plane. Done once and shared by the pipeline / stream paths.
-        if ((p != null && pipelineEnabled) || needStream) {
-            if (work.size < needed) work = ByteArray(needed)
-            val src = plane.duplicate()
-            src.clear() // position = 0, limit = capacity
-            src.get(work, 0, needed)
-        }
-
-        if (p != null && pipelineEnabled) {
-            val result = p.process(PipelineFrame(work, width, height, ptsUs))
-                ?: return // frame dropped by a stage (e.g. temporal dedup, M2)
-            bytes = result.pixels
-            outW = result.width
-            outH = result.height
-        } else if (needStream) {
-            bytes = work
-        }
+        val result = pipeline.process(PipelineFrame(rgba, w, h, ptsUs))
+            ?: return // dropped by a stage (e.g. temporal dedup)
+        val outW = result.width
+        val outH = result.height
 
         count++
-
         // fps over a 1-second sliding window
         if (windowStartNs == 0L) windowStartNs = now
         framesThisWindow++
@@ -145,12 +110,18 @@ object Insta360FrameSink {
             onStats?.invoke(outW, outH, lastFps, count)
         }
 
-        // Transmit path (Dart → Agora) — own copy, the consumer may retain it.
-        if (needStream && bytes != null) {
-            val outBytes = outW * outH * 4
-            val copy = ByteArray(outBytes)
-            System.arraycopy(bytes, 0, copy, 0, outBytes)
-            frameCb?.invoke(copy, outW, outH, ptsUs)
+        // Host display — reads the (reused) buffer immediately.
+        onProcessedFrame?.invoke(result.pixels, outW, outH, ptsUs)
+
+        // Encoder / transport — own copy so the consumer may retain it.
+        if (streamingEnabled) {
+            val cb = onFrame
+            if (cb != null) {
+                val outBytes = outW * outH * 4
+                val copy = ByteArray(outBytes)
+                System.arraycopy(result.pixels, 0, copy, 0, outBytes)
+                cb.invoke(copy, outW, outH, ptsUs)
+            }
         }
     }
 }

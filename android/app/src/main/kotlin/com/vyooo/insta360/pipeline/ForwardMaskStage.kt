@@ -24,6 +24,10 @@ class ForwardMaskStage(
 
     override val name: String = "ForwardMask"
 
+    /** Live toggle for the masked/unmasked view: when false the full 360° frame passes through. */
+    @Volatile
+    var enabled: Boolean = true
+
     /** Fraction of the horizontal field retained (e.g. 200/360 ≈ 0.56). For reporting. */
     val retainedFraction: Float
         get() = (forwardFovDeg / 360f).coerceIn(0f, 1f)
@@ -36,6 +40,7 @@ class ForwardMaskStage(
     private var cachedTheta = Float.NaN
 
     override fun process(frame: PipelineFrame, hints: PipelineHints): PipelineFrame {
+        if (!enabled) return frame // unmasked view (full 360°)
         // Planar bypass (Patent §3/§4): never mask non-panoramic input.
         if (frame.meta.isPanoramic == false) return frame
 

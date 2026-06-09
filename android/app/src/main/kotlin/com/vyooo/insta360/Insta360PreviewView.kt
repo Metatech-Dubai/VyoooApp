@@ -176,10 +176,9 @@ class Insta360PreviewView(
             EXTRACT_FPS,
             EXTRACT_QUEUE,
             IMediaFrameCallback { mediaFrame ->
-                // The SDK delivers YUV420P. Feed it to the GPU display path (YUV→RGB + forward-mask
-                // happen in a GL shader). The CPU pipeline/converter remain available for the
-                // transport path (Agora, deferred) but are not run per-frame here.
-                mediaFrame?.let { Insta360FrameSink.submitYuv(it) }
+                // The SDK delivers YUV420P. Hand it to the single processing path: YUV→RGB →
+                // FramePipeline (downscale → mask → temporal → AI) → display + encoder.
+                mediaFrame?.let { Insta360FrameSink.submit(it) }
             },
         )
     }

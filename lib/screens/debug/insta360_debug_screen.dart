@@ -38,7 +38,6 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
       TextEditingController(text: 'insta360_spike');
 
   // ── Pipeline (Milestone 1) state ───────────────────────────────────────────
-  bool _pipelineEnabled = true;
   Map<String, dynamic> _metrics = const {};
   Timer? _metricsTimer;
 
@@ -62,11 +61,6 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
     _service.dispose();
     _channelCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _togglePipeline(bool enabled) async {
-    setState(() => _pipelineEnabled = enabled);
-    await _service.setPipelineEnabled(enabled);
   }
 
   // ── Connection ───────────────────────────────────────────────────────────────
@@ -227,20 +221,9 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
     final stages = (_metrics['stagesMs'] as Map?)?.cast<String, dynamic>();
 
     return _card([
-      Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          const Text('Optimisation pipeline',
-              style:
-                  TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-          Switch(
-            value: _pipelineEnabled,
-            onChanged: _togglePipeline,
-            activeThumbColor: const Color(0xFFDE106B),
-          ),
-        ],
-      ),
-      const Text('Off = raw pass-through (A/B for bitrate-reduction validation).',
+      const Text('Optimisation pipeline',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      const Text('Single processing path: Downscale → PanoramaDetect → ForwardMask → TemporalDedup.',
           style: TextStyle(color: Colors.white54, fontSize: 12)),
       const SizedBox(height: 8),
       _row('Pipeline fps', '${fps ?? 0}'),
