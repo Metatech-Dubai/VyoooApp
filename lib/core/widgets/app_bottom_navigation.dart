@@ -295,7 +295,7 @@ class AppBottomNavigation extends StatelessWidget {
           if (systemBottom > 0)
             ColoredBox(
               color: systemNavExtensionColor,
-              child: SizedBox(height: systemBottom),
+              child: SizedBox(width: double.infinity, height: systemBottom),
             ),
         ],
       ),
