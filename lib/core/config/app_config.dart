@@ -47,4 +47,10 @@ abstract final class AppConfig {
   static const String _googlePlacesApiKeyIos = 'AIzaSyCa_TszTmgHk4gQ9SE08dQSHBf6IlsXdvc';
   static String get googlePlacesApiKey =>
       Platform.isIOS ? _googlePlacesApiKeyIos : _googlePlacesApiKeyAndroid;
+
+  /// The iOS Places key is app-restricted in Google Cloud; Maps web-service
+  /// requests must carry the bundle identifier or they fail with
+  /// REQUEST_DENIED ("not authorized to use this API key").
+  static Map<String, String> get googleMapsWebServiceHeaders =>
+      Platform.isIOS ? const {'X-Ios-Bundle-Identifier': 'com.vyooo'} : const {};
 }

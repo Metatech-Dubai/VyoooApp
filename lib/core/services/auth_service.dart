@@ -189,7 +189,7 @@ class AuthService {
         verificationFailed: (e) {
           if (completer.isCompleted) return;
           completer.complete(
-            AuthResult(success: false, message: _mapAuthException(e.code)),
+            AuthResult(success: false, message: _mapPhoneSendException(e)),
           );
         },
         codeSent: (verificationId, resendToken) {
@@ -207,10 +207,24 @@ class AuthService {
         ),
       );
     } on FirebaseAuthException catch (e) {
-      return AuthResult(success: false, message: _mapAuthException(e.code));
+      return AuthResult(success: false, message: _mapPhoneSendException(e));
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
     }
+  }
+
+  /// Firebase blocks OTP SMS to countries missing from the project's
+  /// SMS region policy allowlist. The SDK reports this as
+  /// `operation-not-allowed` ("SMS unable to be sent until this region
+  /// enabled by the app developer"), which [_mapAuthException] would turn
+  /// into a misleading "Sign-in method is not enabled.".
+  static String _mapPhoneSendException(FirebaseAuthException e) {
+    final detail = (e.message ?? '').toLowerCase();
+    if (e.code == 'operation-not-allowed' && detail.contains('region')) {
+      return 'Text codes are not available for this country yet. '
+          'Please verify with email instead.';
+    }
+    return _mapAuthException(e.code);
   }
 
   /// Verify SMS code and sign in with phone credential.
