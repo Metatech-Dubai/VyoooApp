@@ -1,20 +1,18 @@
 {
-  "enabled": false,
+  "enabled": true,
   "title": "Update required",
   "message": "A new version of Vyooo is available. Please update to continue using the app.",
   "updateButtonLabel": "Update",
   "laterButtonLabel": "Later",
-  "iosAppStoreId": "",
+  "iosAppStoreId": "6757733269",
   "ios": {
-    "minVersion": "1.1.9",
-    "latestVersion": "1.2.0",
-    "minBuildNumber": 36,
-    "updateUrl": "https://testflight.apple.com/join/NjQVQ2nD"
+    "minVersion": "1.2.0",
+    "latestVersion": "1.2.1",
+    "updateUrl": "https://apps.apple.com/app/id6757733269"
   },
   "android": {
-    "minVersion": "1.1.9",
-    "latestVersion": "1.2.0",
-    "minBuildNumber": 36,
+    "minVersion": "1.2.0",
+    "latestVersion": "1.2.1",
     "updateUrl": "https://play.google.com/store/apps/details?id=com.vyooo"
   }
 }

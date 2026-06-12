@@ -63,7 +63,7 @@ Firestore document: **`app_config` / `version_policy`** (see `firestore/app_conf
 | Force update | `minVersion` → new marketing version (and/or `minBuildNumber` → new build) |
 | Turn off | `enabled: false` |
 
-**iOS update link:** `https://testflight.apple.com/join/NjQVQ2nD` (or App Store URL when on production).  
+**iOS update link (production):** `https://apps.apple.com/app/id6757733269` — set `iosAppStoreId: "6757733269"` in the Firestore doc; TestFlight link only for beta-only policies.  
 **Android update link:** `https://play.google.com/store/apps/details?id=com.vyooo`
 
 ## Team Flutter version (every machine)
