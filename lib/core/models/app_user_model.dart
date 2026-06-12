@@ -72,6 +72,7 @@ class AppUserModel {
     this.parentConsentAt,
     this.profileLocation,
     this.locationSetupComplete = false,
+    this.profileImageSetupComplete = false,
   });
 
   final String uid;
@@ -124,6 +125,10 @@ class AppUserModel {
   /// True after onboarding location step is saved or skipped.
   final bool locationSetupComplete;
 
+  /// True after the onboarding profile-photo step is completed or skipped.
+  /// A non-empty [profileImage] also counts as done (legacy users).
+  final bool profileImageSetupComplete;
+
   Map<String, dynamic> toJson() {
     return {
       'uid': uid,
@@ -157,6 +162,7 @@ class AppUserModel {
       if (parentConsentAt != null) 'parentConsentAt': parentConsentAt,
       if (profileLocation != null) 'location': profileLocation!.toMap(),
       'locationSetupComplete': locationSetupComplete,
+      'profileImageSetupComplete': profileImageSetupComplete,
     };
   }
 
@@ -264,6 +270,10 @@ class AppUserModel {
         json['locationSetupComplete'],
         fallback: false,
       ),
+      profileImageSetupComplete: _readFirestoreBool(
+        json['profileImageSetupComplete'],
+        fallback: false,
+      ),
     );
   }
 
@@ -299,6 +309,7 @@ class AppUserModel {
     Timestamp? parentConsentAt,
     PostLocation? profileLocation,
     bool? locationSetupComplete,
+    bool? profileImageSetupComplete,
   }) {
     return AppUserModel(
       uid: uid ?? this.uid,
@@ -333,6 +344,8 @@ class AppUserModel {
       profileLocation: profileLocation ?? this.profileLocation,
       locationSetupComplete:
           locationSetupComplete ?? this.locationSetupComplete,
+      profileImageSetupComplete:
+          profileImageSetupComplete ?? this.profileImageSetupComplete,
     );
   }
 }

@@ -72,8 +72,7 @@ class OnboardingRouteResolver {
 
   static String _postIdentityRoute(AppUserModel user) {
     if (user.interests.isEmpty) {
-      final hasProfileImage = (user.profileImage ?? '').trim().isNotEmpty;
-      if (!hasProfileImage) {
+      if (!user.isProfileImageOnboardingDone) {
         return OnboardingRouteId.addProfile;
       }
       if (!user.isLocationOnboardingDone) {

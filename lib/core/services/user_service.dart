@@ -122,6 +122,7 @@ class UserService {
     'parentInviteEmail': '',
     'parentInvitePhone': '',
     'locationSetupComplete': false,
+    'profileImageSetupComplete': false,
   };
 
   /// Creates the initial user document. Call after AuthService.registerWithEmail success.
@@ -196,6 +197,7 @@ class UserService {
     String? parentInvitePhone,
     PostLocation? profileLocation,
     bool? locationSetupComplete,
+    bool? profileImageSetupComplete,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -256,6 +258,9 @@ class UserService {
       }
       if (locationSetupComplete != null) {
         data['locationSetupComplete'] = locationSetupComplete;
+      }
+      if (profileImageSetupComplete != null) {
+        data['profileImageSetupComplete'] = profileImageSetupComplete;
       }
       if (data.isEmpty) return;
       await _firestore

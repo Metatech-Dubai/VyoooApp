@@ -116,26 +116,32 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
   Future<void> _onNext() async {
     if (_isUploading) return;
     final uid = AuthService().currentUser?.uid;
-    if (uid != null && _profileImagePath != null) {
-      setState(() => _isUploading = true);
-      try {
-        await StorageService().uploadProfileImage(
-          imageFile: File(_profileImagePath!),
-          uid: uid,
-        );
-      } catch (_) {
-        // Upload failed (e.g. Firebase Storage not enabled or rules). Still update Firestore
-        // with empty profileImage so the field exists, and try next screen.
+    if (uid == null) return;
+    setState(() => _isUploading = true);
+    try {
+      if (_profileImagePath != null) {
         try {
-          await UserService().updateUserProfile(uid: uid, profileImage: '');
-        } catch (_) {}
-        if (mounted) setState(() => _isUploading = false);
-        return;
+          await StorageService().uploadProfileImage(
+            imageFile: File(_profileImagePath!),
+            uid: uid,
+          );
+        } catch (error) {
+          // Upload failed (e.g. Firebase Storage not enabled or rules).
+          // Don't block onboarding on the photo; continue without it.
+          debugPrint('Profile image upload failed: $error');
+        }
       }
-      if (!mounted) return;
-      setState(() => _isUploading = false);
+      // The photo is optional: mark the step complete (with or without an
+      // image) so the onboarding gate advances to location / interests.
+      await UserService().updateUserProfile(
+        uid: uid,
+        profileImageSetupComplete: true,
+      );
+    } catch (error) {
+      debugPrint('Profile step completion failed: $error');
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
     }
-    // Gate advances to location / interests after Firestore profileImage updates.
   }
 
   @override

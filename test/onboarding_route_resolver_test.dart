@@ -16,6 +16,7 @@ void main() {
     List<String> interests = const [],
     String profileImage = '',
     bool locationSetupComplete = false,
+    bool profileImageSetupComplete = false,
   }) {
     return AppUserModel(
       uid: 'u1',
@@ -30,6 +31,7 @@ void main() {
       parentConsentStatus: parentConsentStatus,
       parentConsentId: parentConsentId,
       locationSetupComplete: locationSetupComplete,
+      profileImageSetupComplete: profileImageSetupComplete,
       createdAt: Timestamp.now(),
     );
   }
@@ -59,6 +61,29 @@ void main() {
       ),
     );
     expect(r, OnboardingRouteId.addProfile);
+  });
+
+  test('resolve adult who skipped photo, no location -> selectLocation', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        dob: '2000-01-01',
+        parentConsentStatus: ParentConsentStatusValue.notRequired,
+        profileImageSetupComplete: true,
+      ),
+    );
+    expect(r, OnboardingRouteId.selectLocation);
+  });
+
+  test('resolve adult who skipped photo, location done -> selectInterests', () {
+    final r = OnboardingRouteResolver.resolve(
+      base(
+        dob: '2000-01-01',
+        parentConsentStatus: ParentConsentStatusValue.notRequired,
+        profileImageSetupComplete: true,
+        locationSetupComplete: true,
+      ),
+    );
+    expect(r, OnboardingRouteId.selectInterests);
   });
 
   test('resolve adult with photo, no location -> selectLocation', () {
