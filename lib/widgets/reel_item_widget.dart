@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/navigation/app_route_observer.dart';
+import '../core/services/feed_offline_video_cache.dart';
 import '../core/utils/video_upload_policy.dart';
 import '../core/theme/app_spacing.dart';
 
@@ -55,6 +56,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   Timer? _retryTimer;
   bool _lastIsPlaying = false;
   bool _hasNotifiedCompletion = false;
+  bool _localPlaybackFailed = false;
   static const int _maxRetries = 24; // ~2m wait for Cloudflare processing
 
   // Effective-visibility flags. Combined with [widget.isVisible] in
@@ -101,6 +103,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     super.didUpdateWidget(oldWidget);
     if (oldWidget.videoUrl != widget.videoUrl) {
       _hasNotifiedCompletion = false;
+      _localPlaybackFailed = false;
       _disposePlayer();
       if (_shouldPlay) {
         _initializePlayer();
@@ -147,42 +150,48 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     super.dispose();
   }
 
+  static VideoPlayerOptions get _playerOptions => VideoPlayerOptions(
+        mixWithOthers: true,
+        allowBackgroundPlayback: false,
+      );
+
   Future<void> _initializePlayer() async {
     if (!_shouldPlay) return;
+
+    // Prefer the offline copy prefetched by [FeedOfflineVideoCache]: instant
+    // start and keeps the first feed reels playable with no internet.
+    if (!_localPlaybackFailed) {
+      final localFile =
+          await FeedOfflineVideoCache.instance.localFileFor(widget.videoUrl);
+      if (localFile != null) {
+        if (!mounted || !_shouldPlay) return;
+        try {
+          await _attachAndPlay(
+            VideoPlayerController.file(
+              localFile,
+              videoPlayerOptions: _playerOptions,
+            ),
+          );
+          return;
+        } catch (e) {
+          debugPrint('Offline reel playback failed, using network: $e');
+          _localPlaybackFailed = true;
+          _disposePlayer();
+          if (!mounted || !_shouldPlay) return;
+        }
+      }
+    }
+
     final urls = _candidateUrls(widget.videoUrl);
     if (urls.isEmpty) return;
     final url = urls[_urlIndex.clamp(0, urls.length - 1)];
     try {
-      final ctrl = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers: true,
-          allowBackgroundPlayback: false,
+      await _attachAndPlay(
+        VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          videoPlayerOptions: _playerOptions,
         ),
       );
-
-      ctrl.setLooping(true);
-      ctrl.setVolume(_isMuted ? 0 : 1.0);
-
-      await ctrl.initialize();
-
-      if (!mounted) {
-        ctrl.dispose();
-        return;
-      }
-      setState(() {
-        _controller = ctrl;
-        _isInitialized = true;
-        _showError = false;
-        _retryCount = 0;
-      });
-      _lastIsPlaying = ctrl.value.isPlaying;
-      ctrl.addListener(_onControllerValueChanged);
-      // Re-check after async gap: route may have been pushed away during
-      // initialize(), in which case we must NOT autoplay.
-      if (_shouldPlay) {
-        await ctrl.play();
-      }
     } catch (e) {
       debugPrint('Error initializing video: $e');
       _disposePlayer();
@@ -210,6 +219,38 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
       } else if (mounted) {
         setState(() => _showError = true);
       }
+    }
+  }
+
+  /// Initializes [ctrl], attaches it to state and starts playback.
+  /// Throws on initialization failure (caller owns retry/fallback policy).
+  Future<void> _attachAndPlay(VideoPlayerController ctrl) async {
+    ctrl.setLooping(true);
+    ctrl.setVolume(_isMuted ? 0 : 1.0);
+
+    try {
+      await ctrl.initialize();
+    } catch (_) {
+      ctrl.dispose();
+      rethrow;
+    }
+
+    if (!mounted) {
+      ctrl.dispose();
+      return;
+    }
+    setState(() {
+      _controller = ctrl;
+      _isInitialized = true;
+      _showError = false;
+      _retryCount = 0;
+    });
+    _lastIsPlaying = ctrl.value.isPlaying;
+    ctrl.addListener(_onControllerValueChanged);
+    // Re-check after async gap: route may have been pushed away during
+    // initialize(), in which case we must NOT autoplay.
+    if (_shouldPlay) {
+      await ctrl.play();
     }
   }
 

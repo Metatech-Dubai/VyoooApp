@@ -16,6 +16,7 @@ import 'core/platform/app_system_ui.dart';
 import 'core/navigation/app_keys.dart';
 import 'core/navigation/app_route_observer.dart';
 import 'core/services/deep_link_service.dart';
+import 'core/services/feed_warmup_service.dart';
 import 'core/services/push_messaging_service.dart';
 import 'core/subscription/subscription_controller.dart';
 import 'core/theme/app_padding.dart';
@@ -78,6 +79,9 @@ void main() async {
     }
     await _configureFirebaseAppCheck();
     firebaseInitialized = true;
+    // Prefetch the For You feed while the splash video plays so the feed is
+    // populated (and the first reels cached for offline) before it is shown.
+    FeedWarmupService.instance.start();
     await PushMessagingService.instance.configure();
   } catch (e, st) {
     developer.log(

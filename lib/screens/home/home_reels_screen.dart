@@ -17,7 +17,9 @@ import '../../core/utils/reel_engagement.dart';
 import '../../core/models/story_model.dart';
 import '../../core/navigation/app_route_observer.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/feed_offline_video_cache.dart';
 import '../../core/services/feed_reels_cache_service.dart';
+import '../../core/services/feed_warmup_service.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
@@ -276,8 +278,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     try {
       final uid = AuthService().currentUser?.uid ?? '';
-      List<String> blockedIds = const [];
-      if (uid.isNotEmpty) {
+      // Use the feed warmed up during the splash video when available so the
+      // first paint does not wait for another round-trip.
+      final warm = await FeedWarmupService.instance.consume();
+      List<String> blockedIds = warm?.blockedIds ?? const [];
+      if (warm == null && uid.isNotEmpty) {
         blockedIds = await UserService().getBlockedUserIds(uid);
       }
       if (!mounted || generation != _loadGeneration) return;
@@ -285,13 +290,18 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       bool allowedByBlock(Map<String, dynamic> r) =>
           _isReelAllowedByBlock(r, blockedIds);
 
-      final forYouRaw = await _reelsService.getReelsForYou();
-      if (!mounted || generation != _loadGeneration) return;
+      List<Map<String, dynamic>> hydratedForYou;
+      if (warm != null) {
+        hydratedForYou = warm.forYou;
+      } else {
+        final forYouRaw = await _reelsService.getReelsForYou();
+        if (!mounted || generation != _loadGeneration) return;
 
-      final filteredForYou = forYouRaw.where(allowedByBlock).toList();
-      final hydratedForYou =
-          await _reelsService.hydrateRepostEngagementStats(filteredForYou);
-      if (!mounted || generation != _loadGeneration) return;
+        final filteredForYou = forYouRaw.where(allowedByBlock).toList();
+        hydratedForYou =
+            await _reelsService.hydrateRepostEngagementStats(filteredForYou);
+        if (!mounted || generation != _loadGeneration) return;
+      }
 
       setState(() {
         _reelsLoadError = null;
@@ -300,6 +310,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       });
       if (hydratedForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(hydratedForYou));
+        unawaited(FeedOfflineVideoCache.instance.syncForFeed(hydratedForYou));
       }
       _handleIncomingDeepLink();
 
@@ -452,6 +463,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       });
       if (_reelsForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(_reelsForYou));
+        unawaited(FeedOfflineVideoCache.instance.syncForFeed(_reelsForYou));
       }
       _handleIncomingDeepLink();
     } catch (e) {
