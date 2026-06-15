@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../services/username_validation.dart';
+import 'auth_service.dart';
 import '../models/app_user_model.dart';
 import '../models/parent_consent_constants.dart';
 import '../models/post_location_model.dart';
@@ -35,6 +36,9 @@ class UserDiscoveryItem {
   /// True when [accountType] is private and we sent a follow request not yet accepted.
   final bool outgoingFollowRequestPending;
 }
+
+/// Outcome of submitting a report against a user profile.
+enum UserReportResult { success, alreadyReported, notSignedIn, failed }
 
 /// Firestore user document operations. No UI, no BuildContext.
 /// Call createUserDocument AFTER successful registration.
@@ -859,6 +863,37 @@ class UserService {
     await followerRef.update({
       'following': FieldValue.arrayRemove([currentUid]),
     });
+  }
+
+  /// Submit a user report against a profile.
+  ///
+  /// Uses a deterministic document id (`<reporterUid>_<reportedUserId>`) so a
+  /// given user can only report a given profile once.
+  Future<UserReportResult> reportUser({
+    required String reportedUserId,
+    required String reason,
+  }) async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || uid.isEmpty) return UserReportResult.notSignedIn;
+    final target = reportedUserId.trim();
+    if (target.isEmpty || target == uid) return UserReportResult.failed;
+    final trimmedReason = reason.trim();
+    if (trimmedReason.isEmpty) return UserReportResult.failed;
+    try {
+      final docRef =
+          _firestore.collection('user_reports').doc('${uid}_$target');
+      final existing = await docRef.get();
+      if (existing.exists) return UserReportResult.alreadyReported;
+      await docRef.set({
+        'reportedUserId': target,
+        'reporterId': uid,
+        'reason': trimmedReason,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return UserReportResult.success;
+    } catch (_) {
+      return UserReportResult.failed;
+    }
   }
 
   /// Blocks [targetUid]: adds to blockedUsers and removes from following (local doc only).

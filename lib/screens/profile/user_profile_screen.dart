@@ -48,6 +48,7 @@ import 'profile_figma_tokens.dart';
 import 'profile_figma_widgets.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../features/reel/widgets/block_user_sheet.dart';
+import '../../features/reel/widgets/report_user_sheet.dart';
 import '../../features/story/highlight_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
 import '../../features/subscription/creator_subscription_screen.dart';
@@ -1270,7 +1271,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   void _showProfileMenu(BuildContext context) {
     final target = widget.payload.targetUserId;
     final me = AuthService().currentUser?.uid;
-    final canBlock = target != null && target.isNotEmpty && target != me;
+    final canModerate = target != null && target.isNotEmpty && target != me;
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: AppColors.sheetBackground,
@@ -1283,7 +1284,35 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (canBlock)
+              if (canModerate) ...[
+                ListTile(
+                  leading: Icon(
+                    Icons.report_outlined,
+                    color: Colors.white.withValues(alpha: 0.9),
+                  ),
+                  title: const Text(
+                    'Report',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  trailing: Icon(
+                    Icons.chevron_right,
+                    color: Colors.white.withValues(alpha: 0.6),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    showReportUserSheet(
+                      context,
+                      username: widget.payload.username,
+                      avatarUrl: widget.payload.avatarUrl,
+                      targetUserId: target,
+                      isFollowing: _isFollowing,
+                    );
+                  },
+                ),
                 ListTile(
                   leading: const Icon(
                     Icons.block_flipped,
@@ -1311,6 +1340,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     );
                   },
                 ),
+              ],
               const SizedBox(height: AppSpacing.sm),
             ],
           ),
