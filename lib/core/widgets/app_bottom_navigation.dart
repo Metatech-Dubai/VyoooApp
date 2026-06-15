@@ -105,20 +105,23 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
+  static const double _tapTargetSize = 52;
+  static const double _inkRadius = 22;
+
   Widget _buildNavTap({
     required VoidCallback onPressed,
     required Widget child,
   }) {
     return SizedBox(
-      width: 62,
-      height: 62,
+      width: _tapTargetSize,
+      height: _tapTargetSize,
       child: Material(
         color: Colors.transparent,
         child: InkResponse(
           onTap: onPressed,
           containedInkWell: true,
           highlightShape: BoxShape.circle,
-          radius: 26,
+          radius: _inkRadius,
           splashColor: _splashColor,
           highlightColor: _splashColor.withValues(alpha: 0.6),
           child: Center(child: child),
@@ -209,10 +212,7 @@ class AppBottomNavigation extends StatelessWidget {
   }
 
   /// Nav icons + artwork height (excludes Android/iOS system nav inset).
-  static const double barHeight = 79;
-
-  /// Matches [_fallbackBarGradient] end — fills area under gesture/3-button bar.
-  static const Color systemNavExtensionColor = Color(0xFF6D0D45);
+  static const double barHeight = 64;
 
   /// Total bottom chrome: [barHeight] + system navigation inset (gesture bar, etc.).
   static double totalHeightFor(BuildContext context) {
@@ -226,12 +226,12 @@ class AppBottomNavigation extends StatelessWidget {
     stops: [0.1, 0.62, 1.0],
   );
 
-  Widget _buildBarBackground() {
+  Widget _buildBarBackground(double height) {
     return Image.asset(
       AppBackgroundAssets.mainNavBar,
       fit: BoxFit.fill,
       width: double.infinity,
-      height: barHeight,
+      height: height,
       errorBuilder: (_, error, stackTrace) => const DecoratedBox(
         decoration: BoxDecoration(gradient: _fallbackBarGradient),
       ),
@@ -245,58 +245,50 @@ class AppBottomNavigation extends StatelessWidget {
 
     return SizedBox(
       height: barHeight + systemBottom,
-      child: Column(
+      child: Stack(
+        fit: StackFit.expand,
         children: [
-          SizedBox(
-            height: barHeight,
-            child: Stack(
-              fit: StackFit.expand,
+          // Gradient continues behind the gesture/3-button system inset — no dark seam.
+          _buildBarBackground(barHeight + systemBottom),
+          Padding(
+            padding: EdgeInsets.only(bottom: systemBottom),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildBarBackground(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _NavItem(
-                      unselectedAsset: _NavAssets.homeUnselected,
-                      selectedAsset: _NavAssets.homeSelected,
-                      isSelected: currentIndex == 0,
-                      onTap: () => onTap(0),
-                      splashColor: _splashColor,
-                    ),
-                    _NavItem(
-                      unselectedAsset: _NavAssets.searchUnselected,
-                      selectedAsset: _NavAssets.searchSelected,
-                      isSelected: currentIndex == 1,
-                      onTap: () => onTap(1),
-                      splashColor: _splashColor,
-                    ),
-                    _NavItem(
-                      unselectedAsset: _NavAssets.addUnselected,
-                      selectedAsset: _NavAssets.addSelected,
-                      isSelected: currentIndex == 2,
-                      onTap: () => onTap(2),
-                      splashColor: _splashColor,
-                    ),
-                    _NavItem(
-                      isSelected: currentIndex == 3,
-                      onTap: () => onTap(3),
-                      splashColor: _splashColor,
-                      customChild: _buildChatIcon(currentIndex == 3),
-                    ),
-                    _buildNavTap(
-                      onPressed: () => onTap(4),
-                      child: _buildProfileIcon(currentIndex == 4),
-                    ),
-                  ],
+                _NavItem(
+                  unselectedAsset: _NavAssets.homeUnselected,
+                  selectedAsset: _NavAssets.homeSelected,
+                  isSelected: currentIndex == 0,
+                  onTap: () => onTap(0),
+                  splashColor: _splashColor,
+                ),
+                _NavItem(
+                  unselectedAsset: _NavAssets.searchUnselected,
+                  selectedAsset: _NavAssets.searchSelected,
+                  isSelected: currentIndex == 1,
+                  onTap: () => onTap(1),
+                  splashColor: _splashColor,
+                ),
+                _NavItem(
+                  unselectedAsset: _NavAssets.addUnselected,
+                  selectedAsset: _NavAssets.addSelected,
+                  isSelected: currentIndex == 2,
+                  onTap: () => onTap(2),
+                  splashColor: _splashColor,
+                ),
+                _NavItem(
+                  isSelected: currentIndex == 3,
+                  onTap: () => onTap(3),
+                  splashColor: _splashColor,
+                  customChild: _buildChatIcon(currentIndex == 3),
+                ),
+                _buildNavTap(
+                  onPressed: () => onTap(4),
+                  child: _buildProfileIcon(currentIndex == 4),
                 ),
               ],
             ),
           ),
-          if (systemBottom > 0)
-            ColoredBox(
-              color: systemNavExtensionColor,
-              child: SizedBox(width: double.infinity, height: systemBottom),
-            ),
         ],
       ),
     );
@@ -323,15 +315,15 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 62,
-      height: 62,
+      width: AppBottomNavigation._tapTargetSize,
+      height: AppBottomNavigation._tapTargetSize,
       child: Material(
         color: Colors.transparent,
         child: InkResponse(
           onTap: onTap,
           containedInkWell: true,
           highlightShape: BoxShape.circle,
-          radius: 26,
+          radius: AppBottomNavigation._inkRadius,
           splashColor: splashColor,
           highlightColor: splashColor.withValues(alpha: 0.6),
           child: Center(
