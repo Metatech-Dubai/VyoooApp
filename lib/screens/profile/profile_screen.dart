@@ -79,6 +79,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   final LiveStreamService _liveStreamService = LiveStreamService();
   String? _highlightsStreamUid;
   Stream<List<StoryHighlightModel>>? _highlightsStream;
+  String? _activeStoriesStreamUid;
+  Stream<List<StoryModel>>? _activeStoriesStream;
   Future<List<Map<String, dynamic>>>? _savedReelsFuture;
   String? _savedReelsFutureUid;
   Future<List<Map<String, dynamic>>>? _vrReelsFuture;
@@ -89,6 +91,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       _highlightsStream = StoryService().watchHighlightsForUser(uid);
     }
     return _highlightsStream!;
+  }
+
+  Stream<List<StoryModel>> _activeStoriesStreamFor(String uid) {
+    if (_activeStoriesStreamUid != uid || _activeStoriesStream == null) {
+      _activeStoriesStreamUid = uid;
+      _activeStoriesStream = StoryService().watchActiveStoriesForUser(uid);
+    }
+    return _activeStoriesStream!;
   }
 
   static String _accountTypeLabel(String? raw) {
@@ -602,7 +612,26 @@ class _ProfileScreenState extends State<ProfileScreen>
                         ],
                       ),
                       const SizedBox(height: 12),
-                      ProfileFigmaAvatar(imageUrl: avatarUrl),
+                      StreamBuilder<List<StoryModel>>(
+                        stream: profileUid.isEmpty
+                            ? null
+                            : _activeStoriesStreamFor(profileUid),
+                        builder: (context, snap) {
+                          final activeStories = snap.data ?? const <StoryModel>[];
+                          return ProfileFigmaAvatar(
+                            imageUrl: avatarUrl,
+                            hasStory: activeStories.isNotEmpty,
+                            onTap: profileUid.isEmpty
+                                ? null
+                                : () => _openMyStoryComposerOrViewer(
+                                      context,
+                                      userId: profileUid,
+                                      username: username,
+                                      avatarUrl: avatarUrl ?? '',
+                                    ),
+                          );
+                        },
+                      ),
                       const SizedBox(height: 16),
                       ProfileFigmaDisplayNameRow(
                         displayName: displayName,

@@ -5,9 +5,30 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 
-/// Shown after a video is successfully posted to Firestore.
+/// Shown after content is successfully posted to Firestore.
 class UploadSuccessScreen extends StatelessWidget {
-  const UploadSuccessScreen({super.key});
+  const UploadSuccessScreen({
+    super.key,
+    this.title = 'Video Posted!',
+    this.subtitle = 'Your video is live and visible to everyone.',
+    this.primaryButtonLabel = 'Go to Feed',
+    this.dismissToRoot = true,
+  });
+
+  final String title;
+  final String subtitle;
+  final String primaryButtonLabel;
+  /// When true, clears the upload stack back to the main nav. When false, pops once
+  /// with `true` so callers (e.g. home story "+") can refresh and stay on feed.
+  final bool dismissToRoot;
+
+  void _finish(BuildContext context) {
+    if (dismissToRoot) {
+      Navigator.of(context).popUntil((route) => route.isFirst);
+      return;
+    }
+    Navigator.of(context).pop(true);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -43,9 +64,9 @@ class UploadSuccessScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
-                  const Text(
-                    'Video Posted!',
-                    style: TextStyle(
+                  Text(
+                    title,
+                    style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
@@ -53,7 +74,7 @@ class UploadSuccessScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
-                    'Your video is live and visible to everyone.',
+                    subtitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white.withValues(alpha: 0.65),
@@ -64,12 +85,7 @@ class UploadSuccessScreen extends StatelessWidget {
                   Material(
                     borderRadius: BorderRadius.circular(AppRadius.pill),
                     child: InkWell(
-                      onTap: () {
-                        // Pop all upload screens back to the main nav
-                        Navigator.of(
-                          context,
-                        ).popUntil((route) => route.isFirst);
-                      },
+                      onTap: () => _finish(context),
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                       child: Ink(
                         decoration: BoxDecoration(
@@ -78,14 +94,14 @@ class UploadSuccessScreen extends StatelessWidget {
                           ),
                           borderRadius: BorderRadius.circular(AppRadius.pill),
                         ),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
                             horizontal: 48,
                             vertical: 14,
                           ),
                           child: Text(
-                            'Go to Feed',
-                            style: TextStyle(
+                            primaryButtonLabel,
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
@@ -97,9 +113,7 @@ class UploadSuccessScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: AppSpacing.md),
                   TextButton(
-                    onPressed: () => Navigator.of(
-                      context,
-                    ).popUntil((route) => route.isFirst),
+                    onPressed: () => _finish(context),
                     child: Text(
                       'Back to home',
                       style: TextStyle(

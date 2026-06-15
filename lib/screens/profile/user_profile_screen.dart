@@ -19,6 +19,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/models/story_highlight_model.dart';
+import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/reels_service.dart';
@@ -50,6 +51,7 @@ import '../../widgets/reel_item_widget.dart';
 import '../../features/reel/widgets/block_user_sheet.dart';
 import '../../features/reel/widgets/report_user_sheet.dart';
 import '../../features/story/highlight_viewer_screen.dart';
+import '../../features/story/story_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
 import '../../features/subscription/creator_subscription_screen.dart';
 
@@ -193,6 +195,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   LiveStreamModel? _hostActiveLive;
   String? _otherHighlightsStreamUid;
   Stream<List<StoryHighlightModel>>? _otherHighlightsStream;
+  String? _activeStoriesStreamUid;
+  Stream<List<StoryModel>>? _activeStoriesStream;
 
   @override
   void initState() {
@@ -226,6 +230,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _liveMonetizationEnabled = null;
       _otherHighlightsStreamUid = null;
       _otherHighlightsStream = null;
+      _activeStoriesStreamUid = null;
+      _activeStoriesStream = null;
       final nextUid = widget.payload.targetUserId?.trim() ?? '';
       if (nextUid.isNotEmpty) {
         ProfileCachedPostsGrid.invalidateCacheFor(nextUid);
@@ -547,6 +553,48 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     if (me == uid) return true;
     if (_locksContentForViewer(p) && !_isFollowing) return false;
     return true;
+  }
+
+  bool _canViewTheirStories(UserProfilePayload p) => _canViewTheirHighlights(p);
+
+  Stream<List<StoryModel>> _activeStoriesStreamFor(String uid) {
+    if (_activeStoriesStreamUid != uid || _activeStoriesStream == null) {
+      _activeStoriesStreamUid = uid;
+      _activeStoriesStream = StoryService().watchActiveStoriesForUser(uid);
+    }
+    return _activeStoriesStream!;
+  }
+
+  Future<void> _openUserStoryViewer(
+    UserProfilePayload p,
+    List<StoryModel> stories,
+  ) async {
+    if (stories.isEmpty || !mounted) return;
+    final userId = (p.targetUserId ?? '').trim();
+    if (userId.isEmpty) return;
+    final viewerUid = AuthService().currentUser?.uid ?? '';
+    final initialStoryIndex = viewerUid.isEmpty
+        ? 0
+        : stories.indexWhere((s) => !s.isViewedBy(viewerUid));
+    await Navigator.of(context).push(
+      PageRouteBuilder<void>(
+        pageBuilder: (_, _, _) => StoryViewerScreen(
+          groups: [
+            StoryGroup(
+              userId: userId,
+              username: p.username,
+              avatarUrl: p.avatarUrl,
+              stories: stories,
+            ),
+          ],
+          initialGroupIndex: 0,
+          initialStoryIndex: initialStoryIndex == -1 ? 0 : initialStoryIndex,
+        ),
+        transitionsBuilder: (_, animation, _, child) =>
+            FadeTransition(opacity: animation, child: child),
+        transitionDuration: const Duration(milliseconds: 200),
+      ),
+    );
   }
 
   Stream<List<StoryHighlightModel>> _otherUserHighlightsStream(String uid) {
@@ -880,7 +928,24 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   child: Column(
                     children: [
                       const SizedBox(height: 12),
-                      _buildAvatar(p.avatarUrl, isLive: _hostActiveLive != null),
+                      StreamBuilder<List<StoryModel>>(
+                        stream: (p.targetUserId ?? '').trim().isEmpty
+                            ? null
+                            : _activeStoriesStreamFor(p.targetUserId!.trim()),
+                        builder: (context, snap) {
+                          final stories = snap.data ?? const <StoryModel>[];
+                          final canView = _canViewTheirStories(p);
+                          final hasStory = canView && stories.isNotEmpty;
+                          return _buildAvatar(
+                            p.avatarUrl,
+                            isLive: _hostActiveLive != null,
+                            hasStory: hasStory,
+                            onTap: hasStory
+                                ? () => _openUserStoryViewer(p, stories)
+                                : null,
+                          );
+                        },
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -996,7 +1061,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     );
   }
 
-  Widget _buildAvatar(String avatarUrl, {required bool isLive}) {
+  Widget _buildAvatar(
+    String avatarUrl, {
+    required bool isLive,
+    bool hasStory = false,
+    VoidCallback? onTap,
+  }) {
     const radius = 56.0;
     const ringSize = radius * 2 + 12;
 
@@ -1014,31 +1084,39 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           : null,
     );
 
+    Widget avatarWidget;
     if (isLive) {
-      return LiveAvatarRing(
+      avatarWidget = LiveAvatarRing(
         size: ringSize,
         showLivePill: true,
         child: avatar,
       );
-    }
-
-    return Container(
-      decoration: const BoxDecoration(
-        shape: BoxShape.circle,
-        gradient: AppGradients.storyRingGradient,
-      ),
-      padding: const EdgeInsets.all(3),
-      child: DecoratedBox(
+    } else if (hasStory) {
+      avatarWidget = Container(
         decoration: const BoxDecoration(
           shape: BoxShape.circle,
-          color: Color(0xFF1A0B1E),
+          gradient: AppGradients.storyRingGradient,
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(2),
-          child: avatar,
+        padding: const EdgeInsets.all(3),
+        child: DecoratedBox(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            color: Color(0xFF1A0B1E),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(2),
+            child: avatar,
+          ),
         ),
-      ),
-    );
+      );
+    } else {
+      avatarWidget = avatar;
+    }
+
+    if (onTap != null) {
+      return GestureDetector(onTap: onTap, child: avatarWidget);
+    }
+    return avatarWidget;
   }
 
   void _onSubscribeTap(UserProfilePayload p) {

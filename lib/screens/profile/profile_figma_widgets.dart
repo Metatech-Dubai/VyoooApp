@@ -13,9 +13,13 @@ class ProfileFigmaAvatar extends StatelessWidget {
   const ProfileFigmaAvatar({
     super.key,
     required this.imageUrl,
+    this.hasStory = false,
+    this.onTap,
   });
 
   final String? imageUrl;
+  final bool hasStory;
+  final VoidCallback? onTap;
 
   static bool isValidNetworkUrl(String? raw) {
     final value = (raw ?? '').trim();
@@ -47,21 +51,38 @@ class ProfileFigmaAvatar extends StatelessWidget {
           : null,
     );
 
-    Widget child = SizedBox(
-      width: outer,
-      height: outer,
-      child: Container(
-        padding: EdgeInsets.all(pad),
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: ProfileFigmaTokens.accentMagenta,
-            width: ring,
+    Widget child;
+    if (hasStory) {
+      child = SizedBox(
+        width: outer,
+        height: outer,
+        child: Container(
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: AppGradients.storyRingGradient,
+          ),
+          padding: EdgeInsets.all(ring),
+          child: Container(
+            padding: EdgeInsets.all(pad),
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF1A0B1E),
+            ),
+            child: avatar,
           ),
         ),
+      );
+    } else {
+      child = SizedBox(
+        width: outer,
+        height: outer,
         child: avatar,
-      ),
-    );
+      );
+    }
+
+    if (onTap != null) {
+      child = GestureDetector(onTap: onTap, child: child);
+    }
 
     return child;
   }

@@ -179,19 +179,42 @@ class StoryService {
   Future<List<StoryModel>> getMyStories() async {
     final uid = _uid;
     if (uid == null) return [];
+    return getActiveStoriesForUser(uid);
+  }
+
+  Future<List<StoryModel>> getActiveStoriesForUser(String userId) async {
+    if (userId.isEmpty) return [];
     try {
       final snap =
-          await _db.collection(_col).where('userId', isEqualTo: uid).get();
-      final now = DateTime.now();
-      return snap.docs
-          .map((d) => StoryModel.fromFirestore(d))
-          .where((s) => s.expiresAt.isAfter(now))
-          .toList()
-        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          await _db.collection(_col).where('userId', isEqualTo: userId).get();
+      return _filterAndSortActiveStories(snap);
     } catch (e) {
-      debugPrint('StoryService.getMyStories: $e');
+      debugPrint('StoryService.getActiveStoriesForUser: $e');
       return [];
     }
+  }
+
+  /// Live updates when a user posts or a story expires.
+  Stream<List<StoryModel>> watchActiveStoriesForUser(String userId) {
+    if (userId.isEmpty) {
+      return Stream<List<StoryModel>>.value(const []);
+    }
+    return _db
+        .collection(_col)
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map(_filterAndSortActiveStories);
+  }
+
+  List<StoryModel> _filterAndSortActiveStories(
+    QuerySnapshot<Map<String, dynamic>> snap,
+  ) {
+    final now = DateTime.now();
+    return snap.docs
+        .map((d) => StoryModel.fromFirestore(d))
+        .where((s) => s.expiresAt.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
   // ── Likes ─────────────────────────────────────────────────────────────────

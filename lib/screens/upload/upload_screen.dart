@@ -584,7 +584,7 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
         setState(() => _bottomSegment = 0);
         Navigator.of(context).push<void>(
           MaterialPageRoute<void>(
-            builder: (_) => const StoryUploadScreen(),
+            builder: (_) => const StoryUploadScreen(successDismissToRoot: true),
           ),
         );
       },

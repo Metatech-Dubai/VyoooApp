@@ -443,7 +443,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       onStoryTap: () {
         Navigator.of(context).pushReplacement<void, void>(
           MaterialPageRoute<void>(
-            builder: (_) => const StoryUploadScreen(),
+            builder: (_) => const StoryUploadScreen(successDismissToRoot: true),
           ),
         );
       },

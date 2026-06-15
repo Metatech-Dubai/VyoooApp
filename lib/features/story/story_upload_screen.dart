@@ -19,6 +19,7 @@ import '../../core/services/story_service.dart';
 import '../../core/utils/story_video_splitter.dart';
 import '../../screens/upload/creator_live_route.dart';
 import '../../screens/upload/upload_screen.dart';
+import '../../screens/upload/upload_success_screen.dart';
 import '../../screens/upload/widgets/photo_manager_story_gallery_panel.dart';
 import '../../screens/upload/widgets/upload_create_bottom_bar.dart';
 import 'story_draft_storage.dart';
@@ -179,7 +180,14 @@ class _StoryImageEdit {
 /// Story upload: camera + **Story | Post | Live** bottom bar (same as + upload hub),
 /// multi-image strip, **Photo / Video** modes, library via in-app [PhotoManager] grid.
 class StoryUploadScreen extends StatefulWidget {
-  const StoryUploadScreen({super.key});
+  const StoryUploadScreen({
+    super.key,
+    this.successDismissToRoot = false,
+  });
+
+  /// When true (upload hub), success clears back to main nav. When false (home "+"),
+  /// success pops once with `true` so the feed can refresh.
+  final bool successDismissToRoot;
 
   @override
   State<StoryUploadScreen> createState() => _StoryUploadScreenState();
@@ -630,6 +638,20 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     }
   }
 
+  Future<void> _navigateToStorySuccess() async {
+    if (!mounted) return;
+    await Navigator.of(context).pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => UploadSuccessScreen(
+          title: 'Story Posted!',
+          subtitle: 'Your story is live for 24 hours.',
+          primaryButtonLabel: 'View Feed',
+          dismissToRoot: widget.successDismissToRoot,
+        ),
+      ),
+    );
+  }
+
   Future<void> _post() async {
     if (_uploading) return;
 
@@ -665,7 +687,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         );
         await _deleteTempVideoSegments();
         await StoryDraftStorage.clearDraft();
-        if (mounted) Navigator.of(context).pop(true);
+        if (mounted) await _navigateToStorySuccess();
       } catch (e) {
         if (mounted) {
           _showSnack('Upload failed: $e');
@@ -687,7 +709,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         caption: _captionCtrl.text.trim(),
       );
       await StoryDraftStorage.clearDraft();
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) await _navigateToStorySuccess();
     } catch (e) {
       if (mounted) {
         _showSnack('Upload failed: $e');
