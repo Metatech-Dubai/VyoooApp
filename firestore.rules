@@ -78,6 +78,18 @@ service cloud.firestore {
           == resource.data.get('monetizationEnabled', false);
     }
 
+    // Username format enforced here; reserved handles blocked by Cloud Function
+    // (reads reserved_usernames collection — case-insensitive).
+    function validUsernameField(username) {
+      return username is string
+        && username.size() >= 4
+        && username.size() <= 30
+        && username.matches('^[a-zA-Z0-9_.]+$')
+        && !username.matches('^\\..*')
+        && !username.matches('.*\\.$')
+        && !username.matches('.*\\.\\..*');
+    }
+
     function validUserDoc(userId) {
       return request.resource.data.keys().hasOnly([
         'uid',
@@ -118,6 +130,7 @@ service cloud.firestore {
       (!('displayName' in request.resource.data) ||
         request.resource.data.displayName is string) &&
       request.resource.data.username is string &&
+      validUsernameField(request.resource.data.username) &&
       (!('bio' in request.resource.data) ||
         request.resource.data.bio is string) &&
       request.resource.data.dob is string &&
@@ -1209,7 +1222,14 @@ service cloud.firestore {
 
     // ── App config (version policy — public read, admin write via console/CI) ─
     match /app_config/{docId} {
-      allow read: if docId == 'version_policy';
+      allow read: if docId in ['version_policy', 'username_policy'];
+      allow write: if false;
+    }
+
+    // ── Reserved usernames (admin-managed via console / Admin SDK) ───────────
+    // Doc id = lowercase handle. Clients read to mirror server policy in UI.
+    match /reserved_usernames/{reservedId} {
+      allow read: if true;
       allow write: if false;
     }
 

@@ -1,0 +1,95 @@
+// Shared reserved-username seed data (mirrors lib/services/reserved_usernames.dart).
+const PLATFORM_TERMS = [
+  'admin', 'administrator', 'root', 'system', 'support', 'help', 'helpdesk',
+  'security', 'trust', 'safety', 'abuse', 'moderator', 'mod', 'staff',
+  'official', 'verified', 'verification', 'payments', 'wallet', 'billing',
+  'legal', 'privacy', 'terms', 'api', 'developer', 'developers', 'dev',
+  'engineering', 'press', 'media', 'news', 'alerts', 'status', 'careers',
+  'jobs', 'hr', 'finance', 'ceo', 'cto', 'founder', 'team', 'brand',
+  'brands', 'ads', 'advertising', 'business', 'partner', 'partners',
+  'creator', 'creators', 'live', 'stream', 'streams', 'reels', 'explore',
+  'discover', 'home', 'login', 'logout', 'signup', 'signin', 'register',
+  'account', 'accounts', 'profile', 'profiles', 'username', 'user', 'users',
+  'undefined', 'true', 'false', 'none', 'void', 'apiadmin', 'superadmin',
+  'owner', 'vyooo', 'vyoo', 'vyoooofficial', 'vyooofficial', 'vyoooapp',
+  'vyooapp', 'vyooo_support', 'vyoo_support', 'test', 'null', 'www', 'mail',
+  'metatech',
+];
+
+const GOVERNMENT_SUFFIXES = [
+  'government', 'gov', 'officialgov', 'president', 'primeminister', 'pmoffice',
+  'parliament', 'congress', 'senate', 'supremecourt', 'police', 'army', 'navy',
+  'airforce', 'military', 'defence', 'defense', 'ministryofhealth',
+  'healthministry', 'ministryoffinance', 'financeministry', 'foreignministry',
+  'embassy', 'immigration', 'customs', 'taxauthority', 'centralbank',
+  'electioncommission', 'publichealth', 'tourismboard',
+];
+
+const COUNTRY_SLUGS = [
+  'afghanistan', 'albania', 'algeria', 'andorra', 'angola',
+  'antigua_and_barbuda', 'argentina', 'armenia', 'australia', 'austria',
+  'azerbaijan', 'bahamas', 'bahrain', 'bangladesh', 'barbados', 'belarus',
+  'belgium', 'belize', 'benin', 'bhutan', 'bolivia',
+  'bosnia_and_herzegovina', 'botswana', 'brazil', 'brunei', 'bulgaria',
+  'burkina_faso', 'burundi', 'cambodia', 'cameroon', 'canada', 'cape_verde',
+  'central_african_republic', 'chad', 'chile', 'china', 'colombia', 'comoros',
+  'congo', 'costa_rica', 'cote_divoire', 'croatia', 'cuba', 'cyprus',
+  'czechia', 'denmark', 'djibouti', 'dominica', 'dominican_republic',
+  'ecuador', 'egypt', 'el_salvador', 'equatorial_guinea', 'eritrea',
+  'estonia', 'eswatini', 'ethiopia', 'fiji', 'finland', 'france', 'gabon',
+  'gambia', 'georgia', 'germany', 'ghana', 'greece', 'grenada', 'guatemala',
+  'guinea', 'guinea_bissau', 'guyana', 'haiti', 'honduras', 'hungary',
+  'iceland', 'india', 'indonesia', 'iran', 'iraq', 'ireland', 'israel',
+  'italy', 'jamaica', 'japan', 'jordan', 'kazakhstan', 'kenya', 'kiribati',
+  'kuwait', 'kyrgyzstan', 'laos', 'latvia', 'lebanon', 'lesotho', 'liberia',
+  'libya', 'liechtenstein', 'lithuania', 'luxembourg', 'madagascar', 'malawi',
+  'malaysia', 'maldives', 'mali', 'malta', 'marshall_islands', 'mauritania',
+  'mauritius', 'mexico', 'micronesia', 'moldova', 'monaco', 'mongolia',
+  'montenegro', 'morocco', 'mozambique', 'myanmar', 'namibia', 'nauru',
+  'nepal', 'netherlands', 'new_zealand', 'nicaragua', 'niger', 'nigeria',
+  'north_korea', 'north_macedonia', 'norway', 'oman', 'pakistan', 'palau',
+  'palestine', 'panama', 'papua_new_guinea', 'paraguay', 'peru',
+  'philippines', 'poland', 'portugal', 'qatar', 'romania', 'russia', 'rwanda',
+  'saint_kitts_and_nevis', 'saint_lucia', 'saint_vincent_and_the_grenadines',
+  'samoa', 'san_marino', 'sao_tome_and_principe', 'saudi_arabia', 'senegal',
+  'serbia', 'seychelles', 'sierra_leone', 'singapore', 'slovakia', 'slovenia',
+  'solomon_islands', 'somalia', 'south_africa', 'south_korea', 'south_sudan',
+  'spain', 'sri_lanka', 'sudan', 'suriname', 'sweden', 'switzerland', 'syria',
+  'tajikistan', 'tanzania', 'thailand', 'timor_leste', 'togo', 'tonga',
+  'trinidad_and_tobago', 'tunisia', 'turkey', 'turkmenistan', 'tuvalu',
+  'uganda', 'ukraine', 'united_arab_emirates', 'united_kingdom',
+  'united_states', 'uruguay', 'uzbekistan', 'vanuatu', 'vatican', 'venezuela',
+  'vietnam', 'yemen', 'zambia', 'zimbabwe',
+];
+
+function categoryFor(username) {
+  if (PLATFORM_TERMS.includes(username)) return 'platform';
+  if (COUNTRY_SLUGS.includes(username)) return 'country';
+  return 'government';
+}
+
+function buildReservedUsernameEntries() {
+  const entries = new Map();
+
+  for (const term of PLATFORM_TERMS) {
+    entries.set(term, { username: term, category: 'platform' });
+  }
+
+  for (const country of COUNTRY_SLUGS) {
+    entries.set(country, { username: country, category: 'country' });
+    for (const suffix of GOVERNMENT_SUFFIXES) {
+      const handle = `${country}_${suffix}`;
+      entries.set(handle, { username: handle, category: 'government' });
+    }
+  }
+
+  return entries;
+}
+
+module.exports = {
+  PLATFORM_TERMS,
+  GOVERNMENT_SUFFIXES,
+  COUNTRY_SLUGS,
+  categoryFor,
+  buildReservedUsernameEntries,
+};

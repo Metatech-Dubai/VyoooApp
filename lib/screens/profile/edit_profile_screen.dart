@@ -41,7 +41,7 @@ class EditProfileScreen extends StatefulWidget {
   State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-enum _UsernameStatus { none, available, taken }
+enum _UsernameStatus { none, available, taken, reserved }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
@@ -133,9 +133,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           return;
         }
         setState(() {
-          _usernameStatus = result.available
-              ? _UsernameStatus.available
-              : _UsernameStatus.taken;
+          if (result.isReserved) {
+            _usernameStatus = _UsernameStatus.reserved;
+          } else {
+            _usernameStatus = result.available
+                ? _UsernameStatus.available
+                : _UsernameStatus.taken;
+          }
         });
       } catch (_) {
         if (mounted) setState(() => _usernameStatus = _UsernameStatus.none);
@@ -153,7 +157,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (name.isEmpty) return false;
     final un = UsernameValidation.normalize(_usernameController.text.trim());
     if (!UsernameValidation.isValidFormat(un)) return false;
-    if (_usernameStatus == _UsernameStatus.taken) return false;
+    if (_usernameStatus == _UsernameStatus.taken ||
+        _usernameStatus == _UsernameStatus.reserved) {
+      return false;
+    }
     final initialUn = UsernameValidation.normalize(widget.initialUsername);
     final initialName = widget.initialName.trim();
     final initialBio = widget.initialBio.trim();
@@ -204,10 +211,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           if (mounted) {
             setState(() {
               _isSaving = false;
-              _usernameStatus = _UsernameStatus.taken;
+              _usernameStatus = avail.isReserved
+                  ? _UsernameStatus.reserved
+                  : _UsernameStatus.taken;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('That username is already taken.')),
+              SnackBar(
+                content: Text(
+                  avail.isReserved
+                      ? 'That username is reserved. Reach out to our team to claim it.'
+                      : 'That username is already taken.',
+                ),
+              ),
             );
           }
           return;
@@ -443,7 +458,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             decoration: _inputDecoration(hint: 'username').copyWith(
               suffixIcon: _usernameStatus == _UsernameStatus.available
                   ? Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 22)
-                  : _usernameStatus == _UsernameStatus.taken
+                  : _usernameStatus == _UsernameStatus.taken ||
+                          _usernameStatus == _UsernameStatus.reserved
                       ? Icon(Icons.cancel_rounded, color: AppColors.deleteRed, size: 22)
                       : null,
             ),
@@ -465,6 +481,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             padding: const EdgeInsets.only(left: 0),
             child: Text(
               'This username is already taken',
+              style: TextStyle(color: AppColors.deleteRed, fontSize: 13),
+            ),
+          ),
+        ],
+        if (_usernameStatus == _UsernameStatus.reserved) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 0),
+            child: Text(
+              'This username is reserved. Reach out to our team to claim it.',
               style: TextStyle(color: AppColors.deleteRed, fontSize: 13),
             ),
           ),

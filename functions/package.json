@@ -7,7 +7,7 @@
     "logs": "firebase functions:log",
     "cleanup:reels-media": "node scripts/normalize-reels-media-type.js",
     "seed:test-notifications": "node scripts/seed-test-notifications.js",
-    "cleanup:feed-data": "node scripts/delete-feed-data.js"
+    "seed:reserved-usernames": "node scripts/seed-reserved-usernames.js"
   },
   "engines": {
     "node": "20"
@@ -19,8 +19,8 @@
     "firebase-functions": "^5.0.0"
   },
   "devDependencies": {
-    "typescript": "^5.3.3",
-    "@types/node": "^20.11.5"
+    "@types/node": "^20.11.5",
+    "typescript": "^5.3.3"
   },
   "private": true
 }

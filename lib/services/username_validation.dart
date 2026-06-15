@@ -4,7 +4,7 @@ class UsernameValidation {
   UsernameValidation._();
 
   /// Minimum length to trigger API check.
-  static const int minLengthForCheck = 3;
+  static const int minLengthForCheck = 4;
 
   /// Allowed pattern: letters, numbers, underscore, dot (case-sensitive storage).
   static final RegExp _allowedPattern = RegExp(r'^[a-zA-Z0-9_.]*$');

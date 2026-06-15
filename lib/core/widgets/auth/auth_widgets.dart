@@ -5,6 +5,7 @@ export 'auth_account_type_picker_dialog.dart';
 export 'auth_branded_dialog.dart';
 export 'auth_centered_scroll_body.dart';
 export 'auth_public_persona_dialog.dart';
+export 'auth_reserved_username_dialog.dart';
 export 'auth_floating_back_button.dart';
 export 'auth_floating_circle_button.dart';
 export 'auth_floating_nav_row.dart';

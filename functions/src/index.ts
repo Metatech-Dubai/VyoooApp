@@ -2553,3 +2553,4 @@ export const cleanupStaleRingingCalls = onSchedule(
 );
 
 export { processHashtagGenerationRequest } from './hashtag_generation';
+export { enforceUserUsernamePolicy } from './username_enforcement';

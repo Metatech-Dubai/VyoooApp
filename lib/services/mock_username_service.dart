@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'reserved_usernames.dart';
 import 'username_service.dart';
 
 /// Mock implementation for development. Replace with real API client later.
@@ -6,10 +7,15 @@ class MockUsernameService implements UsernameService {
   @override
   Future<UsernameCheckResult> checkAvailability(String username) async {
     await Future<void>.delayed(const Duration(milliseconds: 800));
-    final lower = username.toLowerCase();
-    // Simulate: reserved names (any case).
-    const taken = {'admin', 'vyooo', 'test', 'user', 'support'};
-    final available = !taken.contains(lower);
+    if (ReservedUsernames.isReserved(username)) {
+      return UsernameCheckResult(
+        available: false,
+        isReserved: true,
+        suggestions: const [],
+      );
+    }
+    const taken = {'takenuser', 'existing'};
+    final available = !taken.contains(username.toLowerCase());
     final suggestions = available
         ? <String>[]
         : <String>[

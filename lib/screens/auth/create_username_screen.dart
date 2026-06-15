@@ -15,6 +15,7 @@ import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/firestore_username_service.dart';
+import '../../services/temporary_username_generator.dart';
 import '../../services/username_service.dart';
 import '../../services/username_validation.dart';
 
@@ -40,6 +41,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   bool _isChecking = false;
   bool _isSubmitting = false;
   bool? _available;
+  bool _isReserved = false;
+  bool _reservedContinueConfirmed = false;
+  String? _lastReservedDialogFor;
   List<String> _suggestions = [];
   /// After Firestore save, [AuthWrapper] + user stream advance onboarding; do not push routes here.
   bool _awaitingGateHandoff = false;
@@ -102,6 +106,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       _availabilitySub = null;
       setState(() {
         _available = null;
+        _isReserved = false;
+        _reservedContinueConfirmed = false;
+        _lastReservedDialogFor = null;
         _suggestions = [];
         _isChecking = false;
       });
@@ -118,6 +125,8 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     setState(() {
       _isChecking = true;
       _available = null;
+      _isReserved = false;
+      _reservedContinueConfirmed = false;
       _suggestions = [];
     });
     _availabilitySub = _usernameService
@@ -131,9 +140,16 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
             if (current != normalized) return;
             setState(() {
               _isChecking = false;
+              _isReserved = result.isReserved;
               _available = result.available;
-              _suggestions = result.suggestions;
+              _suggestions = result.isReserved ? const [] : result.suggestions;
+              if (!result.isReserved) {
+                _reservedContinueConfirmed = false;
+              }
             });
+            if (result.isReserved) {
+              _maybeShowReservedDialog(normalized);
+            }
           },
           onError: (_) {
             if (!mounted) return;
@@ -144,6 +160,8 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
             setState(() {
               _isChecking = false;
               _available = null;
+              _isReserved = false;
+              _reservedContinueConfirmed = false;
               _suggestions = [];
             });
           },
@@ -159,11 +177,28 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     _restartAvailabilityWatch(UsernameValidation.normalize(suggestion));
   }
 
-  /// Valid format, finished checking, and available (realtime Firestore).
+  Future<void> _maybeShowReservedDialog(String normalized) async {
+    if (_lastReservedDialogFor == normalized) return;
+    _lastReservedDialogFor = normalized;
+    if (!mounted) return;
+    final proceed = await AuthReservedUsernameDialog.show(
+      context,
+      requestedUsername: normalized,
+    );
+    if (!mounted) return;
+    final current = UsernameValidation.normalize(_usernameController.text);
+    if (current != normalized) return;
+    setState(() {
+      _reservedContinueConfirmed = proceed == true;
+    });
+  }
+
+  /// Valid format, finished checking, and available (or reserved + acknowledged).
   bool get _isUsernameValid {
     final text = _usernameController.text.trim();
     if (!UsernameValidation.isValidFormat(text)) return false;
     if (_isChecking || _isSubmitting || _awaitingGateHandoff) return false;
+    if (_isReserved) return _reservedContinueConfirmed;
     return _available == true;
   }
 
@@ -290,7 +325,17 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildUsernameInput(),
-        if (_available == false &&
+        if (_isReserved &&
+            UsernameValidation.shouldCheckAvailability(
+              UsernameValidation.normalize(_usernameController.text),
+            )) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${UsernameValidation.normalize(_usernameController.text)} is reserved. Reach out to claim it — we will assign a temporary username for now.',
+            style: AppTypography.usernameAvailabilityError,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ] else if (_available == false &&
             UsernameValidation.shouldCheckAvailability(
               UsernameValidation.normalize(_usernameController.text),
             )) ...[
@@ -307,6 +352,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 
   bool get _usernameShowsAvailabilityError =>
+      !_isReserved &&
       _available == false &&
       UsernameValidation.shouldCheckAvailability(
         UsernameValidation.normalize(_usernameController.text),
@@ -431,16 +477,35 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Enter at least 3 characters (letters, numbers, underscore, dot).'),
+          content: Text('Enter at least 4 characters (letters, numbers, underscore, dot).'),
         ),
       );
       return;
     }
     if (_isChecking) return;
 
+    var usernameToSave = username;
+    if (_isReserved) {
+      if (!_reservedContinueConfirmed) {
+        await _maybeShowReservedDialog(username);
+        if (!mounted || !_reservedContinueConfirmed) return;
+      }
+      final uid = AuthService().currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session expired. Please sign in again.')),
+        );
+        return;
+      }
+      usernameToSave = await TemporaryUsernameGenerator.generate(
+        uid: uid,
+        usernameService: _usernameService,
+      );
+    }
+
     // Final one-shot check on tap so users can proceed even if realtime stream
     // hasn't emitted yet (common right after typing).
-    if (_available != true) {
+    if (!_isReserved && _available != true) {
       try {
         final check = await _usernameService.checkAvailability(username);
         if (!mounted) return;
@@ -449,10 +514,22 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           _suggestions = check.suggestions;
         });
         if (!check.available) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Username is not available.')),
-          );
-          return;
+          if (check.isReserved) {
+            setState(() => _isReserved = true);
+            await _maybeShowReservedDialog(username);
+            if (!mounted || !_reservedContinueConfirmed) return;
+            final uid = AuthService().currentUser?.uid ?? '';
+            if (uid.isEmpty) return;
+            usernameToSave = await TemporaryUsernameGenerator.generate(
+              uid: uid,
+              usernameService: _usernameService,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Username is not available.')),
+            );
+            return;
+          }
         }
       } catch (_) {
         if (!mounted) return;
@@ -500,7 +577,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       // saves and the user loops here. Persona is persisted in a follow-up write.
       await UserService().updateUserProfile(
         uid: uid,
-        username: username,
+        username: usernameToSave,
         accountType: selectedType.name,
       );
 
@@ -523,7 +600,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       final serverUsername = UsernameValidation.normalize(
         (verified?.username ?? '').trim(),
       );
-      if (serverUsername.isEmpty || serverUsername != username) {
+      if (serverUsername.isEmpty || serverUsername != usernameToSave) {
         setState(() {
           _isSubmitting = false;
           _awaitingGateHandoff = false;
