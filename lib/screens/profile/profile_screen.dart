@@ -732,55 +732,43 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
               ),
-              SliverFillRemaining(
-                hasScrollBody: true,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: ProfileFigmaTokens.contentSurface,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(ProfileFigmaTokens.contentTopRadius),
+              DecoratedSliver(
+                decoration: const BoxDecoration(
+                  color: ProfileFigmaTokens.contentSurface,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(ProfileFigmaTokens.contentTopRadius),
+                  ),
+                ),
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          24,
+                          AppSpacing.md,
+                          0,
+                        ),
+                        child: ProfileFigmaTabBar(
+                          tabs: _tabs,
+                          selectedIndex: _selectedTabIndex,
+                          onTabSelected: (i) =>
+                              setState(() => _selectedTabIndex = i),
+                          savedTabIndex: _savedTabIndex,
+                          onSavedTap: () => setState(
+                            () => _selectedTabIndex = _savedTabIndex,
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final h = constraints.maxHeight;
-                      final compactTabs = h < 140;
-                      final topPad = compactTabs ? 8.0 : 24.0;
-                      final tabGap = compactTabs ? 8.0 : 16.0;
-                      return Column(
-                        children: [
-                          SizedBox(height: topPad),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                            ),
-                            child: ProfileFigmaTabBar(
-                              tabs: _tabs,
-                              selectedIndex: _selectedTabIndex,
-                              onTabSelected: (i) =>
-                                  setState(() => _selectedTabIndex = i),
-                              savedTabIndex: _savedTabIndex,
-                              onSavedTap: () => setState(
-                                () => _selectedTabIndex = _savedTabIndex,
-                              ),
-                              compact: compactTabs,
-                            ),
-                          ),
-                          SizedBox(height: tabGap),
-                          Expanded(
-                            child: CustomScrollView(
-                              physics: const NeverScrollableScrollPhysics(),
-                              slivers: _buildProfileContentSlivers(
-                                context,
-                                canUploadContent,
-                                uid: profileUid,
-                              ),
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ..._buildProfileContentSlivers(
+                      context,
+                      canUploadContent,
+                      uid: profileUid,
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  ],
                 ),
               ),
             ],
@@ -925,9 +913,11 @@ class _ProfileScreenState extends State<ProfileScreen>
         return _buildStreamsListSlivers();
       default:
         return [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _buildEmptyPostsPrompt(context),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 280,
+              child: _buildEmptyPostsPrompt(context),
+            ),
           ),
         ];
     }
@@ -951,9 +941,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     final uid = AuthService().currentUser?.uid;
     if (uid == null || uid.isEmpty) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildEmptySavedPlaceholder(),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildEmptySavedPlaceholder(),
+          ),
         ),
       ];
     }
@@ -1051,9 +1043,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   List<Widget> _buildPostsGridSlivers({required String uid}) {
     if (uid.isEmpty) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildEmptyPostsPrompt(context),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildEmptyPostsPrompt(context),
+          ),
         ),
       ];
     }

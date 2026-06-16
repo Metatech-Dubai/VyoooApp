@@ -1025,33 +1025,30 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
               ),
-              SliverFillRemaining(
-                hasScrollBody: true,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: _profileSurface,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
+              DecoratedSliver(
+                decoration: const BoxDecoration(
+                  color: _profileSurface,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(24),
                   ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSpacing.md,
+                ),
+                sliver: SliverMainAxisGroup(
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(
+                          AppSpacing.md,
+                          24,
+                          AppSpacing.md,
+                          0,
                         ),
                         child: _buildTabs(),
                       ),
-                      const SizedBox(height: 16),
-                      Expanded(
-                        child: CustomScrollView(
-                          physics: const NeverScrollableScrollPhysics(),
-                          slivers: _buildContentSlivers(p),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ..._buildContentSlivers(p),
+                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  ],
                 ),
               ),
             ],
@@ -1534,7 +1531,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         return _buildStreamsListSlivers(p);
       default:
         return [
-          SliverFillRemaining(hasScrollBody: false, child: _buildEmptyTab()),
+          SliverToBoxAdapter(
+            child: SizedBox(height: 280, child: _buildEmptyTab()),
+          ),
         ];
     }
   }
@@ -1543,26 +1542,28 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final targetUid = (p.targetUserId ?? '').trim();
     if (targetUid.isEmpty) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.info_outline_rounded,
-                  size: 48,
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                Text(
-                  'No posts made yet',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
-                    fontSize: 16,
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 48,
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
-                ),
-              ],
+                  const SizedBox(height: AppSpacing.md),
+                  Text(
+                    'No posts made yet',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 16,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1570,9 +1571,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     }
     if (_locksContentForViewer(p) && !_isFollowing) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildPrivateProfilePlaceholder(),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildPrivateProfilePlaceholder(),
+          ),
         ),
       ];
     }
@@ -1618,9 +1621,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final targetUid = (p.targetUserId ?? '').trim();
     if (_locksContentForViewer(p) && !_isFollowing) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildPrivateProfilePlaceholder(),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildPrivateProfilePlaceholder(),
+          ),
         ),
       ];
     }
@@ -1669,9 +1674,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final targetUid = (p.targetUserId ?? '').trim();
     if (_locksContentForViewer(p) && !_isFollowing) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildPrivateProfilePlaceholder(),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildPrivateProfilePlaceholder(),
+          ),
         ),
       ];
     }
@@ -1735,9 +1742,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final targetUid = (widget.payload.targetUserId ?? '').trim();
     if (targetUid.isEmpty) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildEmptyTab(),
+        SliverToBoxAdapter(
+          child: SizedBox(height: 280, child: _buildEmptyTab()),
         ),
       ];
     }
