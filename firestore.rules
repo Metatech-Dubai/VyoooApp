@@ -1062,6 +1062,22 @@ service cloud.firestore {
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
     }
 
+    // reactions map: uid -> emoji; participant may only add/change/remove their own entry
+    function isValidReactionUpdate(before, after, uid) {
+      return after is map
+        && before is map
+        && after.keys().removeAll(before.keys()).hasOnly([uid])
+        && before.keys().removeAll(after.keys()).hasOnly([uid])
+        && (
+          !(uid in after)
+          || (
+            after[uid] is string
+            && after[uid].size() > 0
+            && after[uid].size() <= 8
+          )
+        );
+    }
+
     match /chats/{chatId} {
       allow read: if isSignedIn()
                   && request.auth.uid in resource.data.participantIds;
@@ -1234,6 +1250,16 @@ service cloud.firestore {
                           && request.resource.data.viewedBy.size() == resource.data.viewedBy.size() + 1
                           && request.auth.uid in request.resource.data.viewedBy
                           && !(request.auth.uid in resource.data.viewedBy)
+                        )
+                        ||
+                        // Reactions: participant toggles only their own uid -> emoji entry
+                        (
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+                          && isValidReactionUpdate(
+                               resource.data.get('reactions', {}),
+                               request.resource.data.reactions,
+                               request.auth.uid
+                             )
                         )
                       );
 

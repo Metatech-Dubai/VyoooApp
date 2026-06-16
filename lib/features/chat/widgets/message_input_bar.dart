@@ -21,6 +21,7 @@ class MessageInputBar extends StatefulWidget {
     super.key,
     required this.onSend,
     this.onMediaAction,
+    this.onGifTap,
     this.mediaLoading = false,
     this.onTypingChanged,
     this.onVoiceNoteSend,
@@ -28,6 +29,7 @@ class MessageInputBar extends StatefulWidget {
 
   final void Function(String text) onSend;
   final void Function(MediaAction action)? onMediaAction;
+  final VoidCallback? onGifTap;
   final bool mediaLoading;
   final void Function(bool isTyping)? onTypingChanged;
   final void Function(File file, int durationMs)? onVoiceNoteSend;
@@ -578,6 +580,18 @@ class _MessageInputBarState extends State<MessageInputBar> {
                       onTap: widget.mediaLoading ? null : _showMediaSheet,
                       child: Icon(
                         Icons.image_outlined,
+                        color: Colors.white.withValues(alpha: 0.4),
+                        size: 22,
+                      ),
+                    ),
+                  ),
+                if (!_canSend && widget.onGifTap != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: GestureDetector(
+                      onTap: widget.mediaLoading ? null : widget.onGifTap,
+                      child: Icon(
+                        Icons.gif_box_outlined,
                         color: Colors.white.withValues(alpha: 0.4),
                         size: 22,
                       ),

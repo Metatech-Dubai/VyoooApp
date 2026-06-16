@@ -2061,6 +2061,12 @@ export const onChatMessageCreate = onDocumentCreated(
       return;
     }
 
+    if (msgType === 'gif' && !mediaUrl) {
+      logger.error('onChatMessageCreate: missing gif mediaUrl', { chatId, messageId });
+      await snap.ref.update({ _rejected: true, _rejectedReason: 'missing_gif_url' });
+      return;
+    }
+
     const isViewOnce = msg.isViewOnce === true;
 
     if (isViewOnce && msgType === 'text') {
@@ -2088,6 +2094,8 @@ export const onChatMessageCreate = onDocumentCreated(
       preview = '🎥 Video';
     } else if (msgType === 'audio') {
       preview = '🎤 Voice message';
+    } else if (msgType === 'gif') {
+      preview = 'GIF';
     } else {
       preview = trimmedText.length <= 100 ? trimmedText : `${trimmedText.substring(0, 100)}…`;
     }

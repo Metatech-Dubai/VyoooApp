@@ -307,6 +307,61 @@ class ChatService {
     }
   }
 
+  Future<void> sendGifMessage({
+    required String chatId,
+    required String senderId,
+    required List<String> participantIds,
+    required String mediaUrl,
+    int? width,
+    int? height,
+    String? previewUrl,
+  }) async {
+    await sendMediaMessage(
+      chatId: chatId,
+      senderId: senderId,
+      participantIds: participantIds,
+      type: ChatMessageTypes.gif,
+      mediaUrl: mediaUrl,
+      storagePath: '',
+      thumbnailUrl: previewUrl,
+      width: width,
+      height: height,
+    );
+  }
+
+  Future<void> toggleReaction({
+    required String chatId,
+    required String messageId,
+    required String uid,
+    required String emoji,
+  }) async {
+    if (chatId.isEmpty || messageId.isEmpty || uid.isEmpty || emoji.isEmpty) {
+      return;
+    }
+    final ref = _messagesCol(chatId).doc(messageId);
+    try {
+      await _fs.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (!snap.exists) return;
+        final data = snap.data();
+        if (data == null) return;
+        final raw = data['reactions'];
+        final reactions = raw is Map
+            ? Map<String, dynamic>.from(raw)
+            : <String, dynamic>{};
+        if (reactions[uid] == emoji) {
+          reactions.remove(uid);
+        } else {
+          reactions[uid] = emoji;
+        }
+        tx.update(ref, {'reactions': reactions});
+      });
+    } catch (e, st) {
+      dev.log('ChatService.toggleReaction failed', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
   Future<void> markChatRead({
     required String uid,
     required String chatId,

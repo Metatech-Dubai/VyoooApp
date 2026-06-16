@@ -5,9 +5,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/user_facing_errors.dart';
 import '../../../core/models/app_user_model.dart';
+import '../../../core/services/giphy_gif_service.dart';
 import '../models/call_session_model.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -22,9 +24,11 @@ import '../utils/view_once_helpers.dart';
 import '../widgets/audio_message_bubble.dart';
 import '../widgets/call_message_bubble.dart';
 import '../widgets/chat_app_bar.dart';
+import '../widgets/gif_picker_sheet.dart';
 import '../widgets/media_message_widget.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
+import '../widgets/message_reactions_bar.dart';
 import '../widgets/typing_indicator_widget.dart';
 import '../widgets/view_once_message_widget.dart';
 import 'chat_call_screen.dart';
@@ -483,6 +487,122 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
   }
 
+  void _openGifPicker() {
+    if (!AppConfig.isGiphyGifSearchAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('GIF search is not available in this build.'),
+        ),
+      );
+      return;
+    }
+    GifPickerSheet.show(context, onGifSelected: _handleGifSelected);
+  }
+
+  Future<void> _handleGifSelected(ChatGif gif) async {
+    try {
+      await _chatService.sendGifMessage(
+        chatId: widget.chatId,
+        senderId: widget.currentUser.uid,
+        participantIds: _participantIds,
+        mediaUrl: gif.url,
+        previewUrl: gif.previewUrl,
+        width: gif.width,
+        height: gif.height,
+      );
+      _chatService.markChatRead(
+        uid: widget.currentUser.uid,
+        chatId: widget.chatId,
+      );
+    } catch (e) {
+      debugPrint('[ChatThread] send gif error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not send GIF')),
+        );
+      }
+    }
+  }
+
+  Future<void> _setReaction(MessageModel msg, String emoji) async {
+    if (msg.deletedForEveryone) return;
+    try {
+      await _chatService.toggleReaction(
+        chatId: widget.chatId,
+        messageId: msg.id,
+        uid: widget.currentUser.uid,
+        emoji: emoji,
+      );
+    } catch (e) {
+      debugPrint('[ChatThread] reaction error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not add reaction')),
+        );
+      }
+    }
+  }
+
+  void _showMessageActions(MessageModel msg) {
+    if (msg.deletedForEveryone) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A0A2E), Color(0xFF0D0518)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: ChatReactionEmojis.quickPick.map((emoji) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _setReaction(msg, emoji);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.deleteRed,
+                ),
+                title: const Text(
+                  'Delete message',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleDeleteMessage(msg);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleDeleteMessage(MessageModel msg) async {
     final isSender = msg.senderId == widget.currentUser.uid;
     final canDeleteForEveryone =
@@ -912,7 +1032,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             onTap: () => _openViewOnceMedia(msg),
                           );
                         } else if (msg.type == ChatMessageTypes.image ||
-                            msg.type == ChatMessageTypes.video) {
+                            msg.type == ChatMessageTypes.video ||
+                            msg.type == ChatMessageTypes.gif) {
                           bubble = _buildMediaBubble(
                             msg,
                             isSent,
@@ -943,9 +1064,24 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                           );
                         }
 
-                        return GestureDetector(
-                          onLongPress: () => _handleDeleteMessage(msg),
-                          child: bubble,
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            GestureDetector(
+                              onLongPress: () => _showMessageActions(msg),
+                              onDoubleTap: () => _setReaction(
+                                msg,
+                                ChatReactionEmojis.defaultReaction,
+                              ),
+                              child: bubble,
+                            ),
+                            MessageReactionsBar(
+                              reactions: msg.reactions,
+                              isSent: isSent,
+                              currentUid: widget.currentUser.uid,
+                              onReactionTap: (emoji) => _setReaction(msg, emoji),
+                            ),
+                          ],
                         );
                       },
                     );
@@ -968,6 +1104,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               MessageInputBar(
                 onSend: _handleSend,
                 onMediaAction: _handleMediaAction,
+                onGifTap: _openGifPicker,
                 mediaLoading: _isUploading,
                 onTypingChanged: _handleTypingChanged,
                 onVoiceNoteSend: _handleVoiceNote,

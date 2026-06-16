@@ -43,6 +43,19 @@ abstract final class AppConfig {
   /// Jamendo API client ID. Get a free key at https://devportal.jamendo.com
   static const String jamendoClientId = '78456e30';
 
+  /// Giphy GIF search for chat (platform keys from GIPHY Developer Dashboard).
+  /// Override for local testing: `--dart-define=GIPHY_API_KEY=your_key`
+  static const String _giphyApiKeyIos = 'byLjtos8YOn17G4TWdKmjFFG1quAZOXp';
+  static const String _giphyApiKeyAndroid = 'byLjtos8YOn17G4TWdKmjFFG1quAZOXp';
+
+  static String get giphyApiKey {
+    const override = String.fromEnvironment('GIPHY_API_KEY');
+    if (override.isNotEmpty) return override;
+    return Platform.isIOS ? _giphyApiKeyIos : _giphyApiKeyAndroid;
+  }
+
+  static bool get isGiphyGifSearchAvailable => giphyApiKey.isNotEmpty;
+
   static const String _googlePlacesApiKeyAndroid = 'AIzaSyA4IYOJ0MQWYs_IJcifxxbhAjInEYgzC8M';
   static const String _googlePlacesApiKeyIos = 'AIzaSyCa_TszTmgHk4gQ9SE08dQSHBf6IlsXdvc';
   static String get googlePlacesApiKey =>

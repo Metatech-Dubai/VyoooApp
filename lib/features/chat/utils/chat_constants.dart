@@ -34,3 +34,18 @@ abstract final class RequestStatus {
   static const String accepted = 'accepted';
   static const String declined = 'declined';
 }
+
+abstract final class ChatReactionEmojis {
+  static const String defaultReaction = '❤️';
+
+  static const List<String> quickPick = [
+    '❤️',
+    '😂',
+    '🔥',
+    '👏',
+    '😮',
+    '😢',
+    '😍',
+    '👍',
+  ];
+}

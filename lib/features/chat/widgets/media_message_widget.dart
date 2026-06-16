@@ -20,6 +20,7 @@ class MediaMessageWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isVideo = message.type == 'video';
+    final isGif = message.type == 'gif';
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -45,7 +46,7 @@ class MediaMessageWidget extends StatelessWidget {
           onTap: () => _openViewer(context),
           child: Stack(
             children: [
-              _buildMediaContent(isVideo),
+              _buildMediaContent(isVideo, isGif),
               Positioned(
                 right: 8,
                 bottom: 8,
@@ -89,10 +90,12 @@ class MediaMessageWidget extends StatelessWidget {
     );
   }
 
-  Widget _buildMediaContent(bool isVideo) {
+  Widget _buildMediaContent(bool isVideo, bool isGif) {
     final url = message.mediaUrl ?? '';
     final thumbUrl = message.thumbnailUrl ?? '';
-    final displayUrl = thumbUrl.isNotEmpty ? thumbUrl : url;
+    final displayUrl = isGif
+        ? url
+        : (thumbUrl.isNotEmpty ? thumbUrl : url);
 
     if (displayUrl.isEmpty) {
       return Container(
@@ -149,6 +152,7 @@ class MediaMessageWidget extends StatelessWidget {
   }
 
   void _openViewer(BuildContext context) {
+    if (message.type == 'gif') return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (_) => ChatMediaViewerScreen(
