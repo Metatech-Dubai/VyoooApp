@@ -10,6 +10,8 @@ import 'package:permission_handler/permission_handler.dart';
 
 import 'local_notification_service.dart';
 import 'notification_preferences_service.dart';
+import 'global_incoming_call_service.dart';
+import 'incoming_call_kit_service.dart';
 import '../navigation/push_notification_router.dart';
 import '../../firebase_options.dart';
 
@@ -17,6 +19,14 @@ import '../../firebase_options.dart';
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  final type = (message.data['type'] ?? '').toString();
+  if (type == 'incoming_call') {
+    await IncomingCallKitService.instance.presentIncomingCall(
+      data: Map<String, dynamic>.from(message.data),
+      callerName: message.notification?.title,
+    );
+    return;
+  }
   if (kDebugMode) {
     debugPrint('FCM background: id=${message.messageId} data=${message.data}');
   }
@@ -72,6 +82,7 @@ class PushMessagingService {
     _lifecycleObserver ??= _PushLifecycleObserver(this)..register();
     if (!isNewBinding) return;
     unawaited(syncTokenForUser(uid));
+    unawaited(IncomingCallKitService.instance.syncVoipTokenForCurrentUser());
     unawaited(handleInitialMessage());
   }
 
@@ -85,6 +96,9 @@ class PushMessagingService {
     final uid = _boundUid;
     if (uid == null || uid.isEmpty) return;
     unawaited(syncTokenForUser(uid));
+    GlobalIncomingCallService.instance.checkPendingCallsOnResume();
+    IncomingCallKitService.instance.checkAcceptedCallOnResume();
+    IncomingCallKitService.instance.syncVoipTokenForCurrentUser();
   }
 
   /// Request OS permission, fetch token, write to Firestore. Safe to call on each sign-in.
@@ -235,6 +249,7 @@ class PushMessagingService {
   /// Call before [FirebaseAuth.signOut] so this device is not targeted for the old account.
   Future<void> clearForSignOut(String uid) async {
     unbindForUser();
+    await IncomingCallKitService.instance.clearVoipTokenForSignOut(uid);
     try {
       await FirebaseFirestore.instance
           .collection('users')
@@ -258,7 +273,14 @@ class PushMessagingService {
   Future<void> _handleForegroundMessage(RemoteMessage message) async {
     final type = (message.data['type'] ?? '').toString();
 
-    if (type == 'incoming_call') return;
+    if (type == 'incoming_call') {
+      await IncomingCallKitService.instance.presentIncomingCall(
+        data: Map<String, dynamic>.from(message.data),
+        callerName: message.notification?.title,
+      );
+      GlobalIncomingCallService.instance.checkPendingCallsOnResume();
+      return;
+    }
 
     try {
       final prefs =
@@ -295,6 +317,12 @@ class PushMessagingService {
 
   /// Optional: handle cold start from notification tap.
   Future<void> handleInitialMessage() async {
+    final localCall =
+        await LocalNotificationService.instance.takeColdStartCallPayload();
+    if (localCall != null) {
+      PushNotificationRouter.handleCallData(localCall);
+    }
+
     final initial = await _messaging.getInitialMessage();
     if (initial != null && kDebugMode) {
       debugPrint('FCM initial message: ${initial.data}');

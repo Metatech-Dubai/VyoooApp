@@ -72,6 +72,7 @@
 	<string>Vyooo uses your location to tag posts with your current place. Location is only accessed when you tap "Use current location".</string>
 	<key>UIBackgroundModes</key>
 	<array>
+		<string>voip</string>
 		<string>remote-notification</string>
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>

@@ -1,17 +1,25 @@
 import Flutter
 import UIKit
+import PushKit
+import flutter_callkit_incoming
 
 #if DEBUG && !targetEnvironment(simulator)
 #error("Physical iPhone Debug mode is blocked for Vyooo because Agora/Iris can crash with EXC_BAD_ACCESS. Use Profile/Release (flutter run --profile/--release).")
 #endif
 
 @main
-@objc class AppDelegate: FlutterAppDelegate {
+@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate {
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
     GeneratedPluginRegistrant.register(with: self)
+
+    // VoIP push — wakes the app for incoming calls when killed/backgrounded.
+    let voipRegistry = PKPushRegistry(queue: DispatchQueue.main)
+    voipRegistry.delegate = self
+    voipRegistry.desiredPushTypes = [.voIP]
+
     guard let registrar = self.registrar(forPlugin: "VyoooDeferredNativePlugins") else {
       return super.application(application, didFinishLaunchingWithOptions: launchOptions)
     }
@@ -32,5 +40,51 @@ import UIKit
       }
     }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func pushRegistry(
+    _ registry: PKPushRegistry,
+    didUpdate credentials: PKPushCredentials,
+    for type: PKPushType
+  ) {
+    let token = credentials.token.map { String(format: "%02x", $0) }.joined()
+    SwiftFlutterCallkitIncomingPlugin.sharedInstance?.setDevicePushTokenVoIP(token)
+  }
+
+  func pushRegistry(
+    _ registry: PKPushRegistry,
+    didInvalidatePushTokenFor type: PKPushType
+  ) {
+    SwiftFlutterCallkitIncomingPlugin.sharedInstance?.setDevicePushTokenVoIP("")
+  }
+
+  func pushRegistry(
+    _ registry: PKPushRegistry,
+    didReceiveIncomingPushWith payload: PKPushPayload,
+    for type: PKPushType,
+    completion: @escaping () -> Void
+  ) {
+    guard type == .voIP else {
+      completion()
+      return
+    }
+
+    let dict = payload.dictionaryPayload
+    let callId = (dict["callId"] as? String) ?? (dict["id"] as? String) ?? UUID().uuidString
+    let nameCaller = (dict["nameCaller"] as? String) ?? "Vyooo"
+    let handle = (dict["handle"] as? String) ?? "Incoming call"
+    let isVideo = (dict["isVideo"] as? Bool) ?? false
+
+    let data = flutter_callkit_incoming.Data(
+      id: callId,
+      nameCaller: nameCaller,
+      handle: handle,
+      type: isVideo ? 1 : 0
+    )
+    data.extra = dict as? [String: Any] ?? [:]
+
+    SwiftFlutterCallkitIncomingPlugin.sharedInstance?.showCallkitIncoming(data, fromPushKit: true) {
+      completion()
+    }
   }
 }

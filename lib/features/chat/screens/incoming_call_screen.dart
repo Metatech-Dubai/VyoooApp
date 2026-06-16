@@ -6,6 +6,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../models/call_session_model.dart';
 import '../services/call_signaling_service.dart';
 import 'chat_call_screen.dart';
+import '../../../core/services/local_notification_service.dart';
 
 class IncomingCallScreen extends StatefulWidget {
   const IncomingCallScreen({
@@ -58,6 +59,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   }
 
   void _close() {
+    unawaited(LocalNotificationService.instance.dismissIncomingCall());
     if (mounted) Navigator.of(context).pop();
   }
 

@@ -16,3 +16,6 @@
 # FFmpegKit (also JNI-heavy; plugin ships rules but app merge is the safe net)
 -keep class com.antonkarpenko.ffmpegkit.** { *; }
 -dontwarn com.antonkarpenko.ffmpegkit.**
+
+# CallKit incoming (video/audio calls)
+-keep class com.hiennv.flutter_callkit_incoming.** { *; }

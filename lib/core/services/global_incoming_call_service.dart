@@ -1,12 +1,10 @@
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter/material.dart';
 
 import '../../features/chat/models/call_session_model.dart';
 import '../../features/chat/services/call_signaling_service.dart';
-import '../../features/chat/screens/incoming_call_screen.dart';
-import '../navigation/app_keys.dart';
+import 'incoming_call_kit_service.dart';
 
 class GlobalIncomingCallService {
   GlobalIncomingCallService._();
@@ -25,6 +23,7 @@ class GlobalIncomingCallService {
     stop();
     _uid = uid;
     _sub = _signaling.watchIncomingCalls(uid).listen(_onIncomingCalls);
+    unawaited(checkPendingCallsOnResume());
   }
 
   void stop() {
@@ -33,6 +32,27 @@ class GlobalIncomingCallService {
     _uid = null;
     _shownCallIds.clear();
     _showing = false;
+  }
+
+  /// Catches ringing calls missed while the app was backgrounded.
+  Future<void> checkPendingCallsOnResume() async {
+    final uid = _uid;
+    if (uid == null || uid.isEmpty || _showing) return;
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('callSessions')
+          .where('participantIds', arrayContains: uid)
+          .where('status', isEqualTo: CallStatus.ringing)
+          .limit(5)
+          .get();
+      final calls = snap.docs
+          .map(CallSessionModel.fromFirestore)
+          .where((c) => c.calleeIds.contains(uid))
+          .toList();
+      if (calls.isNotEmpty) {
+        _onIncomingCalls(calls);
+      }
+    } catch (_) {}
   }
 
   void _onIncomingCalls(List<CallSessionModel> calls) {
@@ -44,28 +64,16 @@ class GlobalIncomingCallService {
     final call = calls.first;
     if (_shownCallIds.contains(call.id)) return;
 
-    final nav = appNavigatorKey.currentState;
-    if (nav == null) return;
-
     _shownCallIds.add(call.id);
     _showing = true;
 
-    _resolveCallerInfo(call).then((info) {
-      final currentNav = appNavigatorKey.currentState;
-      if (currentNav == null) {
-        _showing = false;
-        return;
-      }
-      currentNav.push(
-        MaterialPageRoute<void>(
-          builder: (_) => IncomingCallScreen(
-            callSession: call,
-            currentUid: uid,
-            callerName: info.$1,
-            callerAvatarUrl: info.$2,
-          ),
-        ),
-      ).then((_) => _showing = false);
+    _resolveCallerInfo(call).then((info) async {
+      await IncomingCallKitService.instance.presentFromCallSession(
+        call,
+        callerName: info.$1,
+        callerAvatar: info.$2,
+      );
+      _showing = false;
     });
   }
 

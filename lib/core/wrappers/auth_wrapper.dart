@@ -9,6 +9,7 @@ import '../config/app_config.dart';
 import '../models/app_user_model.dart';
 import '../onboarding/parental_submit_handoff.dart';
 import '../services/auth_service.dart';
+import '../services/global_incoming_call_service.dart';
 import '../services/in_app_notification_alert_service.dart';
 import '../services/otp_session_service.dart';
 import '../services/push_messaging_service.dart';
@@ -36,6 +37,7 @@ class AuthWrapper extends StatefulWidget {
 class _AuthWrapperState extends State<AuthWrapper> {
   String? _purchasesBoundUid;
   String? _messagingUid;
+  String? _incomingCallUid;
   String? _lastSeenUid;
 
   @override
@@ -72,11 +74,19 @@ class _AuthWrapperState extends State<AuthWrapper> {
               PushMessagingService.instance.bindForUser(uid);
             });
           }
+          if (_incomingCallUid != uid) {
+            _incomingCallUid = uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              GlobalIncomingCallService.instance.startForUser(uid);
+            });
+          }
           InAppNotificationAlertService.instance.startForUser(uid);
         }
         if (uid == null || (user?.isAnonymous ?? true)) {
           _messagingUid = null;
+          _incomingCallUid = null;
           PushMessagingService.instance.unbindForUser();
+          GlobalIncomingCallService.instance.stop();
           InAppNotificationAlertService.instance.stop();
         }
         // Do not use `hasData`: for a signed-out user Firebase emits `null`, and

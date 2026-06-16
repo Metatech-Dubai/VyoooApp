@@ -14,6 +14,7 @@ import {
   loadNotificationPrefs,
   shouldSendPushForType,
 } from './notification_preferences';
+import { sendVoipCallPushes } from './voip_push';
 
 admin.initializeApp();
 
@@ -21,6 +22,7 @@ admin.initializeApp();
 const APP_ID = '443105d5684f492088bb004196b3fee8';
 const TOKEN_TTL_SECONDS = 3600; // 1 hour
 const FCM_ANDROID_CHANNEL_ID = 'vyooo_high_importance';
+const FCM_ANDROID_CALL_CHANNEL_ID = 'vyooo_incoming_calls';
 const STALE_FCM_ERROR_CODES = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token',
@@ -41,6 +43,42 @@ function fcmApnsOptions(contentAvailable = false): admin.messaging.ApnsConfig {
         sound: 'default',
         badge: 1,
         ...(contentAvailable ? { 'content-available': 1 } : {}),
+      },
+    },
+  };
+}
+
+function fcmCallAndroidOptions(): admin.messaging.AndroidConfig {
+  return {
+    priority: 'high',
+    ttl: 30_000,
+    notification: {
+      channelId: FCM_ANDROID_CALL_CHANNEL_ID,
+      priority: 'max',
+      defaultSound: true,
+      defaultVibrateTimings: true,
+      visibility: 'public',
+    },
+  };
+}
+
+function fcmCallApnsOptions(
+  title: string,
+  body: string,
+): admin.messaging.ApnsConfig {
+  return {
+    headers: {
+      'apns-priority': '10',
+      'apns-push-type': 'alert',
+    },
+    payload: {
+      aps: {
+        alert: { title, body },
+        sound: 'default',
+        badge: 1,
+        'content-available': 1,
+        'interruption-level': 'time-sensitive',
+        category: 'incoming_call',
       },
     },
   };
@@ -68,6 +106,8 @@ const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE ?? '';
 // Cloudflare Stream credentials — set in .env.vyooov1
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID ?? '';
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN ?? '';
+// Matches app picker/trim cap (upload_screen.dart maxDuration: 10 minutes).
+const CF_STREAM_MAX_DURATION_SECONDS = 600;
 const HIVE_API_KEY = (process.env.HIVE_API_KEY ?? '').trim();
 const HIVE_ACCESS_KEY = (process.env.HIVE_ACCESS_KEY ?? '').trim();
 const HIVE_SECRET_KEY = (process.env.HIVE_SECRET_KEY ?? '').trim();
@@ -266,13 +306,13 @@ export const getCloudflareUploadUrl = onDocumentCreated(
   {
     document: 'cloudflare_upload_requests/{requestId}',
     timeoutSeconds: 30,
-    memory: '128MiB',
+    memory: '256MiB',
   },
   async (event) => {
     const snap = event.data;
     if (!snap) return;
 
-    const data = snap.data() as { userId?: unknown };
+    const data = snap.data() as { userId?: unknown; maxDurationSeconds?: unknown };
 
     if (typeof data.userId !== 'string' || !data.userId) {
       await snap.ref.update({ status: 'error', error: 'Missing userId.' });
@@ -284,6 +324,15 @@ export const getCloudflareUploadUrl = onDocumentCreated(
       return;
     }
 
+    const requestedDuration =
+      typeof data.maxDurationSeconds === 'number' && Number.isFinite(data.maxDurationSeconds)
+        ? Math.floor(data.maxDurationSeconds)
+        : CF_STREAM_MAX_DURATION_SECONDS;
+    const maxDurationSeconds = Math.min(
+      CF_STREAM_MAX_DURATION_SECONDS,
+      Math.max(1, requestedDuration),
+    );
+
     try {
       const response = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/direct_upload`,
@@ -293,16 +342,35 @@ export const getCloudflareUploadUrl = onDocumentCreated(
             'Authorization': `Bearer ${CF_API_TOKEN}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ maxDurationSeconds: -1, requireSignedURLs: false }),
+          body: JSON.stringify({
+            maxDurationSeconds,
+            requireSignedURLs: false,
+            meta: { userId: data.userId },
+          }),
         },
       );
 
+      const rawBody = await response.text();
       if (!response.ok) {
-        await snap.ref.update({ status: 'error', error: `Cloudflare API error: ${response.status}` });
+        let detail = `Cloudflare API error: ${response.status}`;
+        try {
+          const parsed = JSON.parse(rawBody) as {
+            errors?: Array<{ message?: string }>;
+            messages?: Array<{ message?: string }>;
+          };
+          const msg =
+            parsed.errors?.[0]?.message
+            ?? parsed.messages?.[0]?.message;
+          if (msg) detail = `${detail} — ${msg}`;
+        } catch {
+          // Keep generic status-only message when body is not JSON.
+        }
+        logger.error('getCloudflareUploadUrl failed', { status: response.status, detail });
+        await snap.ref.update({ status: 'error', error: detail });
         return;
       }
 
-      const result = await response.json() as {
+      const result = JSON.parse(rawBody) as {
         result: { uid: string; uploadURL: string };
         success: boolean;
       };
@@ -318,6 +386,7 @@ export const getCloudflareUploadUrl = onDocumentCreated(
         uploadUrl: result.result.uploadURL,
       });
     } catch (e) {
+      logger.error('getCloudflareUploadUrl exception', e);
       await snap.ref.update({ status: 'error', error: String(e) });
     }
   },
@@ -2468,29 +2537,81 @@ export const onCallSessionCreate = onDocumentCreated(
         db.collection('users').doc(uid).collection('push_tokens').get(),
       ),
     );
-    const tokens: string[] = [];
-    const tokenDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+
+    const androidFcmTokens: string[] = [];
+    const androidFcmDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    const iosFcmTokens: string[] = [];
+    const iosFcmDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    const iosVoipTokens: string[] = [];
+
     for (const tSnap of tokenSnaps) {
+      let iosVoipSentForUser = false;
       for (const doc of tSnap.docs) {
-        const t = doc.data()?.token;
-        if (typeof t === 'string' && t.length > 0) {
-          tokens.push(t);
-          tokenDocs.push(doc);
+        const raw = doc.data()?.token;
+        const token = typeof raw === 'string' ? raw.trim() : '';
+        if (!token) continue;
+
+        if (doc.id === 'voip') {
+          iosVoipTokens.push(token);
+          iosVoipSentForUser = true;
+          continue;
+        }
+        if (doc.id !== 'default') continue;
+
+        const platform =
+          typeof doc.data()?.platform === 'string'
+            ? doc.data()!.platform.trim().toLowerCase()
+            : '';
+        if (platform === 'android') {
+          androidFcmTokens.push(token);
+          androidFcmDocs.push(doc);
+        } else if (platform === 'ios' && !iosVoipSentForUser) {
+          iosFcmTokens.push(token);
+          iosFcmDocs.push(doc);
         }
       }
     }
 
-    if (tokens.length === 0) {
+    const fcmTokens = [...androidFcmTokens, ...iosFcmTokens];
+    const fcmTokenDocs = [...androidFcmDocs, ...iosFcmDocs];
+
+    if (fcmTokens.length === 0 && iosVoipTokens.length === 0) {
       logger.info('onCallSessionCreate: no push tokens for callees', { callId });
       return;
     }
 
     const notifTitle = callerDisplayName;
     const notifBody = callType === 'video' ? 'Incoming video call' : 'Incoming audio call';
+    const isVideo = callType === 'video';
 
+    if (iosVoipTokens.length > 0) {
+      const voipResult = await sendVoipCallPushes(iosVoipTokens, {
+        callId,
+        nameCaller: notifTitle,
+        handle: notifBody,
+        isVideo,
+        chatId,
+        callerId,
+        callType,
+        agoraChannelName,
+      });
+      logger.info('onCallSessionCreate: VoIP push result', {
+        callId,
+        sent: voipResult.sent,
+        failed: voipResult.failed,
+      });
+    }
+
+    if (fcmTokens.length === 0) {
+      logger.info('onCallSessionCreate: push sent (VoIP only)', {
+        callId,
+        voipTokenCount: iosVoipTokens.length,
+      });
+      return;
+    }
     const FCM_BATCH = 500;
-    for (let t = 0; t < tokens.length; t += FCM_BATCH) {
-      const batch = tokens.slice(t, t + FCM_BATCH);
+    for (let t = 0; t < fcmTokens.length; t += FCM_BATCH) {
+      const batch = fcmTokens.slice(t, t + FCM_BATCH);
       try {
         const response = await admin.messaging().sendEachForMulticast({
           tokens: batch,
@@ -2503,11 +2624,11 @@ export const onCallSessionCreate = onDocumentCreated(
             callType,
             agoraChannelName,
           },
-          android: fcmAndroidOptions(),
-          apns: fcmApnsOptions(true),
+          android: fcmCallAndroidOptions(),
+          apns: fcmCallApnsOptions(notifTitle, notifBody),
         });
         await pruneStalePushTokenDocs(
-          tokenDocs.slice(t, t + FCM_BATCH),
+          fcmTokenDocs.slice(t, t + FCM_BATCH),
           response.responses,
         );
         if (response.failureCount > 0) {
@@ -2521,7 +2642,11 @@ export const onCallSessionCreate = onDocumentCreated(
       }
     }
 
-    logger.info('onCallSessionCreate: push sent', { callId, tokenCount: tokens.length });
+    logger.info('onCallSessionCreate: push sent', {
+      callId,
+      fcmTokenCount: fcmTokens.length,
+      voipTokenCount: iosVoipTokens.length,
+    });
   },
 );
 

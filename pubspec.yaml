@@ -74,6 +74,7 @@ dependencies:
   speech_to_text: ^7.4.0
   flutter_cache_manager: ^3.4.1
   screen_protector: ^1.5.2
+  flutter_callkit_incoming_maintained: ^3.1.2
 
 # Pub solver only: agora_rtc_engine wants ffi ^1.x, share_plus wants ^2.x.
 # iOS: keep Agora frameworks embedded in Debug/Profile/Release to avoid dyld load failures.
