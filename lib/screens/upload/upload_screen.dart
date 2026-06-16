@@ -11,6 +11,7 @@ import 'all_albums_screen.dart';
 import 'photo_gallery_permission.dart';
 import '../../features/story/story_upload_screen.dart';
 import 'creator_live_route.dart';
+import 'upload_details_screen.dart';
 import 'upload_photo_preview_screen.dart';
 import 'upload_video_preview_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
@@ -43,8 +44,14 @@ class UploadScreen extends StatefulWidget {
 }
 
 class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver {
+  /// Instagram-style carousel cap.
+  static const int _maxCarouselItems = 10;
+
   String _selectedAlbum = 'Recents';
-  int? _selectedIndex;
+
+  /// Selection order matters: first picked = first carousel item = post cover.
+  final List<AssetEntity> _selectedAssets = [];
+
   /// 0 Story (opens separate screen from bar), 1 Post (gallery), 2 Live.
   late int _bottomSegment;
 
@@ -272,7 +279,7 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
       setState(() {
         _assets = media;
         _loading = false;
-        _selectedIndex = null;
+        _selectedAssets.clear();
       });
     } catch (e) {
       if (mounted) {
@@ -368,41 +375,7 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
             alignment: Alignment.centerRight,
             child: isPost
                 ? GestureDetector(
-                    onTap: () {
-                      if (_selectedIndex != null &&
-                          _selectedIndex! < _assets.length) {
-                        final selected = _assets[_selectedIndex!];
-                        if (_isVideoAsset(selected)) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  UploadVideoPreviewScreen(asset: selected),
-                            ),
-                          );
-                        } else if (selected.type == AssetType.image) {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) =>
-                                  UploadPhotoPreviewScreen(asset: selected),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Unsupported media selected.'),
-                              behavior: SnackBarBehavior.floating,
-                            ),
-                          );
-                        }
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Select photo or video'),
-                            behavior: SnackBarBehavior.floating,
-                          ),
-                        );
-                      }
-                    },
+                    onTap: _onNextTap,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -427,6 +400,73 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
         ],
       ),
     );
+  }
+
+  void _onNextTap() {
+    if (_selectedAssets.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Select photo or video'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    if (_selectedAssets.length > 1) {
+      // Carousel post: skip the single-asset crop/trim editors and go straight
+      // to details, where every item is uploaded as part of one post.
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => UploadDetailsScreen(
+            asset: _selectedAssets.first,
+            additionalAssets: _selectedAssets.sublist(1),
+          ),
+        ),
+      );
+      return;
+    }
+    final selected = _selectedAssets.first;
+    if (_isVideoAsset(selected)) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => UploadVideoPreviewScreen(asset: selected),
+        ),
+      );
+    } else if (selected.type == AssetType.image) {
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => UploadPhotoPreviewScreen(asset: selected),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Unsupported media selected.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
+  void _toggleAssetSelection(AssetEntity entity) {
+    setState(() {
+      if (_selectedAssets.contains(entity)) {
+        _selectedAssets.remove(entity);
+        return;
+      }
+      if (_selectedAssets.length >= _maxCarouselItems) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'You can select up to $_maxCarouselItems items per post.',
+            ),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+      _selectedAssets.add(entity);
+    });
   }
 
   Widget _buildBody() {
@@ -560,16 +600,21 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
         }
         final assetIndex = index - 1;
         final entity = _assets[assetIndex];
-        final selected = _selectedIndex == assetIndex;
+        final selectionOrder = _selectedAssets.indexOf(entity);
+        final selected = selectionOrder >= 0;
         return GestureDetector(
-          onTap: () =>
-              setState(() => _selectedIndex = selected ? null : assetIndex),
+          onTap: () => _toggleAssetSelection(entity),
           child: Stack(
             fit: StackFit.expand,
             children: [
               _GalleryThumbnail(entity: entity),
+              if (selected)
+                Container(color: Colors.black.withValues(alpha: 0.25)),
               if (_isVideoAsset(entity)) _VideoDuration(entity: entity),
-              if (selected) _SelectedBadge(),
+              if (selected)
+                _SelectedBadge(
+                  order: _selectedAssets.length > 1 ? selectionOrder + 1 : null,
+                ),
             ],
           ),
         );
@@ -701,18 +746,34 @@ class _VideoDuration extends StatelessWidget {
 }
 
 class _SelectedBadge extends StatelessWidget {
+  const _SelectedBadge({this.order});
+
+  /// 1-based carousel position; null shows a plain checkmark (single select).
+  final int? order;
+
   @override
   Widget build(BuildContext context) {
     return Positioned(
       top: 8,
       right: 8,
       child: Container(
-        padding: const EdgeInsets.all(4),
+        width: 24,
+        height: 24,
+        alignment: Alignment.center,
         decoration: const BoxDecoration(
           color: Color(0xFF27AE60),
           shape: BoxShape.circle,
         ),
-        child: const Icon(Icons.check, size: 16, color: Colors.white),
+        child: order != null
+            ? Text(
+                '$order',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
+              )
+            : const Icon(Icons.check, size: 16, color: Colors.white),
       ),
     );
   }

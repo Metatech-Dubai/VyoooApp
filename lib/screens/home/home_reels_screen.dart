@@ -13,7 +13,9 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/feed_interaction_assets.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/reel_count_privacy.dart';
+import '../../core/models/reel_media_item.dart';
 import '../../core/utils/reel_engagement.dart';
+import '../../core/widgets/post_media_carousel.dart';
 import '../../core/models/story_model.dart';
 import '../../core/navigation/app_route_observer.dart';
 import '../../core/services/auth_service.dart';
@@ -1306,6 +1308,29 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         itemBuilder: (context, index) {
           final feedIndex = index;
           final reel = reels[feedIndex];
+          final mediaItems = ReelMediaItem.listFromPost(reel);
+          if (mediaItems.length > 1) {
+            // Carousel post: horizontal pager inside the vertical feed.
+            return PostMediaCarousel(
+              key: ValueKey<String>(
+                'carousel_${_asString(reel['id'], fallback: '$feedIndex')}',
+              ),
+              items: mediaItems,
+              imageFit: BoxFit.contain,
+              isVisible:
+                  widget.isActive &&
+                  _isRouteVisible &&
+                  _isAppForeground &&
+                  index == _currentIndex,
+              onDoubleTap: () => _onDoubleTapLike(feedIndex),
+              onActiveVideoCompleted: index == _currentIndex
+                  ? _onVideoCompletedForAutoScroll
+                  : null,
+              onActiveVideoPlaybackStarted: index == _currentIndex
+                  ? _onVideoPlaybackStartedForAutoScroll
+                  : null,
+            );
+          }
           final mediaType = ((reel['mediaType'] as String?) ?? 'video')
               .toLowerCase();
           if (mediaType == 'image') {

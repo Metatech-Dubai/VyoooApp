@@ -3,6 +3,7 @@ import 'dart:math' show min;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/reel_media_item.dart';
 import '../utils/hashtag_utils.dart';
 import '../utils/video_upload_policy.dart';
 import 'auth_service.dart';
@@ -474,6 +475,7 @@ class ReelsService {
     final tagsList = rawTags is List
         ? rawTags.map((e) => e.toString()).toList(growable: false)
         : <String>[];
+    final mediaItems = ReelMediaItem.sanitizedRawList(data['mediaItems']);
 
     return {
       'id': id,
@@ -481,6 +483,8 @@ class ReelsService {
       'videoUrl': data['videoUrl'] ?? '',
       'imageUrl': data['imageUrl'] ?? '',
       'thumbnailUrl': data['thumbnailUrl'] ?? data['imageUrl'] ?? '',
+      'mediaItems': mediaItems,
+      'mediaCount': mediaItems.isNotEmpty ? mediaItems.length : 1,
       'username': data['username'] ?? '',
       'handle': data['handle'] ?? '',
       'caption': data['caption'] ?? '',

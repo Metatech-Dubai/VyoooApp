@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../models/reel_media_item.dart';
+
 /// Persists the last successful For You feed for instant paint on next launch.
 class FeedReelsCacheService {
   FeedReelsCacheService._();
@@ -17,6 +19,8 @@ class FeedReelsCacheService {
     'videoUrl',
     'imageUrl',
     'thumbnailUrl',
+    'mediaItems',
+    'mediaCount',
     'username',
     'handle',
     'caption',
@@ -118,6 +122,8 @@ class FeedReelsCacheService {
       if (value == null) continue;
       if (value is String || value is num || value is bool) {
         out[key] = value;
+      } else if (key == 'mediaItems' && value is List) {
+        out[key] = ReelMediaItem.sanitizedRawList(value);
       } else if (value is List) {
         out[key] = value.map((e) => e.toString()).toList(growable: false);
       }

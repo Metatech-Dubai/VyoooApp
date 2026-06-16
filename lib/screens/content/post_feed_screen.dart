@@ -4,8 +4,10 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/controllers/reels_controller.dart';
+import '../../core/models/reel_media_item.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/widgets/post_media_carousel.dart';
 import '../../core/widgets/post_feed_screen_background.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
@@ -877,6 +879,7 @@ class _PostCard extends StatelessWidget {
     final isVerified = post['isVerified'] == true || fallbackIsVerified;
     final mediaUrl = _mediaUrl(post);
     final isVideoPost = _isVideoPost(post);
+    final mediaItems = ReelMediaItem.listFromPost(post);
     final privacy = ReelCountPrivacy.fromMap(post);
 
     return Padding(
@@ -981,7 +984,21 @@ class _PostCard extends StatelessWidget {
           ],
           _buildCaption(),
           const SizedBox(height: AppSpacing.sm),
-          if (mediaUrl.isNotEmpty)
+          if (mediaItems.length > 1)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AspectRatio(
+                aspectRatio: 800 / 900,
+                child: ValueListenableBuilder<int>(
+                  valueListenable: activeIndex,
+                  builder: (_, currentActive, _) => PostMediaCarousel(
+                    items: mediaItems,
+                    isVisible: currentActive == index,
+                  ),
+                ),
+              ),
+            )
+          else if (mediaUrl.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(
@@ -1028,27 +1045,6 @@ class _PostCard extends StatelessWidget {
                         Icons.play_circle_fill_rounded,
                         color: Colors.white,
                         size: 20,
-                      ),
-                    ),
-                  if (_asInt(post['mediaCount']) > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(
-                          _asInt(post['mediaCount']).clamp(2, 5),
-                          (i) => Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: 4.5,
-                            height: 4.5,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: i == 0
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.45),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                 ],

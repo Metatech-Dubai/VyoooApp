@@ -30,7 +30,9 @@ import '../../core/utils/verification_badge.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/reel_count_privacy.dart';
+import '../../core/models/reel_media_item.dart';
 import '../../core/utils/reel_engagement.dart';
+import '../../core/widgets/post_media_carousel.dart';
 import '../../core/widgets/app_interaction_button.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/live_avatar_ring.dart';
@@ -2457,6 +2459,21 @@ class _UserProfileReelFeedScreenState
             itemCount: widget.reels.length,
             itemBuilder: (context, index) {
               final reel = widget.reels[index];
+              final mediaItems = ReelMediaItem.listFromPost(reel);
+              if (mediaItems.length > 1) {
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    PostMediaCarousel(
+                      key: ValueKey<String>('carousel_${reel['id'] ?? index}'),
+                      items: mediaItems,
+                      imageFit: BoxFit.contain,
+                      isVisible: index == _currentIndex,
+                    ),
+                    _buildActionButtons(index),
+                  ],
+                );
+              }
               final mediaType = ((reel['mediaType'] as String?) ?? '')
                   .toLowerCase();
               if (mediaType == 'image') {

@@ -5,7 +5,9 @@ import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/reel_count_privacy.dart';
+import '../../core/models/reel_media_item.dart';
 import '../../core/utils/reel_engagement.dart';
+import '../../core/widgets/post_media_carousel.dart';
 import '../../features/reel/widgets/owner_post_options_sheet.dart';
 import '../../core/config/deep_link_config.dart';
 import '../../core/theme/app_gradients.dart';
@@ -1839,6 +1841,15 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
             itemCount: _loopedReels.length,
             itemBuilder: (context, index) {
               final reel = _loopedReels[index];
+              final mediaItems = ReelMediaItem.listFromPost(reel);
+              if (mediaItems.length > 1) {
+                return PostMediaCarousel(
+                  key: ValueKey<String>('carousel_${reel['id'] ?? index}'),
+                  items: mediaItems,
+                  imageFit: BoxFit.contain,
+                  isVisible: index == _currentIndex,
+                );
+              }
               final mediaType = ((reel['mediaType'] as String?) ?? '')
                   .toLowerCase();
               if (mediaType == 'image') {

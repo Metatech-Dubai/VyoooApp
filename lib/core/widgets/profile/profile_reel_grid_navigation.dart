@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../models/reel_media_item.dart';
 import '../../../screens/content/post_feed_screen.dart';
 import '../../../screens/content/vr_detail_screen.dart';
 import '../../../screens/profile/profile_figma_tokens.dart';
@@ -25,6 +26,8 @@ abstract final class ProfileReelGridNavigation {
       'imageUrl': data['imageUrl'] as String? ?? '',
       'thumbnailUrl': data['thumbnailUrl'] as String? ?? '',
       'mediaType': data['mediaType'] as String? ?? '',
+      'mediaItems': ReelMediaItem.sanitizedRawList(data['mediaItems']),
+      'mediaCount': (data['mediaCount'] as num?)?.toInt() ?? 1,
       'caption': data['caption'] as String? ?? '',
       'likes': (data['likes'] as num?)?.toInt() ?? 0,
       'comments': (data['comments'] as num?)?.toInt() ?? 0,

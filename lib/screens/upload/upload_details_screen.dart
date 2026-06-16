@@ -21,15 +21,23 @@ import 'upload_success_screen.dart';
 /// Upload Details screen: title, description, tags, isVR.
 /// Gets a direct upload URL from Cloud Function → uploads to Cloudflare Stream
 /// → saves reel doc to Firestore with Stream playback URL.
+///
+/// When [additionalAssets] is non-empty the post is an Instagram-style
+/// carousel: every asset is uploaded and stored in `mediaItems[]`, while the
+/// flat media fields keep mirroring the first item for backward compatibility.
 class UploadDetailsScreen extends StatefulWidget {
   const UploadDetailsScreen({
     super.key,
     required this.asset,
+    this.additionalAssets = const <AssetEntity>[],
     this.photoFileOverride,
     this.videoFileOverride,
   });
 
   final AssetEntity asset;
+
+  /// Carousel items after [asset] (selection order preserved).
+  final List<AssetEntity> additionalAssets;
 
   /// When set for an **image** post, this file is uploaded instead of [asset.file]
   /// (e.g. after crop on [UploadPhotoPreviewScreen]).
@@ -67,17 +75,38 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
   final bool _isVR = false;
   bool _isUploading = false;
   double _uploadProgress = 0;
+  int _uploadingItemIndex = 0;
   String? _selectedCategory;
   final List<String> _selectedTags = <String>[];
   List<String> _suggestedTags = <String>[];
   File? _customThumbnailFile;
   bool _aiGenerating = false;
   PostLocation? _selectedLocation;
+  late final PageController _previewPageController;
+  int _previewPageIndex = 0;
+
   bool get _isVideoAsset => widget.asset.type == AssetType.video;
+
+  List<AssetEntity> get _allAssets => [widget.asset, ...widget.additionalAssets];
+
+  static bool _isVideoEntity(AssetEntity asset) =>
+      asset.type == AssetType.video;
+
+  static String _streamThumbnailFromVideoUrl(String videoUrl) {
+    try {
+      final uri = Uri.parse(videoUrl);
+      final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
+      if (videoId.isEmpty) return '';
+      return 'https://videodelivery.net/$videoId/thumbnails/thumbnail.jpg';
+    } catch (_) {
+      return '';
+    }
+  }
 
   @override
   void initState() {
     super.initState();
+    _previewPageController = PageController();
     _titleController.addListener(_refreshSuggestedTags);
     _descController.addListener(_refreshSuggestedTags);
     _suggestedTags = UploadTagSuggestions.build(
@@ -114,6 +143,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     _titleController.dispose();
     _descController.dispose();
     _tagsController.dispose();
+    _previewPageController.dispose();
     super.dispose();
   }
 
@@ -135,19 +165,37 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     });
 
     try {
-      // 1 — resolve file (edited override or gallery asset file)
-      final File? file = _isVideoAsset
-          ? (widget.videoFileOverride ?? await widget.asset.file)
-          : (widget.photoFileOverride ?? await widget.asset.file);
-      if (file == null || !mounted) {
-        setState(() => _isUploading = false);
-        return;
+      // 1+2 — resolve and upload every selected asset, in carousel order.
+      // Photo/video edit overrides only ever exist for the single-asset flow,
+      // so they apply to the first item only.
+      final assets = _allAssets;
+      final mediaItems = <Map<String, dynamic>>[];
+      for (var i = 0; i < assets.length; i++) {
+        if (!mounted) return;
+        setState(() {
+          _uploadingItemIndex = i;
+          _uploadProgress = 0;
+        });
+        final asset = assets[i];
+        final isVideo = _isVideoEntity(asset);
+        final File? file = i == 0
+            ? (isVideo
+                  ? (widget.videoFileOverride ?? await asset.file)
+                  : (widget.photoFileOverride ?? await asset.file))
+            : await asset.file;
+        if (file == null) {
+          throw Exception('Could not read selected media (item ${i + 1}).');
+        }
+        final url = isVideo ? await _uploadVideo(file) : await _uploadPhoto(file);
+        mediaItems.add({
+          'type': isVideo ? 'video' : 'image',
+          'url': url,
+          'thumbnailUrl': isVideo ? _streamThumbnailFromVideoUrl(url) : url,
+        });
       }
-
-      // 2 — upload selected media and get URL
-      final mediaUrl = _isVideoAsset
-          ? await _uploadVideo(file)
-          : await _uploadPhoto(file);
+      final first = mediaItems.first;
+      final firstIsVideo = first['type'] == 'video';
+      final mediaUrl = first['url'] as String;
 
       if (!mounted) return;
 
@@ -171,17 +219,21 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       final tagsLine = _selectedTags.isEmpty ? '' : _selectedTags.map((t) => '#$t').join(' ');
       final caption = tagsLine.isNotEmpty ? '$title\n$tagsLine' : title;
 
-      var thumbnailUrl = _isVideoAsset ? '' : mediaUrl;
-      if (_isVideoAsset && _customThumbnailFile != null) {
+      var thumbnailUrl = firstIsVideo ? '' : mediaUrl;
+      if (firstIsVideo && _customThumbnailFile != null) {
         thumbnailUrl = await _uploadCustomThumbnail(_customThumbnailFile!);
+        mediaItems[0] = {...first, 'thumbnailUrl': thumbnailUrl};
       }
 
-      // 5 — save reel doc to Firestore
+      // 5 — save reel doc to Firestore. Flat media fields mirror the first
+      // carousel item so older clients and existing queries keep working.
       final reelRef = await FirebaseFirestore.instance.collection('reels').add({
-        'mediaType': _isVideoAsset ? 'video' : 'image',
-        'videoUrl': _isVideoAsset ? mediaUrl : '',
-        'imageUrl': _isVideoAsset ? '' : mediaUrl,
+        'mediaType': firstIsVideo ? 'video' : 'image',
+        'videoUrl': firstIsVideo ? mediaUrl : '',
+        'imageUrl': firstIsVideo ? '' : mediaUrl,
         'thumbnailUrl': thumbnailUrl,
+        'mediaItems': mediaItems,
+        'mediaCount': mediaItems.length,
         'username': username,
         'handle': handle,
         'caption': caption,
@@ -400,7 +452,11 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
             const Icon(Icons.cloud_upload_rounded, color: _pink, size: 56),
             const SizedBox(height: 24),
             Text(
-              _isVideoAsset ? 'Uploading your video…' : 'Uploading your photo…',
+              _allAssets.length > 1
+                  ? 'Uploading ${_uploadingItemIndex + 1} of ${_allAssets.length}…'
+                  : (_isVideoAsset
+                        ? 'Uploading your video…'
+                        : 'Uploading your photo…'),
               style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 16),
@@ -463,9 +519,12 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
   }
 
   Widget _buildThumbnail() {
+    if (_allAssets.length > 1) {
+      return _buildCarouselPreview();
+    }
     return Center(
       child: GestureDetector(
-        onTap: _isUploading ? null : _pickCustomThumbnail,
+        onTap: _isUploading || !_isVideoAsset ? null : _pickCustomThumbnail,
         child: Container(
           width: 160,
           height: 220,
@@ -474,45 +533,161 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
             color: Colors.white.withValues(alpha: 0.1),
           ),
           clipBehavior: Clip.antiAlias,
-          child: FutureBuilder<File?>(
-            future: widget.asset.file,
-            builder: (context, snapshot) {
-              if (_customThumbnailFile != null) {
-                return Image.file(_customThumbnailFile!, fit: BoxFit.cover);
-              }
-              if (_isVideoAsset) {
-                return FutureBuilder<Uint8List?>(
-                  future: widget.asset.thumbnailDataWithSize(
-                    const ThumbnailSize(500, 800),
+          child: _buildAssetPreview(_allAssets.first, index: 0),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCarouselPreview() {
+    final total = _allAssets.length;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _previewPageController,
+            itemCount: total,
+            onPageChanged: (index) => setState(() => _previewPageIndex = index),
+            itemBuilder: (context, index) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 2),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: ColoredBox(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    child: _buildAssetPreview(_allAssets[index], index: index),
                   ),
-                  builder: (context, thumbSnap) {
-                    final bytes = thumbSnap.data;
-                    if (bytes != null && bytes.isNotEmpty) {
-                      return Image.memory(bytes, fit: BoxFit.cover);
-                    }
-                    return Container(
-                      color: Colors.black.withValues(alpha: 0.35),
-                      child: const Center(
-                        child: Icon(
-                          Icons.play_circle_fill_rounded,
-                          color: Colors.white70,
-                          size: 44,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              }
-              if (snapshot.hasData && snapshot.data != null) {
-                return Image.file(snapshot.data!, fit: BoxFit.cover);
-              }
-              return const Center(
-                child: CircularProgressIndicator(color: Colors.white24),
+                ),
               );
             },
           ),
         ),
-      ),
+        const SizedBox(height: 12),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            for (var i = 0; i < total; i++)
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 3),
+                width: i == _previewPageIndex ? 8 : 6,
+                height: i == _previewPageIndex ? 8 : 6,
+                decoration: BoxDecoration(
+                  color: i == _previewPageIndex
+                      ? _pink
+                      : Colors.white.withValues(alpha: 0.35),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            const SizedBox(width: 10),
+            Text(
+              '${_previewPageIndex + 1}/$total',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Swipe to preview all selected media',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.4),
+            fontSize: 11,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAssetPreview(AssetEntity asset, {required int index}) {
+    final isVideo = _isVideoEntity(asset);
+    if (index == 0 && _customThumbnailFile != null) {
+      return Image.file(_customThumbnailFile!, fit: BoxFit.cover);
+    }
+    if (index == 0 && !isVideo && widget.photoFileOverride != null) {
+      return Image.file(widget.photoFileOverride!, fit: BoxFit.cover);
+    }
+    if (index == 0 && isVideo && widget.videoFileOverride != null) {
+      return FutureBuilder<Uint8List?>(
+        future: asset.thumbnailDataWithSize(const ThumbnailSize(500, 800)),
+        builder: (context, thumbSnap) {
+          final bytes = thumbSnap.data;
+          if (bytes != null && bytes.isNotEmpty) {
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(bytes, fit: BoxFit.cover),
+                const Center(
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white70,
+                    size: 44,
+                  ),
+                ),
+              ],
+            );
+          }
+          return Container(
+            color: Colors.black.withValues(alpha: 0.35),
+            child: const Center(
+              child: Icon(
+                Icons.play_circle_fill_rounded,
+                color: Colors.white70,
+                size: 44,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    if (isVideo) {
+      return FutureBuilder<Uint8List?>(
+        future: asset.thumbnailDataWithSize(const ThumbnailSize(500, 800)),
+        builder: (context, thumbSnap) {
+          final bytes = thumbSnap.data;
+          if (bytes != null && bytes.isNotEmpty) {
+            return Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.memory(bytes, fit: BoxFit.cover),
+                const Center(
+                  child: Icon(
+                    Icons.play_circle_fill_rounded,
+                    color: Colors.white70,
+                    size: 44,
+                  ),
+                ),
+              ],
+            );
+          }
+          return Container(
+            color: Colors.black.withValues(alpha: 0.35),
+            child: const Center(
+              child: Icon(
+                Icons.play_circle_fill_rounded,
+                color: Colors.white70,
+                size: 44,
+              ),
+            ),
+          );
+        },
+      );
+    }
+    return FutureBuilder<File?>(
+      future: asset.file,
+      builder: (context, snapshot) {
+        if (snapshot.hasData && snapshot.data != null) {
+          return Image.file(snapshot.data!, fit: BoxFit.cover);
+        }
+        return const Center(
+          child: CircularProgressIndicator(color: Colors.white24),
+        );
+      },
     );
   }
 

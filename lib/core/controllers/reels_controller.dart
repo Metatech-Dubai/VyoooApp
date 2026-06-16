@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/deep_link_config.dart';
+import '../models/reel_media_item.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/user_service.dart';
@@ -225,6 +226,8 @@ class ReelsController {
           'thumbnailUrl': data['thumbnailUrl'] as String? ?? '',
           'imageUrl': data['imageUrl'] as String? ?? '',
           'mediaType': data['mediaType'] as String? ?? '',
+          'mediaItems': ReelMediaItem.sanitizedRawList(data['mediaItems']),
+          'mediaCount': (data['mediaCount'] as num?)?.toInt() ?? 1,
           'username': data['username'] as String? ?? '',
           'avatarUrl': data['profileImage'] as String? ??
               data['avatarUrl'] as String? ??
@@ -452,6 +455,9 @@ class ReelsController {
         'videoUrl': source['videoUrl'] ?? '',
         'imageUrl': source['imageUrl'] ?? '',
         'thumbnailUrl': source['thumbnailUrl'] ?? source['imageUrl'] ?? '',
+        if (source['mediaItems'] is List)
+          'mediaItems': source['mediaItems'],
+        if (source['mediaCount'] is num) 'mediaCount': source['mediaCount'],
         'caption': source['caption'] ?? '',
         'description': source['description'] ?? '',
         'title': source['title'] ?? '',
