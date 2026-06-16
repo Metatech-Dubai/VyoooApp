@@ -18,7 +18,6 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/story/story_upload_screen.dart';
 import '../../widgets/insta360_preview_view.dart';
-import '../../widgets/insta360_processed_view.dart';
 import 'upload_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
 
@@ -689,21 +688,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     if (_isVideoOff && _liveState == _LiveState.live) {
       return Container(color: const Color(0xFF0A000F));
     }
-    // 360° source: host previews the SDK's stitched ERP view directly (remote viewers
-    // receive the frames pushed via [_pushInstaFrame]). The preview is mounted only once the
-    // camera is actually connected — mounting it earlier would start the preview stream before
-    // the camera session exists.
+    // 360° source: the host previews the SDK's interactive sphere directly — touch-drag to look
+    // around, pinch to zoom. Remote viewers receive the extracted ERP frames pushed via
+    // [_pushInstaFrame]. The preview is mounted only once the camera is actually connected —
+    // mounting it earlier would start the preview stream before the camera session exists.
     if (_cameraSource == _CameraSource.insta360) {
       if (_insta.state.value.connected) {
-        // Frame source (SDK ERP preview) runs behind; the host sees the pipeline's processed
-        // output (downscaled + forward-masked) on top via a Flutter texture.
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            const Insta360PreviewView(extractWidth: 1920, extractHeight: 960),
-            Insta360ProcessedView(service: _insta),
-          ],
-        );
+        return const Insta360PreviewView(extractWidth: 1920, extractHeight: 960);
       }
       return const ColoredBox(
         color: Color(0xFF0A000F),
