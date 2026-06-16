@@ -13,6 +13,7 @@ import '../services/global_incoming_call_service.dart';
 import '../services/in_app_notification_alert_service.dart';
 import '../services/otp_session_service.dart';
 import '../services/push_messaging_service.dart';
+import '../services/saved_accounts_service.dart';
 import '../services/signup_draft_service.dart';
 import '../services/user_service.dart';
 import '../utils/account_message.dart';
@@ -39,6 +40,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
   String? _messagingUid;
   String? _incomingCallUid;
   String? _lastSeenUid;
+  String? _savedAccountsSyncedUid;
 
   @override
   Widget build(BuildContext context) {
@@ -81,10 +83,17 @@ class _AuthWrapperState extends State<AuthWrapper> {
             });
           }
           InAppNotificationAlertService.instance.startForUser(uid);
+          if (_savedAccountsSyncedUid != uid) {
+            _savedAccountsSyncedUid = uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              unawaited(SavedAccountsService().syncCurrentAccountMetadata());
+            });
+          }
         }
         if (uid == null || (user?.isAnonymous ?? true)) {
           _messagingUid = null;
           _incomingCallUid = null;
+          _savedAccountsSyncedUid = null;
           PushMessagingService.instance.unbindForUser();
           GlobalIncomingCallService.instance.stop();
           InAppNotificationAlertService.instance.stop();

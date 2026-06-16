@@ -218,7 +218,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
     );
     if (shouldLogout != true) return;
-    await AuthService().signOut();
+    await AuthService().signOutCurrentAccount();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthWrapper()),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
@@ -378,7 +379,11 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   Future<void> _finishAfterSuccessfulVerification() async {
     try {
       final draft = SignupDraftService().current;
+      String? signupEmail;
+      String? signupPassword;
       if (draft != null) {
+        signupEmail = draft.email.trim();
+        signupPassword = draft.password;
         final complete = await _auth.completeSignupAfterOtp(
           name: draft.name,
           email: draft.email,
@@ -402,6 +407,16 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       final currentUid = _auth.currentUser?.uid ?? '';
       if (currentUid.isNotEmpty) {
         await OtpSessionService().markTrustedDeviceForUid(currentUid);
+      }
+      if (signupEmail != null &&
+          signupEmail.isNotEmpty &&
+          signupPassword != null &&
+          signupPassword.isNotEmpty) {
+        await _auth.registerLoggedInAccount(
+          loginType: SavedAccountLoginType.password,
+          email: signupEmail,
+          password: signupPassword,
+        );
       }
       await OtpSessionService().clearOtpRequirement();
       await OtpSessionService().clearSignupOtpPreference();

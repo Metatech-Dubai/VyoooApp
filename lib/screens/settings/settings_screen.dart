@@ -33,6 +33,7 @@ import 'report_problem_screen.dart';
 import 'saved_posts_screen.dart';
 import 'settings_subscriptions_screen.dart';
 import 'terms_service_screen.dart';
+import 'switch_accounts_screen.dart';
 import 'wallet/wallet_coming_soon_view.dart';
 import 'live_stream_monetisation_screen.dart';
 import 'preferences/activity_settings_screen.dart';
@@ -334,6 +335,11 @@ class SettingsScreen extends StatelessWidget {
         _sectionHeader('Login'),
         _settingsGroup([
           _SettingsTile(
+            icon: Icons.switch_account_rounded,
+            label: 'Switch accounts',
+            onTap: () => _push(context, const SwitchAccountsScreen()),
+          ),
+          _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Logout.png',
             label: 'Log out',
             isLogout: true,
@@ -458,7 +464,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (shouldLogout != true) return;
 
-    await AuthService().signOut();
+    await AuthService().signOutCurrentAccount();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthWrapper()),

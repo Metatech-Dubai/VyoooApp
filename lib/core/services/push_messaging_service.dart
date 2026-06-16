@@ -21,9 +21,10 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final type = (message.data['type'] ?? '').toString();
   if (type == 'incoming_call') {
+    final data = Map<String, dynamic>.from(message.data);
     await IncomingCallKitService.instance.presentIncomingCall(
-      data: Map<String, dynamic>.from(message.data),
-      callerName: message.notification?.title,
+      data: data,
+      callerName: message.notification?.title ?? data['nameCaller']?.toString(),
     );
     return;
   }
@@ -82,7 +83,7 @@ class PushMessagingService {
     _lifecycleObserver ??= _PushLifecycleObserver(this)..register();
     if (!isNewBinding) return;
     unawaited(syncTokenForUser(uid));
-    unawaited(IncomingCallKitService.instance.syncVoipTokenForCurrentUser());
+    unawaited(IncomingCallKitService.instance.syncVoipTokenWithRetry());
     unawaited(handleInitialMessage());
   }
 
@@ -98,7 +99,7 @@ class PushMessagingService {
     unawaited(syncTokenForUser(uid));
     GlobalIncomingCallService.instance.checkPendingCallsOnResume();
     IncomingCallKitService.instance.checkAcceptedCallOnResume();
-    IncomingCallKitService.instance.syncVoipTokenForCurrentUser();
+    unawaited(IncomingCallKitService.instance.syncVoipTokenWithRetry());
   }
 
   /// Request OS permission, fetch token, write to Firestore. Safe to call on each sign-in.
@@ -274,9 +275,10 @@ class PushMessagingService {
     final type = (message.data['type'] ?? '').toString();
 
     if (type == 'incoming_call') {
+      final data = Map<String, dynamic>.from(message.data);
       await IncomingCallKitService.instance.presentIncomingCall(
-        data: Map<String, dynamic>.from(message.data),
-        callerName: message.notification?.title,
+        data: data,
+        callerName: message.notification?.title ?? data['nameCaller']?.toString(),
       );
       GlobalIncomingCallService.instance.checkPendingCallsOnResume();
       return;

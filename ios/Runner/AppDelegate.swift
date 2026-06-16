@@ -1,7 +1,8 @@
 import Flutter
 import UIKit
 import PushKit
-import flutter_callkit_incoming
+import UserNotifications
+import flutter_callkit_incoming_maintained
 
 #if DEBUG && !targetEnvironment(simulator)
 #error("Physical iPhone Debug mode is blocked for Vyooo because Agora/Iris can crash with EXC_BAD_ACCESS. Use Profile/Release (flutter run --profile/--release).")
@@ -19,6 +20,10 @@ import flutter_callkit_incoming
     let voipRegistry = PKPushRegistry(queue: DispatchQueue.main)
     voipRegistry.delegate = self
     voipRegistry.desiredPushTypes = [.voIP]
+
+    if #available(iOS 10.0, *) {
+      UNUserNotificationCenter.current().delegate = self
+    }
 
     guard let registrar = self.registrar(forPlugin: "VyoooDeferredNativePlugins") else {
       return super.application(application, didFinishLaunchingWithOptions: launchOptions)
@@ -70,21 +75,43 @@ import flutter_callkit_incoming
     }
 
     let dict = payload.dictionaryPayload
-    let callId = (dict["callId"] as? String) ?? (dict["id"] as? String) ?? UUID().uuidString
+    let firestoreCallId = (dict["callId"] as? String) ?? (dict["id"] as? String) ?? UUID().uuidString
+    let callKitId = CallKitUuid.forCallId(firestoreCallId)
     let nameCaller = (dict["nameCaller"] as? String) ?? "Vyooo"
     let handle = (dict["handle"] as? String) ?? "Incoming call"
     let isVideo = (dict["isVideo"] as? Bool) ?? false
 
-    let data = flutter_callkit_incoming.Data(
-      id: callId,
+    let data = flutter_callkit_incoming_maintained.Data(
+      id: callKitId,
       nameCaller: nameCaller,
       handle: handle,
       type: isVideo ? 1 : 0
     )
-    data.extra = dict as? [String: Any] ?? [:]
+    var extra = dict as? [String: Any] ?? [:]
+    extra["callId"] = firestoreCallId
+    data.extra = extra as NSDictionary
 
     SwiftFlutterCallkitIncomingPlugin.sharedInstance?.showCallkitIncoming(data, fromPushKit: true) {
       completion()
     }
+  }
+
+  @available(iOS 10.0, *)
+  override func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
+    let userInfo = notification.request.content.userInfo
+    let type = (userInfo["type"] as? String) ?? ""
+    if type == "incoming_call" {
+      completionHandler([])
+      return
+    }
+    CallkitNotificationManager.shared.userNotificationCenter(
+      center,
+      willPresent: notification,
+      withCompletionHandler: completionHandler
+    )
   }
 }

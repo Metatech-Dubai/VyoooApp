@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:country_picker/country_picker.dart';
 
+import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
@@ -197,6 +198,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     if (!mounted) return;
     setState(() => _isAppleLoading = false);
     if (result.success) {
+      await _auth.registerLoggedInAccount(
+        loginType: SavedAccountLoginType.apple,
+      );
+      if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (result.message != null && result.message!.isNotEmpty) {
       setState(() => _errorMessage = result.message);
@@ -213,6 +218,10 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     if (!mounted) return;
     setState(() => _isGoogleLoading = false);
     if (result.success) {
+      await _auth.registerLoggedInAccount(
+        loginType: SavedAccountLoginType.google,
+      );
+      if (!mounted) return;
       Navigator.of(context).popUntil((route) => route.isFirst);
     } else if (result.message != null && result.message!.isNotEmpty) {
       setState(() => _errorMessage = result.message);

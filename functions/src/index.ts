@@ -2545,7 +2545,6 @@ export const onCallSessionCreate = onDocumentCreated(
     const iosVoipTokens: string[] = [];
 
     for (const tSnap of tokenSnaps) {
-      let iosVoipSentForUser = false;
       for (const doc of tSnap.docs) {
         const raw = doc.data()?.token;
         const token = typeof raw === 'string' ? raw.trim() : '';
@@ -2553,7 +2552,6 @@ export const onCallSessionCreate = onDocumentCreated(
 
         if (doc.id === 'voip') {
           iosVoipTokens.push(token);
-          iosVoipSentForUser = true;
           continue;
         }
         if (doc.id !== 'default') continue;
@@ -2565,24 +2563,36 @@ export const onCallSessionCreate = onDocumentCreated(
         if (platform === 'android') {
           androidFcmTokens.push(token);
           androidFcmDocs.push(doc);
-        } else if (platform === 'ios' && !iosVoipSentForUser) {
+        } else if (platform === 'ios') {
+          // Data-only FCM fallback: triggers CallKit in Dart (no notification banner).
           iosFcmTokens.push(token);
           iosFcmDocs.push(doc);
         }
       }
     }
 
-    const fcmTokens = [...androidFcmTokens, ...iosFcmTokens];
-    const fcmTokenDocs = [...androidFcmDocs, ...iosFcmDocs];
-
-    if (fcmTokens.length === 0 && iosVoipTokens.length === 0) {
-      logger.info('onCallSessionCreate: no push tokens for callees', { callId });
-      return;
-    }
-
     const notifTitle = callerDisplayName;
     const notifBody = callType === 'video' ? 'Incoming video call' : 'Incoming audio call';
     const isVideo = callType === 'video';
+    const callData: Record<string, string> = {
+      type: 'incoming_call',
+      callId,
+      chatId,
+      callerId,
+      callType,
+      agoraChannelName,
+      nameCaller: notifTitle,
+      handle: notifBody,
+    };
+
+    if (
+      androidFcmTokens.length === 0 &&
+      iosFcmTokens.length === 0 &&
+      iosVoipTokens.length === 0
+    ) {
+      logger.info('onCallSessionCreate: no push tokens for callees', { callId });
+      return;
+    }
 
     if (iosVoipTokens.length > 0) {
       const voipResult = await sendVoipCallPushes(iosVoipTokens, {
@@ -2602,16 +2612,55 @@ export const onCallSessionCreate = onDocumentCreated(
       });
     }
 
-    if (fcmTokens.length === 0) {
-      logger.info('onCallSessionCreate: push sent (VoIP only)', {
+    const FCM_BATCH = 500;
+
+    if (iosFcmTokens.length > 0) {
+      for (let t = 0; t < iosFcmTokens.length; t += FCM_BATCH) {
+        const batch = iosFcmTokens.slice(t, t + FCM_BATCH);
+        try {
+          const response = await admin.messaging().sendEachForMulticast({
+            tokens: batch,
+            data: callData,
+            apns: {
+              headers: {
+                'apns-priority': '10',
+                'apns-push-type': 'background',
+              },
+              payload: {
+                aps: { 'content-available': 1 },
+              },
+            },
+          });
+          await pruneStalePushTokenDocs(
+            iosFcmDocs.slice(t, t + FCM_BATCH),
+            response.responses,
+          );
+          if (response.failureCount > 0) {
+            logger.warn('onCallSessionCreate: iOS data FCM partial failure', {
+              callId,
+              failureCount: response.failureCount,
+            });
+          }
+        } catch (err) {
+          logger.error('onCallSessionCreate: iOS data FCM send error', {
+            callId,
+            error: String(err),
+          });
+        }
+      }
+    }
+
+    if (androidFcmTokens.length === 0) {
+      logger.info('onCallSessionCreate: push sent', {
         callId,
-        voipTokenCount: iosVoipTokens.length,
+        iosVoipTokenCount: iosVoipTokens.length,
+        iosFcmTokenCount: iosFcmTokens.length,
       });
       return;
     }
-    const FCM_BATCH = 500;
-    for (let t = 0; t < fcmTokens.length; t += FCM_BATCH) {
-      const batch = fcmTokens.slice(t, t + FCM_BATCH);
+
+    for (let t = 0; t < androidFcmTokens.length; t += FCM_BATCH) {
+      const batch = androidFcmTokens.slice(t, t + FCM_BATCH);
       try {
         const response = await admin.messaging().sendEachForMulticast({
           tokens: batch,
@@ -2628,7 +2677,7 @@ export const onCallSessionCreate = onDocumentCreated(
           apns: fcmCallApnsOptions(notifTitle, notifBody),
         });
         await pruneStalePushTokenDocs(
-          fcmTokenDocs.slice(t, t + FCM_BATCH),
+          androidFcmDocs.slice(t, t + FCM_BATCH),
           response.responses,
         );
         if (response.failureCount > 0) {
@@ -2644,8 +2693,9 @@ export const onCallSessionCreate = onDocumentCreated(
 
     logger.info('onCallSessionCreate: push sent', {
       callId,
-      fcmTokenCount: fcmTokens.length,
-      voipTokenCount: iosVoipTokens.length,
+      androidFcmTokenCount: androidFcmTokens.length,
+      iosFcmTokenCount: iosFcmTokens.length,
+      iosVoipTokenCount: iosVoipTokens.length,
     });
   },
 );

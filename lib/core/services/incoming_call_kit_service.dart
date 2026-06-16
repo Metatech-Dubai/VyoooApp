@@ -13,6 +13,7 @@ import '../../features/chat/screens/chat_call_screen.dart';
 import '../../features/chat/services/call_signaling_service.dart';
 import '../../firebase_options.dart';
 import '../navigation/app_keys.dart';
+import '../utils/call_kit_id.dart';
 
 /// Background CallKit events (accept/decline while app is terminated).
 @pragma('vm:entry-point')
@@ -28,6 +29,7 @@ class IncomingCallKitService {
 
   final CallSignalingService _signaling = CallSignalingService();
   final Set<String> _presentedCallIds = <String>{};
+  final Map<String, String> _callKitIdToFirestoreId = <String, String>{};
   StreamSubscription<CallEvent?>? _eventSub;
   bool _configured = false;
   bool _handlingAction = false;
@@ -44,17 +46,40 @@ class IncomingCallKitService {
     if (kIsWeb || _configured) return;
     _configured = true;
 
-    await FlutterCallkitIncoming.onBackgroundMessage(
-      incomingCallKitBackgroundHandler,
-    );
-
     if (_isAndroid) {
+      await FlutterCallkitIncoming.onBackgroundMessage(
+        incomingCallKitBackgroundHandler,
+      );
       await FlutterCallkitIncoming.requestFullIntentPermission();
     }
 
     _eventSub = FlutterCallkitIncoming.onEvent.listen(_onCallKitEvent);
-    unawaited(syncVoipTokenForCurrentUser());
+    unawaited(syncVoipTokenWithRetry());
     unawaited(checkAcceptedCallOnResume());
+  }
+
+  /// VoIP token can arrive a few seconds after PushKit registers.
+  Future<void> syncVoipTokenWithRetry({int attempts = 8}) async {
+    for (var i = 0; i < attempts; i++) {
+      if (i > 0) {
+        await Future<void>.delayed(Duration(seconds: 1 + i));
+      }
+      await syncVoipTokenForCurrentUser();
+      if (!_isApple || kIsWeb) return;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null || uid.isEmpty) return;
+      try {
+        final doc = await FirebaseFirestore.instance
+            .collection('users')
+            .doc(uid)
+            .collection('push_tokens')
+            .doc('voip')
+            .get();
+        if (doc.exists && (doc.data()?['token'] as String?)?.isNotEmpty == true) {
+          return;
+        }
+      } catch (_) {}
+    }
   }
 
   Future<void> dispose() async {
@@ -114,15 +139,23 @@ class IncomingCallKitService {
 
     final callType = (data['callType'] ?? 'audio').toString().trim().toLowerCase();
     final isVideo = callType == 'video';
-    final name =
-        callerName?.trim().isNotEmpty == true ? callerName!.trim() : 'Vyooo';
+    final resolvedName = callerName?.trim().isNotEmpty == true
+        ? callerName!.trim()
+        : (data['nameCaller'] ?? '').toString().trim();
+    final name = resolvedName.isNotEmpty ? resolvedName : 'Vyooo';
     final avatar = callerAvatar?.trim();
 
     final extra = Map<String, dynamic>.from(data);
     extra['type'] = 'incoming_call';
+    extra['callId'] = callId;
+
+    final nativeCallId = _isApple ? callKitUuidFor(callId) : callId;
+    if (_isApple) {
+      _callKitIdToFirestoreId[nativeCallId] = callId;
+    }
 
     final params = CallKitParams(
-      id: callId,
+      id: nativeCallId,
       nameCaller: name,
       appName: 'Vyooo',
       avatar: avatar?.isNotEmpty == true ? avatar : null,
@@ -190,8 +223,10 @@ class IncomingCallKitService {
   Future<void> dismissCall(String callId) async {
     if (callId.isEmpty) return;
     _presentedCallIds.remove(callId);
+    final nativeId = _isApple ? callKitUuidFor(callId) : callId;
+    _callKitIdToFirestoreId.remove(nativeId);
     try {
-      await FlutterCallkitIncoming.endCall(callId);
+      await FlutterCallkitIncoming.endCall(nativeId);
     } catch (_) {}
   }
 
@@ -205,9 +240,10 @@ class IncomingCallKitService {
       final active = await FlutterCallkitIncoming.activeCalls();
       for (final call in active) {
         if (!call.isAccepted) continue;
-        final callId = call.id.trim();
-        if (callId.isEmpty) continue;
-        await _handleAccept(callId, fromResume: true);
+        final nativeId = call.id.trim();
+        if (nativeId.isEmpty) continue;
+        final firestoreCallId = await _firestoreCallIdFromNativeId(nativeId);
+        await _handleAccept(firestoreCallId, fromResume: true);
         return;
       }
     } catch (_) {}
@@ -227,13 +263,13 @@ class IncomingCallKitService {
       case CallEventActionDidUpdateDevicePushTokenVoip():
         await syncVoipTokenForCurrentUser();
       case CallEventActionCallAccept(:final id):
-        await _handleAccept(id);
+        await _handleAccept(await _firestoreCallIdFromNativeId(id));
       case CallEventActionCallDecline(:final id):
-        await _handleDecline(id);
+        await _handleDecline(await _firestoreCallIdFromNativeId(id));
       case CallEventActionCallEnded(:final id):
-        _presentedCallIds.remove(id);
+        _presentedCallIds.remove(await _firestoreCallIdFromNativeId(id));
       case CallEventActionCallTimeout(:final id):
-        await _handleTimeout(id);
+        await _handleTimeout(await _firestoreCallIdFromNativeId(id));
       default:
         break;
     }
@@ -265,7 +301,9 @@ class IncomingCallKitService {
         return;
       }
 
-      await FlutterCallkitIncoming.setCallConnected(callId);
+      await FlutterCallkitIncoming.setCallConnected(
+        _isApple ? callKitUuidFor(callId) : callId,
+      );
 
       final callerInfo = await _resolveCallerInfo(session);
       final activeSession = session.status == CallStatus.active
@@ -309,6 +347,22 @@ class IncomingCallKitService {
   Future<void> _handleTimeout(String callId) async {
     _presentedCallIds.remove(callId);
     await dismissCall(callId);
+  }
+
+  Future<String> _firestoreCallIdFromNativeId(String nativeId) async {
+    final cached = _callKitIdToFirestoreId[nativeId];
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    try {
+      final active = await FlutterCallkitIncoming.activeCalls();
+      for (final call in active) {
+        if (call.id != nativeId) continue;
+        final fromExtra = (call.extra?['callId'] ?? '').toString().trim();
+        if (fromExtra.isNotEmpty) return fromExtra;
+      }
+    } catch (_) {}
+
+    return nativeId;
   }
 
   Future<(String?, String?)> _resolveCallerInfo(CallSessionModel call) async {

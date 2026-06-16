@@ -130,11 +130,26 @@ export async function sendVoipCallPushes(
       await sendVoipToDevice(token, body, config);
       sent++;
     } catch (e) {
+      // Profile/dev builds use sandbox APNs; retry when production endpoint fails.
+      if (!config.useSandbox) {
+        try {
+          await sendVoipToDevice(token, body, { ...config, useSandbox: true });
+          sent++;
+          continue;
+        } catch (sandboxError) {
+          logger.warn('VoIP push failed (production and sandbox)', {
+            tokenPrefix: token.substring(0, 8),
+            productionError: String(e),
+            sandboxError: String(sandboxError),
+          });
+        }
+      } else {
+        logger.warn('VoIP push failed', {
+          tokenPrefix: token.substring(0, 8),
+          error: String(e),
+        });
+      }
       failed++;
-      logger.warn('VoIP push failed', {
-        tokenPrefix: token.substring(0, 8),
-        error: String(e),
-      });
     }
   }
   return { sent, failed };
