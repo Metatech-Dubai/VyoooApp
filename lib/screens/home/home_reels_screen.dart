@@ -144,6 +144,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
   // State for likes / public favorites / private saves (optimistic UI)
   final Map<String, bool> _likedReels = {};
+  final Set<String> _likeInFlight = {};
   final Map<String, bool> _favoriteReels = {};
   final Map<String, bool> _privateSavedReels = {};
   final Map<String, bool> _repostedSourceReels = {};
@@ -810,18 +811,28 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Future<void> _onLike(String reelId, bool currentlyLiked) async {
-    final newState = await _reelsController.likeReel(
-      reelId: reelId,
-      currentlyLiked: currentlyLiked,
-    );
-    if (!mounted) return;
-    final delta = newState == currentlyLiked ? 0 : (newState ? 1 : -1);
+    if (_likeInFlight.contains(reelId)) return;
+
+    final wantLiked = !currentlyLiked;
+    _likeInFlight.add(reelId);
     setState(() {
-      _likedReels[reelId] = newState;
-      if (delta != 0) {
-        _adjustReelStat(reelId, 'likes', delta);
-      }
+      _likedReels[reelId] = wantLiked;
+      _adjustReelStat(reelId, 'likes', wantLiked ? 1 : -1);
     });
+
+    final actual = await _reelsController.likeReel(
+      reelId: reelId,
+      like: wantLiked,
+    );
+    _likeInFlight.remove(reelId);
+    if (!mounted) return;
+
+    if (actual != wantLiked) {
+      setState(() {
+        _likedReels[reelId] = actual;
+        _adjustReelStat(reelId, 'likes', actual ? 1 : -1);
+      });
+    }
   }
 
   void _onDoubleTapLike(int feedIndex) {
@@ -831,7 +842,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final reelId = _asString(reel['id']);
     if (reelId.isEmpty) return;
     final alreadyLiked = _likedReels[reelId] ?? false;
-    if (alreadyLiked) return;
+    if (alreadyLiked || _likeInFlight.contains(reelId)) return;
     _onLike(reelId, false);
   }
 

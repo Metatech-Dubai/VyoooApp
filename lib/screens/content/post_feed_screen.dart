@@ -60,6 +60,7 @@ class PostFeedScreen extends StatefulWidget {
 class _PostFeedScreenState extends State<PostFeedScreen> {
   final ReelsController _reelsController = ReelsController();
   final Map<String, bool> _likedReels = {};
+  final Set<String> _likeInFlight = {};
   final Map<String, bool> _favoriteReels = {};
   final Map<String, bool> _privateSavedReels = {};
   final Map<String, bool> _repostedSourceReels = {};
@@ -283,15 +284,25 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
 
   Future<void> _onLike(Map<String, dynamic> post) async {
     final engagementId = ReelEngagement.sourceReelId(post);
-    if (engagementId.isEmpty) return;
+    if (engagementId.isEmpty || _likeInFlight.contains(engagementId)) return;
+
     final currentlyLiked = _likedReels[engagementId] ?? false;
-    final newState = await _reelsController.likeReel(
+    final wantLiked = !currentlyLiked;
+    _likeInFlight.add(engagementId);
+    setState(() => _likedReels[engagementId] = wantLiked);
+    _adjustPostStat(engagementId, 'likes', wantLiked ? 1 : -1);
+
+    final actual = await _reelsController.likeReel(
       reelId: engagementId,
-      currentlyLiked: currentlyLiked,
+      like: wantLiked,
     );
+    _likeInFlight.remove(engagementId);
     if (!mounted) return;
-    setState(() => _likedReels[engagementId] = newState);
-    _adjustPostStat(engagementId, 'likes', newState ? 1 : -1);
+
+    if (actual != wantLiked) {
+      setState(() => _likedReels[engagementId] = actual);
+      _adjustPostStat(engagementId, 'likes', actual ? 1 : -1);
+    }
   }
 
   Future<void> _onSave(Map<String, dynamic> post) async {

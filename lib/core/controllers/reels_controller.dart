@@ -251,48 +251,72 @@ class ReelsController {
     return out;
   }
 
-  /// Like a reel. Toggles like state and updates Firestore.
+  /// Sets like state for a reel. Idempotent — repeated likes/unlikes are no-ops.
   Future<bool> likeReel({
     required String reelId,
-    required bool currentlyLiked,
+    required bool like,
   }) async {
     final uid = _currentUserId;
-    if (uid == null) return currentlyLiked;
+    if (uid == null) return !like;
 
-    final newLikedState = !currentlyLiked;
+    final likeRef = _firestore.collection('userLikes').doc('${uid}_$reelId');
+    final reelRef = _firestore.collection('reels').doc(reelId);
+
     try {
-      if (newLikedState) {
-        await _firestore.collection('userLikes').doc('${uid}_$reelId').set({
-          'userId': uid,
-          'reelId': reelId,
-          'likedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await _firestore.collection('userLikes').doc('${uid}_$reelId').delete();
-      }
+      final (liked, changed) = await _firestore.runTransaction<(bool, bool)>(
+        (tx) async {
+          final likeSnap = await tx.get(likeRef);
+          final isLiked = likeSnap.exists;
+          if (like == isLiked) {
+            return (isLiked, false);
+          }
 
-      final reelRef = _firestore.collection('reels').doc(reelId);
-      final reelDoc = await reelRef.get();
-      if (reelDoc.exists) {
-        await reelRef.update({
-          'likes': newLikedState
-              ? FieldValue.increment(1)
-              : FieldValue.increment(-1),
-        });
-        if (newLikedState) {
+          if (like) {
+            tx.set(likeRef, {
+              'userId': uid,
+              'reelId': reelId,
+              'likedAt': FieldValue.serverTimestamp(),
+            });
+          } else {
+            tx.delete(likeRef);
+          }
+
+          final reelSnap = await tx.get(reelRef);
+          if (reelSnap.exists) {
+            tx.update(reelRef, {
+              'likes': like
+                  ? FieldValue.increment(1)
+                  : FieldValue.increment(-1),
+            });
+          }
+          return (like, true);
+        },
+      );
+
+      if (changed && liked) {
+        final reelDoc = await reelRef.get();
+        if (reelDoc.exists) {
           final ownerId = (reelDoc.data()?['userId'] as String?) ?? '';
-          await NotificationService().create(
-            recipientId: ownerId,
-            type: AppNotificationType.like,
-            message: 'liked your post.',
-            extra: {'reelId': reelId},
-          );
+          if (ownerId.isNotEmpty && ownerId != uid) {
+            await NotificationService().create(
+              recipientId: ownerId,
+              type: AppNotificationType.like,
+              message: 'liked your post.',
+              extra: {'reelId': reelId},
+            );
+          }
         }
       }
+
+      return liked;
     } catch (_) {
-      return currentlyLiked;
+      try {
+        final snap = await likeRef.get();
+        return snap.exists;
+      } catch (_) {
+        return !like;
+      }
     }
-    return newLikedState;
   }
 
   /// Public favorite (profile star tab, visible to others per account privacy rules).

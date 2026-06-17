@@ -2239,6 +2239,7 @@ class _UserProfileReelFeedScreenState
   late int _currentIndex;
   final ReelsController _reelsController = ReelsController();
   final Map<String, bool> _likedReels = {};
+  final Set<String> _likeInFlight = {};
   final Map<String, bool> _favoriteReels = {};
   final Map<String, bool> _privateSavedReels = {};
   final Map<String, bool> _repostedSourceReels = {};
@@ -2347,13 +2348,28 @@ class _UserProfileReelFeedScreenState
   }
 
   Future<void> _onLike(String reelId, bool currentlyLiked) async {
-    final newState = await _reelsController.likeReel(
+    if (_likeInFlight.contains(reelId)) return;
+
+    final wantLiked = !currentlyLiked;
+    _likeInFlight.add(reelId);
+    setState(() {
+      _likedReels[reelId] = wantLiked;
+      _adjustReelStat(reelId, 'likes', wantLiked ? 1 : -1);
+    });
+
+    final actual = await _reelsController.likeReel(
       reelId: reelId,
-      currentlyLiked: currentlyLiked,
+      like: wantLiked,
     );
+    _likeInFlight.remove(reelId);
     if (!mounted) return;
-    setState(() => _likedReels[reelId] = newState);
-    _adjustReelStat(reelId, 'likes', newState ? 1 : -1);
+
+    if (actual != wantLiked) {
+      setState(() {
+        _likedReels[reelId] = actual;
+        _adjustReelStat(reelId, 'likes', actual ? 1 : -1);
+      });
+    }
   }
 
   Future<void> _onFavorite(String reelId, bool currentlyFavorite) async {
