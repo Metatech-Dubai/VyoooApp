@@ -73,7 +73,7 @@ class _ReelTarget {
 }
 
 /// Main home screen: vertical reels feed with interactions.
-/// Default tab: For You. Tab switch is internal state only (no new route).
+/// Default tab: Trending. Tab switch is internal state only (no new route).
 class HomeReelsScreen extends StatefulWidget {
   const HomeReelsScreen({
     super.key,
@@ -102,6 +102,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         RouteAware,
         WidgetsBindingObserver,
         SingleTickerProviderStateMixin {
+  static const HomeTab _defaultHomeTab = HomeTab.trending;
+
   @override
   bool get wantKeepAlive => true;
   final PageController _pageController = PageController();
@@ -110,7 +112,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   final ReelsService _reelsService = ReelsService();
 
   int _currentIndex = 0;
-  HomeTab currentTab = HomeTab.forYou;
+  HomeTab currentTab = _defaultHomeTab;
   List<Map<String, dynamic>> _reelsForYou = [];
   List<Map<String, dynamic>> _reelsFollowing = [];
   List<Map<String, dynamic>> _reelsTrending = [];
@@ -189,6 +191,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   @override
   void initState() {
     super.initState();
+    final hasReelDeepLink =
+        widget.deepLinkReelId != null && widget.deepLinkReelId!.isNotEmpty;
+    if (!hasReelDeepLink) {
+      currentTab = _defaultHomeTab;
+      _currentIndex = 0;
+    }
     WidgetsBinding.instance.addObserver(this);
     _followingStoriesCollapse = AnimationController(
       vsync: this,
@@ -202,18 +210,35 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Future<void> _bootstrapFeed() async {
-    final cached = await FeedReelsCacheService.instance.loadForYou();
+    final cachedTrending = await FeedReelsCacheService.instance.loadTrending();
     if (!mounted) return;
-    if (cached.isNotEmpty) {
+    if (cachedTrending.isNotEmpty) {
       setState(() {
-        _reelsForYou = cached;
+        _reelsTrending = cachedTrending;
         _feedRefreshInProgress = false;
         _reelsLoadError = null;
       });
       _preloadUpcomingReel();
       _scheduleAutoScroll();
     }
+
+    final cachedForYou = await FeedReelsCacheService.instance.loadForYou();
+    if (!mounted) return;
+    if (cachedForYou.isNotEmpty) {
+      setState(() => _reelsForYou = cachedForYou);
+    }
+
     await _loadReels();
+  }
+
+  void _applyTrendingFeedReady(List<Map<String, dynamic>> hydratedTrending) {
+    if (hydratedTrending.isEmpty) return;
+    unawaited(FeedReelsCacheService.instance.saveTrending(hydratedTrending));
+    unawaited(FeedOfflineVideoCache.instance.syncForFeed(hydratedTrending));
+    _preloadUpcomingReel();
+    if (_autoScrollTimer == null) {
+      _scheduleAutoScroll();
+    }
   }
 
   Future<void> _loadAutoScrollPref() async {
@@ -253,7 +278,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       _videoStartedForCurrentItem = false;
       _jumpPageControllerToStart();
       setState(() {
-        currentTab = HomeTab.forYou;
+        currentTab = _defaultHomeTab;
         _currentIndex = 0;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -280,7 +305,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     if (!await hasInternetAccess()) {
       if (!mounted || generation != _loadGeneration) return;
-      if (_reelsForYou.isNotEmpty) {
+      if (_currentReels.isNotEmpty) {
         setState(() => _feedRefreshInProgress = false);
         return;
       }
@@ -293,8 +318,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     try {
       final uid = AuthService().currentUser?.uid ?? '';
-      // Use the feed warmed up during the splash video when available so the
-      // first paint does not wait for another round-trip.
+      // Use the Trending feed warmed up during the splash video when available
+      // so the default tab paints without another round-trip.
       final warm = await FeedWarmupService.instance.consume();
       List<String> blockedIds = warm?.blockedIds ?? const [];
       if (warm == null && uid.isNotEmpty) {
@@ -305,33 +330,39 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       bool allowedByBlock(Map<String, dynamic> r) =>
           _isReelAllowedByBlock(r, blockedIds);
 
-      List<Map<String, dynamic>> hydratedForYou;
+      List<Map<String, dynamic>> hydratedTrending;
       if (warm != null) {
-        hydratedForYou = warm.forYou;
+        hydratedTrending = warm.trending;
       } else {
-        final forYouRaw = await _reelsService.getReelsForYou();
+        final trendingRaw = await _reelsService.getReelsTrending();
         if (!mounted || generation != _loadGeneration) return;
 
-        final filteredForYou = forYouRaw.where(allowedByBlock).toList();
-        hydratedForYou =
-            await _reelsService.hydrateRepostEngagementStats(filteredForYou);
+        final filteredTrending = trendingRaw.where(allowedByBlock).toList();
+        hydratedTrending =
+            await _reelsService.hydrateRepostEngagementStats(filteredTrending);
         if (!mounted || generation != _loadGeneration) return;
       }
 
       setState(() {
         _reelsLoadError = null;
-        _reelsForYou = hydratedForYou;
+        _reelsTrending = hydratedTrending;
         _tabCycleOrders.clear();
+      });
+      _applyTrendingFeedReady(hydratedTrending);
+
+      final forYouRaw = await _reelsService.getReelsForYou();
+      if (!mounted || generation != _loadGeneration) return;
+
+      final filteredForYou = forYouRaw.where(allowedByBlock).toList();
+      final hydratedForYou =
+          await _reelsService.hydrateRepostEngagementStats(filteredForYou);
+      if (!mounted || generation != _loadGeneration) return;
+
+      setState(() {
+        _reelsForYou = hydratedForYou;
       });
       if (hydratedForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(hydratedForYou));
-        unawaited(FeedOfflineVideoCache.instance.syncForFeed(hydratedForYou));
-        _preloadUpcomingReel();
-        // First reel never triggers _onPageChanged, so arm the stuck-skip
-        // fallback here in case its video never starts.
-        if (_autoScrollTimer == null) {
-          _scheduleAutoScroll();
-        }
       }
       _handleIncomingDeepLink();
 
@@ -343,7 +374,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       );
     } catch (e) {
       if (!mounted || generation != _loadGeneration) return;
-      if (_reelsForYou.isNotEmpty) {
+      if (_currentReels.isNotEmpty) {
         setState(() => _feedRefreshInProgress = false);
         return;
       }
@@ -482,9 +513,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           ..clear()
           ..addEntries(repostedIds.map((id) => MapEntry(id, true)));
       });
+      if (_reelsTrending.isNotEmpty) {
+        unawaited(FeedReelsCacheService.instance.saveTrending(_reelsTrending));
+        unawaited(FeedOfflineVideoCache.instance.syncForFeed(_reelsTrending));
+      }
       if (_reelsForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(_reelsForYou));
-        unawaited(FeedOfflineVideoCache.instance.syncForFeed(_reelsForYou));
       }
       _handleIncomingDeepLink();
     } catch (e) {
@@ -575,14 +609,14 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   _ReelTarget? _findReelTarget(String reelId) {
-    int idx = _reelsForYou.indexWhere((r) => _asString(r['id']) == reelId);
+    int idx = _reelsTrending.indexWhere((r) => _asString(r['id']) == reelId);
+    if (idx >= 0) return _ReelTarget(HomeTab.trending, idx);
+
+    idx = _reelsForYou.indexWhere((r) => _asString(r['id']) == reelId);
     if (idx >= 0) return _ReelTarget(HomeTab.forYou, idx);
 
     idx = _reelsFollowing.indexWhere((r) => _asString(r['id']) == reelId);
     if (idx >= 0) return _ReelTarget(HomeTab.following, idx);
-
-    idx = _reelsTrending.indexWhere((r) => _asString(r['id']) == reelId);
-    if (idx >= 0) return _ReelTarget(HomeTab.trending, idx);
 
     idx = _reelsVR.indexWhere((r) => _asString(r['id']) == reelId);
     if (idx >= 0) return _ReelTarget(HomeTab.vr, idx);

@@ -5,12 +5,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/reel_media_item.dart';
 
-/// Persists the last successful For You feed for instant paint on next launch.
+/// Persists the last successful home feeds for instant paint on next launch.
 class FeedReelsCacheService {
   FeedReelsCacheService._();
   static final FeedReelsCacheService instance = FeedReelsCacheService._();
 
-  static const String _prefKey = 'vyooo_feed_for_you_cache_v1';
+  static const String _prefKeyForYou = 'vyooo_feed_for_you_cache_v1';
+  static const String _prefKeyTrending = 'vyooo_feed_trending_cache_v1';
   static const int _maxItems = 12;
 
   static const Set<String> _persistedKeys = {
@@ -49,10 +50,25 @@ class FeedReelsCacheService {
     'hideSaveCount',
   };
 
-  Future<List<Map<String, dynamic>>> loadForYou() async {
+  Future<List<Map<String, dynamic>>> loadTrending() =>
+      _load(_prefKeyTrending, 'loadTrending');
+
+  Future<List<Map<String, dynamic>>> loadForYou() =>
+      _load(_prefKeyForYou, 'loadForYou');
+
+  Future<void> saveTrending(List<Map<String, dynamic>> reels) =>
+      _save(_prefKeyTrending, reels, 'saveTrending');
+
+  Future<void> saveForYou(List<Map<String, dynamic>> reels) =>
+      _save(_prefKeyForYou, reels, 'saveForYou');
+
+  Future<List<Map<String, dynamic>>> _load(
+    String prefKey,
+    String debugLabel,
+  ) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getString(_prefKey);
+      final raw = prefs.getString(prefKey);
       if (raw == null || raw.isEmpty) return const [];
       final decoded = jsonDecode(raw);
       if (decoded is! List) return const [];
@@ -70,13 +86,17 @@ class FeedReelsCacheService {
       }
       return out;
     } catch (e, st) {
-      debugPrint('FeedReelsCacheService.loadForYou failed: $e');
+      debugPrint('FeedReelsCacheService.$debugLabel failed: $e');
       debugPrint(st.toString());
       return const [];
     }
   }
 
-  Future<void> saveForYou(List<Map<String, dynamic>> reels) async {
+  Future<void> _save(
+    String prefKey,
+    List<Map<String, dynamic>> reels,
+    String debugLabel,
+  ) async {
     if (reels.isEmpty) return;
     try {
       final payload = reels
@@ -86,9 +106,9 @@ class FeedReelsCacheService {
           .toList(growable: false);
       if (payload.isEmpty) return;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_prefKey, jsonEncode(payload));
+      await prefs.setString(prefKey, jsonEncode(payload));
     } catch (e, st) {
-      debugPrint('FeedReelsCacheService.saveForYou failed: $e');
+      debugPrint('FeedReelsCacheService.$debugLabel failed: $e');
       debugPrint(st.toString());
     }
   }
@@ -96,7 +116,8 @@ class FeedReelsCacheService {
   Future<void> clear() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(_prefKey);
+      await prefs.remove(_prefKeyForYou);
+      await prefs.remove(_prefKeyTrending);
     } catch (_) {}
   }
 

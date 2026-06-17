@@ -80,7 +80,7 @@ void main() async {
     }
     await _configureFirebaseAppCheck();
     firebaseInitialized = true;
-    // Prefetch the For You feed while the splash video plays so the feed is
+    // Prefetch the Trending feed while the splash video plays so the home tab is
     // populated (and the first reels cached for offline) before it is shown.
     FeedWarmupService.instance.start();
     await PushMessagingService.instance.configure();

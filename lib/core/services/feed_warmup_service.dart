@@ -12,24 +12,24 @@ import 'reels_service.dart';
 import 'user_service.dart';
 
 /// Result of a feed warm-up run: the same data [HomeReelsScreen._loadReels]
-/// would have fetched for the For You tab.
+/// would have fetched for the Trending tab.
 class FeedWarmupResult {
   const FeedWarmupResult({
     required this.uid,
     required this.blockedIds,
-    required this.forYou,
+    required this.trending,
     required this.completedAt,
   });
 
   final String uid;
   final List<String> blockedIds;
 
-  /// Block-filtered and repost-hydrated For You reels.
-  final List<Map<String, dynamic>> forYou;
+  /// Block-filtered and repost-hydrated Trending reels.
+  final List<Map<String, dynamic>> trending;
   final DateTime completedAt;
 }
 
-/// Prefetches the For You feed while the splash video plays so the feed is
+/// Prefetches the Trending feed while the splash video plays so the home tab is
 /// already populated by the time [HomeReelsScreen] mounts.
 ///
 /// Also persists the result to [FeedReelsCacheService] and kicks off
@@ -55,7 +55,7 @@ class FeedWarmupService {
     if (pending == null) return null;
     _pending = null;
     final result = await pending;
-    if (result == null || result.forYou.isEmpty) return null;
+    if (result == null || result.trending.isEmpty) return null;
     if (DateTime.now().difference(result.completedAt) > _maxResultAge) {
       return null;
     }
@@ -74,7 +74,7 @@ class FeedWarmupService {
       }
 
       final reelsService = ReelsService();
-      final raw = await reelsService.getReelsForYou();
+      final raw = await reelsService.getReelsTrending();
       final filtered = raw.where((r) {
         final ownerId = (r['userId'] as String?) ?? '';
         return ownerId.isEmpty || !blockedIds.contains(ownerId);
@@ -83,7 +83,7 @@ class FeedWarmupService {
           await reelsService.hydrateRepostEngagementStats(filtered);
 
       if (hydrated.isNotEmpty) {
-        unawaited(FeedReelsCacheService.instance.saveForYou(hydrated));
+        unawaited(FeedReelsCacheService.instance.saveTrending(hydrated));
         unawaited(FeedOfflineVideoCache.instance.syncForFeed(hydrated));
         _preloadFirstVideo(hydrated);
       }
@@ -91,7 +91,7 @@ class FeedWarmupService {
       return FeedWarmupResult(
         uid: uid,
         blockedIds: blockedIds,
-        forYou: hydrated,
+        trending: hydrated,
         completedAt: DateTime.now(),
       );
     } catch (e) {
