@@ -529,10 +529,9 @@ packages:
   flutter_callkit_incoming_maintained:
     dependency: "direct main"
     description:
-      name: flutter_callkit_incoming_maintained
-      sha256: "2582724cd389141e5907dfd993ed02c7802e975a21162df5e722b5e9d4b1a6db"
-      url: "https://pub.dev"
-    source: hosted
+      path: "packages/flutter_callkit_incoming_maintained"
+      relative: true
+    source: path
     version: "3.1.2"
   flutter_launcher_icons:
     dependency: "direct dev"

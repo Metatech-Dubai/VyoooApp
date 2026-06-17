@@ -47,6 +47,7 @@ import '../settings/settings_screen.dart';
 import '../../core/widgets/profile/profile_grid.dart';
 import '../../features/reel/widgets/profile_grid_span_sheet.dart';
 import '../settings/revenue_coming_soon_view.dart';
+import '../settings/switch_accounts_screen.dart';
 import '../settings/wallet/wallet_coming_soon_view.dart';
 import '../../core/widgets/profile/profile_menu_bottom_sheet.dart';
 import '../../features/vr/vr_screen.dart';
@@ -338,55 +339,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Future<void> _requestAccountDeletion(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0020),
-        title: const Text(
-          'Delete account',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'This will permanently delete your account and all associated data. This cannot be undone. Are you sure?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'Delete account',
-              style: TextStyle(
-                color: Color(0xFFD10057),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    await AuthService().signOut();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Account deletion requested. Sign out complete.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      (route) => false,
-    );
-  }
-
   Future<void> _openMyStoryComposerOrViewer(
     BuildContext context, {
     required String userId,
@@ -470,8 +422,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       },
       onUploadStreamVideos: () => _showUploadStreamDialog(context),
+      onSwitchAccounts: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const SwitchAccountsScreen(),
+          ),
+        );
+      },
       onLogout: () => _logout(context),
-      onDeleteAccount: () => _requestAccountDeletion(context),
     );
   }
 

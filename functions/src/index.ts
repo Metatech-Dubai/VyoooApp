@@ -22,7 +22,6 @@ admin.initializeApp();
 const APP_ID = '443105d5684f492088bb004196b3fee8';
 const TOKEN_TTL_SECONDS = 3600; // 1 hour
 const FCM_ANDROID_CHANNEL_ID = 'vyooo_high_importance';
-const FCM_ANDROID_CALL_CHANNEL_ID = 'vyooo_incoming_calls';
 const STALE_FCM_ERROR_CODES = new Set([
   'messaging/registration-token-not-registered',
   'messaging/invalid-registration-token',
@@ -48,39 +47,12 @@ function fcmApnsOptions(contentAvailable = false): admin.messaging.ApnsConfig {
   };
 }
 
-function fcmCallAndroidOptions(): admin.messaging.AndroidConfig {
+function fcmCallAndroidDataOnlyOptions(): admin.messaging.AndroidConfig {
+  // Data-only: wakes the app and runs Dart/native CallKit UI. A `notification`
+  // payload would show a silent tray banner and skip the background handler.
   return {
     priority: 'high',
     ttl: 30_000,
-    notification: {
-      channelId: FCM_ANDROID_CALL_CHANNEL_ID,
-      priority: 'max',
-      defaultSound: true,
-      defaultVibrateTimings: true,
-      visibility: 'public',
-    },
-  };
-}
-
-function fcmCallApnsOptions(
-  title: string,
-  body: string,
-): admin.messaging.ApnsConfig {
-  return {
-    headers: {
-      'apns-priority': '10',
-      'apns-push-type': 'alert',
-    },
-    payload: {
-      aps: {
-        alert: { title, body },
-        sound: 'default',
-        badge: 1,
-        'content-available': 1,
-        'interruption-level': 'time-sensitive',
-        category: 'incoming_call',
-      },
-    },
   };
 }
 
@@ -2734,17 +2706,8 @@ export const onCallSessionCreate = onDocumentCreated(
       try {
         const response = await admin.messaging().sendEachForMulticast({
           tokens: batch,
-          notification: { title: notifTitle, body: notifBody },
-          data: {
-            type: 'incoming_call',
-            callId,
-            chatId,
-            callerId,
-            callType,
-            agoraChannelName,
-          },
-          android: fcmCallAndroidOptions(),
-          apns: fcmCallApnsOptions(notifTitle, notifBody),
+          data: callData,
+          android: fcmCallAndroidDataOnlyOptions(),
         });
         await pruneStalePushTokenDocs(
           androidFcmDocs.slice(t, t + FCM_BATCH),

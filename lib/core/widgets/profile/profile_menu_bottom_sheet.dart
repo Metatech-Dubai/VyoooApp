@@ -13,8 +13,8 @@ Future<void> showProfileMenuBottomSheet(
   required VoidCallback onSettings,
   required VoidCallback onMusicLibrary,
   required VoidCallback onUploadStreamVideos,
+  required VoidCallback onSwitchAccounts,
   required VoidCallback onLogout,
-  required VoidCallback onDeleteAccount,
 }) {
   return showModalBottomSheet<void>(
     context: context,
@@ -46,13 +46,13 @@ Future<void> showProfileMenuBottomSheet(
           Navigator.pop(sheetContext);
           onUploadStreamVideos();
         },
+        onSwitchAccounts: () {
+          Navigator.pop(sheetContext);
+          onSwitchAccounts();
+        },
         onLogout: () {
           Navigator.pop(sheetContext);
           onLogout();
-        },
-        onDeleteAccount: () {
-          Navigator.pop(sheetContext);
-          onDeleteAccount();
         },
       );
     },
@@ -68,8 +68,8 @@ class ProfileMenuBottomSheet extends StatelessWidget {
     required this.onSettings,
     required this.onMusicLibrary,
     required this.onUploadStreamVideos,
+    required this.onSwitchAccounts,
     required this.onLogout,
-    required this.onDeleteAccount,
   });
 
   final VoidCallback onVr;
@@ -78,8 +78,8 @@ class ProfileMenuBottomSheet extends StatelessWidget {
   final VoidCallback onSettings;
   final VoidCallback onMusicLibrary;
   final VoidCallback onUploadStreamVideos;
+  final VoidCallback onSwitchAccounts;
   final VoidCallback onLogout;
-  final VoidCallback onDeleteAccount;
 
   static const _sheetRadius = BorderRadius.vertical(top: Radius.circular(20));
 
@@ -155,16 +155,25 @@ class ProfileMenuBottomSheet extends StatelessWidget {
                   label: 'Upload Stream videos',
                   onTap: onUploadStreamVideos,
                 ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.sm,
+                  ),
+                  child: Divider(
+                    height: 1,
+                    color: Colors.white.withValues(alpha: 0.12),
+                  ),
+                ),
+                _ProfileMenuTile(
+                  icon: Icons.switch_account_rounded,
+                  label: 'Switch accounts',
+                  onTap: onSwitchAccounts,
+                ),
                 _ProfileMenuTile(
                   icon: Icons.logout_rounded,
                   label: 'Log out',
                   onTap: onLogout,
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.delete_forever_rounded,
-                  label: 'Delete account',
-                  onTap: onDeleteAccount,
-                  isDestructive: true,
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],

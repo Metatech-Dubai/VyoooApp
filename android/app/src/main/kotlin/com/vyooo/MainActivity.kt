@@ -1,5 +1,6 @@
 package com.vyooo
 
+import android.app.NotificationManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
@@ -23,5 +24,9 @@ class MainActivity : FlutterActivity() {
             }
         }
         super.onCreate(savedInstanceState)
+
+        val notificationManager =
+            getSystemService(NotificationManager::class.java) ?: return
+        CallkitNotificationChannels.ensureCreated(notificationManager)
     }
 }

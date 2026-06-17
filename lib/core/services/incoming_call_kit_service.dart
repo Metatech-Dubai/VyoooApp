@@ -51,6 +51,10 @@ class IncomingCallKitService {
         incomingCallKitBackgroundHandler,
       );
       await FlutterCallkitIncoming.requestFullIntentPermission();
+      final canFullScreen = await FlutterCallkitIncoming.canUseFullScreenIntent();
+      if (kDebugMode) {
+        debugPrint('CallKit Android fullScreenIntent allowed: $canFullScreen');
+      }
     }
 
     _eventSub = FlutterCallkitIncoming.onEvent.listen(_onCallKitEvent);
@@ -168,7 +172,15 @@ class IncomingCallKitService {
         subtitle: 'Missed call',
         isShowCallback: false,
       ),
+      callingNotification: const NotificationParams(
+        showNotification: true,
+        isShowCallback: true,
+        subtitle: 'On a call',
+        callbackText: 'Hang up',
+      ),
       android: const AndroidParams(
+        // Custom notification + fullScreenIntent; accept-crash fixes are in the
+        // vendored plugin (channel creation + ongoing notification).
         isCustomNotification: true,
         isShowLogo: false,
         isFullScreen: true,

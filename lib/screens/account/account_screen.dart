@@ -7,12 +7,11 @@ import '../../core/subscription/membership_tier.dart';
 import '../../features/subscription/subscription_screen.dart';
 import 'blocked_users_screen.dart';
 import 'change_password_screen.dart';
-import 'delete_account_screen.dart';
 import '../profile/personal_information_screen.dart';
 import 'two_factor_screen.dart';
 import 'verification_request_screen.dart';
 
-/// Account screen: Current Plan, Login & Security, Delete Account.
+/// Account screen: Current Plan, Login & Security.
 class AccountScreen extends StatelessWidget {
   const AccountScreen({super.key});
 
@@ -114,8 +113,6 @@ class AccountScreen extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
-                    _buildDeleteAccountTile(context),
                   ],
                 ),
               ),
@@ -262,45 +259,6 @@ class AccountScreen extends StatelessWidget {
     }
   }
 
-  Widget _buildDeleteAccountTile(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const DeleteAccountScreen(),
-              ),
-            );
-          },
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                'Delete Account',
-                style: TextStyle(
-                  color: Color(0xFFF81945),
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -0.2,
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.5),
-                size: 20,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        _buildSectionSubheader(
-          "This will permanently delete your account and all it's data",
-        ),
-      ],
-    );
-  }
 }
 
 class _AccountRow extends StatelessWidget {

@@ -15,6 +15,7 @@ import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../features/vr/vr_screen.dart';
 import '../account/account_screen.dart';
+import '../account/delete_account_screen.dart';
 import '../account/blocked_users_screen.dart';
 import '../account/change_password_screen.dart';
 import '../account/two_factor_screen.dart';
@@ -33,7 +34,6 @@ import 'report_problem_screen.dart';
 import 'saved_posts_screen.dart';
 import 'settings_subscriptions_screen.dart';
 import 'terms_service_screen.dart';
-import 'switch_accounts_screen.dart';
 import 'wallet/wallet_coming_soon_view.dart';
 import 'live_stream_monetisation_screen.dart';
 import 'preferences/activity_settings_screen.dart';
@@ -335,15 +335,16 @@ class SettingsScreen extends StatelessWidget {
         _sectionHeader('Login'),
         _settingsGroup([
           _SettingsTile(
-            icon: Icons.switch_account_rounded,
-            label: 'Switch accounts',
-            onTap: () => _push(context, const SwitchAccountsScreen()),
-          ),
-          _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Logout.png',
             label: 'Log out',
             isLogout: true,
             onTap: () => _logout(context),
+          ),
+          _SettingsTile(
+            icon: Icons.delete_forever_outlined,
+            label: 'Delete account',
+            isLogout: true,
+            onTap: () => _push(context, const DeleteAccountScreen()),
           ),
         ]),
       ],

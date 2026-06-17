@@ -156,6 +156,14 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   }
 
   @override
+  void deactivate() {
+    // Pause before child VideoProgressIndicator is disposed (incoming call overlay
+    // backgrounds MainActivity and async position updates can crash otherwise).
+    _controller?.pause();
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     if (_isRouteObserverSubscribed) {
       appRouteObserver.unsubscribe(this);

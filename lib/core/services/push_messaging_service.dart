@@ -12,6 +12,7 @@ import 'local_notification_service.dart';
 import 'notification_preferences_service.dart';
 import 'global_incoming_call_service.dart';
 import 'incoming_call_kit_service.dart';
+import 'package:flutter_callkit_incoming_maintained/flutter_callkit_incoming_maintained.dart';
 import '../navigation/push_notification_router.dart';
 import '../../firebase_options.dart';
 
@@ -83,6 +84,9 @@ class PushMessagingService {
     _lifecycleObserver ??= _PushLifecycleObserver(this)..register();
     if (!isNewBinding) return;
     unawaited(syncTokenForUser(uid));
+    if (_isAndroid) {
+      unawaited(FlutterCallkitIncoming.requestFullIntentPermission());
+    }
     unawaited(IncomingCallKitService.instance.syncVoipTokenWithRetry());
     unawaited(handleInitialMessage());
   }
