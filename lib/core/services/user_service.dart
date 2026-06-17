@@ -838,17 +838,18 @@ class UserService {
     }
     await cancelFollowRequest(requesterUid: currentUid, targetUid: targetUid);
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
-    final edgeRef = _firestore
-        .collection(followEdgesCollection)
-        .doc(followRequestDocId(currentUid, targetUid));
-    final batch = _firestore.batch();
-    batch.set(
-      meRef,
-      {'following': FieldValue.arrayRemove([targetUid])},
-      SetOptions(merge: true),
-    );
-    batch.delete(edgeRef);
-    await batch.commit();
+    await meRef.set({
+      'following': FieldValue.arrayRemove([targetUid]),
+    }, SetOptions(merge: true));
+    // Best-effort: private follows materialize [follow_edges]; public follows do not.
+    try {
+      await _firestore
+          .collection(followEdgesCollection)
+          .doc(followRequestDocId(currentUid, targetUid))
+          .delete();
+    } catch (_) {
+      // Missing edge or already cleared — following removal above is authoritative.
+    }
   }
 
   Future<void> removeFollower({

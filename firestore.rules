@@ -129,6 +129,8 @@ service cloud.firestore {
         'parentConsentAt',
         'location',
         'locationSetupComplete',
+        'profileImageSetupComplete',
+        'allowTagsFrom',
       ]) &&
       request.resource.data.uid == userId &&
       request.resource.data.email is string &&
@@ -183,7 +185,24 @@ service cloud.firestore {
       (!('location' in request.resource.data) ||
         request.resource.data.location is map) &&
       (!('locationSetupComplete' in request.resource.data) ||
-        request.resource.data.locationSetupComplete is bool);
+        request.resource.data.locationSetupComplete is bool) &&
+      (!('profileImageSetupComplete' in request.resource.data) ||
+        request.resource.data.profileImageSetupComplete is bool) &&
+      (!('allowTagsFrom' in request.resource.data) ||
+        request.resource.data.allowTagsFrom in [
+          'everyone', 'followers', 'nobody',
+        ]);
+    }
+
+    // Follow / unfollow / block list patches without re-validating the entire profile
+    // shape (legacy docs may carry fields outside [validUserDoc]).
+    function ownerSocialGraphPatch(userId) {
+      return isOwner(userId)
+        && followersCountUnchanged()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['following', 'blockedUsers'])
+        && request.resource.data.following is list
+        && request.resource.data.blockedUsers is list;
     }
 
     function parentalConsentCreateValid() {
@@ -547,6 +566,7 @@ service cloud.firestore {
                           && request.resource.data.allowTagsFrom in [
                             'everyone', 'followers', 'nobody',
                           ])
+                      || ownerSocialGraphPatch(userId)
                     )
                     || (isSignedIn()
                         && !isOwner(userId)
