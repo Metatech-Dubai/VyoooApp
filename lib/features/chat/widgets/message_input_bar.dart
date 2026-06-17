@@ -25,6 +25,9 @@ class MessageInputBar extends StatefulWidget {
     this.mediaLoading = false,
     this.onTypingChanged,
     this.onVoiceNoteSend,
+    this.replyingToSenderName,
+    this.replyingToPreview,
+    this.onCancelReply,
   });
 
   final void Function(String text) onSend;
@@ -33,6 +36,9 @@ class MessageInputBar extends StatefulWidget {
   final bool mediaLoading;
   final void Function(bool isTyping)? onTypingChanged;
   final void Function(File file, int durationMs)? onVoiceNoteSend;
+  final String? replyingToSenderName;
+  final String? replyingToPreview;
+  final VoidCallback? onCancelReply;
 
   @override
   State<MessageInputBar> createState() => _MessageInputBarState();
@@ -40,6 +46,7 @@ class MessageInputBar extends StatefulWidget {
 
 class _MessageInputBarState extends State<MessageInputBar> {
   final TextEditingController _controller = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
   bool _canSend = false;
   bool _wasTyping = false;
   bool _showEmojiRow = false;
@@ -79,9 +86,20 @@ class _MessageInputBarState extends State<MessageInputBar> {
   }
 
   @override
+  void didUpdateWidget(MessageInputBar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final startedReply =
+        widget.replyingToSenderName != null && oldWidget.replyingToSenderName == null;
+    if (startedReply) {
+      _focusNode.requestFocus();
+    }
+  }
+
+  @override
   void dispose() {
     if (_wasTyping) widget.onTypingChanged?.call(false);
     _controller.dispose();
+    _focusNode.dispose();
     _recorderController?.dispose();
     super.dispose();
   }
@@ -310,6 +328,9 @@ class _MessageInputBarState extends State<MessageInputBar> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (widget.replyingToSenderName != null &&
+                widget.replyingToPreview != null)
+              _buildReplyBanner(),
             if (hasPending)
               _buildVoicePreviewRow()
             else if (_isRecording)
@@ -508,6 +529,62 @@ class _MessageInputBarState extends State<MessageInputBar> {
     );
   }
 
+  Widget _buildReplyBanner() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A0A2E),
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(color: AppColors.brandMagenta, width: 3),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  widget.replyingToSenderName!,
+                  style: const TextStyle(
+                    color: AppColors.brandMagenta,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  widget.replyingToPreview!,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.65),
+                    fontSize: 13,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: widget.onCancelReply,
+            icon: Icon(
+              Icons.close,
+              color: Colors.white.withValues(alpha: 0.5),
+              size: 20,
+            ),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildInputRow() {
     return Row(
       children: [
@@ -546,6 +623,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
                 Expanded(
                   child: TextField(
                     controller: _controller,
+                    focusNode: _focusNode,
                     style: const TextStyle(color: Colors.white, fontSize: 15),
                     maxLines: 4,
                     minLines: 1,

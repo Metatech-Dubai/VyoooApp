@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../models/message_model.dart';
+import 'chat_constants.dart';
+
 abstract final class ChatHelpers {
   static String directChatId(String uidA, String uidB) {
     if (uidA.trim().isEmpty || uidB.trim().isEmpty) {
@@ -16,6 +19,28 @@ abstract final class ChatHelpers {
     final trimmed = text.trim();
     if (trimmed.length <= maxLength) return trimmed;
     return '${trimmed.substring(0, maxLength)}…';
+  }
+
+  static String messageBodyPreview(MessageModel message, {int maxLength = 80}) {
+    if (message.deletedForEveryone) return 'Message deleted';
+    switch (message.type) {
+      case ChatMessageTypes.text:
+        final trimmed = message.text.trim();
+        if (trimmed.isEmpty) return 'Message';
+        return buildTextPreview(trimmed, maxLength: maxLength);
+      case ChatMessageTypes.image:
+        return message.isViewOnce ? 'View-once photo' : 'Photo';
+      case ChatMessageTypes.video:
+        return message.isViewOnce ? 'View-once video' : 'Video';
+      case ChatMessageTypes.audio:
+        return 'Voice message';
+      case ChatMessageTypes.gif:
+        return 'GIF';
+      case ChatMessageTypes.call:
+        return message.text.trim().isNotEmpty ? message.text.trim() : 'Call';
+      default:
+        return 'Message';
+    }
   }
 
   static String formatInboxTime(Timestamp? timestamp) {

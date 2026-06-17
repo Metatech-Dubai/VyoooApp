@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import 'message_reply_quote.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -11,6 +12,8 @@ class MessageBubble extends StatelessWidget {
     this.isDeleted = false,
     this.senderName,
     this.seenText,
+    this.replyToSenderName,
+    this.replyToPreview,
   });
 
   final String text;
@@ -19,6 +22,8 @@ class MessageBubble extends StatelessWidget {
   final bool isDeleted;
   final String? senderName;
   final String? seenText;
+  final String? replyToSenderName;
+  final String? replyToPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -65,6 +70,12 @@ class MessageBubble extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+            if (replyToSenderName != null && replyToPreview != null)
+              MessageReplyQuote(
+                senderName: replyToSenderName!,
+                preview: replyToPreview!,
+                isSentBubble: isSent,
               ),
             Text(
               isDeleted ? 'This message was deleted' : text,

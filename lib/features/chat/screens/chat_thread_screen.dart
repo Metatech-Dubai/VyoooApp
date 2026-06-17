@@ -20,6 +20,7 @@ import '../services/chat_service.dart';
 import '../services/presence_service.dart';
 import '../services/typing_indicator_service.dart';
 import '../utils/chat_constants.dart';
+import '../utils/chat_helpers.dart';
 import '../utils/view_once_helpers.dart';
 import '../widgets/audio_message_bubble.dart';
 import '../widgets/call_message_bubble.dart';
@@ -29,6 +30,7 @@ import '../widgets/media_message_widget.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
 import '../widgets/message_reactions_bar.dart';
+import '../widgets/swipe_to_reply_message.dart';
 import '../widgets/typing_indicator_widget.dart';
 import '../widgets/view_once_message_widget.dart';
 import 'chat_call_screen.dart';
@@ -72,6 +74,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   double _uploadProgress = 0;
   String? _uploadError;
   bool _isStartingCall = false;
+  MessageModel? _replyingTo;
 
   ChatModel? _chatModel;
   bool _isMuted = false;
@@ -159,16 +162,68 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 
   void _handleSend(String text) {
+    final replyToMessageId = _replyingTo?.id;
     _chatService.sendTextMessage(
       chatId: widget.chatId,
       senderId: widget.currentUser.uid,
       participantIds: _participantIds,
       text: text,
+      replyToMessageId: replyToMessageId,
     );
+    setState(() => _replyingTo = null);
     _chatService.markChatRead(
       uid: widget.currentUser.uid,
       chatId: widget.chatId,
     );
+  }
+
+  void _startReply(MessageModel msg) {
+    if (msg.deletedForEveryone || msg.type == ChatMessageTypes.call) return;
+    setState(() => _replyingTo = msg);
+  }
+
+  void _cancelReply() {
+    setState(() => _replyingTo = null);
+  }
+
+  MessageModel? _messageById(List<MessageModel> messages, String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final m in messages) {
+      if (m.id == id) return m;
+    }
+    return null;
+  }
+
+  ({String senderName, String preview})? _replyQuoteFor(
+    MessageModel msg,
+    List<MessageModel> messages,
+  ) {
+    final replyTo = _messageById(messages, msg.replyToMessageId);
+    if (replyTo == null) return null;
+    return (
+      senderName: _displayNameForUser(replyTo.senderId),
+      preview: ChatHelpers.messageBodyPreview(replyTo),
+    );
+  }
+
+  String _displayNameForUser(String uid) {
+    if (uid == widget.currentUser.uid) return 'You';
+    if (_isGroup) {
+      final participant = _chatModel?.participantMap[uid];
+      if (participant != null) {
+        final dn = participant.displayName.trim();
+        if (dn.isNotEmpty) return dn;
+        if (participant.username.isNotEmpty) return participant.username;
+      }
+      return uid.substring(0, 6);
+    }
+    return widget.otherUser?.displayName ??
+        widget.otherUser?.username ??
+        'User';
+  }
+
+  bool _canReplyTo(MessageModel msg) {
+    return !msg.deletedForEveryone && msg.type != ChatMessageTypes.call;
   }
 
   Future<void> _handleMediaAction(MediaAction action) async {
@@ -581,6 +636,21 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 ),
               ),
               const SizedBox(height: 8),
+              if (_canReplyTo(msg))
+                ListTile(
+                  leading: const Icon(
+                    Icons.reply_rounded,
+                    color: Colors.white70,
+                  ),
+                  title: const Text(
+                    'Reply',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _startReply(msg);
+                  },
+                ),
               ListTile(
                 leading: const Icon(
                   Icons.delete_outline,
@@ -701,6 +771,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     bool isSent,
     String time, {
     String? seenText,
+    String? replyToSenderName,
+    String? replyToPreview,
   }) {
     final name = _senderName(msg);
     final media = MediaMessageWidget(
@@ -708,6 +780,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       isSent: isSent,
       time: time,
       seenText: seenText,
+      replyToSenderName: replyToSenderName,
+      replyToPreview: replyToPreview,
     );
     if (name == null) return media;
     return Align(
@@ -1009,6 +1083,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                         final time = _formatMessageTime(msg.createdAt);
                         final isLastSent = index == lastSentIdx;
                         final seen = _seenText(msg, isSent, isLastSent);
+                        final replyQuote = _replyQuoteFor(msg, messages);
 
                         Widget bubble;
                         if (msg.deletedForEveryone) {
@@ -1030,6 +1105,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             isGroup: _isGroup,
                             senderName: _senderName(msg),
                             onTap: () => _openViewOnceMedia(msg),
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         } else if (msg.type == ChatMessageTypes.image ||
                             msg.type == ChatMessageTypes.video ||
@@ -1039,6 +1116,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             isSent,
                             time,
                             seenText: seen,
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         } else if (msg.type == ChatMessageTypes.call) {
                           bubble = CallMessageBubble(
@@ -1052,6 +1131,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             time: time,
                             senderName: _senderName(msg),
                             seenText: seen,
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         } else {
                           bubble = MessageBubble(
@@ -1061,13 +1142,17 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             isDeleted: false,
                             senderName: _senderName(msg),
                             seenText: seen,
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         }
 
                         return Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            GestureDetector(
+                            SwipeToReplyMessage(
+                              enabled: _canReplyTo(msg),
+                              onReply: () => _startReply(msg),
                               onLongPress: () => _showMessageActions(msg),
                               onDoubleTap: () => _setReaction(
                                 msg,
@@ -1108,6 +1193,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                 mediaLoading: _isUploading,
                 onTypingChanged: _handleTypingChanged,
                 onVoiceNoteSend: _handleVoiceNote,
+                replyingToSenderName: _replyingTo == null
+                    ? null
+                    : _displayNameForUser(_replyingTo!.senderId),
+                replyingToPreview: _replyingTo == null
+                    ? null
+                    : ChatHelpers.messageBodyPreview(_replyingTo!),
+                onCancelReply: _cancelReply,
               ),
             ],
           ),

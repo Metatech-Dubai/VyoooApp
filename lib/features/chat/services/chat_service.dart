@@ -220,6 +220,7 @@ class ChatService {
     required String senderId,
     required List<String> participantIds,
     required String text,
+    String? replyToMessageId,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
@@ -228,7 +229,7 @@ class ChatService {
 
     try {
       debugPrint(
-        '[ChatService] sendTextMessage: chatId=$chatId senderId=$senderId type=text textLen=${trimmed.length}',
+        '[ChatService] sendTextMessage: chatId=$chatId senderId=$senderId type=text textLen=${trimmed.length} replyTo=${replyToMessageId ?? ''}',
       );
       await _messagesCol(chatId).add({
         'senderId': senderId,
@@ -242,6 +243,8 @@ class ChatService {
         'reactions': <String, dynamic>{},
         'isViewOnce': false,
         'viewedBy': <String>[],
+        if (replyToMessageId != null && replyToMessageId.isNotEmpty)
+          'replyToMessageId': replyToMessageId,
       });
       debugPrint('[ChatService] sendTextMessage: OK');
     } catch (e, st) {

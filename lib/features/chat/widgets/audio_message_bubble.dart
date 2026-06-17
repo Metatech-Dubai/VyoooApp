@@ -3,6 +3,7 @@ import 'package:just_audio/just_audio.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../models/message_model.dart';
+import 'message_reply_quote.dart';
 
 class AudioMessageBubble extends StatefulWidget {
   const AudioMessageBubble({
@@ -12,6 +13,8 @@ class AudioMessageBubble extends StatefulWidget {
     required this.time,
     this.senderName,
     this.seenText,
+    this.replyToSenderName,
+    this.replyToPreview,
   });
 
   final MessageModel message;
@@ -19,6 +22,8 @@ class AudioMessageBubble extends StatefulWidget {
   final String time;
   final String? senderName;
   final String? seenText;
+  final String? replyToSenderName;
+  final String? replyToPreview;
 
   @override
   State<AudioMessageBubble> createState() => _AudioMessageBubbleState();
@@ -134,6 +139,12 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+            if (widget.replyToSenderName != null && widget.replyToPreview != null)
+              MessageReplyQuote(
+                senderName: widget.replyToSenderName!,
+                preview: widget.replyToPreview!,
+                isSentBubble: widget.isSent,
               ),
             Row(
               children: [

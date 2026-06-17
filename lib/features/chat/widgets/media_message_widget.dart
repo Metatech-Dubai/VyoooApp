@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import '../models/message_model.dart';
 import '../screens/chat_media_viewer_screen.dart';
+import 'message_reply_quote.dart';
 
 class MediaMessageWidget extends StatelessWidget {
   const MediaMessageWidget({
@@ -10,12 +11,16 @@ class MediaMessageWidget extends StatelessWidget {
     required this.isSent,
     required this.time,
     this.seenText,
+    this.replyToSenderName,
+    this.replyToPreview,
   });
 
   final MessageModel message;
   final bool isSent;
   final String time;
   final String? seenText;
+  final String? replyToSenderName;
+  final String? replyToPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -42,49 +47,65 @@ class MediaMessageWidget extends StatelessWidget {
           ),
         ),
         clipBehavior: Clip.antiAlias,
-        child: GestureDetector(
-          onTap: () => _openViewer(context),
-          child: Stack(
-            children: [
-              _buildMediaContent(isVideo, isGif),
-              Positioned(
-                right: 8,
-                bottom: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.45),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (seenText != null) ...[
-                        Text(
-                          seenText!,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 10,
-                          ),
-                        ),
-                        const SizedBox(width: 6),
-                      ],
-                      Text(
-                        time,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 10,
-                        ),
-                      ),
-                    ],
-                  ),
+        color: isSent ? null : const Color(0xFF1E0E2E),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (replyToSenderName != null && replyToPreview != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                child: MessageReplyQuote(
+                  senderName: replyToSenderName!,
+                  preview: replyToPreview!,
+                  isSentBubble: isSent,
                 ),
               ),
-            ],
-          ),
+            GestureDetector(
+              onTap: () => _openViewer(context),
+              child: Stack(
+                children: [
+                  _buildMediaContent(isVideo, isGif),
+                  Positioned(
+                    right: 8,
+                    bottom: 8,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (seenText != null) ...[
+                            Text(
+                              seenText!,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 10,
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                          ],
+                          Text(
+                            time,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.9),
+                              fontSize: 10,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
