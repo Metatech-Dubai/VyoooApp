@@ -185,6 +185,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   bool? _liveIsVerified;
   String? _liveAccountType;
   String? _liveBio;
+  String? _liveUsername;
+  String? _liveDisplayName;
+  String? _liveAvatarUrl;
   bool? _liveVipVerified;
   bool? _liveMonetizationEnabled;
   StreamSubscription<int>? _followerCountSub;
@@ -228,6 +231,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _liveIsVerified = null;
       _liveAccountType = null;
       _liveBio = null;
+      _liveUsername = null;
+      _liveDisplayName = null;
+      _liveAvatarUrl = null;
       _liveVipVerified = null;
       _liveMonetizationEnabled = null;
       _otherHighlightsStreamUid = null;
@@ -307,6 +313,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _liveIsVerified = u?.isVerified;
         _liveAccountType = u?.accountType;
         _liveBio = u?.bio;
+        _liveUsername = u?.username;
+        _liveDisplayName = u?.displayName;
+        _liveAvatarUrl = u?.profileImage;
         _liveVipVerified = u?.vipVerified;
         _liveMonetizationEnabled = u?.monetizationEnabled;
       });
@@ -352,6 +361,26 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final live = (_liveBio ?? '').trim();
     if (live.isNotEmpty) return live;
     return p.bio.trim();
+  }
+
+  String _resolvedUsername(UserProfilePayload p) {
+    final live = (_liveUsername ?? '').trim();
+    if (live.isNotEmpty) return live;
+    return p.username.trim();
+  }
+
+  String _resolvedDisplayName(UserProfilePayload p) {
+    final live = (_liveDisplayName ?? '').trim();
+    if (live.isNotEmpty) return live;
+    final fallback = p.displayName.trim();
+    if (fallback.isNotEmpty) return fallback;
+    return _resolvedUsername(p);
+  }
+
+  String _resolvedAvatarUrl(UserProfilePayload p) {
+    final live = (_liveAvatarUrl ?? '').trim();
+    if (live.isNotEmpty) return live;
+    return p.avatarUrl.trim();
   }
 
   Future<void> _refreshFollowFromFirestore({bool server = false}) async {
@@ -584,8 +613,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           groups: [
             StoryGroup(
               userId: userId,
-              username: p.username,
-              avatarUrl: p.avatarUrl,
+              username: _resolvedUsername(p),
+              avatarUrl: _resolvedAvatarUrl(p),
               stories: stories,
             ),
           ],
@@ -804,11 +833,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Future<void> _shareProfile() async {
     final p = widget.payload;
-    final ref = (p.targetUserId ?? p.username).trim();
+    final username = _resolvedUsername(p);
+    final ref = (p.targetUserId ?? username).trim();
     if (ref.isEmpty) return;
     final message = DeepLinkConfig.profileShareMessage(
       profileRef: ref,
-      username: p.username,
+      username: username,
     );
     final box = context.findRenderObject() as RenderBox?;
     final origin = box == null
@@ -859,6 +889,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   @override
   Widget build(BuildContext context) {
     final p = widget.payload;
+    final username = _resolvedUsername(p);
+    final displayName = _resolvedDisplayName(p);
+    final avatarUrl = _resolvedAvatarUrl(p);
     final isVerified = _liveIsVerified ?? p.isVerified;
     final showCreatorMonetization = _showSubscribeFeatures(p);
     final badgeColor = showCreatorMonetization
@@ -904,7 +937,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                 ),
                 title: Text(
-                  '@${ProfileFigmaTokens.displayUsername(p.username)}',
+                  '@${ProfileFigmaTokens.displayUsername(username)}',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: ProfileFigmaTokens.headerUsernameFontSize,
@@ -939,7 +972,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           final canView = _canViewTheirStories(p);
                           final hasStory = canView && stories.isNotEmpty;
                           return _buildAvatar(
-                            p.avatarUrl,
+                            avatarUrl,
                             isLive: _hostActiveLive != null,
                             hasStory: hasStory,
                             onTap: hasStory
@@ -953,7 +986,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            p.displayName,
+                            displayName,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 22,
@@ -1013,7 +1046,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           viewerCount: _hostActiveLive!.viewerCount,
                           thumbnailUrl: _hostActiveLive!.hostProfileImage?.trim().isNotEmpty == true
                               ? _hostActiveLive!.hostProfileImage!
-                              : p.avatarUrl,
+                              : avatarUrl,
                           onJoinTap: () => openLiveStreamScreen(
                             context,
                             _hostActiveLive!,
@@ -1126,8 +1159,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     Navigator.of(context).push<bool>(
       MaterialPageRoute<bool>(
         builder: (_) => CreatorSubscriptionScreen(
-          name: p.displayName,
-          handle: ProfileFigmaTokens.displayUsername(p.username),
+          name: _resolvedDisplayName(p),
+          handle: ProfileFigmaTokens.displayUsername(_resolvedUsername(p)),
           avatarUrl: p.avatarUrl,
           creatorUserId: p.targetUserId,
           isVerified: p.isVerified,
@@ -1383,8 +1416,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     Navigator.pop(ctx);
                     showReportUserSheet(
                       context,
-                      username: widget.payload.username,
-                      avatarUrl: widget.payload.avatarUrl,
+                      username: _resolvedUsername(widget.payload),
+                      avatarUrl: _resolvedAvatarUrl(widget.payload),
                       targetUserId: target,
                       isFollowing: _isFollowing,
                     );
@@ -1411,8 +1444,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     Navigator.pop(ctx);
                     showBlockUserSheet(
                       context,
-                      username: widget.payload.displayName,
-                      avatarUrl: widget.payload.avatarUrl,
+                      username: _resolvedDisplayName(widget.payload),
+                      avatarUrl: _resolvedAvatarUrl(widget.payload),
                       targetUserId: target,
                     );
                   },
@@ -1596,9 +1629,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             context: context,
             posts: posts,
             index: index,
-            fallbackDisplayName: widget.payload.displayName,
-            fallbackUsername: widget.payload.username,
-            fallbackAvatarUrl: widget.payload.avatarUrl,
+            fallbackDisplayName: _resolvedDisplayName(widget.payload),
+            fallbackUsername: _resolvedUsername(widget.payload),
+            fallbackAvatarUrl: _resolvedAvatarUrl(widget.payload),
             fallbackIsVerified: widget.payload.isVerified,
             liveIsVerified: _liveIsVerified,
           ),
@@ -1779,9 +1812,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 context: context,
                 posts: savedReels,
                 index: index,
-                fallbackDisplayName: widget.payload.displayName,
-                fallbackUsername: widget.payload.username,
-                fallbackAvatarUrl: widget.payload.avatarUrl,
+                fallbackDisplayName: _resolvedDisplayName(widget.payload),
+                fallbackUsername: _resolvedUsername(widget.payload),
+                fallbackAvatarUrl: _resolvedAvatarUrl(widget.payload),
                 fallbackIsVerified: widget.payload.isVerified,
                 liveIsVerified: _liveIsVerified,
               ),

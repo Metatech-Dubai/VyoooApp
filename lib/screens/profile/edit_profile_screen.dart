@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/services/saved_accounts_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/profile_photo_source_sheet.dart';
@@ -247,6 +248,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
 
       if (!mounted) return;
       setState(() => _isSaving = false);
+      unawaited(SavedAccountsService().refreshAccountMetadata(uid));
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           partialWarning

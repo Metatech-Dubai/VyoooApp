@@ -2869,4 +2869,5 @@ export const cleanupStaleRingingCalls = onSchedule(
 
 export { processHashtagGenerationRequest } from './hashtag_generation';
 export { enforceUserUsernamePolicy } from './username_enforcement';
+export { syncUserProfileDenormalized } from './sync_user_profile';
 export { shareLink } from './share_link';

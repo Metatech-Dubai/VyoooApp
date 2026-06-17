@@ -529,15 +529,53 @@ class _NotifTile extends StatelessWidget {
   final VoidCallback? onAcceptFollowRequest;
   final VoidCallback? onDeclineFollowRequest;
 
+  String _actorLabel(AppUserModel? user) {
+    final fromUser = (user?.username ?? '').trim().isNotEmpty
+        ? user!.username!.trim()
+        : (user?.displayName ?? '').trim();
+    if (fromUser.isNotEmpty) return fromUser;
+    return item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone';
+  }
+
+  String _actorAvatar(AppUserModel? user) {
+    final fromUser = (user?.profileImage ?? '').trim();
+    if (fromUser.isNotEmpty) return fromUser;
+    return item.actorAvatarUrl.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final senderId = item.senderId.trim();
+    if (senderId.isEmpty) {
+      return _buildTile(
+        actorLabel: item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone',
+        actorAvatarUrl: item.actorAvatarUrl,
+      );
+    }
+
+    return StreamBuilder<AppUserModel?>(
+      stream: UserService().userStream(senderId),
+      builder: (context, snap) {
+        final user = snap.data;
+        return _buildTile(
+          actorLabel: _actorLabel(user),
+          actorAvatarUrl: _actorAvatar(user),
+        );
+      },
+    );
+  }
+
+  Widget _buildTile({
+    required String actorLabel,
+    required String actorAvatarUrl,
+  }) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: onOpenProfile,
-          child: _buildAvatar(),
+          child: _buildAvatar(actorAvatarUrl),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -549,7 +587,7 @@ class _NotifTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone'} ${item.message}',
+                  '$actorLabel ${item.message}',
                   style: const TextStyle(
                     fontSize: 14,
                     color: Colors.white,
@@ -574,8 +612,8 @@ class _NotifTile extends StatelessWidget {
     );
   }
 
-  Widget _buildAvatar() {
-    if (item.actorAvatarUrl.isEmpty) {
+  Widget _buildAvatar(String actorAvatarUrl) {
+    if (actorAvatarUrl.isEmpty) {
       return Container(
         width: 46,
         height: 46,
@@ -612,7 +650,7 @@ class _NotifTile extends StatelessWidget {
         height: 46,
         color: Colors.white.withValues(alpha: 0.15),
         child: Image.network(
-          item.actorAvatarUrl,
+          actorAvatarUrl,
           fit: BoxFit.cover,
           errorBuilder: (context, error, stackTrace) => Icon(
             Icons.person_rounded,
