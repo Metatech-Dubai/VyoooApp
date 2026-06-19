@@ -15,14 +15,15 @@ import com.vyooo.Insta360Support
 import io.flutter.plugin.common.BinaryMessenger
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.view.TextureRegistry
 
 /**
- * Native bridge for the Insta360 capture foundation (Phase 0).
+ * Native bridge for the Insta360 capture feature.
  *
  * Owns the camera connection lifecycle and fans status + frame events to Flutter:
  *  - MethodChannel `vyooo/insta360`         — control (connect/disconnect/streaming/status)
  *  - EventChannel  `vyooo/insta360/events`  — connection/preview/frameStats/error events
- *  - EventChannel  `vyooo/insta360/frames`  — raw RGBA frames (de-risk spike only)
+ *  - EventChannel  `vyooo/insta360/frames`  — raw RGBA frames (debug)
  *
  * The actual preview render + frame extraction lives in [Insta360PreviewView] (a PlatformView),
  * which writes to [Insta360FrameSink]; this bridge connects that sink to the event channels.
@@ -30,7 +31,10 @@ import io.flutter.plugin.common.MethodChannel
 class Insta360Bridge(
     private val context: Context,
     messenger: BinaryMessenger,
+    private val textureRegistry: TextureRegistry,
 ) : MethodChannel.MethodCallHandler {
+
+    private var glRenderer: Insta360GlRenderer? = null
 
     private val main = Handler(Looper.getMainLooper())
     private val methodChannel = MethodChannel(messenger, "vyooo/insta360")
@@ -83,6 +87,9 @@ class Insta360Bridge(
         frameChannel.setStreamHandler(null)
         Insta360FrameSink.onStats = null
         Insta360FrameSink.onFrame = null
+        Insta360FrameSink.onProcessedFrame = null
+        glRenderer?.dispose()
+        glRenderer = null
         events = null
     }
 
@@ -147,6 +154,30 @@ class Insta360Bridge(
                 result.success(null)
             }
 
+            "getPipelineMetrics" -> result.success(Insta360FrameSink.metrics())
+
+            "createProcessedTexture" -> {
+                // Host-visible Flutter texture fed the pipeline's processed RGBA frames.
+                val renderer = glRenderer
+                    ?: Insta360GlRenderer(textureRegistry).also { glRenderer = it }
+                val id = renderer.create()
+                Insta360FrameSink.onProcessedFrame = { b, w, h, _ -> renderer.submit(b, w, h) }
+                result.success(id)
+            }
+
+            "disposeProcessedTexture" -> {
+                Insta360FrameSink.onProcessedFrame = null
+                glRenderer?.dispose()
+                glRenderer = null
+                result.success(null)
+            }
+
+            "setMaskEnabled" -> {
+                // Toggle forward-only masking in the pipeline (true = masked, false = full 360°).
+                Insta360FrameSink.setMaskEnabled(call.argument<Boolean>("enabled") ?: true)
+                result.success(null)
+            }
+
             "getStatus" -> result.success(status())
 
             else -> result.notImplemented()
@@ -158,10 +189,9 @@ class Insta360Bridge(
         InstaCameraManager.getInstance().registerCameraChangedCallback(object : ICameraChangedCallback {
             override fun onCameraStatusChanged(enabled: Boolean, connectType: Int) {
                 if (!enabled) Insta360FrameSink.reset()
-                // Phase 0 decision D6: KEEP the process bound to the camera Wi-Fi for the whole
-                // preview session — the preview video stream needs it. This means no internet while
-                // the 360 camera is active (Agora remote push is deferred). We unbind only on
-                // disconnect (see the "disconnect" handler).
+                // Keep the process bound to the camera Wi-Fi for the whole preview session — the
+                // preview video stream needs it (so there's no internet while the camera is active).
+                // We unbind only on disconnect (see the "disconnect" handler).
                 send("connection", mapOf("connected" to enabled, "connectType" to connectType))
             }
 

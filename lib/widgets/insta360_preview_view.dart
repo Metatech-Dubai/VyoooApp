@@ -20,7 +20,7 @@ class Insta360PreviewView extends StatelessWidget {
     this.extractHeight = 960,
   });
 
-  /// Render/extraction resolution (2:1 ERP). Lower it for the bandwidth-sensitive Agora spike.
+  /// Render/extraction resolution (2:1 ERP). Lower it for bandwidth-sensitive use.
   final int extractWidth;
   final int extractHeight;
 

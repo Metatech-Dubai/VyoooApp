@@ -41,7 +41,6 @@ class Insta360PreviewView(
     private val extractWidth = (creationParams?.get("width") as? Int) ?: 1920
     private val extractHeight = (creationParams?.get("height") as? Int) ?: 960
     private var disposed = false
-    private var firstFrameLogged = false
 
     init {
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
@@ -51,11 +50,9 @@ class Insta360PreviewView(
         val mgr = InstaCameraManager.getInstance()
         mgr.setPreviewStatusChangedListener(this)
         // The camera is already connected (Dart mounts this view only once connected). Run the SDK's
-        // required pre-preview init before starting the stream — mirrors the demo's
-        // CaptureViewModel.initCapture(): fetchCameraOptions → ensure panorama (dual-sensor) →
-        // initCameraSupportConfig → setStreamEncode → startPreviewStream. Skipping these leaves the
-        // stream open but producing no decodable frames. The process stays bound to the camera Wi-Fi
-        // for the whole session (Phase 0 decision D6), which the preview stream requires.
+        // required pre-preview init before starting the stream: fetchCameraOptions → ensure panorama
+        // (dual-sensor) → initCameraSupportConfig → setStreamEncode → startPreviewStream. Skipping
+        // these leaves the stream open but producing no decodable frames.
         beginPreviewSequence(mgr)
     }
 
@@ -169,21 +166,16 @@ class Insta360PreviewView(
         Log.i(TAG, "onLoadingFinish → setPipeline + startExtractMediaFrame ${extractWidth}x$extractHeight")
         val mgr = InstaCameraManager.getInstance()
         mgr.setPipeline(player.pipeline)
-        // Extract the stitched ERP result as ARGB MediaFrames. This is the capture-side hand-off
-        // point; the optimisation pipeline will later sit between here and the sink.
+        // Extract the stitched ERP result as MediaFrames and hand them to the sink/pipeline.
         player.startExtractMediaFrame(
             extractWidth,
             extractHeight,
             EXTRACT_FPS,
             EXTRACT_QUEUE,
             IMediaFrameCallback { mediaFrame ->
-                if (mediaFrame != null) {
-                    if (!firstFrameLogged) {
-                        firstFrameLogged = true
-                        Log.i(TAG, "first extracted MediaFrame ${mediaFrame.width}x${mediaFrame.height}")
-                    }
-                    Insta360FrameSink.submit(mediaFrame.planes.firstOrNull(), mediaFrame.width, mediaFrame.height)
-                }
+                // The SDK delivers YUV420P. Hand it to the single processing path: YUV→RGB →
+                // FramePipeline (downscale → mask → temporal → AI) → display + encoder.
+                mediaFrame?.let { Insta360FrameSink.submit(it) }
             },
         )
     }

@@ -6,7 +6,7 @@ import 'package:flutter/services.dart';
 /// How the phone connects to the Insta360 camera.
 enum Insta360ConnectType { usb, wifi }
 
-/// A single extracted, stitched ERP frame (used only by the Phase-0 Agora spike).
+/// A single extracted, stitched ERP frame (used by the debug Agora preview).
 @immutable
 class Insta360Frame {
   const Insta360Frame({
@@ -75,10 +75,10 @@ class Insta360State {
   }
 }
 
-/// Dart wrapper over the native Insta360 capture bridge (Phase 0 foundation).
+/// Dart wrapper over the native Insta360 capture bridge.
 ///
-/// Pure plumbing: connection control, status/stats stream, and a raw-frame stream for the
-/// Agora de-risk spike. It deliberately knows nothing about Agora or the optimisation pipeline.
+/// Pure plumbing: connection control, status/stats stream, and a raw-frame stream. It deliberately
+/// knows nothing about Agora or the optimisation pipeline.
 class Insta360LiveService {
   Insta360LiveService();
 
@@ -135,7 +135,27 @@ class Insta360LiveService {
     return raw == null ? <String, dynamic>{} : raw.cast<String, dynamic>();
   }
 
-  /// Raw ERP frames for the spike. Enable forwarding first via [setFrameStreaming].
+  /// Latest pipeline metrics (fps, per-stage latency, spatial reduction); empty when off.
+  Future<Map<String, dynamic>> getPipelineMetrics() async {
+    final raw =
+        await _methods.invokeMethod<Map<dynamic, dynamic>>('getPipelineMetrics');
+    return raw == null ? <String, dynamic>{} : raw.cast<String, dynamic>();
+  }
+
+  /// Allocate a Flutter texture fed by the pipeline's processed frames (host preview).
+  /// Returns the texture id for a `Texture(textureId: …)` widget, or null on failure.
+  Future<int?> createProcessedTexture() =>
+      _methods.invokeMethod<int>('createProcessedTexture');
+
+  /// Release the processed-frame texture and stop host-side rendering.
+  Future<void> disposeProcessedTexture() =>
+      _methods.invokeMethod<void>('disposeProcessedTexture');
+
+  /// Toggle forward-only masking on the live 360 feed (true = masked, false = full 360°).
+  Future<void> setMaskEnabled(bool enabled) =>
+      _methods.invokeMethod<void>('setMaskEnabled', {'enabled': enabled});
+
+  /// Raw ERP frames (debug). Enable forwarding first via [setFrameStreaming].
   Stream<Insta360Frame> frames() {
     return _frames.receiveBroadcastStream().map((dynamic e) {
       final m = (e as Map).cast<String, dynamic>();
