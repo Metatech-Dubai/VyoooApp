@@ -44,8 +44,11 @@ android {
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         // Phone/tablet devices only; skip x86/x86_64 to avoid broken emulator CMake on some NDK setups.
-        ndk {
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+        // Use --split-per-abi at build time to restrict further (e.g. arm64-only for on-device test).
+        if (project.findProperty("vyoooSingleAbi") != "true") {
+            ndk {
+                abiFilters += listOf("armeabi-v7a", "arm64-v8a")
+            }
         }
     }
 

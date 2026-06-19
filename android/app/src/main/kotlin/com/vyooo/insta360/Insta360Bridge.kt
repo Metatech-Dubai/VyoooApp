@@ -178,6 +178,14 @@ class Insta360Bridge(
                 result.success(null)
             }
 
+            "setViewOrientation" -> {
+                // Drive the interactive 360 view from Flutter-side drag (degrees).
+                val yaw = (call.argument<Double>("yaw") ?: 0.0).toFloat()
+                val pitch = (call.argument<Double>("pitch") ?: 0.0).toFloat()
+                Insta360PreviewView.applyOrientation(yaw, pitch)
+                result.success(null)
+            }
+
             "getStatus" -> result.success(status())
 
             else -> result.notImplemented()

@@ -5,9 +5,9 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 /// Embeds the native Insta360 interactive 360 preview (a PlatformView hosting
-/// `InstaCapturePlayerView`). The host can touch-drag to look around and pinch to zoom — the
-/// gestures are handled natively by the player; an [EagerGestureRecognizer] hands the touch
-/// stream to the platform view so Flutter doesn't intercept it.
+/// `InstaCapturePlayerView`). Look-around (rotation) is driven from the live screen via the SDK's
+/// `setYaw`/`setPitch` — touch on an embedded platform view doesn't reach Flutter reliably, so the
+/// gesture/slider controls live in a top UI layer there, not on this view.
 ///
 /// Mounting this widget starts the preview stream + frame extraction; unmounting stops them.
 /// The camera must already be connected via `Insta360LiveService.connect`. Android-only.
@@ -53,10 +53,9 @@ class Insta360PreviewView extends StatelessWidget {
       surfaceFactory: (context, controller) {
         return AndroidViewSurface(
           controller: controller as AndroidViewController,
-          // Hand all touch to the native player so its pan/zoom gestures work.
-          gestureRecognizers: <Factory<OneSequenceGestureRecognizer>>{
-            Factory<OneSequenceGestureRecognizer>(EagerGestureRecognizer.new),
-          },
+          // Drag is handled by a top-layer GestureDetector in the live screen (the background layer,
+          // where this view lives, receives no touches), so the platform view claims no gestures.
+          gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
           hitTestBehavior: PlatformViewHitTestBehavior.opaque,
         );
       },

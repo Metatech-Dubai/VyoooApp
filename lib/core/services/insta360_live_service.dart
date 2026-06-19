@@ -155,6 +155,15 @@ class Insta360LiveService {
   Future<void> setMaskEnabled(bool enabled) =>
       _methods.invokeMethod<void>('setMaskEnabled', {'enabled': enabled});
 
+  /// Point the interactive 360 view at an absolute orientation, in degrees. Drives the SDK
+  /// player's `setYaw`/`setPitch` so the host can drag to look around. Fire-and-forget.
+  Future<void> setViewOrientation(double yaw, double pitch) {
+    return _methods.invokeMethod<void>('setViewOrientation', {
+      'yaw': yaw,
+      'pitch': pitch,
+    });
+  }
+
   /// Raw ERP frames (debug). Enable forwarding first via [setFrameStreaming].
   Stream<Insta360Frame> frames() {
     return _frames.receiveBroadcastStream().map((dynamic e) {

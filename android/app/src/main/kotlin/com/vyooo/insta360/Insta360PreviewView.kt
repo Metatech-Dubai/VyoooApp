@@ -40,6 +40,7 @@ class Insta360PreviewView(
     private var disposed = false
 
     init {
+        active = this
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
         player.setLifecycle(lifecycleRegistry)
         player.setPlayerViewListener(this)
@@ -106,6 +107,7 @@ class Insta360PreviewView(
     override fun dispose() {
         if (disposed) return
         disposed = true
+        if (active === this) active = null
         try {
             player.destroy()
             val mgr = InstaCameraManager.getInstance()
@@ -155,18 +157,30 @@ class Insta360PreviewView(
     }
 
     /**
-     * Switch the player to the interactive panoramic ("normal") projection and turn on its built-in
-     * gestures so the host can drag to look around and pinch to zoom. Safe to call once rendering.
+     * Switch the player to the interactive panoramic ("normal") projection. The native gesture
+     * system is left OFF — touch events don't reliably reach an embedded platform view, so the host
+     * drag is captured on the Flutter side and applied via [applyOrientation] ([setYaw]/[setPitch]).
      */
     private fun enableInteractiveView() {
         try {
             player.switchNormalMode()
-            player.isGestureEnabled = true
-            player.isGestureHorizontalEnabled = true
-            player.isGestureVerticalEnabled = true
-            player.isGestureZoomEnabled = true
+            player.isGestureEnabled = false
         } catch (t: Throwable) {
             Log.e(TAG, "enableInteractiveView failed", t)
+        }
+    }
+
+    /** Apply an absolute (yaw, pitch) in degrees to the live view, on the player's thread. */
+    private fun applyOrientationInternal(yaw: Float, pitch: Float) {
+        if (disposed) return
+        player.post {
+            if (disposed) return@post
+            try {
+                player.setYaw(yaw)
+                player.setPitch(pitch)
+            } catch (t: Throwable) {
+                Log.e(TAG, "applyOrientation failed", t)
+            }
         }
     }
 
@@ -203,10 +217,18 @@ class Insta360PreviewView(
             .setGyroTimeStamp(mgr.gyroTimeStamp)
             .setLive(true)
             .setStabEnabled(false)
-            .setGestureEnabled(true)
+            .setGestureEnabled(false)
     }
 
-    private companion object {
-        const val TAG = "Insta360PreviewView"
+    companion object {
+        private const val TAG = "Insta360PreviewView"
+
+        /** The currently-mounted preview (only one exists at a time). */
+        @Volatile private var active: Insta360PreviewView? = null
+
+        /** Point the live interactive view at an absolute (yaw, pitch) in degrees. No-op if none. */
+        fun applyOrientation(yaw: Float, pitch: Float) {
+            active?.applyOrientationInternal(yaw, pitch)
+        }
     }
 }
