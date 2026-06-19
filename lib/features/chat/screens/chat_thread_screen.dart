@@ -885,6 +885,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             callerName: _isGroup
                 ? (_chatModel?.groupName ?? widget.groupName)
                 : (widget.otherUser?.displayName ?? widget.otherUser?.username),
+            remoteAvatarUrl: _isGroup
+                ? (_chatModel?.groupImageUrl ?? widget.groupImageUrl)
+                : widget.otherUser?.profileImage,
+            remoteUserId: _isGroup ? null : widget.otherUser?.uid,
           ),
         ),
       );

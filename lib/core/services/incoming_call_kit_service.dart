@@ -7,10 +7,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_callkit_incoming_maintained/entities/entities.dart';
 import 'package:flutter_callkit_incoming_maintained/flutter_callkit_incoming_maintained.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 import '../../features/chat/models/call_session_model.dart';
 import '../../features/chat/screens/chat_call_screen.dart';
 import '../../features/chat/services/call_signaling_service.dart';
+import '../../features/chat/utils/chat_helpers.dart';
 import '../../firebase_options.dart';
 import '../navigation/app_keys.dart';
 import '../utils/call_kit_id.dart';
@@ -156,6 +158,14 @@ class IncomingCallKitService {
     final nativeCallId = _isApple ? callKitUuidFor(callId) : callId;
     if (_isApple) {
       _callKitIdToFirestoreId[nativeCallId] = callId;
+    }
+
+    if (_isAndroid) {
+      // Pre-request so accept → ongoing-call FGS can use microphone type when eligible.
+      unawaited(Permission.microphone.request());
+      if (isVideo) {
+        unawaited(Permission.camera.request());
+      }
     }
 
     final params = CallKitParams(
@@ -329,12 +339,24 @@ class IncomingCallKitService {
       final nav = appNavigatorKey.currentState;
       if (nav == null) return;
 
+      final remoteUid = session.callerId == uid
+          ? session.participantIds.firstWhere(
+              (id) => id != uid,
+              orElse: () => session.calleeIds.firstWhere(
+                (id) => id != uid,
+                orElse: () => '',
+              ),
+            )
+          : session.callerId;
+
       nav.push(
         MaterialPageRoute<void>(
           builder: (_) => ChatCallScreen(
             callSession: activeSession,
             currentUid: uid,
             callerName: callerInfo.$1,
+            remoteAvatarUrl: callerInfo.$2,
+            remoteUserId: remoteUid.isEmpty ? null : remoteUid,
           ),
         ),
       );
@@ -390,9 +412,10 @@ class IncomingCallKitService {
       if (pMap == null) return (null, null);
       final callerInfo = pMap[call.callerId] as Map<String, dynamic>?;
       if (callerInfo == null) return (null, null);
-      final dn = callerInfo['displayName'] as String?;
-      final un = callerInfo['username'] as String?;
-      return (dn ?? un, callerInfo['profileImage'] as String?);
+      return (
+        ChatHelpers.participantDisplayNameFromMap(callerInfo),
+        ChatHelpers.participantAvatarFromMap(callerInfo),
+      );
     } catch (_) {
       return (null, null);
     }

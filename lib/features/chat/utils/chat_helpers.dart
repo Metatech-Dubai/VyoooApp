@@ -55,4 +55,25 @@ abstract final class ChatHelpers {
     if (diff.inDays < 7) return '${diff.inDays}d';
     return '${date.day}/${date.month}/${date.year}';
   }
+
+  /// Reads avatar from a chat [participantMap] entry (`avatarUrl` is canonical).
+  static String? participantAvatarFromMap(Map<String, dynamic>? participant) {
+    if (participant == null) return null;
+    for (final key in ['avatarUrl', 'profileImage', 'photoURL']) {
+      final value = (participant[key] as String?)?.trim();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  static String? participantDisplayNameFromMap(
+    Map<String, dynamic>? participant,
+  ) {
+    if (participant == null) return null;
+    final displayName = (participant['displayName'] as String?)?.trim();
+    if (displayName != null && displayName.isNotEmpty) return displayName;
+    final username = (participant['username'] as String?)?.trim();
+    if (username != null && username.isNotEmpty) return username;
+    return null;
+  }
 }

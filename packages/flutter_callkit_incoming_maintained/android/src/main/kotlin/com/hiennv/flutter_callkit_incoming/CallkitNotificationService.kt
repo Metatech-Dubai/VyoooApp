@@ -9,6 +9,7 @@ import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.Bundle
 import android.os.IBinder
+import android.util.Log
 import androidx.core.content.ContextCompat
 
 class CallkitNotificationService : Service() {
@@ -91,26 +92,36 @@ class CallkitNotificationService : Service() {
         val callkitNotification =
             getCallkitNotificationManager()?.getOnGoingCallNotification(bundle, false)
         if (callkitNotification != null) {
-            val typeCall = bundle.getInt(CallkitConstants.EXTRA_CALLKIT_TYPE, -1)
-            startForeground(
+            promoteToForeground(
                 callkitNotification.id,
                 callkitNotification.notification,
-                typeCall > 0
             )
         }
     }
 
-    private fun startForeground(notificationId: Int, notification: Notification, isVideo: Boolean) {
+    private fun promoteToForeground(notificationId: Int, notification: Notification) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-            var mask = ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                mask = mask or ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                if (isVideo) {
-                    mask = mask or ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+            // Ongoing-call notification only — use phoneCall FGS type. Do not add
+            // microphone/camera here: Android 14+ (targetSdk 34+) requires eligible
+            // capture state and crashes on accept otherwise. Agora captures in Flutter.
+            val phoneCallType = ServiceInfo.FOREGROUND_SERVICE_TYPE_PHONE_CALL
+            try {
+                startForeground(notificationId, notification, phoneCallType)
+            } catch (e: RuntimeException) {
+                Log.e(
+                    "CallkitNotificationService",
+                    "startForeground(phoneCall) failed: ${e.message}",
+                    e,
+                )
+                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                    @Suppress("DEPRECATION")
+                    startForeground(notificationId, notification)
+                } else {
+                    throw e
                 }
             }
-            startForeground(notificationId, notification, mask)
         } else {
+            @Suppress("DEPRECATION")
             startForeground(notificationId, notification)
         }
     }

@@ -39,6 +39,7 @@ class MediaMessageWidget extends StatelessWidget {
           bottom: 2,
         ),
         decoration: BoxDecoration(
+          color: isSent ? null : const Color(0xFF1E0E2E),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(16),
             topRight: const Radius.circular(16),
@@ -47,7 +48,6 @@ class MediaMessageWidget extends StatelessWidget {
           ),
         ),
         clipBehavior: Clip.antiAlias,
-        color: isSent ? null : const Color(0xFF1E0E2E),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,

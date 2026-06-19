@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../../features/chat/models/call_session_model.dart';
 import '../../features/chat/services/call_signaling_service.dart';
+import '../../features/chat/utils/chat_helpers.dart';
 import 'incoming_call_kit_service.dart';
 
 class GlobalIncomingCallService {
@@ -92,7 +93,7 @@ class GlobalIncomingCallService {
       if (callerInfo == null) return (null, null);
       final dn = callerInfo['displayName'] as String?;
       final un = callerInfo['username'] as String?;
-      final avatar = callerInfo['profileImage'] as String?;
+      final avatar = ChatHelpers.participantAvatarFromMap(callerInfo);
       return (dn ?? un, avatar);
     } catch (_) {
       return (null, null);

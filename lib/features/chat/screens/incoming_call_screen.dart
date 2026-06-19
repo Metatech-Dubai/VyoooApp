@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 
+import '../../../core/widgets/app_network_avatar.dart';
 import '../models/call_session_model.dart';
 import '../services/call_signaling_service.dart';
 import 'chat_call_screen.dart';
@@ -89,6 +89,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
             callSession: widget.callSession.copyWith(status: CallStatus.active),
             currentUid: widget.currentUid,
             callerName: widget.callerName,
+            remoteAvatarUrl: widget.callerAvatarUrl,
+            remoteUserId: widget.callSession.callerId,
           ),
         ),
       );
@@ -122,8 +124,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
   Widget build(BuildContext context) {
     final isVideo = widget.callSession.type == CallType.video;
     final name = widget.callerName ?? 'Unknown';
-    final avatar = widget.callerAvatarUrl;
-    final hasAvatar = avatar != null && avatar.trim().isNotEmpty;
+    final avatar = widget.callerAvatarUrl ?? '';
+    final remoteUid = widget.callSession.callerId;
 
     return Scaffold(
       backgroundColor: const Color(0xFF07010F),
@@ -132,15 +134,25 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Spacer(flex: 2),
-            CircleAvatar(
-              radius: 56,
-              backgroundColor: const Color(0xFF2A1B2E),
-              backgroundImage: hasAvatar
-                  ? CachedNetworkImageProvider(avatar)
-                  : null,
-              child: hasAvatar
-                  ? null
-                  : const Icon(Icons.person, color: Colors.white54, size: 48),
+            Container(
+              padding: const EdgeInsets.all(3),
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                gradient: LinearGradient(
+                  colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
+                ),
+              ),
+              child: CircleAvatar(
+                radius: 56,
+                backgroundColor: const Color(0xFF1A0A2E),
+                child: ClipOval(
+                  child: AppNetworkAvatar(
+                    imageUrl: avatar,
+                    userId: remoteUid,
+                    size: 112,
+                  ),
+                ),
+              ),
             ),
             const SizedBox(height: 24),
             Text(

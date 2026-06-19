@@ -67,7 +67,7 @@
             android:enabled="true"
             android:exported="true"
             android:stopWithTask="false"
-            android:foregroundServiceType="phoneCall|microphone|camera"
+            android:foregroundServiceType="phoneCall"
             android:permission="${applicationId}.PERMISSION_CALL"
             android:name="com.hiennv.flutter_callkit_incoming.CallkitNotificationService">
         </service>

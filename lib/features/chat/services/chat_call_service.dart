@@ -19,7 +19,7 @@ class ChatCallService extends ChangeNotifier {
   bool _joining = false;
   bool _micMuted = false;
   bool _cameraMuted = false;
-  bool _speakerOn = true;
+  bool _speakerOn = false;
   bool _frontCamera = true;
   final Set<int> _remoteUids = {};
   int _localUid = 0;
@@ -36,6 +36,9 @@ class ChatCallService extends ChangeNotifier {
   int get localUid => _localUid;
   String get channelName => _channelName;
   RtcEngine? get engine => _engine;
+
+  bool get _isAndroid =>
+      !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 
   Future<bool> requestPermissions({required bool isVideo}) async {
     debugPrint('[ChatCall] requestPermissions isVideo=$isVideo');
@@ -74,7 +77,7 @@ class ChatCallService extends ChangeNotifier {
           );
           _joined = true;
           _joining = false;
-          _applySpeakerphone();
+          _applySpeakerRoute();
           notifyListeners();
         },
         onUserJoined: (connection, remoteUid, elapsed) {
@@ -92,6 +95,14 @@ class ChatCallService extends ChangeNotifier {
         onError: (err, msg) {
           debugPrint('[ChatCall] onError: $err $msg');
         },
+        onAudioRoutingChanged: (routing) {
+          final onSpeaker = routing == AudioRoute.routeSpeakerphone ||
+              routing == AudioRoute.routeLoudspeaker;
+          if (_speakerOn != onSpeaker) {
+            _speakerOn = onSpeaker;
+            notifyListeners();
+          }
+        },
       ),
     );
 
@@ -99,14 +110,22 @@ class ChatCallService extends ChangeNotifier {
     debugPrint('[ChatCall] initEngine: done');
   }
 
-  Future<void> _applySpeakerphone() async {
+  Future<void> _applySpeakerRoute() async {
     if (_engine == null) return;
     try {
-      await _engine!.setEnableSpeakerphone(_speakerOn);
-      debugPrint('[ChatCall] setEnableSpeakerphone($_speakerOn) OK');
+      if (_isAndroid) {
+        // Communication profile on Android: prefer route API over speakerphone toggle.
+        await _engine!.setRouteInCommunicationMode(_speakerOn ? 3 : 1);
+        debugPrint(
+          '[ChatCall] setRouteInCommunicationMode(${_speakerOn ? 3 : 1}) OK',
+        );
+      } else {
+        await _engine!.setEnableSpeakerphone(_speakerOn);
+        debugPrint('[ChatCall] setEnableSpeakerphone($_speakerOn) OK');
+      }
     } catch (e) {
       debugPrint(
-        '[ChatCall] setEnableSpeakerphone($_speakerOn) failed (non-fatal): $e',
+        '[ChatCall] speaker route speakerOn=$_speakerOn failed (non-fatal): $e',
       );
     }
   }
@@ -153,6 +172,15 @@ class ChatCallService extends ChangeNotifier {
     await _engine!.enableAudio();
     debugPrint('[ChatCall] enableAudio done');
 
+    // Voice calls: earpiece by default (tap Speaker → loudspeaker).
+    // Video calls: loudspeaker by default (phone held away from face).
+    _speakerOn = isVideo;
+    try {
+      await _engine!.setDefaultAudioRouteToSpeakerphone(isVideo);
+    } catch (e) {
+      debugPrint('[ChatCall] setDefaultAudioRouteToSpeakerphone failed: $e');
+    }
+
     if (isVideo) {
       await _engine!.enableVideo();
       debugPrint('[ChatCall] enableVideo done');
@@ -163,7 +191,6 @@ class ChatCallService extends ChangeNotifier {
       debugPrint('[ChatCall] disableVideo done');
     }
 
-    _speakerOn = true;
     _micMuted = false;
     _cameraMuted = false;
     _frontCamera = true;
@@ -237,11 +264,7 @@ class ChatCallService extends ChangeNotifier {
   Future<void> toggleSpeaker() async {
     if (!_engineReady || _engine == null) return;
     _speakerOn = !_speakerOn;
-    try {
-      await _engine!.setEnableSpeakerphone(_speakerOn);
-    } catch (e) {
-      debugPrint('[ChatCall] toggleSpeaker failed (non-fatal): $e');
-    }
+    await _applySpeakerRoute();
     notifyListeners();
   }
 }
