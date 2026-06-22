@@ -98,9 +98,12 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      final message = e is StateError
+          ? e.message
+          : 'Could not open chat';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open chat')));
+      ).showSnackBar(SnackBar(content: Text(message)));
     }
   }
 

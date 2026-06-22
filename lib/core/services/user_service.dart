@@ -68,6 +68,20 @@ class UserService {
     return t == 'private' || t == 'personal';
   }
 
+  /// Private/personal accounts only accept DMs from users who follow them.
+  Future<bool> canSendDirectMessageTo({
+    required String senderUid,
+    required AppUserModel target,
+  }) async {
+    if (senderUid.isEmpty || target.uid.isEmpty || senderUid == target.uid) {
+      return false;
+    }
+    if (!accountTypeRequiresFollowApproval(target.accountType)) {
+      return true;
+    }
+    return isFollowingUser(currentUid: senderUid, targetUid: target.uid);
+  }
+
   static const int publicPersonaMaxLength = 80;
 
   /// Trims and normalizes user-entered public persona text for Firestore.

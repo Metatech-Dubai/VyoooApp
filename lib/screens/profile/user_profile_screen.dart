@@ -880,8 +880,11 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     } catch (e, st) {
       dev.log('UserProfileScreen._openChat failed', error: e, stackTrace: st);
       if (!mounted) return;
+      final message = e is StateError
+          ? e.message
+          : 'Could not open chat';
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not open chat')),
+        SnackBar(content: Text(message)),
       );
     }
   }
@@ -1330,7 +1333,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
     final showChat = widget.payload.targetUserId != null &&
         widget.payload.targetUserId!.isNotEmpty &&
-        widget.payload.targetUserId != AuthService().currentUser?.uid;
+        widget.payload.targetUserId != AuthService().currentUser?.uid &&
+        (!_locksContentForViewer(p) || _isFollowing);
 
     return Center(
       child: Padding(

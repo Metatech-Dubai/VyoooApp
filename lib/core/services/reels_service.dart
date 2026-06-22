@@ -25,20 +25,32 @@ class ReelsService {
   final PexelsFeedService _pexels = PexelsFeedService();
   static const String _reelsCollection = 'reels';
 
+  /// Client-side privacy filter for discovery feeds (FYP, trending, VR, cache).
+  Future<List<Map<String, dynamic>>> filterDiscoveryAudience(
+    Iterable<Map<String, dynamic>> reels,
+  ) async {
+    final followingIds = await _followingIdsForCurrentUser();
+    return reels
+        .where((r) => _isDiscoverableToCurrentUser(r, followingIds: followingIds))
+        .toList(growable: false);
+  }
+
   /// Reels for "For You": orderBy createdAt desc.
   Future<List<Map<String, dynamic>>> getReelsForYou({int limit = 20}) async {
     try {
+      final followingIds = await _followingIdsForCurrentUser();
       final q = await _firestore
           .collection(_reelsCollection)
           .orderBy('createdAt', descending: true)
-          .limit(limit)
+          .limit(limit * 4)
           .get();
       final list = q.docs
           .map((d) => _docToReelMap(d))
           .where((r) =>
-              _isVisibleToCurrentUser(r) &&
+              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
               ReelEngagement.isDiscoveryFeedEligible(r))
+          .take(limit)
           .toList();
       if (list.isNotEmpty) return list;
       if (_pexels.isAvailable) return _pexels.getForYou(limit: limit);
@@ -97,17 +109,19 @@ class ReelsService {
   /// Trending: orderBy viewsCount desc.
   Future<List<Map<String, dynamic>>> getReelsTrending({int limit = 20}) async {
     try {
+      final followingIds = await _followingIdsForCurrentUser();
       final q = await _firestore
           .collection(_reelsCollection)
           .orderBy('viewsCount', descending: true)
-          .limit(limit)
+          .limit(limit * 4)
           .get();
       final list = q.docs
           .map((d) => _docToReelMap(d))
           .where((r) =>
-              _isVisibleToCurrentUser(r) &&
+              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
               ReelEngagement.isDiscoveryFeedEligible(r))
+          .take(limit)
           .toList();
       if (list.isNotEmpty) return list;
       if (_pexels.isAvailable) return _pexels.getTrending(limit: limit);
@@ -121,17 +135,19 @@ class ReelsService {
   /// VR tab: where isVR == true.
   Future<List<Map<String, dynamic>>> getReelsVR({int limit = 20}) async {
     try {
+      final followingIds = await _followingIdsForCurrentUser();
       final q = await _firestore
           .collection(_reelsCollection)
           .where('isVR', isEqualTo: true)
-          .limit(limit)
+          .limit(limit * 4)
           .get();
       final list = q.docs
           .map((d) => _docToReelMap(d))
           .where((r) =>
-              _isVisibleToCurrentUser(r) &&
+              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
               ReelEngagement.isDiscoveryFeedEligible(r))
+          .take(limit)
           .toList();
       if (list.isNotEmpty) return list;
       if (_pexels.isAvailable) return _pexels.getVR(limit: limit);
@@ -153,12 +169,16 @@ class ReelsService {
     final tag = HashtagUtils.normalizeForQuery(rawTag);
     if (tag.isEmpty) return [];
 
+    final followingIds = await _followingIdsForCurrentUser();
     final merged = <String, Map<String, dynamic>>{};
 
     void takePlayable(Map<String, dynamic> r) {
       final id = (r['id'] as String?)?.trim() ?? '';
       if (id.isEmpty || merged.containsKey(id)) return;
-      if (!_isVisibleToCurrentUser(r) || !_isPlayableReel(r)) return;
+      if (!_isDiscoverableToCurrentUser(r, followingIds: followingIds) ||
+          !_isPlayableReel(r)) {
+        return;
+      }
       if (!HashtagUtils.reelMapMatchesHashtag(r, tag)) return;
       merged[id] = r;
     }
@@ -286,7 +306,11 @@ class ReelsService {
       final data = doc.data();
       if (data == null) return null;
       final reel = _snapshotDataToReelMap(doc.id, data);
-      if (!_isVisibleToCurrentUser(reel) || !_isPlayableReel(reel)) return null;
+      final followingIds = await _followingIdsForCurrentUser();
+      if (!_isDiscoverableToCurrentUser(reel, followingIds: followingIds) ||
+          !_isPlayableReel(reel)) {
+        return null;
+      }
       return reel;
     } catch (_) {
       return null;
@@ -439,11 +463,46 @@ class ReelsService {
   }
 
   bool _isVisibleToCurrentUser(Map<String, dynamic> data) {
+    return _passesModerationVisibility(data);
+  }
+
+  Future<Set<String>> _followingIdsForCurrentUser() async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || uid.isEmpty) return const {};
+    try {
+      return (await UserService().getFollowing(uid)).toSet();
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  bool _reelAuthorIsPrivate(Map<String, dynamic> data) {
+    if (data['authorAccountPrivate'] == true) return true;
+    return UserService.accountTypeRequiresFollowApproval(
+      data['accountType'] as String?,
+    );
+  }
+
+  bool _passesModerationVisibility(Map<String, dynamic> data) {
     if (_isReelApproved(data)) return true;
     final currentUid = AuthService().currentUser?.uid ?? '';
     if (currentUid.isEmpty) return false;
     final ownerUid = (data['userId'] as String?) ?? '';
     return ownerUid == currentUid;
+  }
+
+  /// Discovery feeds hide private-account posts unless the viewer follows the author.
+  bool _isDiscoverableToCurrentUser(
+    Map<String, dynamic> data, {
+    required Set<String> followingIds,
+  }) {
+    if (!_passesModerationVisibility(data)) return false;
+    final currentUid = AuthService().currentUser?.uid ?? '';
+    final ownerUid = (data['userId'] as String?) ?? '';
+    if (ownerUid.isEmpty) return false;
+    if (currentUid.isNotEmpty && ownerUid == currentUid) return true;
+    if (!_reelAuthorIsPrivate(data)) return true;
+    return followingIds.contains(ownerUid);
   }
 
   static bool _isPlayableReel(Map<String, dynamic> data) {
@@ -505,6 +564,7 @@ class ReelsService {
           0,
       'avatarUrl': data['profileImage'] ?? data['avatarUrl'] ?? '',
       'userId': data['userId'] ?? '',
+      'authorAccountPrivate': data['authorAccountPrivate'] == true,
       'isVerified': data['isVerified'] == true,
       'accountType': (data['accountType'] as String?) ?? 'private',
       'vipVerified': data['vipVerified'] == true,

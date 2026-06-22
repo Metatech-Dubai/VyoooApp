@@ -226,11 +226,15 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Future<void> _bootstrapFeed() async {
+    final reelsService = ReelsService();
     final cachedTrending = await FeedReelsCacheService.instance.loadTrending();
     if (!mounted) return;
     if (cachedTrending.isNotEmpty) {
+      final filteredTrending =
+          await reelsService.filterDiscoveryAudience(cachedTrending);
+      if (!mounted) return;
       setState(() {
-        _reelsTrending = cachedTrending;
+        _reelsTrending = filteredTrending;
         _feedRefreshInProgress = false;
         _reelsLoadError = null;
       });
@@ -241,7 +245,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final cachedForYou = await FeedReelsCacheService.instance.loadForYou();
     if (!mounted) return;
     if (cachedForYou.isNotEmpty) {
-      setState(() => _reelsForYou = cachedForYou);
+      final filteredForYou =
+          await reelsService.filterDiscoveryAudience(cachedForYou);
+      if (!mounted) return;
+      setState(() => _reelsForYou = filteredForYou);
     }
 
     await _loadReels();

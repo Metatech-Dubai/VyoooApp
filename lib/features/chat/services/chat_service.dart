@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/models/app_user_model.dart';
+import '../../../core/services/user_service.dart';
 import '../models/chat_model.dart';
 import '../models/chat_participant.dart';
 import '../models/chat_summary_model.dart';
@@ -114,6 +115,16 @@ class ChatService {
     required AppUserModel otherUser,
   }) async {
     try {
+      final canMessage = await UserService().canSendDirectMessageTo(
+        senderUid: currentUser.uid,
+        target: otherUser,
+      );
+      if (!canMessage) {
+        throw StateError(
+          'Follow this account to send a message.',
+        );
+      }
+
       final chatId = ChatHelpers.directChatId(currentUser.uid, otherUser.uid);
       final chatRef = _chatsCol().doc(chatId);
 
@@ -227,6 +238,11 @@ class ChatService {
     if (chatId.isEmpty || senderId.isEmpty) return;
     if (!participantIds.contains(senderId)) return;
 
+    await _assertCanSendDirectMessage(
+      senderId: senderId,
+      participantIds: participantIds,
+    );
+
     try {
       debugPrint(
         '[ChatService] sendTextMessage: chatId=$chatId senderId=$senderId type=text textLen=${trimmed.length} replyTo=${replyToMessageId ?? ''}',
@@ -277,6 +293,11 @@ class ChatService {
     }
     if (mediaUrl.isEmpty) return;
     if (type != ChatMessageTypes.gif && storagePath.isEmpty) return;
+
+    await _assertCanSendDirectMessage(
+      senderId: senderId,
+      participantIds: participantIds,
+    );
 
     try {
       debugPrint(
@@ -666,6 +687,11 @@ class ChatService {
       return;
     if (mediaUrl.isEmpty || storagePath.isEmpty) return;
 
+    await _assertCanSendDirectMessage(
+      senderId: senderId,
+      participantIds: participantIds,
+    );
+
     try {
       await _messagesCol(chatId).add({
         'senderId': senderId,
@@ -694,6 +720,27 @@ class ChatService {
         stackTrace: st,
       );
       rethrow;
+    }
+  }
+
+  Future<void> _assertCanSendDirectMessage({
+    required String senderId,
+    required List<String> participantIds,
+  }) async {
+    if (participantIds.length != 2) return;
+    final otherUid = participantIds.firstWhere(
+      (id) => id != senderId,
+      orElse: () => '',
+    );
+    if (otherUid.isEmpty) return;
+    final otherUser = await UserService().getUser(otherUid);
+    if (otherUser == null) return;
+    final allowed = await UserService().canSendDirectMessageTo(
+      senderUid: senderId,
+      target: otherUser,
+    );
+    if (!allowed) {
+      throw StateError('Follow this account to send a message.');
     }
   }
 
