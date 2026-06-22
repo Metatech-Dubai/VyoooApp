@@ -6,13 +6,11 @@ import android.view.View
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
-import com.arashivision.insta360.basemedia.ui.player.capture.IMediaFrameCallback
 import com.arashivision.sdkcamera.camera.InstaCameraManager
 import com.arashivision.sdkcamera.camera.callback.ICameraOperateCallback
 import com.arashivision.sdkcamera.camera.callback.ICaptureSupportConfigCallback
 import com.arashivision.sdkcamera.camera.callback.IPreviewStatusListener
-import com.arashivision.sdkmedia.params.RenderModel
-import com.arashivision.sdkmedia.player.capture.CaptureParamsBuilderV2
+import com.arashivision.sdkmedia.player.capture.CaptureParamsBuilder
 import com.arashivision.sdkmedia.player.capture.InstaCapturePlayerView
 import com.arashivision.sdkmedia.player.listener.PlayerViewListener
 import io.flutter.plugin.platform.PlatformView
@@ -20,8 +18,9 @@ import io.flutter.plugin.platform.PlatformView
 /**
  * PlatformView hosting the SDK's [InstaCapturePlayerView]. While mounted it:
  *  1. opens the camera preview stream,
- *  2. renders the stitched **equirectangular (ERP, 2:1)** panorama (PLANE_STITCH),
- *  3. on render-ready, attaches the camera pipeline and starts ARGB frame extraction → [Insta360FrameSink].
+ *  2. renders an **interactive panoramic sphere** the host can look around — touch-drag to pan,
+ *     pinch to zoom (handled natively by the player's gesture system),
+ *  3. on render-ready, attaches the camera pipeline so the player renders the live feed.
  *
  * Requires the camera to already be connected (via [Insta360Bridge.connect]). Unmounting stops
  * extraction and closes the preview stream.
@@ -38,11 +37,10 @@ class Insta360PreviewView(
     override val lifecycle: Lifecycle get() = lifecycleRegistry
 
     private val player = InstaCapturePlayerView(context)
-    private val extractWidth = (creationParams?.get("width") as? Int) ?: 1920
-    private val extractHeight = (creationParams?.get("height") as? Int) ?: 960
     private var disposed = false
 
     init {
+        active = this
         lifecycleRegistry.currentState = Lifecycle.State.RESUMED
         player.setLifecycle(lifecycleRegistry)
         player.setPlayerViewListener(this)
@@ -109,6 +107,7 @@ class Insta360PreviewView(
     override fun dispose() {
         if (disposed) return
         disposed = true
+        if (active === this) active = null
         try {
             player.destroy()
             val mgr = InstaCameraManager.getInstance()
@@ -137,13 +136,14 @@ class Insta360PreviewView(
         }
         player.post {
             if (disposed) return@post
-            // Match the SDK demo: size the capture params to the laid-out view so the stitched
-            // render targets the right dimensions (left at -1 the renderer may not produce output).
-            val params = buildCaptureParams().apply {
-                width = player.width
-                height = player.height
-            }
-            Log.i(TAG, "onOpened → prepare+play (view ${player.width}x${player.height})")
+            val w = player.width
+            val h = player.height
+            Log.i(TAG, "onOpened → prepare+play (live panorama, view ${w}x$h)")
+            // Match the render aspect to the actual (portrait) view so the sphere projection isn't
+            // stretched — without this the SDK renders for a default aspect and the surface squishes
+            // it vertically (objects look too short / extra cropping at the stitch seam).
+            val params = buildCaptureParams()
+            if (w > 0 && h > 0) params.setScreenRatio(w, h)
             player.prepare(params)
             player.play()
             player.keepScreenOn = true
@@ -158,41 +158,84 @@ class Insta360PreviewView(
 
     // ── PlayerViewListener ────────────────────────────────────────────────────
     override fun onFirstFrameRender() {
-        Log.i(TAG, "onFirstFrameRender (panorama is rendering on screen)")
+        if (disposed) return
+        Log.i(TAG, "onFirstFrameRender → switch to interactive sphere + enable touch gestures")
+        enableInteractiveView()
+    }
+
+    /**
+     * Switch the player to the interactive panoramic ("normal") projection. The native gesture
+     * system is left OFF — touch events don't reliably reach an embedded platform view, so the host
+     * drag is captured on the Flutter side and applied via [applyOrientation] ([setYaw]/[setPitch]).
+     */
+    private fun enableInteractiveView() {
+        try {
+            player.switchNormalMode()
+            player.isGestureEnabled = false
+        } catch (t: Throwable) {
+            Log.e(TAG, "enableInteractiveView failed", t)
+        }
+    }
+
+    /** Apply an absolute (yaw, pitch) in degrees to the live view, on the player's thread. */
+    private fun applyOrientationInternal(yaw: Float, pitch: Float) {
+        if (disposed) return
+        player.post {
+            if (disposed) return@post
+            try {
+                player.setYaw(yaw)
+                player.setPitch(pitch)
+            } catch (t: Throwable) {
+                Log.e(TAG, "applyOrientation failed", t)
+            }
+        }
     }
 
     override fun onLoadingFinish() {
         if (disposed) return
-        Log.i(TAG, "onLoadingFinish → setPipeline + startExtractMediaFrame ${extractWidth}x$extractHeight")
-        val mgr = InstaCameraManager.getInstance()
-        mgr.setPipeline(player.pipeline)
-        // Extract the stitched ERP result as MediaFrames and hand them to the sink/pipeline.
-        player.startExtractMediaFrame(
-            extractWidth,
-            extractHeight,
-            EXTRACT_FPS,
-            EXTRACT_QUEUE,
-            IMediaFrameCallback { mediaFrame ->
-                // The SDK delivers YUV420P. Hand it to the single processing path: YUV→RGB →
-                // FramePipeline (downscale → mask → temporal → AI) → display + encoder.
-                mediaFrame?.let { Insta360FrameSink.submit(it) }
-            },
-        )
+        Log.i(TAG, "onLoadingFinish → setPipeline (interactive render)")
+        // Connect the camera stream to the player so it renders the live interactive view.
+        InstaCameraManager.getInstance().setPipeline(player.pipeline)
+        // NOTE: media-frame extraction (startExtractMediaFrame → Insta360FrameSink, the transmit
+        // path) is intentionally NOT started here. The SDK's extract SequenceSource aborts when the
+        // player renders the interactive AUTO view (it only works with the flat PLANE_STITCH render).
+        // Extraction belongs to the streaming feature and needs its own offscreen path — out of
+        // scope for the interactive host preview.
     }
 
     override fun onReleaseCameraPipeline() {
         InstaCameraManager.getInstance().setPipeline(null)
     }
 
-    private fun buildCaptureParams(): CaptureParamsBuilderV2 =
-        CaptureParamsBuilderV2().apply {
-            renderModel = RenderModel.PLANE_STITCH
-            setScreenRatio(2, 1) // equirectangular aspect
-        }
+    /**
+     * The SDK's live-preview params (v1 builder). The interactive panoramic render needs the camera's
+     * lens calibration (`mediaOffset*`) and the live flag — the flat `PLANE_STITCH` (V2) path didn't,
+     * which is why it never crashed. Stabilization is off: it relies on gyro frame interpolation a
+     * live feed can't supply (the host drives the view by touch). Mirrors the SDK demo's setup.
+     */
+    private fun buildCaptureParams(): CaptureParamsBuilder {
+        val mgr = InstaCameraManager.getInstance()
+        return CaptureParamsBuilder()
+            .setCameraType(mgr.cameraType)
+            .setMediaOffset(mgr.mediaOffset)
+            .setMediaOffsetV2(mgr.mediaOffsetV2)
+            .setMediaOffsetV3(mgr.mediaOffsetV3)
+            .setCameraSelfie(mgr.isCameraSelfie)
+            .setGyroTimeStamp(mgr.gyroTimeStamp)
+            .setLive(true)
+            .setStabEnabled(false)
+            .setGestureEnabled(false)
+    }
 
-    private companion object {
-        const val TAG = "Insta360PreviewView"
-        const val EXTRACT_FPS = 60
-        const val EXTRACT_QUEUE = 32
+    companion object {
+        private const val TAG = "Insta360PreviewView"
+
+        /** The currently-mounted preview (only one exists at a time). */
+        @Volatile private var active: Insta360PreviewView? = null
+
+        /** Point the live interactive view at an absolute (yaw, pitch) in degrees. No-op if none. */
+        fun applyOrientation(yaw: Float, pitch: Float) {
+            active?.applyOrientationInternal(yaw, pitch)
+        }
     }
 }

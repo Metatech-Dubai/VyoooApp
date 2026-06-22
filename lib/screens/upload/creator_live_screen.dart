@@ -18,7 +18,6 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../features/story/story_upload_screen.dart';
 import '../../widgets/insta360_preview_view.dart';
-import '../../widgets/insta360_processed_view.dart';
 import 'upload_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
 
@@ -70,6 +69,20 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   bool _maskEnabled = true;
   StreamSubscription<Insta360Frame>? _instaFrameSub;
   Timer? _instaConnectTimer;
+
+  // Interactive 360 view orientation (degrees), driven by host drag on the preview.
+  double _viewYaw = 0;
+  double _viewPitch = 0;
+  static const double _kDragDegPerPx = 0.2;
+
+  // Horizontal jog slider (spring-return): displacement from centre rotates yaw continuously in
+  // sub-degree steps; release recentres the thumb and the view holds its angle.
+  double _jogYaw = 0.0;
+  bool _jogActive = false;
+  Timer? _jogTimer;
+  // Constant rotation rate while the slider is held off-centre — the slider sets DIRECTION only,
+  // not speed, so it stays slow regardless of how far it's pushed. ~1°/sec at a 40ms tick.
+  static const double _kJogStepDeg = 0.04;
 
   // ── Toast ─────────────────────────────────────────────────────────────────────
   String? _toast;
@@ -136,6 +149,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _chatCtrl.dispose();
     _chatScrollCtrl.dispose();
     _instaConnectTimer?.cancel();
+    _jogTimer?.cancel();
     _instaFrameSub?.cancel();
     _insta.state.removeListener(_onInstaState);
     if (_cameraSource == _CameraSource.insta360) {
@@ -490,6 +504,40 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     if (mounted) setState(() => _cameraSource = _CameraSource.phone);
   }
 
+  /// Host drag on the 360 preview → look around. Accumulates yaw/pitch and pushes the absolute
+  /// orientation to the SDK player. (Vertical works; horizontal is reliably done via the slider,
+  /// since the OS steals horizontal touch swipes — see [_onJogStart].)
+  void _onPreviewDrag(Offset delta) {
+    _viewYaw += delta.dx * _kDragDegPerPx;
+    _viewPitch = (_viewPitch - delta.dy * _kDragDegPerPx).clamp(-89.0, 89.0);
+    _insta.setViewOrientation(_viewYaw, _viewPitch);
+  }
+
+  /// Finger down on the jog slider: start the ticker that rotates yaw while held off-centre.
+  void _onJogStart() {
+    _jogActive = true;
+    _jogTimer ??= Timer.periodic(const Duration(milliseconds: 40), (_) {
+      // Small dead zone near centre; beyond it rotate at a CONSTANT slow rate (direction only).
+      // Negative so the view follows the slider direction (slide right → view pans right).
+      if (!_jogActive || _jogYaw.abs() < 0.08) return;
+      _viewYaw -= _jogYaw.sign * _kJogStepDeg;
+      _insta.setViewOrientation(_viewYaw, _viewPitch);
+    });
+  }
+
+  /// Jog slider moved: just record the deflection (the ticker reads it).
+  void _onJogChanged(double v) {
+    setState(() => _jogYaw = v);
+  }
+
+  /// Finger off the jog slider: stop rotating and spring the thumb back to centre (view holds).
+  void _onJogEnd() {
+    _jogActive = false;
+    _jogTimer?.cancel();
+    _jogTimer = null;
+    setState(() => _jogYaw = 0.0);
+  }
+
   /// Toggle forward-only masking on the live 360 feed (masked ↔ full 360°).
   Future<void> _toggleMask() async {
     setState(() => _maskEnabled = !_maskEnabled);
@@ -648,9 +696,78 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           _buildBackground(),
           _buildGradientOverlay(),
           _buildStateContent(),
+          if (_cameraSource == _CameraSource.insta360 && _insta.state.value.connected)
+            _build360LookControls(),
           if (_toast != null) _buildToast(_toast!),
         ],
       ),
+    );
+  }
+
+  /// Top-layer look-around controls for the 360 view. Must sit above [_buildStateContent] —
+  /// widgets placed in the background layer receive no touch events on this screen.
+  Widget _build360LookControls() {
+    return Stack(
+      children: [
+        // Drag-to-look: a central catcher in this TOP layer (background-layer gestures get no
+        // touches here). Inset to leave the right-column controls and bottom bar tappable.
+        Positioned(
+          top: 220,
+          left: 0,
+          right: 150,
+          bottom: 560,
+          // Listener (raw pointer events), not GestureDetector: an ancestor horizontal-drag
+          // recognizer wins the gesture arena and eats horizontal pans, but raw pointer events
+          // still flow to every Listener in the hit path — so this captures drags in both axes.
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerMove: (e) => _onPreviewDrag(e.delta),
+          ),
+        ),
+        // Horizontal rotation jog slider — sits above the Start Live button. Hold the thumb
+        // left/right to rotate the 360 view at a constant slow rate; release and it springs back
+        // to centre while the view keeps its angle.
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: 170,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(26),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.chevron_left, color: Colors.white70, size: 22),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3,
+                      activeTrackColor: Colors.white,
+                      inactiveTrackColor: Colors.white24,
+                      thumbColor: Colors.white,
+                      overlayShape:
+                          const RoundSliderOverlayShape(overlayRadius: 16),
+                      thumbShape:
+                          const RoundSliderThumbShape(enabledThumbRadius: 10),
+                    ),
+                    child: Slider(
+                      value: _jogYaw,
+                      min: -1.0,
+                      max: 1.0,
+                      onChangeStart: (_) => _onJogStart(),
+                      onChanged: _onJogChanged,
+                      onChangeEnd: (_) => _onJogEnd(),
+                    ),
+                  ),
+                ),
+                const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -689,21 +806,15 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     if (_isVideoOff && _liveState == _LiveState.live) {
       return Container(color: const Color(0xFF0A000F));
     }
-    // 360° source: host previews the SDK's stitched ERP view directly (remote viewers
-    // receive the frames pushed via [_pushInstaFrame]). The preview is mounted only once the
-    // camera is actually connected — mounting it earlier would start the preview stream before
-    // the camera session exists.
+    // 360° source: the host previews the SDK's interactive sphere directly — touch-drag to look
+    // around, pinch to zoom. Remote viewers receive the extracted ERP frames pushed via
+    // [_pushInstaFrame]. The preview is mounted only once the camera is actually connected —
+    // mounting it earlier would start the preview stream before the camera session exists.
     if (_cameraSource == _CameraSource.insta360) {
       if (_insta.state.value.connected) {
-        // Frame source (SDK ERP preview) runs behind; the host sees the pipeline's processed
-        // output (downscaled + forward-masked) on top via a Flutter texture.
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            const Insta360PreviewView(extractWidth: 1920, extractHeight: 960),
-            Insta360ProcessedView(service: _insta),
-          ],
-        );
+        // Just the render here; the look-around controls live in the TOP layer (see
+        // _build360LookControls) because anything in this background layer receives no touches.
+        return const Insta360PreviewView(extractWidth: 1920, extractHeight: 960);
       }
       return const ColoredBox(
         color: Color(0xFF0A000F),
