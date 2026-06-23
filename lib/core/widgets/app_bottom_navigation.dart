@@ -32,15 +32,15 @@ class AppBottomNavigation extends StatelessWidget {
   final int unreadNotificationCount;
   final int unreadChatCount;
 
-  static const double _iconSize = 10.625;
+  static const double _iconSize = 21.25;
   static double get _profileIconSize => _iconSize * 1.35;
   static const Color _iconColor = ProfileFigmaTokens.primaryText;
   static const Color _selectedPillFill = ProfileFigmaTokens.cardBackground;
   static const Color _barFill = ProfileFigmaTokens.screenBackground;
   static const Color _splashColor = Color(0x33750047);
 
-  static const double _tapTargetSize = 22;
-  static const double _selectedPillSize = 22;
+  static const double _tapTargetSize = 44;
+  static const double _selectedPillSize = 44;
 
   Widget _buildProfileIcon(bool isSelected) {
     final hasProfileImage =
@@ -141,14 +141,14 @@ class AppBottomNavigation extends StatelessWidget {
         ),
         if (showBadge)
           Positioned(
-            right: -5,
-            top: -3,
+            right: -10,
+            top: -6,
             child: Container(
-              constraints: const BoxConstraints(minWidth: 9, minHeight: 9),
-              padding: const EdgeInsets.symmetric(horizontal: 2.5, vertical: 1),
+              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
+              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
                 color: const Color(0xFFFF2D55),
-                borderRadius: BorderRadius.circular(5),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(color: _barFill, width: 1),
               ),
               alignment: Alignment.center,
@@ -157,7 +157,7 @@ class AppBottomNavigation extends StatelessWidget {
                 style: const TextStyle(
                   fontFamily: AppFonts.body,
                   color: Colors.white,
-                  fontSize: 8,
+                  fontSize: 10,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -168,13 +168,13 @@ class AppBottomNavigation extends StatelessWidget {
   }
 
   /// Nav icons + artwork height (excludes Android/iOS system nav inset).
-  static const double barHeight = 30;
+  static const double barHeight = 60;
 
   /// Horizontal margin for the floating pill bar.
   static const double _horizontalMargin = 20;
 
   /// Bottom margin above the system gesture area.
-  static const double _bottomMargin = 4;
+  static const double _bottomMargin = 8;
 
   /// Total bottom chrome: margins + [barHeight] + system navigation inset.
   static double totalHeightFor(BuildContext context) {
@@ -195,7 +195,7 @@ class AppBottomNavigation extends StatelessWidget {
       child: DecoratedBox(
         decoration: BoxDecoration(
           color: _barFill,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.08),
