@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/reel_count_privacy.dart';
 import '../../theme/app_spacing.dart';
+import '../../../screens/profile/profile_figma_tokens.dart';
 import 'profile_grid_metric_overlay.dart';
 import 'profile_grid_title_overlay.dart';
 
@@ -47,7 +48,7 @@ class ProfileGridTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ColoredBox(color: Colors.grey.shade900),
+          ColoredBox(color: ProfileFigmaTokens.cardBackground),
           if (thumbnailUrl.isNotEmpty)
             Image.network(
               thumbnailUrl,

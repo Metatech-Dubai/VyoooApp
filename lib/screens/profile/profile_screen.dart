@@ -29,6 +29,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/utils/verification_badge.dart';
 import '../../core/wrappers/auth_wrapper.dart';
+import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/story/highlight_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
@@ -53,7 +54,7 @@ import '../settings/wallet/wallet_coming_soon_view.dart';
 import '../../core/widgets/profile/profile_menu_bottom_sheet.dart';
 import '../../features/vr/vr_screen.dart';
 
-/// Own profile tab: header, stats, Edit Profile/Share, Posts/VR/Streams, empty or Become Member.
+/// Own profile tab: header, stats, Edit Profile/Share, Posts/VR/Clips/Tags, empty or Become Member.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -66,8 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   bool get wantKeepAlive => true;
 
-  static const List<String> _tabs = ['Posts', 'VR', 'Streams'];
-  static const int _savedTabIndex = 3;
+  static const List<String> _tabs = ['Posts', 'VR', 'Clips', 'Tags'];
+  static const int _savedTabIndex = 4;
   static const Map<String, String> _accountTypeLabels = <String, String>{
     'personal': 'Personal',
     'business': 'Business',
@@ -80,6 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     'restricted': 'Restricted',
   };
   int _selectedTabIndex = 0;
+  bool _highlightsExpanded = false;
   final LiveStreamService _liveStreamService = LiveStreamService();
   String? _highlightsStreamUid;
   Stream<List<StoryHighlightModel>>? _highlightsStream;
@@ -379,6 +381,32 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
+  void _openWalletFromRail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(
+          backgroundColor: Colors.black,
+          body: WalletComingSoonView(),
+        ),
+      ),
+    );
+  }
+
+  void _openRevenueFromRail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(
+          backgroundColor: Colors.black,
+          body: RevenueComingSoonView(),
+        ),
+      ),
+    );
+  }
+
+  void _openChatFromRail() {
+    MainNavWrapper.tabNotifier.value = 3;
+  }
+
   void _showProfileMenu(BuildContext context) {
     showProfileMenuBottomSheet(
       context,
@@ -442,7 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     final canUploadContent = subscriptionController.canUploadContent;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       body: Stack(
         children: [
           const Positioned.fill(child: ProfileScreenBackground()),
@@ -458,7 +486,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         return const Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white70,
+                              ProfileFigmaTokens.accentMagenta,
                             ),
                           ),
                         );
@@ -530,50 +558,25 @@ class _ProfileScreenState extends State<ProfileScreen>
       vipVerified: user?.vipVerified ?? false,
     );
     final bio = (user?.bio ?? '').trim();
-    final handle = ProfileFigmaTokens.displayUsername(username);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Expanded(
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              handle,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize:
-                                    ProfileFigmaTokens.headerUsernameFontSize,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => _showProfileMenu(context),
-                            icon: const Icon(
-                              Icons.menu_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            padding: EdgeInsets.zero,
-                            alignment: Alignment.centerRight,
-                          ),
-                        ],
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: AppSpacing.md,
                       ),
-                      const SizedBox(height: 12),
-                      StreamBuilder<List<StoryModel>>(
+                      child: Column(
+                        children: [
+                          const SizedBox(height: AppSpacing.md),
+                          StreamBuilder<List<StoryModel>>(
                         stream: profileUid.isEmpty
                             ? null
                             : _activeStoriesStreamFor(profileUid),
@@ -607,7 +610,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                             label: 'Posts',
                             value: _formatStatCount(postCount),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.statChipGap,
+                          ),
                           ProfileFigmaStatChip(
                             label: 'Followers',
                             value: _formatStatCount(followerCount),
@@ -623,7 +628,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               );
                             },
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.statChipGap,
+                          ),
                           ProfileFigmaStatChip(
                             label: 'Following',
                             value: _formatStatCount(followingCount),
@@ -654,6 +661,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.max,
                         children: [
                           ProfileFigmaActionButton(
                             label: 'Edit Profile',
@@ -677,14 +685,27 @@ class _ProfileScreenState extends State<ProfileScreen>
                           const SizedBox(
                             width: ProfileFigmaTokens.actionButtonGap,
                           ),
-                          ProfileFigmaActionButton(
-                            label: 'Share',
+                          ProfileFigmaIconActionButton(
                             iconAssetPath:
                                 'assets/vyooO_icons/Profile/share.png',
                             onPressed: () => _shareProfile(
                               uid: profileUid,
                               username: user?.username,
                             ),
+                          ),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.actionButtonGap,
+                          ),
+                          ProfileFigmaIconActionButton(
+                            icon: Icons.add_rounded,
+                            onPressed: profileUid.isEmpty
+                                ? () {}
+                                : () => _openMyStoryComposerOrViewer(
+                                      context,
+                                      userId: profileUid,
+                                      username: username,
+                                      avatarUrl: avatarUrl ?? '',
+                                    ),
                           ),
                         ],
                       ),
@@ -693,166 +714,220 @@ class _ProfileScreenState extends State<ProfileScreen>
                   ),
                 ),
               ),
-              DecoratedSliver(
-                decoration: const BoxDecoration(
-                  color: ProfileFigmaTokens.contentSurface,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(ProfileFigmaTokens.contentTopRadius),
-                  ),
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: ProfileFigmaTokens.contentSideMargin,
                 ),
-                sliver: SliverMainAxisGroup(
-                  slivers: [
-                    SliverToBoxAdapter(
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.md,
-                          24,
-                          AppSpacing.md,
-                          0,
-                        ),
-                        child: ProfileFigmaTabBar(
-                          tabs: _tabs,
-                          selectedIndex: _selectedTabIndex,
-                          onTabSelected: (i) =>
-                              setState(() => _selectedTabIndex = i),
-                          savedTabIndex: _savedTabIndex,
-                          onSavedTap: () => setState(
-                            () => _selectedTabIndex = _savedTabIndex,
+                sliver: DecoratedSliver(
+                  decoration: const BoxDecoration(
+                    color: ProfileFigmaTokens.contentSurface,
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(
+                        ProfileFigmaTokens.contentTopRadius,
+                      ),
+                    ),
+                  ),
+                  sliver: SliverMainAxisGroup(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            AppSpacing.md,
+                            24,
+                            AppSpacing.md,
+                            0,
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ProfileFigmaTabBar(
+                                tabs: _tabs,
+                                selectedIndex: _selectedTabIndex,
+                                onTabSelected: (i) =>
+                                    setState(() => _selectedTabIndex = i),
+                                savedTabIndex: _savedTabIndex,
+                                onSavedTap: () => setState(
+                                  () => _selectedTabIndex = _savedTabIndex,
+                                ),
+                                onBookmarkTap: () => setState(
+                                  () => _selectedTabIndex = _savedTabIndex,
+                                ),
+                              ),
+                              if (profileUid.isNotEmpty) ...[
+                                if (!_highlightsExpanded) ...[
+                                  const SizedBox(
+                                    height: ProfileFigmaTokens
+                                        .highlightsToggleTopGap,
+                                  ),
+                                  ProfileTabUnderFirstTab(
+                                    tabCount: _tabs.length,
+                                    showBookmarkAccessory: true,
+                                    showStarAccessory: true,
+                                    child: ProfileHighlightsToggleHandle(
+                                      expanded: false,
+                                      onTap: () => setState(
+                                        () => _highlightsExpanded = true,
+                                      ),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const SizedBox(
+                                    height: ProfileFigmaTokens
+                                        .highlightsSectionTopGap,
+                                  ),
+                                  AnimatedSize(
+                                    duration:
+                                        const Duration(milliseconds: 240),
+                                    curve: Curves.easeInOut,
+                                    alignment: Alignment.topCenter,
+                                    child: _buildHighlightsSection(
+                                      context,
+                                      profileUid,
+                                      user,
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: ProfileFigmaTokens
+                                        .highlightsToggleTopGap,
+                                  ),
+                                  ProfileTabUnderFirstTab(
+                                    tabCount: _tabs.length,
+                                    showBookmarkAccessory: true,
+                                    showStarAccessory: true,
+                                    child: ProfileHighlightsToggleHandle(
+                                      expanded: true,
+                                      onTap: () => setState(
+                                        () => _highlightsExpanded = false,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ] else
+                                const SizedBox(height: 8),
+                            ],
                           ),
                         ),
                       ),
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                    ..._buildProfileContentSlivers(
-                      context,
-                      canUploadContent,
-                      uid: profileUid,
-                    ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                  ],
+                      if (profileUid.isEmpty)
+                        const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                      ..._buildProfileContentSlivers(
+                        context,
+                        canUploadContent,
+                        uid: profileUid,
+                      ),
+                      const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                    ],
+                  ),
                 ),
               ),
             ],
           ),
         ),
-        _buildHighlightsAboveNavBar(context, profileUid, user),
+          ],
+        ),
+        Positioned(
+          left: 0,
+          top: ProfileFigmaTokens.profileSideRailTop,
+          child: ProfileSideDrawer(
+            onMenuTap: () => _showProfileMenu(context),
+            onWalletTap: () => _openWalletFromRail(context),
+            onChatTap: _openChatFromRail,
+            onRevenueTap: () => _openRevenueFromRail(context),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildHighlightsAboveNavBar(
+  Widget _buildHighlightsSection(
     BuildContext context,
     String profileUid,
     AppUserModel? user,
   ) {
     if (profileUid.isEmpty) return const SizedBox.shrink();
-    return Material(
-      color: ProfileFigmaTokens.contentSurface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          10,
-          AppSpacing.md,
-          10,
-        ),
-        child: StreamBuilder<List<StoryHighlightModel>>(
-            stream: _highlightsStreamFor(profileUid),
-            builder: (context, snap) {
-              if (snap.hasError) {
-                debugPrint('Profile highlights stream: ${snap.error}');
-              }
-              final highlights = snap.data ?? const <StoryHighlightModel>[];
-              final loading =
-                  snap.connectionState == ConnectionState.waiting &&
-                  !snap.hasData;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Highlights',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (loading) ...[
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (snap.hasError)
-                    Text(
-                      'Could not load highlights. Pull to refresh or try again.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    )
-                  else if (highlights.isEmpty)
-                    GestureDetector(
+
+    return StreamBuilder<List<StoryHighlightModel>>(
+      stream: _highlightsStreamFor(profileUid),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          debugPrint('Profile highlights stream: ${snap.error}');
+        }
+        final highlights = snap.data ?? const <StoryHighlightModel>[];
+        final loading =
+            snap.connectionState == ConnectionState.waiting &&
+            !snap.hasData;
+
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: Text(
+              'Could not load highlights. Pull to refresh or try again.',
+              style: TextStyle(
+                fontFamily: 'DM Sans',
+                color: ProfileFigmaTokens.secondaryText,
+                fontSize: 12,
+                height: 1.3,
+              ),
+            ),
+          );
+        }
+
+        return SizedBox(
+          height: ProfileFigmaTokens.highlightRowHeight,
+          child: Stack(
+            alignment: Alignment.centerLeft,
+            children: [
+              ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: highlights.length + 1,
+                separatorBuilder: (_, _) => const SizedBox(
+                  width: ProfileFigmaTokens.highlightTileGap,
+                ),
+                itemBuilder: (_, i) {
+                  if (i == 0) {
+                    return ProfileHighlightAddChip(
                       onTap: () => _openMyStoryComposerOrViewer(
                         context,
                         userId: profileUid,
                         username: user?.username ?? 'you',
                         avatarUrl: user?.profileImage ?? '',
                       ),
-                      child: Text(
-                        'Open your story, tap ···, then "Add to highlight" to save one here.',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 12,
-                          height: 1.35,
-                          decoration: TextDecoration.underline,
-                          decorationColor:
-                              Colors.white.withValues(alpha: 0.35),
-                        ),
-                      ),
-                    )
-                  else
-                    SizedBox(
-                      height: 48,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: highlights.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          final h = highlights[i];
-                          return ProfileHighlightAlbumTile(
+                    );
+                  }
+                  final h = highlights[i - 1];
+                  return ProfileHighlightAlbumTile(
+                    title: h.title,
+                    coverMediaUrl: h.coverMediaUrl,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => HighlightViewerScreen(
+                            userId: profileUid,
+                            highlightId: h.id,
                             title: h.title,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => HighlightViewerScreen(
-                                    userId: profileUid,
-                                    highlightId: h.id,
-                                    title: h.title,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
-                      ),
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
+              if (loading)
+                const Positioned(
+                  right: 0,
+                  child: SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: ProfileFigmaTokens.accentMagenta,
                     ),
-                ],
-              );
-            },
+                  ),
+                ),
+            ],
           ),
-        ),
+        );
+      },
     );
   }
 
@@ -871,7 +946,9 @@ class _ProfileScreenState extends State<ProfileScreen>
       case 1:
         return _buildVRGridSlivers();
       case 2:
-        return _buildStreamsListSlivers();
+        return _buildClipsListSlivers();
+      case 3:
+        return _buildTagsGridSlivers(uid: uid);
       default:
         return [
           SliverToBoxAdapter(
@@ -920,7 +997,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 height: 200,
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      ProfileFigmaTokens.accentMagenta,
+                    ),
                   ),
                 ),
               );
@@ -936,7 +1015,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       messageForFirestore(snapshot.error),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                        fontFamily: 'DM Sans',
+                        color: ProfileFigmaTokens.secondaryText,
                         fontSize: 14,
                         height: 1.35,
                       ),
@@ -1113,7 +1193,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(
-                  child: CircularProgressIndicator(color: Colors.white54),
+                  child: CircularProgressIndicator(
+                    color: ProfileFigmaTokens.accentMagenta,
+                  ),
                 ),
               );
             }
@@ -1127,8 +1209,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Center(
                   child: Text(
                     'No VR posts yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                    style: const TextStyle(
+                      fontFamily: 'DM Sans',
+                      color: ProfileFigmaTokens.secondaryText,
                     ),
                   ),
                 ),
@@ -1152,7 +1235,78 @@ class _ProfileScreenState extends State<ProfileScreen>
     ];
   }
 
-  List<Widget> _buildStreamsListSlivers() {
+  List<Widget> _buildTagsGridSlivers({required String uid}) {
+    if (uid.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildEmptyTagsPlaceholder(),
+          ),
+        ),
+      ];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: ProfilePostsLoader.loadPostsForUser(uid),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      ProfileFigmaTokens.accentMagenta,
+                    ),
+                  ),
+                ),
+              );
+            }
+            final tagged = (snapshot.data ?? const [])
+                .where((post) {
+                  final tags = post['tags'];
+                  return tags is List && tags.isNotEmpty;
+                })
+                .toList(growable: false);
+            if (tagged.isEmpty) {
+              return SizedBox(
+                height: 280,
+                child: _buildEmptyTagsPlaceholder(),
+              );
+            }
+            return ProfileModularGrid(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              items: profileGridItemsFromReels(
+                reels: tagged,
+                thumbnailFor: _thumbnailFromReel,
+              ),
+              onItemTap: (index) =>
+                  _openPostFeedFromReels(context, tagged, index),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildEmptyTagsPlaceholder() {
+    return Center(
+      child: Text(
+        'No tagged posts yet',
+        style: const TextStyle(
+          fontFamily: 'DM Sans',
+          color: ProfileFigmaTokens.secondaryText,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildClipsListSlivers() {
     final uid = AuthService().currentUser?.uid ?? '';
     return [
       SliverToBoxAdapter(
@@ -1163,7 +1317,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(
-                  child: CircularProgressIndicator(color: Colors.white54),
+                  child: CircularProgressIndicator(
+                    color: ProfileFigmaTokens.accentMagenta,
+                  ),
                 ),
               );
             }
@@ -1173,9 +1329,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    'No saved streams yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                    'No clips yet',
+                    style: const TextStyle(
+                      fontFamily: 'DM Sans',
+                      color: ProfileFigmaTokens.secondaryText,
                     ),
                   ),
                 ),
@@ -1231,13 +1388,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             Icon(
               Icons.add_photo_alternate_outlined,
               size: 40,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.6),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Tap the "+" button below to post!',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                fontFamily: 'DM Sans',
+                color: ProfileFigmaTokens.secondaryText,
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
@@ -1401,13 +1559,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           Icon(
             Icons.bookmark_border_rounded,
             size: 48,
-            color: Colors.white.withValues(alpha: 0.5),
+            color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.6),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             'No favorite posts yet',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
+              fontFamily: 'DM Sans',
+              color: ProfileFigmaTokens.secondaryText,
               fontSize: 16,
             ),
           ),

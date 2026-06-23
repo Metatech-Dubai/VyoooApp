@@ -29,6 +29,9 @@ abstract final class ProfileReelGridNavigation {
       'mediaItems': ReelMediaItem.sanitizedRawList(data['mediaItems']),
       'mediaCount': (data['mediaCount'] as num?)?.toInt() ?? 1,
       'caption': data['caption'] as String? ?? '',
+      'tags': data['tags'] is List
+          ? (data['tags'] as List).map((e) => e.toString()).toList()
+          : const <String>[],
       'likes': (data['likes'] as num?)?.toInt() ?? 0,
       'comments': (data['comments'] as num?)?.toInt() ?? 0,
       'shares': (data['shares'] as num?)?.toInt() ?? 0,

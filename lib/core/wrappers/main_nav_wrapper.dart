@@ -14,6 +14,7 @@ import '../../features/chat/screens/chat_inbox_screen.dart';
 import '../../features/chat/services/chat_service.dart';
 import '../../features/chat/services/chat_notification_service.dart';
 import '../../features/chat/services/presence_service.dart';
+import '../../screens/profile/profile_figma_tokens.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/profile/user_profile_screen.dart';
 
@@ -191,6 +192,8 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
     ];
 
     return Scaffold(
+      extendBody: true,
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       body: IndexedStack(index: _currentIndex, children: screens),
       bottomNavigationBar: StreamBuilder<int>(
         stream: NotificationService().watchUnreadCount(),

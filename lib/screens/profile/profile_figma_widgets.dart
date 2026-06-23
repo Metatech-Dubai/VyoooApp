@@ -1,14 +1,12 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/theme/app_gradients.dart';
+import '../../core/theme/app_fonts.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import 'profile_figma_tokens.dart';
 
-/// Circular profile photo with Figma 169×169 frame and magenta ring.
+/// Circular profile photo with optional story ring (#750047).
 class ProfileFigmaAvatar extends StatelessWidget {
   const ProfileFigmaAvatar({
     super.key,
@@ -34,19 +32,20 @@ class ProfileFigmaAvatar extends StatelessWidget {
     final outer = ProfileFigmaTokens.avatarOuterSize;
     final pad = ProfileFigmaTokens.avatarRingPadding;
     final ring = ProfileFigmaTokens.avatarRingWidth;
-    final inner = outer - 2 * (pad + ring);
-    final innerRadius = inner / 2;
+    // With story: photo sits inside ring + white gap. Without: photo fills frame.
+    final photoDiameter = hasStory ? outer - 2 * (pad + ring) : outer;
+    final photoRadius = photoDiameter / 2;
 
     final avatar = CircleAvatar(
-      radius: innerRadius,
-      backgroundColor: Colors.white.withValues(alpha: 0.1),
+      radius: photoRadius,
+      backgroundColor: ProfileFigmaTokens.cardBackground,
       backgroundImage:
           isValidNetworkUrl(imageUrl) ? NetworkImage(imageUrl!) : null,
       child: !isValidNetworkUrl(imageUrl)
           ? Icon(
               Icons.person_rounded,
-              size: innerRadius,
-              color: Colors.white.withValues(alpha: 0.4),
+              size: photoRadius,
+              color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.5),
             )
           : null,
     );
@@ -59,14 +58,14 @@ class ProfileFigmaAvatar extends StatelessWidget {
         child: Container(
           decoration: const BoxDecoration(
             shape: BoxShape.circle,
-            gradient: AppGradients.storyRingGradient,
+            color: ProfileFigmaTokens.accentMagenta,
           ),
           padding: EdgeInsets.all(ring),
           child: Container(
             padding: EdgeInsets.all(pad),
             decoration: const BoxDecoration(
               shape: BoxShape.circle,
-              color: Color(0xFF1A0B1E),
+              color: ProfileFigmaTokens.screenBackground,
             ),
             child: avatar,
           ),
@@ -76,7 +75,7 @@ class ProfileFigmaAvatar extends StatelessWidget {
       child = SizedBox(
         width: outer,
         height: outer,
-        child: avatar,
+        child: Center(child: avatar),
       );
     }
 
@@ -109,46 +108,38 @@ class ProfileFigmaStatChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: radius,
-        child: ClipRRect(
-          borderRadius: radius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: ProfileFigmaTokens.statChipWidth,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: radius,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  width: ProfileFigmaTokens.statChipBorderWidth,
+        child: Container(
+          width: ProfileFigmaTokens.statChipWidth,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          decoration: BoxDecoration(
+            color: ProfileFigmaTokens.cardBackground,
+            borderRadius: radius,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontFamily: AppFonts.body,
+                  color: ProfileFigmaTokens.primaryText,
+                  fontSize: ProfileFigmaTokens.statValueFontSize,
+                  fontWeight: FontWeight.w600,
+                  height: 1.0,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: ProfileFigmaTokens.statValueFontSize,
-                      fontWeight: FontWeight.w600,
-                      height: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: ProfileFigmaTokens.statLabelFontSize,
-                      fontWeight: FontWeight.w400,
-                      height: 1.0,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: AppFonts.body,
+                  color: ProfileFigmaTokens.primaryText,
+                  fontSize: ProfileFigmaTokens.statLabelFontSize,
+                  fontWeight: FontWeight.w400,
+                  height: 1.0,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),
@@ -156,20 +147,16 @@ class ProfileFigmaStatChip extends StatelessWidget {
   }
 }
 
-/// Figma Edit Profile / Share — 154×45, radius 52, fill #1C1C1F, 15% white stroke.
+/// Edit Profile — near-black pill, white label.
 class ProfileFigmaActionButton extends StatelessWidget {
   const ProfileFigmaActionButton({
     super.key,
     required this.label,
     required this.onPressed,
-    this.icon,
-    this.iconAssetPath,
   });
 
   final String label;
   final VoidCallback onPressed;
-  final IconData? icon;
-  final String? iconAssetPath;
 
   @override
   Widget build(BuildContext context) {
@@ -181,50 +168,76 @@ class ProfileFigmaActionButton extends StatelessWidget {
         onTap: onPressed,
         borderRadius: radius,
         child: Ink(
-          width: ProfileFigmaTokens.actionButtonWidth,
           height: ProfileFigmaTokens.actionButtonHeight,
           decoration: BoxDecoration(
             color: ProfileFigmaTokens.actionButtonFill,
             borderRadius: radius,
-            border: Border.all(
-              color: ProfileFigmaTokens.actionButtonStroke,
-              width: 1,
-            ),
           ),
           padding: const EdgeInsets.symmetric(
             horizontal: ProfileFigmaTokens.actionButtonPaddingH,
             vertical: ProfileFigmaTokens.actionButtonPaddingV,
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Flexible(
-                child: Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    height: 1.2,
-                  ),
-                ),
+          child: Center(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontFamily: AppFonts.body,
+                color: ProfileFigmaTokens.screenBackground,
+                fontSize: ProfileFigmaTokens.actionButtonFontSize,
+                fontWeight: ProfileFigmaTokens.actionButtonFontWeight,
+                height: 1.0,
               ),
-              if (icon != null || iconAssetPath != null) ...[
-                const SizedBox(width: ProfileFigmaTokens.actionIconGap),
-                if (iconAssetPath != null)
-                  Image.asset(
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Circular secondary action (Share, etc.) — #F2F2F2 fill.
+class ProfileFigmaIconActionButton extends StatelessWidget {
+  const ProfileFigmaIconActionButton({
+    super.key,
+    required this.onPressed,
+    this.icon,
+    this.iconAssetPath,
+  });
+
+  final VoidCallback onPressed;
+  final IconData? icon;
+  final String? iconAssetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final size = ProfileFigmaTokens.actionIconButtonSize;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: size,
+          height: size,
+          decoration: const BoxDecoration(
+            color: ProfileFigmaTokens.secondaryActionFill,
+            shape: BoxShape.circle,
+          ),
+          child: Center(
+            child: iconAssetPath != null
+                ? Image.asset(
                     iconAssetPath!,
-                    width: 16,
-                    height: 16,
-                    color: Colors.white,
+                    width: 18,
+                    height: 18,
+                    color: ProfileFigmaTokens.primaryText,
                   )
-                else
-                  Icon(icon, size: 16, color: Colors.white),
-              ],
-            ],
+                : Icon(
+                    icon ?? Icons.add_rounded,
+                    size: 22,
+                    color: ProfileFigmaTokens.primaryText,
+                  ),
           ),
         ),
       ),
@@ -240,6 +253,7 @@ class ProfileFigmaTabBar extends StatelessWidget {
     required this.onTabSelected,
     this.savedTabIndex,
     this.onSavedTap,
+    this.onBookmarkTap,
     this.compact = false,
   });
 
@@ -248,113 +262,313 @@ class ProfileFigmaTabBar extends StatelessWidget {
   final ValueChanged<int> onTabSelected;
   final int? savedTabIndex;
   final VoidCallback? onSavedTap;
+  final VoidCallback? onBookmarkTap;
   final bool compact;
+
+  Widget _accessoryButton({
+    required double size,
+    required double iconSize,
+    required VoidCallback onTap,
+    required Widget icon,
+  }) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: Ink(
+          width: size,
+          height: size,
+          decoration: BoxDecoration(
+            color: ProfileFigmaTokens.screenBackground,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: ProfileFigmaTokens.tabAccessoryBorder,
+              width: 1,
+            ),
+          ),
+          child: Center(child: icon),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     final outerPad =
         compact ? 2.0 : ProfileFigmaTokens.tabBarOuterPadding;
-    final tabVPad = compact ? 6.0 : ProfileFigmaTokens.tabVerticalPadding;
-    final tabFont = compact ? 12.0 : ProfileFigmaTokens.tabFontSize;
-    final starPad = compact ? 8.0 : 10.0;
-    final starIcon = compact ? 18.0 : 20.0;
+    final barHeight =
+        compact ? 32.0 : ProfileFigmaTokens.tabBarHeight;
+    final tabFont = compact ? 11.0 : ProfileFigmaTokens.tabFontSize;
+    final accessorySize =
+        compact ? 32.0 : ProfileFigmaTokens.tabAccessorySize;
+    final accessoryIcon =
+        compact ? 16.0 : ProfileFigmaTokens.tabAccessoryIconSize;
     final savedIndex = savedTabIndex;
+    final isSavedSelected =
+        savedIndex != null && selectedIndex == savedIndex;
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Expanded(
           child: Container(
+            height: barHeight,
             padding: EdgeInsets.all(outerPad),
             decoration: BoxDecoration(
               color: ProfileFigmaTokens.tabTrack,
-              borderRadius: BorderRadius.circular(AppRadius.card),
+              borderRadius: BorderRadius.circular(AppRadius.pill),
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: List.generate(tabs.length, (index) {
-                final isSelected = index == selectedIndex;
+                final isSelected =
+                    index == selectedIndex && !isSavedSelected;
                 return Expanded(
-                  child: Row(
-                    children: [
-                      if (index > 0 &&
-                          !isSelected &&
-                          selectedIndex != index - 1)
-                        Container(
-                          width: 1,
-                          height: 16,
-                          color: Colors.white.withValues(alpha: 0.1),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () => onTabSelected(index),
+                      borderRadius: BorderRadius.circular(
+                        AppRadius.pill,
+                      ),
+                      splashColor: ProfileFigmaTokens.accentMagenta
+                          .withValues(alpha: 0.12),
+                      highlightColor: ProfileFigmaTokens.accentMagenta
+                          .withValues(alpha: 0.08),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        curve: Curves.easeOut,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? ProfileFigmaTokens.accentMagenta
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(
+                            AppRadius.pill,
+                          ),
                         ),
-                      Expanded(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () => onTabSelected(index),
-                            borderRadius:
-                                BorderRadius.circular(AppRadius.card),
-                            child: Container(
-                              padding:
-                                  EdgeInsets.symmetric(vertical: tabVPad),
-                              decoration: BoxDecoration(
-                                gradient: isSelected
-                                    ? AppGradients.profileTabActiveGradient
-                                    : null,
-                                color: isSelected ? null : Colors.transparent,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.card,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  tabs[index],
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white
-                                            .withValues(alpha: 0.6),
-                                    fontSize: tabFont,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          tabs[index],
+                          style: TextStyle(
+                            fontFamily: AppFonts.body,
+                            color: isSelected
+                                ? ProfileFigmaTokens.screenBackground
+                                : ProfileFigmaTokens.primaryText,
+                            fontSize: tabFont,
+                            fontWeight: isSelected
+                                ? FontWeight.w500
+                                : FontWeight.w400,
+                            height: 1.0,
                           ),
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 );
               }),
             ),
           ),
         ),
-        if (savedIndex != null && onSavedTap != null) ...[
-          const SizedBox(width: 8),
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onSavedTap,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-              child: Container(
-                padding: EdgeInsets.all(starPad),
-                decoration: BoxDecoration(
-                  color: ProfileFigmaTokens.tabTrack,
-                  borderRadius: BorderRadius.circular(AppRadius.card),
+        if (onBookmarkTap != null) ...[
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(
+            height: barHeight,
+            child: Center(
+              child: _accessoryButton(
+                size: accessorySize,
+                iconSize: accessoryIcon,
+                onTap: onBookmarkTap!,
+                icon: Icon(
+                  isSavedSelected
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  color: isSavedSelected
+                      ? ProfileFigmaTokens.accentMagenta
+                      : ProfileFigmaTokens.primaryText,
+                  size: accessoryIcon,
                 ),
-                child: Icon(
-                  selectedIndex == savedIndex
+              ),
+            ),
+          ),
+        ],
+        if (savedIndex != null && onSavedTap != null) ...[
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(
+            height: barHeight,
+            child: Center(
+              child: _accessoryButton(
+                size: accessorySize,
+                iconSize: accessoryIcon,
+                onTap: onSavedTap!,
+                icon: Icon(
+                  isSavedSelected
                       ? Icons.star_rounded
                       : Icons.star_border_rounded,
-                  color: selectedIndex == savedIndex
+                  color: isSavedSelected
                       ? ProfileFigmaTokens.accentMagenta
-                      : Colors.white.withValues(alpha: 0.8),
-                  size: starIcon,
+                      : ProfileFigmaTokens.primaryText,
+                  size: accessoryIcon,
                 ),
               ),
             ),
           ),
         ],
       ],
+    );
+  }
+}
+
+/// Aligns [child] under the first tab (Posts) matching [ProfileFigmaTabBar] layout.
+class ProfileTabUnderFirstTab extends StatelessWidget {
+  const ProfileTabUnderFirstTab({
+    super.key,
+    required this.tabCount,
+    required this.child,
+    this.showBookmarkAccessory = false,
+    this.showStarAccessory = false,
+    this.compact = false,
+  });
+
+  final int tabCount;
+  final Widget child;
+  final bool showBookmarkAccessory;
+  final bool showStarAccessory;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final accessorySize =
+        compact ? 32.0 : ProfileFigmaTokens.tabAccessorySize;
+    final outerPad =
+        compact ? 2.0 : ProfileFigmaTokens.tabBarOuterPadding;
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: outerPad),
+            child: Row(
+              children: [
+                Expanded(child: child),
+                ...List.generate(
+                  tabCount - 1,
+                  (_) => const Expanded(child: SizedBox.shrink()),
+                ),
+              ],
+            ),
+          ),
+        ),
+        if (showBookmarkAccessory) ...[
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: accessorySize),
+        ],
+        if (showStarAccessory) ...[
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: accessorySize),
+        ],
+      ],
+    );
+  }
+}
+
+/// Small magenta handle — expands/collapses the highlights row under Posts.
+class ProfileHighlightsToggleHandle extends StatelessWidget {
+  const ProfileHighlightsToggleHandle({
+    super.key,
+    required this.expanded,
+    required this.onTap,
+  });
+
+  final bool expanded;
+  final VoidCallback onTap;
+
+  static final BorderRadius _radius = BorderRadius.vertical(
+    top: Radius.circular(ProfileFigmaTokens.highlightsToggleTopRadius),
+  );
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: _radius,
+        child: Ink(
+          height: ProfileFigmaTokens.highlightsToggleHeight,
+          decoration: BoxDecoration(
+            color: ProfileFigmaTokens.accentMagenta,
+            borderRadius: _radius,
+          ),
+          child: Center(
+            child: Icon(
+              expanded
+                  ? Icons.keyboard_arrow_up_rounded
+                  : Icons.keyboard_arrow_down_rounded,
+              color: ProfileFigmaTokens.screenBackground,
+              size: 18,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Magenta "+" tile with "Highlights" label underneath.
+class ProfileHighlightAddChip extends StatelessWidget {
+  const ProfileHighlightAddChip({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: ProfileFigmaTokens.highlightTileWidth,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(
+                ProfileFigmaTokens.highlightTileRadius,
+              ),
+              child: Ink(
+                width: ProfileFigmaTokens.highlightTileWidth,
+                height: ProfileFigmaTokens.highlightTileHeight,
+                decoration: BoxDecoration(
+                  color: ProfileFigmaTokens.accentMagenta,
+                  borderRadius: BorderRadius.circular(
+                    ProfileFigmaTokens.highlightTileRadius,
+                  ),
+                ),
+                child: const Icon(
+                  Icons.add_rounded,
+                  color: ProfileFigmaTokens.screenBackground,
+                  size: 28,
+                ),
+              ),
+            ),
+          ),
+          SizedBox(height: ProfileFigmaTokens.highlightLabelGap),
+          Text(
+            'Highlights',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontFamily: AppFonts.body,
+              color: ProfileFigmaTokens.secondaryText,
+              fontSize: ProfileFigmaTokens.highlightLabelFontSize,
+              fontWeight: ProfileFigmaTokens.highlightLabelFontWeight,
+              height: 1.2,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -380,7 +594,8 @@ class ProfileFigmaDisplayNameRow extends StatelessWidget {
         Text(
           displayName,
           style: const TextStyle(
-            color: Colors.white,
+            fontFamily: AppFonts.body,
+            color: ProfileFigmaTokens.primaryText,
             fontSize: ProfileFigmaTokens.displayNameFontSize,
             fontWeight: FontWeight.w600,
             height: ProfileFigmaTokens.displayNameHeight,
@@ -444,7 +659,7 @@ class OtherUserProfileTopBar extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: ProfileFigmaTokens.otherUserHeaderAvatarRadius,
-            backgroundColor: Colors.white.withValues(alpha: 0.12),
+            backgroundColor: ProfileFigmaTokens.cardBackground,
             backgroundImage: ProfileFigmaAvatar.isValidNetworkUrl(avatarUrl)
                 ? NetworkImage(avatarUrl)
                 : null,
@@ -452,7 +667,7 @@ class OtherUserProfileTopBar extends StatelessWidget {
                 ? Icon(
                     Icons.person_rounded,
                     size: ProfileFigmaTokens.otherUserHeaderAvatarRadius,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.5),
                   )
                 : null,
           ),
@@ -467,7 +682,8 @@ class OtherUserProfileTopBar extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    color: Colors.white,
+                    fontFamily: AppFonts.body,
+                    color: ProfileFigmaTokens.primaryText,
                     fontSize: ProfileFigmaTokens.otherUserHeaderNameFontSize,
                     fontWeight: FontWeight.w600,
                   ),
@@ -477,6 +693,7 @@ class OtherUserProfileTopBar extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
+                    fontFamily: AppFonts.body,
                     color: ProfileFigmaTokens.otherUserHeaderHandleColor,
                     fontSize: ProfileFigmaTokens.otherUserHeaderHandleFontSize,
                     fontWeight: FontWeight.w400,
@@ -497,7 +714,7 @@ class OtherUserProfileTopBar extends StatelessWidget {
             icon: Icon(
               Icons.close_rounded,
               size: 22,
-              color: Colors.white.withValues(alpha: 0.65),
+              color: ProfileFigmaTokens.secondaryText,
             ),
             padding: const EdgeInsets.all(4),
             constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
@@ -508,7 +725,7 @@ class OtherUserProfileTopBar extends StatelessWidget {
   }
 }
 
-/// Outlined "Following" / filled "Follow" chip for profile header (Figma).
+/// Outlined "Following" / filled "Follow" chip for profile header.
 class ProfileFigmaHeaderFollowChip extends StatelessWidget {
   const ProfileFigmaHeaderFollowChip({
     super.key,
@@ -537,7 +754,7 @@ class ProfileFigmaHeaderFollowChip extends StatelessWidget {
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: outlined
                 ? Border.all(
-                    color: ProfileFigmaTokens.otherUserHeaderFollowBorder,
+                    color: ProfileFigmaTokens.profileFollowingBorder,
                     width: 1,
                   )
                 : null,
@@ -548,13 +765,16 @@ class ProfileFigmaHeaderFollowChip extends StatelessWidget {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: ProfileFigmaTokens.primaryText,
                   ),
                 )
               : Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    fontFamily: AppFonts.body,
+                    color: outlined
+                        ? ProfileFigmaTokens.primaryText
+                        : Colors.white,
                     fontSize: ProfileFigmaTokens.otherUserHeaderFollowFontSize,
                     fontWeight: FontWeight.w500,
                   ),
@@ -585,7 +805,8 @@ class ProfileBioText extends StatelessWidget {
       text,
       textAlign: textAlign,
       style: const TextStyle(
-        color: Colors.white,
+        fontFamily: AppFonts.body,
+        color: ProfileFigmaTokens.secondaryText,
         fontSize: ProfileFigmaTokens.bioFontSize,
         height: 1.35,
         fontWeight: FontWeight.w400,
@@ -611,7 +832,7 @@ class ProfileFigmaMusicLine extends StatelessWidget {
           Icon(
             Icons.play_circle_outline_rounded,
             size: 14,
-            color: Colors.white.withValues(alpha: 0.55),
+            color: ProfileFigmaTokens.secondaryText,
           ),
           const SizedBox(width: 6),
           Flexible(
@@ -619,14 +840,239 @@ class ProfileFigmaMusicLine extends StatelessWidget {
               label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
+              style: const TextStyle(
+                fontFamily: AppFonts.body,
+                color: ProfileFigmaTokens.secondaryText,
                 fontSize: ProfileFigmaTokens.musicFontSize,
                 fontWeight: FontWeight.w400,
               ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Left-edge sliding drawer: collapsed plum handle → expanded icon rail.
+class ProfileSideDrawer extends StatefulWidget {
+  const ProfileSideDrawer({
+    super.key,
+    required this.onMenuTap,
+    required this.onWalletTap,
+    required this.onChatTap,
+    required this.onRevenueTap,
+  });
+
+  final VoidCallback onMenuTap;
+  final VoidCallback onWalletTap;
+  final VoidCallback onChatTap;
+  final VoidCallback onRevenueTap;
+
+  @override
+  State<ProfileSideDrawer> createState() => _ProfileSideDrawerState();
+}
+
+class _ProfileSideDrawerState extends State<ProfileSideDrawer>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  double _dragOrigin = 0;
+
+  static double get _expandedWidth =>
+      ProfileFigmaTokens.profileSideRailSeparatorWidth +
+      ProfileFigmaTokens.profileSideRailWidth;
+
+  static double get _collapsedWidth =>
+      ProfileFigmaTokens.profileSideRailHandleWidth;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: ProfileFigmaTokens.profileSideDrawerAnimation,
+      value: 0,
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  bool get _isExpanded => _controller.value >= 0.5;
+
+  void _toggle() {
+    if (_isExpanded) {
+      _controller.reverse();
+    } else {
+      _controller.forward();
+    }
+  }
+
+  void _onDragStart(DragStartDetails details) {
+    _dragOrigin = _controller.value;
+  }
+
+  void _onDragUpdate(DragUpdateDetails details) {
+    final delta = details.primaryDelta ?? 0;
+    final travel = _expandedWidth - _collapsedWidth;
+    if (travel <= 0) return;
+    _controller.value = (_dragOrigin + delta / travel).clamp(0.0, 1.0);
+  }
+
+  void _onDragEnd(DragEndDetails details) {
+    final velocity = details.primaryVelocity ?? 0;
+    if (velocity.abs() > 280) {
+      if (velocity > 0) {
+        _controller.forward();
+      } else {
+        _controller.reverse();
+      }
+      return;
+    }
+    if (_controller.value >= 0.5) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final separatorWidth = ProfileFigmaTokens.profileSideRailSeparatorWidth;
+    final iconSize = ProfileFigmaTokens.profileSideRailIconSize;
+    final railHeight = ProfileFigmaTokens.profileSideRailHeight;
+    final iconSlotHeight = (railHeight - 24) / 4;
+    final handleWidth = ProfileFigmaTokens.profileSideRailHandleWidth;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        final t = Curves.easeInOutCubic.transform(_controller.value);
+        final outerWidth =
+            _collapsedWidth + (_expandedWidth - _collapsedWidth) * t;
+        final iconOpacity = t.clamp(0.0, 1.0);
+        final panelRadius = Radius.circular(ProfileFigmaTokens.profileSideRailRadius);
+
+        return GestureDetector(
+          onHorizontalDragStart: _onDragStart,
+          onHorizontalDragUpdate: _onDragUpdate,
+          onHorizontalDragEnd: _onDragEnd,
+          onTap: t < 0.85 ? _toggle : null,
+          behavior: HitTestBehavior.translucent,
+          child: SizedBox(
+            width: outerWidth,
+            height: railHeight,
+            child: ClipRect(
+              child: Align(
+                alignment: Alignment.centerRight,
+                widthFactor: outerWidth / _expandedWidth,
+                child: SizedBox(
+                  width: _expandedWidth,
+                  height: railHeight,
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Opacity(
+                        opacity: t,
+                        child: SizedBox(
+                          width: separatorWidth,
+                          child: const ColoredBox(
+                            color: ProfileFigmaTokens.profileSideRailSeparator,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Material(
+                          color: ProfileFigmaTokens.accentMagenta,
+                          borderRadius: BorderRadius.horizontal(
+                            left: t < 0.08
+                                ? Radius.circular(handleWidth / 2)
+                                : Radius.zero,
+                            right: panelRadius,
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: Opacity(
+                            opacity: iconOpacity,
+                            child: IgnorePointer(
+                              ignoring: t < 0.85,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _ProfileSideRailIconButton(
+                                    icon: Icons.menu_rounded,
+                                    size: iconSize,
+                                    slotHeight: iconSlotHeight,
+                                    onTap: widget.onMenuTap,
+                                  ),
+                                  _ProfileSideRailIconButton(
+                                    icon: Icons.circle_outlined,
+                                    size: iconSize,
+                                    slotHeight: iconSlotHeight,
+                                    onTap: widget.onWalletTap,
+                                  ),
+                                  _ProfileSideRailIconButton(
+                                    icon: Icons.chat_bubble_outline_rounded,
+                                    size: iconSize,
+                                    slotHeight: iconSlotHeight,
+                                    onTap: widget.onChatTap,
+                                  ),
+                                  _ProfileSideRailIconButton(
+                                    icon: Icons.bar_chart_rounded,
+                                    size: iconSize,
+                                    slotHeight: iconSlotHeight,
+                                    onTap: widget.onRevenueTap,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ProfileSideRailIconButton extends StatelessWidget {
+  const _ProfileSideRailIconButton({
+    required this.icon,
+    required this.size,
+    required this.slotHeight,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final double size;
+  final double slotHeight;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: ProfileFigmaTokens.profileSideRailWidth,
+      height: slotHeight,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          child: Center(
+            child: Icon(
+              icon,
+              size: size,
+              color: Colors.white,
+            ),
+          ),
+        ),
       ),
     );
   }

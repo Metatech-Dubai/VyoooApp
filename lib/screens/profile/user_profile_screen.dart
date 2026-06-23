@@ -58,13 +58,10 @@ import '../../features/story/story_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
 import '../../features/subscription/creator_subscription_screen.dart';
 
-const Color _profileAccentMagenta = Color(0xFFE81E57);
-const Color _profileTabTrack = Color(0xFF2B1C2D);
-const double _profileStatChipRadius = 5.49;
-const double _profileStatChipBorderWidth = 0.69;
-/// Figma stat card ~71×50 — fixed width, centered row (not full-bleed).
-const double _profileStatChipWidth = 76;
-const Color _profileSurface = Color(0xFF1A0B1E);
+const Color _profileAccentMagenta = ProfileFigmaTokens.accentMagenta;
+const Color _profileTabTrack = ProfileFigmaTokens.tabTrack;
+const double _profileStatChipRadius = ProfileFigmaTokens.statChipRadius;
+const Color _profileSurface = ProfileFigmaTokens.contentSurface;
 const double _profileActionRadius = 52;
 const double _profileOutlineWidth = 1.5;
 const double _profileActionGroupMaxWidth = 360;
@@ -143,7 +140,7 @@ class UserProfilePayload {
       );
 }
 
-/// Other person's profile: same top (avatar, stats, buttons), Posts/VR/Streams + star, content by tab.
+/// Other person's profile: same top (avatar, stats, buttons), Posts/VR/Clips/Tags + star, content by tab.
 /// Design-only; backend integration later. Same flow for subscription creator or standard user.
 class UserProfileScreen extends StatefulWidget {
   const UserProfileScreen({super.key, required this.payload});
@@ -155,8 +152,8 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
-  static const List<String> _tabs = ['Posts', 'VR', 'Streams'];
-  static const int _savedTabIndex = 3;
+  static const List<String> _tabs = ['Posts', 'VR', 'Clips', 'Tags'];
+  static const int _savedTabIndex = 4;
   static const Map<String, String> _accountTypeLabels = <String, String>{
     'personal': 'Personal',
     'business': 'Business',
@@ -907,7 +904,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           );
     final showVerificationBadge = isVerified || showCreatorMonetization;
     return Scaffold(
-      backgroundColor: Colors.transparent,
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -927,7 +924,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           CustomScrollView(
             slivers: [
               SliverAppBar(
-                backgroundColor: Colors.transparent,
+                backgroundColor: ProfileFigmaTokens.screenBackground,
                 elevation: 0,
                 centerTitle: true,
                 titleSpacing: 0,
@@ -936,14 +933,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   onPressed: () => Navigator.of(context).pop(),
                   icon: const Icon(
                     Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white,
+                    color: ProfileFigmaTokens.primaryText,
                     size: 20,
                   ),
                 ),
                 title: Text(
                   '@${ProfileFigmaTokens.displayUsername(username)}',
                   style: const TextStyle(
-                    color: Colors.white,
+                    fontFamily: 'DM Sans',
+                    color: ProfileFigmaTokens.primaryText,
                     fontSize: ProfileFigmaTokens.headerUsernameFontSize,
                     fontWeight: FontWeight.w500,
                   ),
@@ -953,7 +951,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     onPressed: () => _showProfileMenu(context),
                     icon: const Icon(
                       Icons.menu_rounded,
-                      color: Colors.white,
+                      color: ProfileFigmaTokens.primaryText,
                       size: 28,
                     ),
                   ),
@@ -992,7 +990,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           Text(
                             displayName,
                             style: const TextStyle(
-                              color: Colors.white,
+                              fontFamily: 'DM Sans',
+                              color: ProfileFigmaTokens.primaryText,
                               fontSize: 22,
                               fontWeight: FontWeight.w600,
                             ),
@@ -1023,7 +1022,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             label: 'Posts',
                             value: _formatCount(_livePostCount ?? p.postCount),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.statChipGap,
+                          ),
                           _UserStatChip(
                             label: 'Followers',
                             value: _formatCount(
@@ -1031,7 +1032,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                             ),
                             onTap: () => _openFollowersFollowing(p, 0),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.statChipGap,
+                          ),
                           _UserStatChip(
                             label: 'Following',
                             value: _formatCount(
@@ -1103,56 +1106,27 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     bool hasStory = false,
     VoidCallback? onTap,
   }) {
-    const radius = 56.0;
-    const ringSize = radius * 2 + 12;
+    final outer = ProfileFigmaTokens.avatarOuterSize;
 
-    final avatar = CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.white.withValues(alpha: 0.1),
-      backgroundImage:
-          _isValidNetworkUrl(avatarUrl) ? NetworkImage(avatarUrl) : null,
-      child: !_isValidNetworkUrl(avatarUrl)
-          ? Icon(
-              Icons.person_rounded,
-              size: 56,
-              color: Colors.white.withValues(alpha: 0.4),
-            )
-          : null,
-    );
-
-    Widget avatarWidget;
     if (isLive) {
-      avatarWidget = LiveAvatarRing(
-        size: ringSize,
-        showLivePill: true,
-        child: avatar,
-      );
-    } else if (hasStory) {
-      avatarWidget = Container(
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: AppGradients.storyRingGradient,
-        ),
-        padding: const EdgeInsets.all(3),
-        child: DecoratedBox(
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: Color(0xFF1A0B1E),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(2),
-            child: avatar,
+      return GestureDetector(
+        onTap: onTap,
+        child: LiveAvatarRing(
+          size: outer,
+          showLivePill: true,
+          child: ProfileFigmaAvatar(
+            imageUrl: avatarUrl,
+            hasStory: false,
           ),
         ),
       );
-    } else {
-      avatarWidget = avatar;
     }
 
-    if (onTap != null) {
-      return GestureDetector(onTap: onTap, child: avatarWidget);
-    }
-    return avatarWidget;
+    return ProfileFigmaAvatar(
+      imageUrl: avatarUrl,
+      hasStory: hasStory,
+      onTap: onTap,
+    );
   }
 
   void _onSubscribeTap(UserProfilePayload p) {
@@ -1295,16 +1269,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: ProfileFigmaTokens.cardBackground,
             borderRadius: BorderRadius.circular(_profileActionRadius),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.14),
-            ),
           ),
           child: Text(
             accountLabel,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.92),
+            style: const TextStyle(
+              fontFamily: 'DM Sans',
+              color: ProfileFigmaTokens.secondaryText,
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
@@ -1465,96 +1437,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   }
 
   Widget _buildTabs() {
-    return Row(
-      children: [
-        Expanded(
-          child: Container(
-            padding: const EdgeInsets.all(4),
-            decoration: BoxDecoration(
-              color: _profileTabTrack,
-              borderRadius: BorderRadius.circular(AppRadius.card),
-            ),
-            child: Row(
-              children: List.generate(_tabs.length, (index) {
-                final isSelected = index == _selectedTabIndex;
-                return Expanded(
-                  child: Row(
-                    children: [
-                      if (index > 0 &&
-                          !isSelected &&
-                          index - 1 != _selectedTabIndex)
-                        Container(
-                          width: 1,
-                          height: 16,
-                          color: Colors.white.withValues(alpha: 0.1),
-                        ),
-                      Expanded(
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () =>
-                                setState(() => _selectedTabIndex = index),
-                            borderRadius: BorderRadius.circular(AppRadius.card),
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? _profileAccentMagenta
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(
-                                  AppRadius.card,
-                                ),
-                              ),
-                              child: Center(
-                                child: Text(
-                                  _tabs[index],
-                                  style: TextStyle(
-                                    color: isSelected
-                                        ? Colors.white
-                                        : Colors.white.withValues(alpha: 0.6),
-                                    fontSize: 13,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w600
-                                        : FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-            ),
-          ),
-        ),
-        const SizedBox(width: 8),
-        Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => setState(() => _selectedTabIndex = _savedTabIndex),
-            borderRadius: BorderRadius.circular(AppRadius.card),
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _profileTabTrack,
-                borderRadius: BorderRadius.circular(AppRadius.card),
-              ),
-              child: Icon(
-                _selectedTabIndex == _savedTabIndex
-                    ? Icons.star_rounded
-                    : Icons.star_border_rounded,
-                color: _selectedTabIndex == _savedTabIndex
-                    ? _profileAccentMagenta
-                    : Colors.white.withValues(alpha: 0.8),
-                size: 20,
-              ),
-            ),
-          ),
-        ),
-      ],
+    return ProfileFigmaTabBar(
+      tabs: _tabs,
+      selectedIndex: _selectedTabIndex,
+      onTabSelected: (i) => setState(() => _selectedTabIndex = i),
+      savedTabIndex: _savedTabIndex,
+      onSavedTap: () => setState(() => _selectedTabIndex = _savedTabIndex),
+      onBookmarkTap: () => setState(() => _selectedTabIndex = _savedTabIndex),
     );
   }
 
@@ -1568,7 +1457,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       case 1:
         return _buildVRGridSlivers(p);
       case 2:
-        return _buildStreamsListSlivers(p);
+        return _buildClipsListSlivers(p);
+      case 3:
+        return _buildTagsGridSlivers(p);
       default:
         return [
           SliverToBoxAdapter(
@@ -1710,7 +1601,89 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     ];
   }
 
-  List<Widget> _buildStreamsListSlivers(UserProfilePayload p) {
+  List<Widget> _buildTagsGridSlivers(UserProfilePayload p) {
+    final targetUid = (p.targetUserId ?? '').trim();
+    if (_locksContentForViewer(p) && !_isFollowing) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildPrivateProfilePlaceholder(),
+          ),
+        ),
+      ];
+    }
+    if (targetUid.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(height: 280, child: _buildEmptyTagsTab()),
+        ),
+      ];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: ProfilePostsLoader.loadPostsForUser(targetUid),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    color: ProfileFigmaTokens.accentMagenta,
+                  ),
+                ),
+              );
+            }
+            final tagged = (snapshot.data ?? const [])
+                .where((post) {
+                  final tags = post['tags'];
+                  return tags is List && tags.isNotEmpty;
+                })
+                .toList(growable: false);
+            if (tagged.isEmpty) {
+              return SizedBox(height: 280, child: _buildEmptyTagsTab());
+            }
+            return ProfileModularGrid(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              items: profileGridItemsFromReels(
+                reels: tagged,
+                thumbnailFor: ProfileReelGridNavigation.thumbnailFromReel,
+              ),
+              onItemTap: (index) => ProfileReelGridNavigation.openPostFeed(
+                context: context,
+                posts: tagged,
+                index: index,
+                fallbackDisplayName: _resolvedDisplayName(p),
+                fallbackUsername: _resolvedUsername(p),
+                fallbackAvatarUrl: _resolvedAvatarUrl(p),
+                fallbackIsVerified: p.isVerified,
+                liveIsVerified: _liveIsVerified,
+              ),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildEmptyTagsTab() {
+    return Center(
+      child: Text(
+        'No tagged posts yet',
+        style: const TextStyle(
+          fontFamily: 'DM Sans',
+          color: ProfileFigmaTokens.secondaryText,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildClipsListSlivers(UserProfilePayload p) {
     final targetUid = (p.targetUserId ?? '').trim();
     if (_locksContentForViewer(p) && !_isFollowing) {
       return [
@@ -1877,44 +1850,36 @@ class _UserStatChip extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: radius,
-        child: ClipRRect(
-          borderRadius: radius,
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-            child: Container(
-              width: _profileStatChipWidth,
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: radius,
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.10),
-                  width: _profileStatChipBorderWidth,
+        child: Container(
+          width: ProfileFigmaTokens.statChipWidth,
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
+          decoration: BoxDecoration(
+            color: ProfileFigmaTokens.cardBackground,
+            borderRadius: radius,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontFamily: 'DM Sans',
+                  color: ProfileFigmaTokens.primaryText,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ],
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontFamily: 'DM Sans',
+                  color: ProfileFigmaTokens.primaryText,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
-            ),
+            ],
           ),
         ),
       ),

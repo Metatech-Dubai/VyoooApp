@@ -1,26 +1,13 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_background_assets.dart';
-import '../../theme/app_gradients.dart';
+import '../../../screens/profile/profile_figma_tokens.dart';
 
-/// Full-screen profile background (`assets/bgImages/Comment_section.png`).
+/// Full-screen profile background — solid white for the redesigned profile.
 class ProfileScreenBackground extends StatelessWidget {
   const ProfileScreenBackground({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      AppBackgroundAssets.profile,
-      fit: BoxFit.cover,
-      width: double.infinity,
-      height: double.infinity,
-      errorBuilder: (context, error, stackTrace) {
-        return const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: AppGradients.personalProfileBackgroundGradient,
-          ),
-        );
-      },
-    );
+    return const ColoredBox(color: ProfileFigmaTokens.screenBackground);
   }
 }
