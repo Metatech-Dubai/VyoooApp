@@ -371,7 +371,16 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
       onRepost: () => _onRepostToggle(post),
       onRemoveRepost: () => _onRepostToggle(post),
       onShareViaNative: () => _reelsController.shareReel(reelId: sourceId),
-      onCopyLink: () {},
+      onCopyLink: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Link copied to clipboard'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
     );
   }
 

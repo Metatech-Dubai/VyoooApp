@@ -275,10 +275,7 @@ class ReelsController {
     try {
       (liked, changed) = await _firestore.runTransaction<(bool, bool)>(
         (tx) async {
-          // Firestore requires every read before any write in a transaction.
           final likeSnap = await tx.get(likeRef);
-          final reelSnap = await tx.get(reelRef);
-
           final isLiked = likeSnap.exists;
           debugPrint(
             '[Vyooo][Like] tx read isLiked=$isLiked wantLike=$like reelId=$reelId',
@@ -297,21 +294,7 @@ class ReelsController {
             tx.delete(likeRef);
           }
 
-          if (reelSnap.exists) {
-            final rawLikes = reelSnap.data()?['likes'];
-            final currentLikes = rawLikes is num ? rawLikes.toInt() : 0;
-            final nextLikes = like
-                ? currentLikes + 1
-                : (currentLikes - 1).clamp(0, 999999999);
-            debugPrint(
-              '[Vyooo][Like] tx bump likes $currentLikes -> $nextLikes reelId=$reelId',
-            );
-            tx.update(reelRef, {'likes': nextLikes});
-          } else {
-            debugPrint(
-              '[Vyooo][Like] tx skip likes bump — reel doc missing reelId=$reelId',
-            );
-          }
+          // `reels/{id}.likes` is maintained by Cloud Function `syncReelLikeCount`.
           return (like, true);
         },
       );

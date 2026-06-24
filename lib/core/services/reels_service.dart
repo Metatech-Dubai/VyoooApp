@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'dart:math' show min;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../models/reel_media_item.dart';
+import '../utils/engagement_counts.dart';
 import '../utils/hashtag_utils.dart';
 import '../utils/video_upload_policy.dart';
 import 'auth_service.dart';
@@ -23,6 +25,7 @@ class ReelsService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PexelsFeedService _pexels = PexelsFeedService();
+  static final Set<String> _likeRepairInFlight = <String>{};
   static const String _reelsCollection = 'reels';
 
   /// Client-side privacy filter for discovery feeds (FYP, trending, VR, cache).
@@ -274,17 +277,28 @@ class ReelsService {
         final data = doc.data();
         for (final idx in indicesBySource[doc.id] ?? const <int>[]) {
           final stub = out[idx];
-          stub['likes'] = (data['likes'] as num?)?.toInt() ?? 0;
-          stub['comments'] = (data['comments'] as num?)?.toInt() ?? 0;
-          stub['saves'] = (data['saves'] as num?)?.toInt() ?? 0;
-          stub['views'] =
-              (data['views'] as num?)?.toInt() ??
-              (data['viewsCount'] as num?)?.toInt() ??
-              0;
-          stub['reposts'] = (data['reposts'] as num?)?.toInt() ??
-              (data['shares'] as num?)?.toInt() ??
-              0;
-          stub['shares'] = (data['shares'] as num?)?.toInt() ?? 0;
+          stub['likes'] = EngagementCounts.sanitize(
+            (data['likes'] as num?)?.toInt() ?? 0,
+          );
+          stub['comments'] = EngagementCounts.sanitize(
+            (data['comments'] as num?)?.toInt() ?? 0,
+          );
+          stub['saves'] = EngagementCounts.sanitize(
+            (data['saves'] as num?)?.toInt() ?? 0,
+          );
+          stub['views'] = EngagementCounts.sanitize(
+            (data['views'] as num?)?.toInt() ??
+                (data['viewsCount'] as num?)?.toInt() ??
+                0,
+          );
+          stub['reposts'] = EngagementCounts.sanitize(
+            (data['reposts'] as num?)?.toInt() ??
+                (data['shares'] as num?)?.toInt() ??
+                0,
+          );
+          stub['shares'] = EngagementCounts.sanitize(
+            (data['shares'] as num?)?.toInt() ?? 0,
+          );
           stub['hideLikeCount'] = data['hideLikeCount'] == true;
           stub['hideViewCount'] = data['hideViewCount'] == true;
           stub['hideShareCount'] = data['hideShareCount'] == true;
@@ -305,7 +319,12 @@ class ReelsService {
       if (!doc.exists) return null;
       final data = doc.data();
       if (data == null) return null;
-      final reel = _snapshotDataToReelMap(doc.id, data);
+      final rawLikes = (data['likes'] as num?)?.toInt() ?? 0;
+      final payload = Map<String, dynamic>.from(data);
+      if (rawLikes < 0) {
+        payload['likes'] = await _ensureRepairedLikeCount(id);
+      }
+      final reel = _snapshotDataToReelMap(doc.id, payload);
       final followingIds = await _followingIdsForCurrentUser();
       if (!_isDiscoverableToCurrentUser(reel, followingIds: followingIds) ||
           !_isPlayableReel(reel)) {
@@ -535,6 +554,10 @@ class ReelsService {
         ? rawTags.map((e) => e.toString()).toList(growable: false)
         : <String>[];
     final mediaItems = ReelMediaItem.sanitizedRawList(data['mediaItems']);
+    final rawLikes = (data['likes'] as num?)?.toInt() ?? 0;
+    if (rawLikes < 0) {
+      _triggerLikeCountRepairIfCorrupted(id);
+    }
 
     return {
       'id': id,
@@ -554,17 +577,26 @@ class ReelsService {
       'is360Video': data['is360Video'] == true,
       'projectionType': data['projectionType'] ?? 'flat',
       'stereoMode': data['stereoMode'] ?? 'mono',
-      'likes': (data['likes'] as num?)?.toInt() ?? 0,
-      'comments': (data['comments'] as num?)?.toInt() ?? 0,
-      'saves': (data['saves'] as num?)?.toInt() ?? 0,
-      'views':
-          (data['views'] as num?)?.toInt() ??
-          (data['viewsCount'] as num?)?.toInt() ??
-          0,
-      'shares': (data['shares'] as num?)?.toInt() ?? 0,
-      'reposts': (data['reposts'] as num?)?.toInt() ??
-          (data['shares'] as num?)?.toInt() ??
-          0,
+      'likes': EngagementCounts.sanitize(rawLikes),
+      'comments': EngagementCounts.sanitize(
+        (data['comments'] as num?)?.toInt() ?? 0,
+      ),
+      'saves': EngagementCounts.sanitize(
+        (data['saves'] as num?)?.toInt() ?? 0,
+      ),
+      'views': EngagementCounts.sanitize(
+        (data['views'] as num?)?.toInt() ??
+            (data['viewsCount'] as num?)?.toInt() ??
+            0,
+      ),
+      'shares': EngagementCounts.sanitize(
+        (data['shares'] as num?)?.toInt() ?? 0,
+      ),
+      'reposts': EngagementCounts.sanitize(
+        (data['reposts'] as num?)?.toInt() ??
+            (data['shares'] as num?)?.toInt() ??
+            0,
+      ),
       'avatarUrl': data['profileImage'] ?? data['avatarUrl'] ?? '',
       'userId': data['userId'] ?? '',
       'authorAccountPrivate': data['authorAccountPrivate'] == true,
@@ -594,5 +626,61 @@ class ReelsService {
     final videoUrl = ((data['videoUrl'] as String?) ?? '').trim();
     if (imageUrl.isNotEmpty && videoUrl.isEmpty) return 'image';
     return 'video';
+  }
+
+  /// Recounts [userLikes] and patches the reel when Firestore has a negative count.
+  void repairCorruptedLikeCount(String reelId, {required int currentLikes}) {
+    if (currentLikes >= 0) return;
+    _triggerLikeCountRepairIfCorrupted(reelId);
+  }
+
+  void _triggerLikeCountRepairIfCorrupted(String reelId) {
+    final id = reelId.trim();
+    if (id.isEmpty || !_likeRepairInFlight.add(id)) return;
+    unawaited(_repairLikeCountFromUserLikes(id));
+  }
+
+  Future<int> _ensureRepairedLikeCount(String reelId) async {
+    if (!_likeRepairInFlight.add(reelId)) {
+      return _countUserLikesForReel(reelId);
+    }
+    return _repairLikeCountFromUserLikes(reelId);
+  }
+
+  Future<int> _repairLikeCountFromUserLikes(String reelId) async {
+    try {
+      final count = await _countUserLikesForReel(reelId);
+      await _firestore.collection(_reelsCollection).doc(reelId).update({
+        'likes': count,
+      });
+      debugPrint(
+        '[Vyooo][Like] repaired corrupted likes reelId=$reelId count=$count',
+      );
+      return count;
+    } catch (e) {
+      debugPrint(
+        '[Vyooo][Like] repair FAILED reelId=$reelId error=$e',
+      );
+      return 0;
+    } finally {
+      _likeRepairInFlight.remove(reelId);
+    }
+  }
+
+  Future<int> _countUserLikesForReel(String reelId) async {
+    try {
+      final agg = await _firestore
+          .collection('userLikes')
+          .where('reelId', isEqualTo: reelId)
+          .count()
+          .get();
+      return agg.count ?? 0;
+    } catch (_) {
+      final snap = await _firestore
+          .collection('userLikes')
+          .where('reelId', isEqualTo: reelId)
+          .get();
+      return snap.docs.length;
+    }
   }
 }

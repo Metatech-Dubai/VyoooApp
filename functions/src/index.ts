@@ -1937,6 +1937,47 @@ export const syncStoryLikeCount = onDocumentWritten(
 );
 
 /**
+ * Keeps `reels/{reelId}.likes` in sync with `userLikes/{uid}_{reelId}` creates/deletes.
+ * Clients write only `userLikes`; counts are clamped at zero on unlike.
+ */
+export const syncReelLikeCount = onDocumentWritten(
+  {
+    document: 'userLikes/{likeId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (event) => {
+    const db = admin.firestore();
+    const beforeExist = event.data?.before.exists ?? false;
+    const afterExist = event.data?.after.exists ?? false;
+    if (beforeExist === afterExist) return;
+
+    const beforeData = event.data?.before.data() as { reelId?: unknown } | undefined;
+    const afterData = event.data?.after.data() as { reelId?: unknown } | undefined;
+    const reelId =
+      typeof afterData?.reelId === 'string'
+        ? afterData.reelId.trim()
+        : typeof beforeData?.reelId === 'string'
+          ? beforeData.reelId.trim()
+          : '';
+    if (!reelId) return;
+
+    const ref = db.collection('reels').doc(reelId);
+    const delta = !beforeExist && afterExist ? 1 : -1;
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const raw = snap.data()?.likes;
+      const current =
+        typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 0;
+      const next = Math.max(0, current + delta);
+      tx.update(ref, { likes: next });
+    });
+  },
+);
+
+/**
  * Increments `stories/{storyId}.comments` when a comment doc is created.
  */
 export const syncStoryCommentCountOnCreate = onDocumentCreated(

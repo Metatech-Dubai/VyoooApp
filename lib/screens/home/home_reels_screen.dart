@@ -15,6 +15,7 @@ import '../../core/controllers/reels_controller.dart';
 import '../../core/models/reel_count_privacy.dart';
 import '../../core/models/reel_media_item.dart';
 import '../../core/models/video_360_metadata.dart';
+import '../../core/utils/engagement_counts.dart';
 import '../../core/utils/reel_engagement.dart';
 import '../../core/widgets/post_media_carousel.dart';
 import '../../core/widgets/double_tap_like_overlay.dart';
@@ -1173,6 +1174,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       }
       final data = doc.data() ?? {};
       final likes = (data['likes'] as num?)?.toInt() ?? 0;
+      if (likes < 0) {
+        ReelsService().repairCorruptedLikeCount(
+          reelId,
+          currentLikes: likes,
+        );
+      }
       debugPrint(
         '[Vyooo][Like][UI] sync patch reelId=$reelId likes=$likes',
       );
@@ -1181,7 +1188,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         () => _applyEngagementPatch(
           reelId,
           {
-            'likes': likes,
+            'likes': EngagementCounts.sanitize(likes),
             'comments': (data['comments'] as num?)?.toInt() ?? 0,
             'saves': (data['saves'] as num?)?.toInt() ?? 0,
             'views':
