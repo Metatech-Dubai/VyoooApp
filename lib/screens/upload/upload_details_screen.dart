@@ -20,7 +20,7 @@ import '../../core/utils/upload_tag_suggestions.dart';
 import 'location_picker_sheet.dart';
 import 'upload_success_screen.dart';
 
-/// Upload Details screen: title, description, tags, isVR.
+/// Upload Details screen: title, description, tags, 360 video options.
 /// Gets a direct upload URL from Cloud Function → uploads to Cloudflare Stream
 /// → saves reel doc to Firestore with Stream playback URL.
 ///

@@ -202,7 +202,7 @@ List<ProfileGridItem> profileGridItemsFromReels({
       shares: ReelEngagement.repostCount(reel),
       privacy: ReelCountPrivacy.fromMap(reel),
       isVideo: mediaType == 'video',
-      showVrBadge: showVrBadge || reel['isVR'] == true,
+      showVrBadge: showVrBadge,
       isRepost: reel['isRepost'] == true,
       spanOverride: profileGridSpanOverrideFromReel(reel),
       gridTitle: ProfileGridTitle.fromReel(reel),

@@ -135,23 +135,46 @@ class ReelsService {
     }
   }
 
-  /// VR tab: where isVR == true.
+  /// VR tab: immersive posts ([isVR] or [is360Video]).
   Future<List<Map<String, dynamic>>> getReelsVR({int limit = 20}) async {
     try {
       final followingIds = await _followingIdsForCurrentUser();
-      final q = await _firestore
+      final merged = <String, Map<String, dynamic>>{};
+
+      void takePlayable(Map<String, dynamic> r) {
+        final id = (r['id'] as String?)?.trim() ?? '';
+        if (id.isEmpty || merged.containsKey(id)) return;
+        if (!_isDiscoverableToCurrentUser(r, followingIds: followingIds) ||
+            !_isPlayableReel(r) ||
+            !ReelEngagement.isDiscoveryFeedEligible(r)) {
+          return;
+        }
+        merged[id] = r;
+      }
+
+      final vrSnap = await _firestore
           .collection(_reelsCollection)
           .where('isVR', isEqualTo: true)
           .limit(limit * 4)
           .get();
-      final list = q.docs
-          .map((d) => _docToReelMap(d))
-          .where((r) =>
-              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
-              _isPlayableReel(r) &&
-              ReelEngagement.isDiscoveryFeedEligible(r))
+      for (final d in vrSnap.docs) {
+        takePlayable(_docToReelMap(d));
+      }
+
+      if (merged.length < limit) {
+        final three60Snap = await _firestore
+            .collection(_reelsCollection)
+            .where('is360Video', isEqualTo: true)
+            .limit(limit * 4)
+            .get();
+        for (final d in three60Snap.docs) {
+          takePlayable(_docToReelMap(d));
+        }
+      }
+
+      final list = _sortReelsByCreatedAtDesc(merged.values.toList())
           .take(limit)
-          .toList();
+          .toList(growable: false);
       if (list.isNotEmpty) return list;
       if (_pexels.isAvailable) return _pexels.getVR(limit: limit);
       return [];

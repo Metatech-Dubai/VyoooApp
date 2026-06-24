@@ -47,6 +47,7 @@ class AppUserModel {
     this.displayName,
     this.username,
     this.bio,
+    this.profileMusic,
     this.dob,
     this.profileImage,
     this.phoneNumber,
@@ -82,6 +83,8 @@ class AppUserModel {
   final String? displayName;
   final String? username;
   final String? bio;
+  /// Profile music line (e.g. "Title • Artist"). Empty when unset.
+  final String? profileMusic;
   final String? dob;
   final String? profileImage;
   final String? phoneNumber;
@@ -141,6 +144,7 @@ class AppUserModel {
       'displayName': displayName ?? '',
       'username': username ?? '',
       'bio': bio ?? '',
+      'profileMusic': profileMusic ?? '',
       'dob': dob ?? '',
       'profileImage': profileImage ?? '',
       'phoneNumber': phoneNumber ?? '',
@@ -227,6 +231,7 @@ class AppUserModel {
       displayName: _readFirestoreStringNullable(json['displayName']),
       username: _readFirestoreStringNullable(json['username']),
       bio: _readFirestoreStringNullable(json['bio']),
+      profileMusic: _readFirestoreStringNullable(json['profileMusic']),
       dob: _readFirestoreStringNullable(json['dob']),
       profileImage: _readFirestoreStringNullable(json['profileImage']),
       phoneNumber: _readFirestoreStringNullable(json['phoneNumber']),
@@ -289,6 +294,7 @@ class AppUserModel {
     String? displayName,
     String? username,
     String? bio,
+    String? profileMusic,
     String? dob,
     String? profileImage,
     String? phoneNumber,
@@ -324,6 +330,7 @@ class AppUserModel {
       displayName: displayName ?? this.displayName,
       username: username ?? this.username,
       bio: bio ?? this.bio,
+      profileMusic: profileMusic ?? this.profileMusic,
       dob: dob ?? this.dob,
       profileImage: profileImage ?? this.profileImage,
       phoneNumber: phoneNumber ?? this.phoneNumber,

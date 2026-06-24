@@ -28,7 +28,7 @@ class EditProfileScreen extends StatefulWidget {
     this.initialName = 'Matt Rife',
     this.initialUsername = 'mattrife_x',
     this.initialBio = 'In the right place, at the right time',
-    this.initialMusic = 'Zulfein • Mehul Mahesh, DJ A...',
+    this.initialMusic = '',
     this.avatarUrl,
   });
 
@@ -165,10 +165,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final initialUn = UsernameValidation.normalize(widget.initialUsername);
     final initialName = widget.initialName.trim();
     final initialBio = widget.initialBio.trim();
+    final initialMusic = widget.initialMusic.trim();
     final nameChanged = name != initialName;
     final usernameChanged = un != initialUn;
     final bioChanged = _bioController.text.trim() != initialBio;
-    return _pickedImagePath != null || usernameChanged || nameChanged || bioChanged;
+    final musicChanged = _musicController.text.trim() != initialMusic;
+    return _pickedImagePath != null ||
+        usernameChanged ||
+        nameChanged ||
+        bioChanged ||
+        musicChanged;
   }
 
   Future<void> _saveProfile() async {
@@ -186,26 +192,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final username = UsernameValidation.normalize(_usernameController.text.trim());
     final name = _nameController.text.trim();
     final bio = _bioController.text.trim();
+    final music = _musicController.text.trim();
     final initialUn = UsernameValidation.normalize(widget.initialUsername);
     final initialName = widget.initialName.trim();
     final initialBio = widget.initialBio.trim();
+    final initialMusic = widget.initialMusic.trim();
 
     setState(() => _isSaving = true);
-    var partialWarning = false;
+    final failedFields = <String>[];
     try {
-      if (_pickedImagePath != null) {
-        try {
-          await StorageService().uploadProfileImage(
-            imageFile: File(_pickedImagePath!),
-            uid: uid,
-          );
-        } catch (e) {
-          // Non-fatal: let profile text changes still save.
-          partialWarning = true;
-          debugPrint('Profile image upload failed: $e');
-        }
-      }
-
       if (username != initialUn) {
         final avail = await FirestoreUsernameService().checkAvailability(username);
         if (!avail.available) {
@@ -231,28 +226,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await UserService().updateUserProfile(uid: uid, username: username);
       }
 
-      if (name != initialName) {
-        await UserService().updateUserProfile(uid: uid, displayName: name);
-        await AuthService().currentUser?.updateDisplayName(name);
+      final bioChanged = bio != initialBio;
+      final musicChanged = music != initialMusic;
+      final nameChanged = name != initialName;
+      if (bioChanged || musicChanged || nameChanged) {
+        try {
+          await UserService().updateUserProfile(
+            uid: uid,
+            displayName: nameChanged ? name : null,
+            bio: bioChanged ? bio : null,
+            profileMusic: musicChanged ? music : null,
+          );
+          if (nameChanged) {
+            await AuthService().currentUser?.updateDisplayName(name);
+          }
+        } catch (e) {
+          if (bioChanged) failedFields.add('bio');
+          if (musicChanged) failedFields.add('music');
+          if (nameChanged) failedFields.add('name');
+          debugPrint('Profile presentation update failed: $e');
+        }
       }
 
-      if (bio != initialBio) {
+      if (_pickedImagePath != null) {
         try {
-          await UserService().updateUserProfile(uid: uid, bio: bio);
+          await StorageService().uploadProfileImage(
+            imageFile: File(_pickedImagePath!),
+            uid: uid,
+          );
         } catch (e) {
-          // Non-fatal: in case deployed Firestore rules don't yet allow `bio`.
-          partialWarning = true;
-          debugPrint('Bio update failed: $e');
+          failedFields.add('photo');
+          debugPrint('Profile image upload failed: $e');
         }
       }
 
       if (!mounted) return;
       setState(() => _isSaving = false);
       unawaited(SavedAccountsService().refreshAccountMetadata(uid));
+      final partialWarning = failedFields.isNotEmpty;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           partialWarning
-              ? 'Profile updated, but some changes could not be saved.'
+              ? 'Profile updated, but could not save: ${failedFields.join(', ')}.'
               : 'Profile updated',
         ),
       ));

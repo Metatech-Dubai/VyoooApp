@@ -297,14 +297,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.7.12"
-  dchs_motion_sensors:
-    dependency: "direct main"
-    description:
-      name: dchs_motion_sensors
-      sha256: "2a6eec0c47fd59d0f923aa758286ded0d74ae79519dec560d003e6d0797877e2"
-      url: "https://pub.dev"
-    source: hosted
-    version: "2.0.1"
   equatable:
     dependency: transitive
     description:
@@ -541,14 +533,6 @@ packages:
       relative: true
     source: path
     version: "3.1.2"
-  flutter_cube:
-    dependency: "direct main"
-    description:
-      name: flutter_cube
-      sha256: "71cf679a251166eb97f86751c56582b09abdbf859485fbf60524948813914c3b"
-      url: "https://pub.dev"
-    source: hosted
-    version: "0.1.1"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
@@ -1668,6 +1652,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.2.0"
+  video_360:
+    dependency: "direct main"
+    description:
+      name: video_360
+      sha256: "18085f9a843d0c10daa0d57cf928f57ddd6bb7a7c5462b53b98cffa89449ab94"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.11"
   video_player:
     dependency: "direct main"
     description:

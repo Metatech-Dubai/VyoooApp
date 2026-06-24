@@ -198,6 +198,7 @@ class UserService {
     String? displayName,
     String? username,
     String? bio,
+    String? profileMusic,
     String? dob,
     String? profileImage,
     List<String>? interests,
@@ -232,6 +233,7 @@ class UserService {
         data['username'] = UsernameValidation.normalize(username);
       }
       if (bio != null) data['bio'] = bio.trim();
+      if (profileMusic != null) data['profileMusic'] = profileMusic.trim();
       if (dob != null) data['dob'] = dob;
       if (profileImage != null) data['profileImage'] = profileImage;
       if (interests != null) data['interests'] = interests;

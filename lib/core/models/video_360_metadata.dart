@@ -110,6 +110,21 @@ class Video360Metadata {
     );
   }
 
+  /// VR tab / detail: use explicit 360 metadata, or assume equirectangular for
+  /// legacy [isVR] posts that predate [is360Video].
+  static Video360Metadata forVrPlayback(Map<String, dynamic> post) {
+    final meta = fromPost(post);
+    if (meta.use360Player) return meta;
+    if (post['isVR'] == true) {
+      return Video360Metadata(
+        is360Video: true,
+        projectionType: Video360Projection.equirectangular,
+        stereoMode: meta.stereoMode,
+      );
+    }
+    return meta;
+  }
+
   Video360Metadata copyWith({
     bool? is360Video,
     Video360Projection? projectionType,

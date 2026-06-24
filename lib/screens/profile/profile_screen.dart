@@ -559,6 +559,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       vipVerified: user?.vipVerified ?? false,
     );
     final bio = (user?.bio ?? '').trim();
+    final profileMusic = (user?.profileMusic ?? '').trim();
 
     return Stack(
       clipBehavior: Clip.none,
@@ -656,9 +657,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           child: ProfileBioText(bio: bio),
                         ),
                       ],
-                      const ProfileFigmaMusicLine(
-                        label: 'Zulfein • Mehul Mahesh, DJ A...',
-                      ),
+                      ProfileFigmaMusicLine(label: profileMusic),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
@@ -675,8 +674,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                         '',
                                     initialUsername: user?.username ?? '',
                                     initialBio: user?.bio ?? '',
-                                    initialMusic:
-                                        'Zulfein • Mehul Mahesh, DJ A...',
+                                    initialMusic: user?.profileMusic ?? '',
                                     avatarUrl: user?.profileImage,
                                   ),
                                 ),
@@ -971,7 +969,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<List<Map<String, dynamic>>> _vrReelsFutureOnce() {
-    return _vrReelsFuture ??= ReelsService().getReelsVR(limit: 120);
+    final uid = AuthService().currentUser?.uid ?? '';
+    return _vrReelsFuture ??= ProfilePostsLoader.loadVrForUser(uid);
   }
 
   List<Widget> _buildSavedGridSlivers() {
@@ -1166,6 +1165,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     final handle = (item['handle']?.toString() ?? '').trim();
     final avatar = (item['avatarUrl']?.toString() ?? '').trim();
     final thumb = _thumbnailFromReel(item);
+    final videoUrl = (item['videoUrl'] as String? ?? '').trim();
+    final description = (item['description'] as String? ??
+            item['caption'] as String? ??
+            '')
+        .trim();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => VRDetailScreen(
@@ -1174,7 +1178,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             creatorHandle: handle.isNotEmpty ? handle : 'creator',
             avatarUrl: avatar,
             thumbnailUrl: thumb,
+            videoUrl: videoUrl.isNotEmpty ? videoUrl : null,
+            description: description,
             likeCount: (item['likes'] as num?)?.toInt() ?? 0,
+            commentCount: (item['comments'] as num?)?.toInt() ?? 0,
+            viewCount: (item['views'] as num?)?.toInt() ?? 0,
+            shareCount: (item['shares'] as num?)?.toInt() ?? 0,
+            saveCount: (item['saves'] as num?)?.toInt() ?? 0,
+            video360: Video360Metadata.forVrPlayback(item),
           ),
         ),
       ),

@@ -79,6 +79,7 @@ class UserProfilePayload {
     required this.followerCount,
     this.followingCount = 0,
     this.bio = '',
+    this.profileMusic = '',
     this.monetizationEnabled = false,
     this.isFollowing = false,
     this.isSubscribed = false,
@@ -113,6 +114,7 @@ class UserProfilePayload {
       followerCount: followerCount,
       followingCount: followingCount,
       bio: user.bio ?? '',
+      profileMusic: user.profileMusic ?? '',
       isFollowing: isFollowing,
       isSubscribed: isSubscribed,
     );
@@ -131,6 +133,7 @@ class UserProfilePayload {
   final int followerCount;
   final int followingCount;
   final String bio;
+  final String profileMusic;
   final bool isFollowing;
   final bool isSubscribed;
 
@@ -183,6 +186,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
   bool? _liveIsVerified;
   String? _liveAccountType;
   String? _liveBio;
+  String? _liveProfileMusic;
   String? _liveUsername;
   String? _liveDisplayName;
   String? _liveAvatarUrl;
@@ -311,6 +315,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
         _liveIsVerified = u?.isVerified;
         _liveAccountType = u?.accountType;
         _liveBio = u?.bio;
+        _liveProfileMusic = u?.profileMusic;
         _liveUsername = u?.username;
         _liveDisplayName = u?.displayName;
         _liveAvatarUrl = u?.profileImage;
@@ -341,6 +346,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _liveFollowingCount = u?.following.length ?? 0;
       _livePostCount = pc;
       _liveBio = u?.bio;
+      _liveProfileMusic = u?.profileMusic;
     });
   }
 
@@ -359,6 +365,12 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final live = (_liveBio ?? '').trim();
     if (live.isNotEmpty) return live;
     return p.bio.trim();
+  }
+
+  String _resolvedProfileMusic(UserProfilePayload p) {
+    final live = (_liveProfileMusic ?? '').trim();
+    if (live.isNotEmpty) return live;
+    return p.profileMusic.trim();
   }
 
   String _resolvedUsername(UserProfilePayload p) {
@@ -1262,6 +1274,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
 
   Widget _buildProfileInfoSection(UserProfilePayload p) {
     final bio = _resolvedBio(p);
+    final profileMusic = _resolvedProfileMusic(p);
     final accountLabel =
         _accountTypeLabel(_liveAccountType ?? p.accountType);
     return Column(
@@ -1289,6 +1302,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: ProfileBioText(bio: bio),
           ),
         ],
+        ProfileFigmaMusicLine(label: profileMusic),
       ],
     );
   }
@@ -1563,7 +1577,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return [
       SliverToBoxAdapter(
         child: FutureBuilder<List<Map<String, dynamic>>>(
-          future: ReelsService().getReelsVR(limit: 120),
+          future: ProfilePostsLoader.loadVrForUser(targetUid),
           builder: (context, snapshot) {
             if (snapshot.connectionState != ConnectionState.done) {
               return const Padding(

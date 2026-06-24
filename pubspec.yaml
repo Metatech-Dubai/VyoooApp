@@ -78,8 +78,7 @@ dependencies:
     path: packages/flutter_callkit_incoming_maintained
   uuid: ^4.5.3
   flutter_secure_storage: ^10.3.1
-  flutter_cube: ^0.1.1
-  dchs_motion_sensors: ^2.0.1
+  video_360: ^0.0.11
 
 # Pub solver only: agora_rtc_engine wants ffi ^1.x, share_plus wants ^2.x.
 # iOS: keep Agora frameworks embedded in Debug/Profile/Release to avoid dyld load failures.

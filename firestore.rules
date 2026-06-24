@@ -102,6 +102,7 @@ service cloud.firestore {
         'displayName',
         'username',
         'bio',
+        'profileMusic',
         'dob',
         'profileImage',
         'interests',
@@ -140,6 +141,8 @@ service cloud.firestore {
       validUsernameField(request.resource.data.username) &&
       (!('bio' in request.resource.data) ||
         request.resource.data.bio is string) &&
+      (!('profileMusic' in request.resource.data) ||
+        request.resource.data.profileMusic is string) &&
       request.resource.data.dob is string &&
       request.resource.data.profileImage is string &&
       request.resource.data.interests is list &&
@@ -203,6 +206,30 @@ service cloud.firestore {
           .hasOnly(['following', 'blockedUsers'])
         && request.resource.data.following is list
         && request.resource.data.blockedUsers is list;
+    }
+
+    // Bio, music, display name, avatar URL — without [validUserDoc] (legacy extra keys).
+    function ownerProfilePresentationPatch(userId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return isOwner(userId)
+        && followersCountUnchanged()
+        && monetizationEnabledUnchanged()
+        && emailOtpVerifiedUnchanged()
+        && parentalContactFieldsUnchanged()
+        && affected.hasOnly([
+          'bio',
+          'profileMusic',
+          'displayName',
+          'profileImage',
+        ])
+        && affected.size() > 0
+        && (!affected.hasAny(['bio']) || request.resource.data.bio is string)
+        && (!affected.hasAny(['profileMusic'])
+          || request.resource.data.profileMusic is string)
+        && (!affected.hasAny(['displayName'])
+          || request.resource.data.displayName is string)
+        && (!affected.hasAny(['profileImage'])
+          || request.resource.data.profileImage is string);
     }
 
     function parentalConsentCreateValid() {
@@ -567,6 +594,7 @@ service cloud.firestore {
                             'everyone', 'followers', 'nobody',
                           ])
                       || ownerSocialGraphPatch(userId)
+                      || ownerProfilePresentationPatch(userId)
                     )
                     || (isSignedIn()
                         && !isOwner(userId)

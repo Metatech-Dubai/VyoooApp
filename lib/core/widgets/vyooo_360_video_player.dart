@@ -2,7 +2,9 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:video_360/video_360.dart';
 import 'package:video_player/video_player.dart';
 
 import '../models/video_360_metadata.dart';
@@ -12,11 +14,10 @@ import '../theme/app_spacing.dart';
 import '../utils/stream_playback_urls.dart';
 import '../utils/video_upload_policy.dart';
 import 'double_tap_like_overlay.dart';
-import 'sphere_360_panorama.dart';
 
-/// Immersive 360° video player: equirectangular texture on an inner sphere.
+/// Immersive 360° video via native spherical player ([Video360View]).
 ///
-/// Falls back to flat [VideoPlayer] if sphere rendering fails.
+/// Falls back to flat [VideoPlayer] when native 360 is unavailable or fails.
 class Vyooo360VideoPlayer extends StatefulWidget {
   const Vyooo360VideoPlayer({
     super.key,
@@ -51,10 +52,14 @@ class Vyooo360VideoPlayer extends StatefulWidget {
 
 class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     with WidgetsBindingObserver {
-  VideoPlayerController? _controller;
-  bool _initialized = false;
+  Video360Controller? _nativeController;
+  VideoPlayerController? _flatController;
+
+  String? _resolvedUrl;
   bool _showError = false;
   bool _useFlatFallback = false;
+  bool _nativeIsPlaying = false;
+  bool _flatInitialized = false;
   final _feedAudio = FeedVideoAudioController.instance;
   VoidCallback? _feedAudioListener;
   bool _showControls = false;
@@ -62,17 +67,23 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   bool _hasNotifiedPlaybackStart = false;
   bool _hasNotifiedCompletion = false;
   int _urlIndex = 0;
-  int _retryCount = 0;
+  int _viewGeneration = 0;
+  bool _nativeLayoutReady = false;
+  bool _useAndroidSurface = true;
   Timer? _hideTimer;
-  Timer? _retryTimer;
-  static const int _maxRetries = 24;
+  Timer? _startupWatchdog;
+
+  static const Duration _startupTimeout = Duration(seconds: 12);
+
+  bool get _supportsNative360 =>
+      !kIsWeb && (Platform.isAndroid || Platform.isIOS);
 
   bool get _shouldPlay => widget.isVisible && _isAppForeground;
 
   bool get _isMuted => _feedAudio.isMuted.value;
 
   void _onFeedAudioChanged() {
-    _controller?.setVolume(_feedAudio.volume);
+    _flatController?.setVolume(_feedAudio.volume);
     if (mounted) setState(() {});
   }
 
@@ -83,7 +94,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     _feedAudioListener = _onFeedAudioChanged;
     _feedAudio.isMuted.addListener(_feedAudioListener!);
     if (_shouldPlay) {
-      _initializePlayer();
+      _beginPlayback();
     }
   }
 
@@ -91,11 +102,8 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   void didUpdateWidget(covariant Vyooo360VideoPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.videoUrl != widget.videoUrl) {
-      _disposePlayer();
-      _urlIndex = 0;
-      _retryCount = 0;
-      _useFlatFallback = false;
-      if (_shouldPlay) _initializePlayer();
+      _resetPlayback();
+      if (_shouldPlay) _beginPlayback();
       return;
     }
     _syncPlayback();
@@ -117,22 +125,138 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
       _feedAudioListener = null;
     }
     _hideTimer?.cancel();
-    _retryTimer?.cancel();
-    _disposePlayer();
+    _startupWatchdog?.cancel();
+    _disposeNative();
+    _disposeFlat();
     super.dispose();
   }
 
-  void _disposePlayer() {
-    _controller?.removeListener(_onControllerTick);
-    _controller?.dispose();
-    _controller = null;
-    _initialized = false;
+  void _resetPlayback() {
+    _startupWatchdog?.cancel();
+    _disposeNative();
+    _disposeFlat();
+    _urlIndex = 0;
+    _viewGeneration = 0;
+    _useFlatFallback = false;
+    _showError = false;
+    _resolvedUrl = null;
+    _nativeIsPlaying = false;
+    _nativeLayoutReady = false;
+    _useAndroidSurface = true;
+  }
+
+  void _disposeNative() {
+    final native = _nativeController;
+    _nativeController = null;
+    unawaited(native?.dispose());
+  }
+
+  void _disposeFlat() {
+    _flatController?.removeListener(_onFlatControllerTick);
+    _flatController?.dispose();
+    _flatController = null;
+    _flatInitialized = false;
     _hasNotifiedPlaybackStart = false;
     _hasNotifiedCompletion = false;
   }
 
-  Future<void> _initializePlayer() async {
-    final urls = StreamPlaybackUrls.candidates(widget.videoUrl);
+  Future<void> _beginPlayback() async {
+    if (!VideoUploadPolicy.isPlayableUrl(widget.videoUrl)) {
+      if (mounted) setState(() => _showError = true);
+      return;
+    }
+    if (!_supportsNative360 || !widget.video360.use360Player) {
+      await _initializeFlatFallback();
+      return;
+    }
+    await _resolveNativeUrl();
+  }
+
+  Future<void> _resolveNativeUrl() async {
+    final urls = StreamPlaybackUrls.candidatesPreferMp4(widget.videoUrl);
+    if (urls.isEmpty) {
+      if (mounted) setState(() => _showError = true);
+      return;
+    }
+    final raw = urls[_urlIndex.clamp(0, urls.length - 1)];
+    try {
+      final resolved = await _resolveLocalOrRemote(raw);
+      if (!mounted) return;
+      setState(() {
+        _resolvedUrl = resolved;
+        _showError = false;
+        _nativeLayoutReady = false;
+      });
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _nativeLayoutReady = true);
+      });
+      _armStartupWatchdog();
+    } catch (e) {
+      debugPrint('Vyooo360VideoPlayer URL resolve failed: $e');
+      if (!mounted) return;
+      await _retryOrFallback();
+    }
+  }
+
+  Future<String> _resolveLocalOrRemote(String url) async {
+    if (!url.startsWith('http')) return url;
+    final local = await FeedOfflineVideoCache.instance.localFileFor(url);
+    return local?.path ?? url;
+  }
+
+  void _armStartupWatchdog() {
+    _startupWatchdog?.cancel();
+    _startupWatchdog = Timer(_startupTimeout, () {
+      if (!mounted || _useFlatFallback || _hasNotifiedPlaybackStart) return;
+      debugPrint('Vyooo360VideoPlayer native startup timeout');
+      unawaited(_retryOrFallback());
+    });
+  }
+
+  Future<void> _retryOrFallback() async {
+    final urls = StreamPlaybackUrls.candidatesPreferMp4(widget.videoUrl);
+    if (_urlIndex + 1 < urls.length) {
+      _urlIndex++;
+      _viewGeneration++;
+      _disposeNative();
+      if (mounted) {
+        setState(() {
+          _resolvedUrl = null;
+          _nativeLayoutReady = false;
+        });
+      }
+      await _resolveNativeUrl();
+      return;
+    }
+    if (Platform.isAndroid && _useAndroidSurface) {
+      _useAndroidSurface = false;
+      _viewGeneration++;
+      _disposeNative();
+      if (mounted) {
+        setState(() {
+          _resolvedUrl = null;
+          _nativeLayoutReady = false;
+        });
+      }
+      await _resolveNativeUrl();
+      return;
+    }
+    await _switchToFlatFallback();
+  }
+
+  Future<void> _switchToFlatFallback() async {
+    _startupWatchdog?.cancel();
+    _disposeNative();
+    if (!mounted) return;
+    setState(() {
+      _useFlatFallback = true;
+      _resolvedUrl = null;
+    });
+    await _initializeFlatFallback();
+  }
+
+  Future<void> _initializeFlatFallback() async {
+    final urls = StreamPlaybackUrls.candidatesPreferMp4(widget.videoUrl);
     if (urls.isEmpty) {
       if (mounted) setState(() => _showError = true);
       return;
@@ -163,36 +287,54 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
       }
       controller.setLooping(true);
       controller.setVolume(_feedAudio.volume);
-      controller.addListener(_onControllerTick);
+      controller.addListener(_onFlatControllerTick);
       setState(() {
-        _controller = controller;
-        _initialized = true;
+        _flatController = controller;
+        _flatInitialized = true;
         _showError = false;
       });
       _syncPlayback();
     } catch (e) {
-      debugPrint('Vyooo360VideoPlayer init failed: $e');
+      debugPrint('Vyooo360VideoPlayer flat fallback failed: $e');
       if (!mounted) return;
-      if (_retryCount < _maxRetries) {
-        _retryCount++;
-        _retryTimer?.cancel();
-        _retryTimer = Timer(const Duration(seconds: 5), () {
-          if (mounted && _shouldPlay) _initializePlayer();
-        });
-        return;
-      }
-      if (_urlIndex + 1 < urls.length) {
-        _urlIndex++;
-        _retryCount = 0;
-        _initializePlayer();
-        return;
-      }
       setState(() => _showError = true);
     }
   }
 
-  void _onControllerTick() {
-    final controller = _controller;
+  void _onNativeCreated(Video360Controller controller) {
+    _nativeController = controller;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      _syncPlayback();
+      Future<void>.delayed(const Duration(milliseconds: 350), () {
+        if (!mounted || !_shouldPlay) return;
+        unawaited(controller.play());
+      });
+    });
+  }
+
+  void _onNativePlayInfo(Video360PlayInfo info) {
+    if (!mounted) return;
+    final wasPlaying = _nativeIsPlaying;
+    _nativeIsPlaying = info.isPlaying;
+    if (info.isPlaying && info.total > 0 && !_hasNotifiedPlaybackStart) {
+      _hasNotifiedPlaybackStart = true;
+      _startupWatchdog?.cancel();
+      widget.onVideoPlaybackStarted?.call();
+    }
+    if (!_hasNotifiedCompletion &&
+        info.total > 0 &&
+        info.duration >= info.total - 200) {
+      _hasNotifiedCompletion = true;
+      widget.onVideoCompleted?.call();
+    }
+    if (wasPlaying != _nativeIsPlaying) {
+      setState(() {});
+    }
+  }
+
+  void _onFlatControllerTick() {
+    final controller = _flatController;
     if (controller == null || !controller.value.isInitialized) return;
     if (controller.value.isPlaying && !_hasNotifiedPlaybackStart) {
       _hasNotifiedPlaybackStart = true;
@@ -210,12 +352,31 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   }
 
   void _syncPlayback() {
-    final controller = _controller;
-    if (controller == null) {
-      if (_shouldPlay && !_showError) _initializePlayer();
+    if (_useFlatFallback) {
+      _syncFlatPlayback();
       return;
     }
-    if (!_initialized) return;
+    final native = _nativeController;
+    if (native == null) {
+      if (_shouldPlay && _resolvedUrl == null && !_showError) {
+        unawaited(_beginPlayback());
+      }
+      return;
+    }
+    if (_shouldPlay && widget.autoPlay) {
+      unawaited(native.play());
+    } else {
+      unawaited(native.stop());
+    }
+  }
+
+  void _syncFlatPlayback() {
+    final controller = _flatController;
+    if (controller == null) {
+      if (_shouldPlay && !_showError) unawaited(_initializeFlatFallback());
+      return;
+    }
+    if (!_flatInitialized) return;
     if (_shouldPlay && widget.autoPlay) {
       if (!controller.value.isPlaying) controller.play();
     } else {
@@ -223,24 +384,37 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     }
   }
 
-  void _togglePlayPause() {
-    final controller = _controller;
-    if (controller == null) return;
-    setState(() {
-      if (controller.value.isPlaying) {
-        controller.pause();
+  Future<void> _togglePlayPause() async {
+    if (_useFlatFallback) {
+      final controller = _flatController;
+      if (controller == null) return;
+      setState(() {
+        if (controller.value.isPlaying) {
+          controller.pause();
+          _showControls = true;
+          _hideTimer?.cancel();
+        } else {
+          controller.play();
+          _startHideTimer();
+        }
+      });
+      return;
+    }
+    final native = _nativeController;
+    if (native == null) return;
+    if (_nativeIsPlaying) {
+      await native.stop();
+      setState(() {
         _showControls = true;
         _hideTimer?.cancel();
-      } else {
-        controller.play();
-        _startHideTimer();
-      }
-    });
+      });
+    } else {
+      await native.play();
+      _startHideTimer();
+    }
   }
 
   void _toggleMute() {
-    final controller = _controller;
-    if (controller == null) return;
     _feedAudio.toggle();
     _startHideTimer();
   }
@@ -248,9 +422,11 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   void _startHideTimer() {
     _hideTimer?.cancel();
     _hideTimer = Timer(const Duration(seconds: 2), () {
-      if (mounted && (_controller?.value.isPlaying ?? false)) {
-        setState(() => _showControls = false);
-      }
+      if (!mounted) return;
+      final playing = _useFlatFallback
+          ? (_flatController?.value.isPlaying ?? false)
+          : _nativeIsPlaying;
+      if (playing) setState(() => _showControls = false);
     });
   }
 
@@ -269,7 +445,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   }
 
   Widget _buildFlatFallback() {
-    final controller = _controller!;
+    final controller = _flatController!;
     final size = controller.value.size;
     return Stack(
       fit: StackFit.expand,
@@ -303,16 +479,29 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     );
   }
 
-  Widget _buildSphereView() {
-    return Sphere360Panorama(
-      controller: _controller!,
-      croppedArea: widget.video360.panoramaCrop,
-      enableGyro: widget.enableGyro,
-      enableTouch: widget.enableTouch,
+  Widget _buildNativeView() {
+    final url = _resolvedUrl!;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 1 || constraints.maxHeight < 1) {
+          return _buildLoadingBackground();
+        }
+        return Video360View(
+          key: ValueKey('360-$url-$_viewGeneration-$_useAndroidSurface'),
+          url: url,
+          isRepeat: true,
+          useAndroidViewSurface: _useAndroidSurface,
+          onVideo360ViewCreated: _onNativeCreated,
+          onPlayInfo: _onNativePlayInfo,
+        );
+      },
     );
   }
 
   Widget _buildControlsPill() {
+    final isPlaying = _useFlatFallback
+        ? (_flatController?.value.isPlaying ?? false)
+        : _nativeIsPlaying;
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
@@ -323,24 +512,24 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
         mainAxisSize: MainAxisSize.min,
         children: [
           GestureDetector(
-            onTap: _togglePlayPause,
+            onTap: () => unawaited(_togglePlayPause()),
             child: Icon(
-              _controller?.value.isPlaying == true
-                  ? Icons.pause_rounded
-                  : Icons.play_arrow_rounded,
+              isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
               color: Colors.white,
               size: 28,
             ),
           ),
-          const SizedBox(width: 16),
-          GestureDetector(
-            onTap: _toggleMute,
-            child: Icon(
-              _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-              color: Colors.white,
-              size: 24,
+          if (_useFlatFallback) ...[
+            const SizedBox(width: 16),
+            GestureDetector(
+              onTap: _toggleMute,
+              child: Icon(
+                _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -366,7 +555,27 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
       );
     }
 
-    if (!_initialized || _controller == null) {
+    if (_useFlatFallback) {
+      if (!_flatInitialized || _flatController == null) {
+        return Container(
+          color: Colors.black,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _buildLoadingBackground(),
+              const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+      return _wrapWithChrome(_buildFlatFallback());
+    }
+
+    if (_resolvedUrl == null || !_nativeLayoutReady) {
       return Container(
         color: Colors.black,
         child: Stack(
@@ -383,17 +592,15 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
       );
     }
 
-    Widget body;
-    try {
-      body = _useFlatFallback ? _buildFlatFallback() : _buildSphereView();
-    } catch (e, st) {
-      debugPrint('Vyooo360VideoPlayer sphere render error: $e\n$st');
-      body = _buildFlatFallback();
-      _useFlatFallback = true;
-    }
+    return _wrapWithChrome(_buildNativeView());
+  }
 
+  Widget _wrapWithChrome(Widget body) {
+    final isPlaying = _useFlatFallback
+        ? (_flatController?.value.isPlaying ?? false)
+        : _nativeIsPlaying;
     return DoubleTapLikeOverlay(
-      onTap: _togglePlayPause,
+      onTap: () => unawaited(_togglePlayPause()),
       onDoubleTap: widget.onDoubleTap,
       child: Container(
         color: Colors.black,
@@ -403,10 +610,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
             body,
             Center(
               child: AnimatedOpacity(
-                opacity: _showControls ||
-                        !(_controller?.value.isPlaying ?? true)
-                    ? 1.0
-                    : 0.0,
+                opacity: _showControls || !isPlaying ? 1.0 : 0.0,
                 duration: const Duration(milliseconds: 200),
                 child: _buildControlsPill(),
               ),

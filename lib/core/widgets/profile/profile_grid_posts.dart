@@ -26,6 +26,22 @@ abstract final class ProfileGridPosts {
     return VideoUploadPolicy.isPlayableUrl(videoUrl);
   }
 
+  static bool isVrReel(Map<String, dynamic> reel) => reel['isVR'] == true;
+
+  /// 360° uploads belong on the VR tab, not Posts (even legacy docs with only
+  /// [is360Video] and no [isVR]).
+  static bool belongsInVrTab(Map<String, dynamic> reel) =>
+      isVrReel(reel) || reel['is360Video'] == true;
+
+  /// Posts tab: playable image/video reels, excluding VR-tab-only content.
+  static List<Map<String, dynamic>> filterForPostsTab(
+    List<Map<String, dynamic>> reels,
+  ) {
+    return reels
+        .where((r) => hasPlayableMedia(r) && !belongsInVrTab(r))
+        .toList(growable: false);
+  }
+
   /// Keeps image and video posts that can render a thumbnail in the grid.
   static List<Map<String, dynamic>> filterImageAndVideo(
     List<Map<String, dynamic>> reels,

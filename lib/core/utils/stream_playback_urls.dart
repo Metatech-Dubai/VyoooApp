@@ -26,4 +26,22 @@ class StreamPlaybackUrls {
     }
     return out.toSet().toList();
   }
+
+  /// Same URLs as [candidates], but MP4 progressive sources first for native
+  /// 360 players (ExoPlayer / AVPlayer) that handle them more reliably than HLS.
+  static List<String> candidatesPreferMp4(String raw) {
+    final all = candidates(raw);
+    all.sort((a, b) {
+      final aMp4 = _isMp4Url(a);
+      final bMp4 = _isMp4Url(b);
+      if (aMp4 == bMp4) return 0;
+      return aMp4 ? -1 : 1;
+    });
+    return all;
+  }
+
+  static bool _isMp4Url(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.mp4') || lower.contains('/downloads/');
+  }
 }

@@ -188,16 +188,18 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
 
   @override
   void deactivate() {
-    // Pause before child VideoProgressIndicator is disposed (incoming call overlay
-    // backgrounds MainActivity and async position updates can crash otherwise).
-    // Detach the listener first: pause() notifies listeners and must not call
-    // setState while the element tree is deactivating.
+    // Detach our listener first. pause() notifies all listeners (including
+    // VideoProgressIndicator) — defer it until after this frame so we never
+    // trigger setState/markNeedsBuild while the tree is deactivating.
     final ctrl = _controller;
     if (ctrl != null) {
       ctrl.removeListener(_onControllerValueChanged);
       if (ctrl.value.isPlaying) {
-        ctrl.pause();
         _lastIsPlaying = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!identical(_controller, ctrl)) return;
+          if (ctrl.value.isPlaying) ctrl.pause();
+        });
       }
     }
     super.deactivate();
