@@ -687,8 +687,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             width: ProfileFigmaTokens.actionButtonGap,
                           ),
                           ProfileFigmaIconActionButton(
-                            iconAssetPath:
-                                'assets/vyooO_icons/Profile/share.png',
+                            icon: Icons.share_rounded,
                             onPressed: () => _shareProfile(
                               uid: profileUid,
                               username: user?.username,

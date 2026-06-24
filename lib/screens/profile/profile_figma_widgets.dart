@@ -229,13 +229,15 @@ class ProfileFigmaIconActionButton extends StatelessWidget {
             child: iconAssetPath != null
                 ? Image.asset(
                     iconAssetPath!,
-                    width: 18,
-                    height: 18,
+                    width: ProfileFigmaTokens.actionIconSize,
+                    height: ProfileFigmaTokens.actionIconSize,
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
                     color: ProfileFigmaTokens.primaryText,
                   )
                 : Icon(
                     icon ?? Icons.add_rounded,
-                    size: 22,
+                    size: ProfileFigmaTokens.actionIconSize,
                     color: ProfileFigmaTokens.primaryText,
                   ),
           ),

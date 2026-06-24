@@ -1345,7 +1345,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               ],
               const SizedBox(width: 8),
               _ProfileCircleIconButton(
-                assetPath: 'assets/vyooO_icons/Profile/share.png',
+                icon: Icons.share_rounded,
                 onTap: _shareProfile,
               ),
             ],

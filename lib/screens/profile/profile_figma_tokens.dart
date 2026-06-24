@@ -80,6 +80,7 @@ abstract final class ProfileFigmaTokens {
   static const double actionButtonFontSize = 13;
   static const FontWeight actionButtonFontWeight = FontWeight.w400;
   static const double actionIconButtonSize = 45;
+  static const double actionIconSize = 22;
 
   static const double bioFontSize = 14;
   static const double musicFontSize = 12;
