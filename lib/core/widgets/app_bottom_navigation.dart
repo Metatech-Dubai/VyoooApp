@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_fonts.dart';
-import '../theme/app_spacing.dart';
 import '../../screens/profile/profile_figma_tokens.dart';
 
 class _NavAssets {
@@ -174,24 +173,26 @@ class AppBottomNavigation extends StatelessWidget {
   /// Horizontal margin for the floating pill bar.
   static const double _horizontalMargin = 20;
 
-  /// Bottom margin above the system gesture area.
-  static const double _bottomMargin = AppSpacing.xs;
+  /// Fraction of the system bottom inset kept below the bar (0.5 = sit halfway into safe area).
+  static const double _safeAreaBottomFactor = 0.5;
 
-  /// Total bottom chrome: margins + [barHeight] + system navigation inset.
+  /// Total bottom chrome: [barHeight] + reduced system navigation inset.
   static double totalHeightFor(BuildContext context) {
-    return barHeight + _bottomMargin + MediaQuery.viewPaddingOf(context).bottom;
+    final systemBottom = MediaQuery.viewPaddingOf(context).bottom;
+    return barHeight + systemBottom * _safeAreaBottomFactor;
   }
 
   @override
   Widget build(BuildContext context) {
     final systemBottom = MediaQuery.viewPaddingOf(context).bottom;
+    final bottomInset = systemBottom * _safeAreaBottomFactor;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
         _horizontalMargin,
         0,
         _horizontalMargin,
-        systemBottom + _bottomMargin,
+        bottomInset,
       ),
       child: DecoratedBox(
         decoration: BoxDecoration(

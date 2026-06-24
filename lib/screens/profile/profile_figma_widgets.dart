@@ -883,9 +883,7 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
   late final AnimationController _controller;
   double _dragOrigin = 0;
 
-  static double get _expandedWidth =>
-      ProfileFigmaTokens.profileSideRailSeparatorWidth +
-      ProfileFigmaTokens.profileSideRailWidth;
+  static double get _expandedWidth => ProfileFigmaTokens.profileSideRailWidth;
 
   static double get _collapsedWidth =>
       ProfileFigmaTokens.profileSideRailHandleWidth;
@@ -946,7 +944,6 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
 
   @override
   Widget build(BuildContext context) {
-    final separatorWidth = ProfileFigmaTokens.profileSideRailSeparatorWidth;
     final iconSize = ProfileFigmaTokens.profileSideRailIconSize;
     final railHeight = ProfileFigmaTokens.profileSideRailHeight;
     final iconSlotHeight = (railHeight - 24) / 4;
@@ -977,66 +974,50 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
                 child: SizedBox(
                   width: _expandedWidth,
                   height: railHeight,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Opacity(
-                        opacity: t,
-                        child: SizedBox(
-                          width: separatorWidth,
-                          child: const ColoredBox(
-                            color: ProfileFigmaTokens.profileSideRailSeparator,
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Material(
-                          color: ProfileFigmaTokens.accentMagenta,
-                          borderRadius: BorderRadius.horizontal(
-                            left: t < 0.08
-                                ? Radius.circular(handleWidth / 2)
-                                : Radius.zero,
-                            right: panelRadius,
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: Opacity(
-                            opacity: iconOpacity,
-                            child: IgnorePointer(
-                              ignoring: t < 0.85,
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                children: [
-                                  _ProfileSideRailIconButton(
-                                    icon: Icons.menu_rounded,
-                                    size: iconSize,
-                                    slotHeight: iconSlotHeight,
-                                    onTap: widget.onMenuTap,
-                                  ),
-                                  _ProfileSideRailIconButton(
-                                    icon: Icons.circle_outlined,
-                                    size: iconSize,
-                                    slotHeight: iconSlotHeight,
-                                    onTap: widget.onWalletTap,
-                                  ),
-                                  _ProfileSideRailIconButton(
-                                    icon: Icons.chat_bubble_outline_rounded,
-                                    size: iconSize,
-                                    slotHeight: iconSlotHeight,
-                                    onTap: widget.onChatTap,
-                                  ),
-                                  _ProfileSideRailIconButton(
-                                    icon: Icons.bar_chart_rounded,
-                                    size: iconSize,
-                                    slotHeight: iconSlotHeight,
-                                    onTap: widget.onRevenueTap,
-                                  ),
-                                ],
-                              ),
+                  child: Material(
+                    color: ProfileFigmaTokens.accentMagenta,
+                    borderRadius: BorderRadius.horizontal(
+                      left: t < 0.08
+                          ? Radius.circular(handleWidth / 2)
+                          : Radius.zero,
+                      right: panelRadius,
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Opacity(
+                      opacity: iconOpacity,
+                      child: IgnorePointer(
+                        ignoring: t < 0.85,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                          children: [
+                            _ProfileSideRailIconButton(
+                              icon: Icons.menu_rounded,
+                              size: iconSize,
+                              slotHeight: iconSlotHeight,
+                              onTap: widget.onMenuTap,
                             ),
-                          ),
+                            _ProfileSideRailIconButton(
+                              icon: Icons.circle_outlined,
+                              size: iconSize,
+                              slotHeight: iconSlotHeight,
+                              onTap: widget.onWalletTap,
+                            ),
+                            _ProfileSideRailIconButton(
+                              icon: Icons.chat_bubble_outline_rounded,
+                              size: iconSize,
+                              slotHeight: iconSlotHeight,
+                              onTap: widget.onChatTap,
+                            ),
+                            _ProfileSideRailIconButton(
+                              icon: Icons.bar_chart_rounded,
+                              size: iconSize,
+                              slotHeight: iconSlotHeight,
+                              onTap: widget.onRevenueTap,
+                            ),
+                          ],
                         ),
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),

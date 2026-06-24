@@ -102,14 +102,12 @@ abstract final class ProfileFigmaTokens {
 
   /// Profile side rail (magenta drawer) beside avatar.
   static const double profileSideRailWidth = 52;
-  static const double profileSideRailSeparatorWidth = 6;
   static const double profileSideRailRadius = 20;
   /// Vertical offset — lines up with [AppSpacing.md] above the profile avatar.
   static const double profileSideRailTop = 16;
   /// Same height as [avatarOuterSize] (profile photo frame).
   static const double profileSideRailHeight = avatarOuterSize;
   static const double profileSideRailIconSize = 22;
-  static const Color profileSideRailSeparator = Color(0xFF1C1C1C);
   static const double profileSideAccentWidth = 8;
 
   /// Collapsed drawer handle — narrow plum pill peeking from the left edge.
