@@ -7,18 +7,20 @@ import '../theme/app_spacing.dart';
 import '../../screens/profile/profile_figma_tokens.dart';
 
 class _NavAssets {
-  static const _base = 'assets/vyooO_icons/Home/nav_bar_icons';
-  static const homeSelected = '$_base/home.png';
-  static const homeUnselected = 'assets/BottomNavBar/HomeUnSlected.png';
-  static const searchSelected = '$_base/search_filled.png';
-  static const searchUnselected = '$_base/search.png';
-  static const addSelected = '$_base/create.png';
-  static const addUnselected = '$_base/create.png';
+  static const _base = 'assets/BottomNavBar';
+  static const homeSelected = '$_base/home_selected.png';
+  static const homeUnselected = '$_base/home_unselected.png';
+  static const broadcastSelected = '$_base/broadcast_selected.png';
+  static const broadcastUnselected = '$_base/broadcast_unselected.png';
+  static const addSelected = 'assets/vyooO_icons/Home/nav_bar_icons/create.png';
+  static const addUnselected = 'assets/vyooO_icons/Home/nav_bar_icons/create.png';
+  static const chatSelected = '$_base/chat_selected.png';
+  static const chatUnselected = '$_base/chat_unselected.png';
   static const profileDefault = 'assets/vyooO_icons/Home/profile_icon.png';
 }
 
 /// Custom bottom nav wrapper matching the VyooO design language.
-/// Index: 0 Home, 1 Search, 2 Create (+), 3 Messages, 4 Profile.
+/// Index: 0 Home, 1 Live/Search, 2 Create (+), 3 Messages, 4 Profile.
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
     super.key,
@@ -48,6 +50,8 @@ class AppBottomNavigation extends StatelessWidget {
 
   static const double _tapTargetSize = 44;
   static const double _selectedPillSize = 44;
+
+  Widget _navIcon(String assetPath) => _NavIconImage(assetPath: assetPath);
 
   Widget _buildProfileIcon(bool isSelected) {
     final hasProfileImage =
@@ -141,10 +145,8 @@ class AppBottomNavigation extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(
-          isSelected ? Icons.chat_bubble : Icons.chat_bubble_outline,
-          size: _iconSize,
-          color: _iconColor,
+        _navIcon(
+          isSelected ? _NavAssets.chatSelected : _NavAssets.chatUnselected,
         ),
         if (showBadge)
           Positioned(
@@ -228,8 +230,8 @@ class AppBottomNavigation extends StatelessWidget {
             buildTap: _buildNavTap,
           ),
           _NavItem(
-            unselectedAsset: _NavAssets.searchUnselected,
-            selectedAsset: _NavAssets.searchSelected,
+            unselectedAsset: _NavAssets.broadcastUnselected,
+            selectedAsset: _NavAssets.broadcastSelected,
             isSelected: currentIndex == 1,
             onTap: () => onTap(1),
             buildTap: _buildNavTap,
@@ -344,17 +346,29 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final icon = customChild ??
-        Image.asset(
-          isSelected ? selectedAsset! : unselectedAsset!,
-          width: AppBottomNavigation._iconSize,
-          height: AppBottomNavigation._iconSize,
-          color: AppBottomNavigation._iconColor,
+        _NavIconImage(
+          assetPath: isSelected ? selectedAsset! : unselectedAsset!,
         );
 
     return buildTap(
       onPressed: onTap,
       isSelected: isSelected,
       child: icon,
+    );
+  }
+}
+
+class _NavIconImage extends StatelessWidget {
+  const _NavIconImage({required this.assetPath});
+
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return Image.asset(
+      assetPath,
+      width: AppBottomNavigation._iconSize,
+      height: AppBottomNavigation._iconSize,
     );
   }
 }

@@ -28,6 +28,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/utils/verification_badge.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
@@ -573,7 +574,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
+                        horizontal: ProfileFigmaTokens.profileHeaderHorizontalPad,
                       ),
                       child: Column(
                         children: [
@@ -730,9 +731,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                       SliverToBoxAdapter(
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(
-                            AppSpacing.md,
+                            ProfileFigmaTokens.profileHeaderHorizontalPad,
                             24,
-                            AppSpacing.md,
+                            ProfileFigmaTokens.profileHeaderHorizontalPad,
                             0,
                           ),
                           child: Column(
@@ -815,6 +816,14 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                     ],
                   ),
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: AppBottomNavigation.totalHeightFor(context),
+                ),
+                sliver: const SliverToBoxAdapter(
+                  child: SizedBox.shrink(),
                 ),
               ),
             ],

@@ -18,16 +18,17 @@ void main() {
       expect(placements.map((p) => p.sourceIndex).toList(), [0, 1, 2, 3, 4]);
     });
 
-    test('artistModern promotes highest views in chunk at same index', () {
-      final views = List<int>.generate(12, (i) => i);
-      views[11] = 1000;
+    test('artistModern promotes first post in each chunk to 2×2', () {
+      final views = List<int>.generate(16, (i) => i);
+      views[15] = 1000;
       final placements = ProfileGridLayoutEngine.layout(
-        itemCount: 12,
+        itemCount: 16,
         viewsByIndex: views,
         mode: ProfileGridLayoutMode.artistModern,
       );
-      expect(placements.length, 12);
-      expect(placements[11].span, ProfileGridSpan.double);
+      expect(placements.length, 16);
+      expect(placements[0].span, ProfileGridSpan.double);
+      expect(placements[15].span, ProfileGridSpan.unit);
       expect(
         placements.where((p) => p.span == ProfileGridSpan.double).length,
         1,
@@ -35,14 +36,14 @@ void main() {
     });
 
     test('manual double stays at post index in grid order', () {
-      final views = List<int>.generate(12, (i) => i + 1);
+      final views = List<int>.generate(16, (i) => i + 1);
       final overrides = List<ProfileGridSpanOverride>.filled(
-        12,
+        16,
         ProfileGridSpanOverride.auto,
       );
       overrides[3] = ProfileGridSpanOverride.double;
       final placements = ProfileGridLayoutEngine.layout(
-        itemCount: 12,
+        itemCount: 16,
         viewsByIndex: views,
         mode: ProfileGridLayoutMode.artistModern,
         spanOverrideByIndex: overrides,
@@ -56,22 +57,22 @@ void main() {
     });
 
     test('manual unit prevents auto double on that post', () {
-      final views = List<int>.generate(12, (i) => i + 1);
+      final views = List<int>.generate(16, (i) => i + 1);
       final overrides = List<ProfileGridSpanOverride>.filled(
-        12,
+        16,
         ProfileGridSpanOverride.auto,
       );
-      overrides[11] = ProfileGridSpanOverride.unit;
+      overrides[0] = ProfileGridSpanOverride.unit;
       final placements = ProfileGridLayoutEngine.layout(
-        itemCount: 12,
+        itemCount: 16,
         viewsByIndex: views,
         mode: ProfileGridLayoutMode.artistModern,
         spanOverrideByIndex: overrides,
       );
-      expect(placements[11].span, ProfileGridSpan.unit);
+      expect(placements[0].span, ProfileGridSpan.unit);
       expect(
         placements.any((p) => p.span == ProfileGridSpan.double),
-        isTrue,
+        isFalse,
       );
     });
 

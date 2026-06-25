@@ -61,6 +61,9 @@ abstract final class ProfileFigmaTokens {
   static const double avatarRingPadding = 4;
   static const double avatarRingWidth = 3;
 
+  /// Horizontal inset of the header column (matches [AppSpacing.md]).
+  static const double profileHeaderHorizontalPad = 16;
+
   static const double displayNameFontSize = 20;
   static const double displayNameHeight = 25 / 20;
   static const double nameVerifiedGap = 6.79;
@@ -93,9 +96,14 @@ abstract final class ProfileFigmaTokens {
 
   static const double contentTopRadius = 24;
 
-  /// White gutter between profile post tiles (4pt grid).
+  /// Gutter between profile post tiles (4pt grid).
   static const double contentGridGap = 2;
-  static const double contentGridRadius = 0;
+
+  /// Rounded corners on each profile post tile.
+  static const double contentGridRadius = 8;
+
+  /// Posts / VR / Saved masonry grid — 4 columns with 2×2 hero per block.
+  static const int contentGridCrossAxisCount = 4;
   static const double tabBarOuterPadding = 3;
   static const double tabFontSize = 12;
 
@@ -104,7 +112,7 @@ abstract final class ProfileFigmaTokens {
   /// Profile side rail (magenta drawer) beside avatar.
   static const double profileSideRailWidth = 52;
   static const double profileSideRailRadius = 20;
-  /// Vertical offset — lines up with [AppSpacing.md] above the profile avatar.
+  /// Vertical offset — lines up with [profileHeaderHorizontalPad] above the avatar.
   static const double profileSideRailTop = 16;
   /// Same height as [avatarOuterSize] (profile photo frame).
   static const double profileSideRailHeight = avatarOuterSize;

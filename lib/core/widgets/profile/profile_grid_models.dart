@@ -60,6 +60,6 @@ enum ProfileGridLayoutMode {
   /// All 1×1 tiles (classic uniform profile grid).
   uniform,
 
-  /// 12-post blocks: highest views → 2×2, next four → featured 1×1, rest → 1×1.
+  /// 16-post blocks on a 4-column grid: first post → 2×2 hero, rest → 1×1.
   artistModern,
 }

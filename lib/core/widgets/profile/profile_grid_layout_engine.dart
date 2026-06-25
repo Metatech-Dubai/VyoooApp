@@ -4,7 +4,8 @@ import 'profile_grid_models.dart';
 abstract final class ProfileGridLayoutEngine {
   ProfileGridLayoutEngine._();
 
-  static const int artistChunkSize = 12;
+  /// One 2×2 hero + masonry fill per 4×4 cell block (16 posts).
+  static const int artistChunkSize = 16;
 
   static List<ProfileGridPlacement> layout({
     required int itemCount,
@@ -76,41 +77,10 @@ abstract final class ProfileGridLayoutEngine {
           }
         }
 
-        final autoHero = _autoHeroIndexInChunk(
-          chunkStart: chunkStart,
-          chunkEnd: chunkEnd,
-          viewsByIndex: viewsByIndex,
-          minViewsForDouble: minViewsForDouble,
-          spanOverrideByIndex: spanOverrideByIndex,
-        );
-        return index == autoHero
+        return index == chunkStart
             ? ProfileGridSpan.double
             : ProfileGridSpan.unit;
     }
-  }
-
-  /// Highest-view [auto] index in chunk; null if none qualifies.
-  static int? _autoHeroIndexInChunk({
-    required int chunkStart,
-    required int chunkEnd,
-    required List<int> viewsByIndex,
-    required int minViewsForDouble,
-    required List<ProfileGridSpanOverride> spanOverrideByIndex,
-  }) {
-    int? bestIndex;
-    var bestViews = -1;
-    for (var i = chunkStart; i < chunkEnd; i++) {
-      if (_overrideAt(i, spanOverrideByIndex) != ProfileGridSpanOverride.auto) {
-        continue;
-      }
-      final views = i < viewsByIndex.length ? viewsByIndex[i] : 0;
-      if (views < minViewsForDouble) continue;
-      if (views > bestViews) {
-        bestViews = views;
-        bestIndex = i;
-      }
-    }
-    return bestIndex;
   }
 
   static ProfileGridSpanOverride _overrideAt(

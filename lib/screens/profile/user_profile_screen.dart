@@ -687,11 +687,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 ),
                 const SizedBox(height: 8),
                 SizedBox(
-                  height: 48,
+                  height: ProfileFigmaTokens.highlightRowHeight,
                   child: ListView.separated(
                     scrollDirection: Axis.horizontal,
                     itemCount: highlights.length,
-                    separatorBuilder: (_, _) => const SizedBox(width: 8),
+                    separatorBuilder: (_, _) => const SizedBox(
+                      width: ProfileFigmaTokens.highlightTileGap,
+                    ),
                     itemBuilder: (_, i) {
                       final h = highlights[i];
                       return ProfileHighlightAlbumTile(
@@ -972,7 +974,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               SliverToBoxAdapter(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
+                    horizontal: ProfileFigmaTokens.profileHeaderHorizontalPad,
                   ),
                   child: Column(
                     children: [
@@ -1091,9 +1093,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
-                          AppSpacing.md,
+                          ProfileFigmaTokens.profileHeaderHorizontalPad,
                           24,
-                          AppSpacing.md,
+                          ProfileFigmaTokens.profileHeaderHorizontalPad,
                           0,
                         ),
                         child: _buildTabs(),

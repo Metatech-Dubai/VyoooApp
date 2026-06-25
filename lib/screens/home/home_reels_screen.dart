@@ -43,7 +43,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
-import '../../core/widgets/feed_bottom_scrim.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../core/widgets/app_feed_header.dart';
 import '../../core/widgets/app_feed_header_icon_button.dart';
@@ -1331,10 +1330,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         ) ??
         followingFeedTop;
 
-    final feedChromeBottom = AppBottomNavigation.totalHeightFor(
-      context,
-      feedChrome: true,
-    );
+    final feedChromeBottom = AppBottomNavigation.totalHeightFor(context);
     final feedBottomInset = feedChromeBottom + AppSpacing.feedPostNavGap;
 
     return Scaffold(
@@ -1366,7 +1362,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   child: _buildFeedClipArea(isFollowing),
                 ),
               ),
-            if (!isVrTab) const FeedBottomScrim(),
             _buildHeader(),
             if (isFollowing)
               if (collapseT < 0.999)
@@ -1905,7 +1900,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final isFavorite = _favoriteReels[engagementId] ?? false;
     final privacy = ReelCountPrivacy.fromMap(reel);
     final interactionBottom =
-        AppBottomNavigation.totalHeightFor(context, feedChrome: true) + AppSpacing.sm;
+        AppBottomNavigation.totalHeightFor(context) + AppSpacing.sm;
 
     return Positioned(
       right: AppSpacing.md,
@@ -2136,7 +2131,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final isFollowing = showFollow && _followingIds.contains(authorId);
     final followBusy = _followBusyAuthorId == authorId;
     final overlayBottom =
-        AppBottomNavigation.totalHeightFor(context, feedChrome: true) + AppSpacing.xs;
+        AppBottomNavigation.totalHeightFor(context) + AppSpacing.xs;
 
     return Positioned(
       left: AppSpacing.md,

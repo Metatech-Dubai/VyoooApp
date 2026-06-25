@@ -18,7 +18,7 @@ class ProfileModularGrid extends StatelessWidget {
     required this.onItemTap,
     this.onItemLongPress,
     this.layoutMode = ProfileGridLayoutMode.artistModern,
-    this.crossAxisCount = 3,
+    this.crossAxisCount = ProfileFigmaTokens.contentGridCrossAxisCount,
     this.gap = ProfileFigmaTokens.contentGridGap,
     this.minViewsForDouble = 0,
     this.padding = EdgeInsets.zero,
@@ -89,7 +89,7 @@ class ProfileModularGrid extends StatelessWidget {
               children: [
                 const Positioned.fill(
                   child: ColoredBox(
-                    color: ProfileFigmaTokens.screenBackground,
+                    color: ProfileFigmaTokens.contentSurface,
                   ),
                 ),
                 for (final slot in slots)

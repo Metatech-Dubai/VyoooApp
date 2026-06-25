@@ -4,6 +4,29 @@ import 'package:vyooo/core/widgets/profile/profile_span_grid_layout.dart';
 
 void main() {
   group('ProfileSpanGridLayout', () {
+    test('packs hero at index 0 in four columns', () {
+      final placements = List.generate(
+        9,
+        (i) => ProfileGridPlacement(
+          sourceIndex: i,
+          span: i == 0 ? ProfileGridSpan.double : ProfileGridSpan.unit,
+        ),
+      );
+      final slots = ProfileSpanGridLayout.pack(
+        placements: placements,
+        crossAxisCount: 4,
+      );
+      expect(slots.length, 9);
+      final hero = slots.where((s) => s.placement.sourceIndex == 0).single;
+      expect(hero.row, 0);
+      expect(hero.column, 0);
+      expect(hero.columnSpan, 2);
+      expect(hero.rowSpan, 2);
+      final besideTop = slots.where((s) => s.placement.sourceIndex == 1).single;
+      expect(besideTop.row, 0);
+      expect(besideTop.column, 2);
+    });
+
     test('packs double at index 3 without error', () {
       final placements = List.generate(
         6,

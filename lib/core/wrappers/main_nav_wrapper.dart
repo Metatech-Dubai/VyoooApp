@@ -193,9 +193,7 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
 
     return Scaffold(
       extendBody: true,
-      backgroundColor: _currentIndex == 0
-          ? Colors.black
-          : ProfileFigmaTokens.screenBackground,
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       body: Stack(
         children: [
           IndexedStack(index: _currentIndex, children: screens),
@@ -225,7 +223,6 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
                           profileImageUrl: profileImageUrl,
                           unreadNotificationCount: unreadCount,
                           unreadChatCount: chatUnread,
-                          useFeedChrome: _currentIndex == 0,
                         );
                       },
                     );
