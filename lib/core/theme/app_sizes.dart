@@ -9,7 +9,7 @@ abstract final class AppSizes {
   // — Controls (typography → [AppTypography]) —
   static const double buttonHeight = 56;
   static const double authToggleHeight = 54;
-  static const double authLogoHeight = 30;
+  static const double authLogoHeight = 52;
   static const double feedLogoHeight = 28;
 
   /// Settings / account inner app bar — compact wordmark on the right.

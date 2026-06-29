@@ -18,6 +18,8 @@ class AuthSocialIconButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final iconColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
     return GestureDetector(
       onTap: isLoading ? null : onTap,
       child: SizedBox(
@@ -25,15 +27,15 @@ class AuthSocialIconButton extends StatelessWidget {
         height: AppSizes.socialIconContainer,
         child: Center(
           child: isLoading
-              ? const SizedBox(
+              ? SizedBox(
                   width: AppSizes.socialIcon,
                   height: AppSizes.socialIcon,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: AppTheme.primary,
+                    color: iconColor,
                   ),
                 )
-              : FaIcon(icon, color: AppTheme.primary, size: AppSizes.socialIcon),
+              : FaIcon(icon, color: iconColor, size: AppSizes.socialIcon),
         ),
       ),
     );

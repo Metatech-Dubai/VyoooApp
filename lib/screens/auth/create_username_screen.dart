@@ -5,14 +5,14 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_background_assets.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_text_field_style.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/firestore_username_service.dart';
 import '../../services/temporary_username_generator.dart';
@@ -213,99 +213,42 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    final isLight = AppTheme.isLight(context);
+    return AuthLightScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      stackChildren: [
+        AuthFloatingNavRow(
+          onBack: _onBack,
+          onForward: _onNext,
+          forwardEnabled: _isUsernameValid,
+        ),
+        if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            backgroundAsset: AppBackgroundAssets.otpScreen,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: _horizontalPadding,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                    const SizedBox(height: 16),
-                    _buildProgressBar(),
-                    const SizedBox(height: 40),
-                    _buildAvatar(),
-                    const SizedBox(height: 30),
-                    const Text(
-                      "Let's get you started",
-                      style: AppTypography.onboardingSectionTitle,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _buildUsernameSection(),
-                    ),
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
+          const SizedBox(height: 20),
+          const VyoooBrandLogo.auth(),
+          const SizedBox(height: 16),
+          const OnboardingProgressBar(progress: _progressFill),
+          const SizedBox(height: 40),
+          _buildAvatar(),
+          const SizedBox(height: 30),
+          Text(
+            "Let's get you started",
+            style: AppTypography.onboardingSectionTitle.copyWith(
+              color: isLight ? AppTheme.lightOnSurface : null,
             ),
+            textAlign: TextAlign.center,
           ),
-          AuthFloatingNavRow(
-            onBack: _onBack,
-            onForward: _onNext,
-            forwardEnabled: _isUsernameValid,
+          const SizedBox(height: 30),
+          SizedBox(
+            width: double.infinity,
+            child: _buildUsernameSection(isLight),
           ),
-          if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
-          // Temporary logout
-          // Positioned(
-          //   top: 16,
-          //   right: 16,
-          //   child: TextButton.icon(
-          //     onPressed: () => _logout(context),
-          //     icon: const Icon(Icons.logout, color: Colors.white70, size: 20),
-          //     label: const Text(
-          //       'Logout',
-          //       style: TextStyle(color: Colors.white70, fontSize: 14),
-          //     ),
-          //   ),
-          // ),
+          const SizedBox(height: 100),
         ],
       ),
-    );
-  }
-
-  Widget _buildProgressBar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fullWidth = constraints.maxWidth;
-        final fillWidth = fullWidth * _progressFill;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 3,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                Container(width: fullWidth, height: 3, color: White24.value),
-                SizedBox(
-                  width: fillWidth,
-                  child: Container(
-                    height: 3,
-                    decoration: const BoxDecoration(
-                      color: AppColors.brandPink,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(10),
-                        right: Radius.zero,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -320,11 +263,11 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     );
   }
 
-  Widget _buildUsernameSection() {
+  Widget _buildUsernameSection(bool isLight) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildUsernameInput(),
+        _buildUsernameInput(isLight),
         if (_isReserved &&
             UsernameValidation.shouldCheckAvailability(
               UsernameValidation.normalize(_usernameController.text),
@@ -346,7 +289,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           ),
           const SizedBox(height: AppSpacing.md),
         ],
-        if (_suggestions.isNotEmpty) _buildSuggestions(),
+        if (_suggestions.isNotEmpty) _buildSuggestions(isLight),
       ],
     );
   }
@@ -358,7 +301,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         UsernameValidation.normalize(_usernameController.text),
       );
 
-  ({Color color, double width}) _usernameFieldBorder() {
+  ({Color color, double width}) _usernameFieldBorder(bool isLight) {
     if (_usernameShowsAvailabilityError) {
       return (color: AppColors.brandPink, width: 1.5);
     }
@@ -366,18 +309,24 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       return (color: Colors.green, width: 1.5);
     }
     if (_usernameFocusNode.hasFocus) {
-      return (color: White40.value, width: 1.5);
+      return (
+        color: isLight ? AppTheme.lightOnSurface : White40.value,
+        width: 1.5,
+      );
     }
-    return (color: White10.value, width: 1);
+    return (
+      color: isLight ? AppTheme.lightUnfocusedUnderline : White10.value,
+      width: 1,
+    );
   }
 
-  Widget _buildUsernameInput() {
+  Widget _buildUsernameInput(bool isLight) {
     final hasError = _usernameShowsAvailabilityError;
     final hasSuccess = _available == true;
     final isFocused = _usernameFocusNode.hasFocus;
     final hasText = _usernameController.text.isNotEmpty;
     final showInsetLabel = isFocused || hasText;
-    final border = _usernameFieldBorder();
+    final border = _usernameFieldBorder(isLight);
 
     return GestureDetector(
       onTap: () => _usernameFocusNode.requestFocus(),
@@ -387,7 +336,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         curve: Curves.easeInOut,
         height: 60,
         decoration: BoxDecoration(
-          color: AppColors.brandPurple.withValues(alpha: 0.25),
+          color: isLight
+              ? AppTheme.lightInputPillFill
+              : AppColors.brandPurple.withValues(alpha: 0.25),
           borderRadius: AppRadius.pillRadius,
           border: Border.all(color: border.color, width: border.width),
         ),
@@ -405,11 +356,15 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                     curve: Curves.easeInOut,
                     alignment: Alignment.topLeft,
                     child: showInsetLabel
-                        ? const Padding(
-                            padding: EdgeInsets.only(bottom: 2),
+                        ? Padding(
+                            padding: const EdgeInsets.only(bottom: 2),
                             child: Text(
                               'Username',
-                              style: AppTypography.usernameFieldLabel,
+                              style: AppTypography.usernameFieldLabel.copyWith(
+                                color: isLight
+                                    ? AppTheme.lightSecondaryText
+                                    : null,
+                              ),
                             ),
                           )
                         : const SizedBox.shrink(),
@@ -417,10 +372,19 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                   TextField(
                     controller: _usernameController,
                     focusNode: _usernameFocusNode,
-                    style: AppTypography.usernameFieldValue,
+                    keyboardAppearance:
+                        AppTextFieldStyle.keyboardAppearance(context),
+                    cursorColor: AppTextFieldStyle.cursorColor(context),
+                    style: AppTypography.usernameFieldValue.copyWith(
+                      color: isLight ? AppTheme.lightOnSurface : null,
+                    ),
                     decoration: InputDecoration(
                       hintText: showInsetLabel ? null : 'Username',
-                      hintStyle: AppTypography.usernameFieldLabel,
+                      hintStyle: AppTypography.usernameFieldLabel.copyWith(
+                        color: isLight
+                            ? AppTheme.lightSecondaryText
+                            : null,
+                      ),
                       border: InputBorder.none,
                       enabledBorder: InputBorder.none,
                       focusedBorder: InputBorder.none,
@@ -438,12 +402,16 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               ),
             ),
           if (_isChecking)
-            const SizedBox(
+            SizedBox(
               width: 24,
               height: 24,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  isLight
+                      ? AppColors.authBrandBurgundy
+                      : AppTheme.primary,
+                ),
               ),
             )
           else if (hasError)
@@ -676,7 +644,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.authBrandBurgundy,
+                  ),
                 ),
                 SizedBox(height: 20),
                 Padding(
@@ -708,13 +678,19 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     return AuthPublicPersonaDialog.show(context);
   }
 
-  Widget _buildSuggestions() {
+  Widget _buildSuggestions(bool isLight) {
     return Container(
       margin: const EdgeInsets.only(top: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .06),
+        color: isLight
+            ? AppTheme.lightOtpBoxFill
+            : Colors.white.withValues(alpha: .06),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+        border: Border.all(
+          color: isLight
+              ? AppTheme.lightUnfocusedUnderline
+              : Colors.white.withValues(alpha: .08),
+        ),
       ),
       child: Column(
         children: List.generate(_suggestions.length, (index) {
@@ -723,7 +699,12 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           return Column(
             children: [
               if (index != 0)
-                Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+                Divider(
+                  height: 1,
+                  color: isLight
+                      ? AppTheme.lightUnfocusedUnderline
+                      : Colors.white.withValues(alpha: 0.1),
+                ),
               InkWell(
                 onTap: () => _applySuggestion(suggestion),
                 borderRadius: BorderRadius.circular(20),
@@ -735,7 +716,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                       Expanded(
                         child: Text(
                           suggestion,
-                          style: AppTypography.usernameSuggestion,
+                          style: AppTypography.usernameSuggestion.copyWith(
+                            color: isLight ? AppTheme.lightOnSurface : null,
+                          ),
                         ),
                       ),
                       Container(

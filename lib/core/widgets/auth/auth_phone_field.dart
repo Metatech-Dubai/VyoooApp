@@ -29,6 +29,8 @@ class AuthPhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final iconColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
     return AuthUnderlineTextField(
       controller: controller,
       focusNode: focusNode,
@@ -40,9 +42,9 @@ class AuthPhoneField extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           const SizedBox(width: AppSpacing.storyItem),
-          const Icon(
+          Icon(
             Icons.phone_outlined,
-            color: AppTheme.primary,
+            color: iconColor,
             size: AppSizes.fieldIcon,
           ),
           const SizedBox(width: AppSpacing.sm),
@@ -51,7 +53,9 @@ class AuthPhoneField extends StatelessWidget {
             onTap: onCountryTap,
             child: Text(
               '$countryFlag +$countryDialCode',
-              style: AppTypography.authSmallBodyBold,
+              style: AppTypography.authSmallBodyBold.copyWith(
+                color: isLight ? AppTheme.lightOnSurface : AppTheme.primary,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.xs),

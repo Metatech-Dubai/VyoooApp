@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_colors.dart';
 import '../../theme/app_sizes.dart';
 import '../../theme/app_theme.dart';
 
@@ -37,14 +38,25 @@ class AuthFloatingCircleButton extends StatelessWidget {
     if (onPressed == null && !isLoading) {
       return const SizedBox.shrink();
     }
+    final isLight = AppTheme.isLight(context);
     final canTap = enabled && onPressed != null && !isLoading;
     final showActiveStyle = canTap || isLoading;
+
+    final activeColor = isLight
+        ? AppColors.authBrandBurgundy
+        : AppTheme.buttonBackground;
+    final activeIconColor =
+        isLight ? AppTheme.lightButtonText : AppTheme.buttonTextColor;
+    final disabledColor = isLight
+        ? AppTheme.lightOtpBoxFill
+        : Colors.white.withValues(alpha: 0.4);
+    final disabledIconColor =
+        isLight ? AppTheme.lightSecondaryText : White50.value;
+
     return Material(
-      elevation: 2,
+      elevation: isLight ? 0 : 2,
       shape: const CircleBorder(),
-      color: showActiveStyle
-          ? AppTheme.buttonBackground
-          : Colors.white.withValues(alpha: 0.4),
+      color: showActiveStyle ? activeColor : disabledColor,
       child: InkWell(
         onTap: canTap ? onPressed : null,
         customBorder: const CircleBorder(),
@@ -56,19 +68,15 @@ class AuthFloatingCircleButton extends StatelessWidget {
                   child: SizedBox(
                     width: AppSizes.progressIndicator,
                     height: AppSizes.progressIndicator,
-                    child: const CircularProgressIndicator(
+                    child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        AppTheme.buttonTextColor,
-                      ),
+                      valueColor: AlwaysStoppedAnimation<Color>(activeIconColor),
                     ),
                   ),
                 )
               : Icon(
                   icon,
-                  color: showActiveStyle
-                      ? AppTheme.buttonTextColor
-                      : White50.value,
+                  color: showActiveStyle ? activeIconColor : disabledIconColor,
                   size: AppSizes.fieldIcon + 6,
                 ),
         ),

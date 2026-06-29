@@ -16,10 +16,12 @@ class AuthPasswordVisibilityButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final iconColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
     return IconButton(
       icon: Icon(
         obscured ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
-        color: AppTheme.primary,
+        color: iconColor,
         size: AppSizes.fieldIcon,
       ),
       onPressed: onToggle,

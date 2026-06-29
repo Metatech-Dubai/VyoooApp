@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import '../../theme/app_background_assets.dart';
 import '../../theme/app_radius.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 
-/// Shared shell: [Comment_section] background + DM Sans title (iOS & Android).
+/// Shared shell for auth/onboarding modal dialogs.
 class AuthBrandedDialog extends StatelessWidget {
   const AuthBrandedDialog({
     super.key,
@@ -26,29 +27,39 @@ class AuthBrandedDialog extends StatelessWidget {
       context: context,
       barrierDismissible: barrierDismissible,
       barrierColor: Colors.black.withValues(alpha: 0.45),
-      builder: (_) => AuthBrandedDialog(
-        title: title,
-        children: children,
+      builder: (dialogContext) => Theme(
+        data: AppTheme.isLight(context) ? AppTheme.light : Theme.of(context),
+        child: AuthBrandedDialog(
+          title: title,
+          children: children,
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl),
       child: ClipRRect(
         borderRadius: AppRadius.pillRadius,
         child: Material(
-          color: Colors.transparent,
+          color: isLight ? AppTheme.lightScaffoldBackground : Colors.transparent,
           child: Container(
             constraints: const BoxConstraints(maxWidth: 400),
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage(AppBackgroundAssets.commentsSection),
-                fit: BoxFit.cover,
-              ),
+            decoration: BoxDecoration(
+              color: isLight ? AppTheme.lightScaffoldBackground : null,
+              image: isLight
+                  ? null
+                  : const DecorationImage(
+                      image: AssetImage(AppBackgroundAssets.commentsSection),
+                      fit: BoxFit.cover,
+                    ),
+              border: isLight
+                  ? Border.all(color: AppTheme.lightUnfocusedUnderline)
+                  : null,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -61,7 +72,12 @@ class AuthBrandedDialog extends StatelessWidget {
                     AppSpacing.xl,
                     AppSpacing.md,
                   ),
-                  child: Text(title, style: AppTypography.authDialogTitle),
+                  child: Text(
+                    title,
+                    style: AppTypography.authDialogTitle.copyWith(
+                      color: isLight ? AppTheme.lightOnSurface : null,
+                    ),
+                  ),
                 ),
                 ...children,
                 const SizedBox(height: AppSpacing.sm),
@@ -85,13 +101,16 @@ class AuthBrandedDialogActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Divider(
           height: 1,
           thickness: 1,
-          color: Colors.white.withValues(alpha: 0.12),
+          color: isLight
+              ? AppTheme.lightUnfocusedUnderline
+              : Colors.white.withValues(alpha: 0.12),
         ),
         IntrinsicHeight(
           child: Row(
@@ -118,6 +137,7 @@ class AuthBrandedDialogAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -126,7 +146,11 @@ class AuthBrandedDialogAction extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: style ?? AppTypography.authDialogOption,
+              style: (style ?? AppTypography.authDialogOption).copyWith(
+                color: isLight
+                    ? (style?.color ?? AppTheme.lightOnSurface)
+                    : style?.color,
+              ),
             ),
           ),
         ),

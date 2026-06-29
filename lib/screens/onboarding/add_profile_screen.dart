@@ -5,10 +5,10 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/profile_photo_source_sheet.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/image_picker_service.dart';
@@ -146,105 +146,50 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      scrollable: false,
+      padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      stackChildren: [
+        AuthFloatingNavRow(
+          onBack: _onBack,
+          onForward: _onNext,
+          forwardEnabled: !_isUploading,
+          forwardLoading: _isUploading,
+        ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 20),
-                  const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                const SizedBox(height: 16),
-                _buildProgressBar(),
-
-                /// MIDDLE SECTION (CENTERED)
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildAvatar(),
-                      const SizedBox(height: 40),
-
-                      const Text(
-                        'Add a Profile page',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w600,
-                          color: AppTheme.defaultTextColor,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      const Text(
-                        'Select a photo that matches your vibe',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: AppTheme.secondaryTextColor,
-                          fontWeight: FontWeight.w400,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
+          const SizedBox(height: 20),
+          const VyoooBrandLogo.auth(),
+          const SizedBox(height: 16),
+          const OnboardingProgressBar(progress: _progressFill),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildAvatar(),
+                const SizedBox(height: 40),
+                Text(
+                  'Add a Profile picture',
+                  style: AppTypography.onboardingSectionTitle.copyWith(
+                    color: AppTheme.lightOnSurface,
                   ),
+                  textAlign: TextAlign.center,
                 ),
-
+                const SizedBox(height: 8),
+                Text(
+                  'Select a photo that matches your vibe',
+                  style: AppTypography.authSmallBody.copyWith(
+                    color: AppTheme.lightMutedBody,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ],
             ),
-          ),
-        ),
-          AuthFloatingNavRow(
-            onBack: _onBack,
-            onForward: _onNext,
-            forwardEnabled: !_isUploading,
-            forwardLoading: _isUploading,
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildProgressBar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fullWidth = constraints.maxWidth;
-        final fillWidth = fullWidth * _progressFill;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 3,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                Container(
-                  width: fullWidth,
-                  height: 3,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
-                SizedBox(
-                  width: fillWidth,
-                  child: Container(
-                    height: 3,
-                    decoration: const BoxDecoration(
-                      color: AppColors.brandPink,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(10),
-                        right: Radius.zero,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -285,11 +230,9 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14001E),
+                  color: AppColors.authBrandBurgundy,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
+                  border: Border.all(color: AppTheme.lightUnfocusedUnderline),
                 ),
                 child: _isPicking
                     ? const Padding(
@@ -320,8 +263,8 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       height: 221,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Colors.white.withValues(alpha: 0.05),
-        border: Border.all(color: White10.value, width: 1),
+        color: AppTheme.lightOtpBoxFill,
+        border: Border.all(color: AppTheme.lightUnfocusedUnderline, width: 1),
       ),
       alignment: Alignment.center,
       child: const Icon(
@@ -340,7 +283,7 @@ class _AddProfileScreenState extends State<AddProfileScreen> {
       height: 221,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: White10.value, width: 1),
+        border: Border.all(color: AppTheme.lightUnfocusedUnderline, width: 1),
         image: DecorationImage(image: FileImage(File(path)), fit: BoxFit.cover),
       ),
     );

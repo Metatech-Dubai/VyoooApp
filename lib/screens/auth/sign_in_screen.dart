@@ -8,7 +8,6 @@ import '../../core/services/user_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import 'create_account_screen.dart';
@@ -38,7 +37,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
   String? _errorMessage;
-  String _selectedLoginMethod = _loginMethodPhone;
+  String _selectedLoginMethod = _loginMethodEmail;
   String _selectedCountryDialCode = '44';
   String _selectedCountryFlag = '🇬🇧';
 
@@ -237,11 +236,11 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!looksLikeEmail) return base;
     if (base == _kNoAuthAccountForEmail) {
       return 'This email is not registered on Vyooo yet. If you are a parent or '
-          'guardian responding to a consent request, tap Register Here and create '
+          'guardian responding to a consent request, tap Register and create '
           'an account using the same email your child entered, then sign in here.';
     }
     if (base.startsWith('Invalid email or password')) {
-      return '$base If you have never signed up, use Register Here first (parents: '
+      return '$base If you have never signed up, use Register first (parents: '
           'use the same email your child used).';
     }
     return base;
@@ -249,74 +248,70 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.authFlow,
-        child: AuthCenteredScrollBody(
-          children: [
-            AuthScreenHeader(
-              centerAlign: true,
-              titleTextAlign: TextAlign.start,
-              title: widget.addingAccount ? 'Add\nAccount' : 'Welcome\nBack',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AuthSegmentedToggle(
-                leftLabel: 'Phone',
-                rightLabel: 'Email',
-                isLeftSelected: !_isEmailLogin,
-                onLeftTap: () =>
-                    setState(() => _selectedLoginMethod = _loginMethodPhone),
-                onRightTap: () =>
-                    setState(() => _selectedLoginMethod = _loginMethodEmail),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              _buildForm(),
-              const SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-              AuthRememberForgotRow(
-                rememberMe: _rememberMe,
-                onRememberMeChanged: (v) => setState(() => _rememberMe = v),
-                onForgotPasswordTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const FindAccountScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.xl + AppSpacing.md),
-              if (_errorMessage != null) ...[
-                Text(
-                  _errorMessage!,
-                  style: AppTypography.caption.copyWith(color: Colors.red),
-                  textAlign: TextAlign.center,
+    return AuthLightScaffold(
+      scrollable: false,
+      body: AuthCenteredScrollBody(
+        children: [
+          AuthScreenHeader(
+            centerAlign: true,
+            titleTextAlign: TextAlign.start,
+            title: widget.addingAccount ? 'Add\nAccount' : 'Welcome\nBack',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AuthSegmentedToggle(
+            leftLabel: 'Phone',
+            rightLabel: 'Email',
+            isLeftSelected: !_isEmailLogin,
+            onLeftTap: () =>
+                setState(() => _selectedLoginMethod = _loginMethodPhone),
+            onRightTap: () =>
+                setState(() => _selectedLoginMethod = _loginMethodEmail),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildForm(),
+          const SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+          AuthRememberForgotRow(
+            rememberMe: _rememberMe,
+            onRememberMeChanged: (v) => setState(() => _rememberMe = v),
+            onForgotPasswordTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const FindAccountScreen(),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-              AuthPrimaryButton(
-                label: _isEmailLogin ? 'Login' : 'Continue',
-                isLoading: _isLoading,
-                enabled: _canLogin,
-                onPressed: _onLogin,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AuthLinkPrompt(
-                prompt: "Don't have an account? ",
-                actionLabel: 'Register Here',
-                onActionTap: _onRegister,
-              ),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-              const AuthLabeledDivider(label: 'Or sign in with'),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-              AuthSocialSignInRow(
-                isGoogleLoading: _isGoogleLoading,
-                isAppleLoading: _isAppleLoading,
-                onGoogleTap: _onGoogleSignIn,
-                onAppleTap: _onAppleSignIn,
-              ),
-              const SizedBox(height: AppSpacing.authDividerBlock),
+              );
+            },
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
+            Text(
+              _errorMessage!,
+              style: AppTypography.caption.copyWith(color: Colors.red),
+            ),
           ],
-        ),
+          const SizedBox(height: AppSpacing.authCtaTop),
+          AuthPrimaryButton(
+            label: _isEmailLogin ? 'Sign in' : 'Continue',
+            isLoading: _isLoading,
+            enabled: _canLogin,
+            onPressed: _onLogin,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AuthLinkPrompt(
+            prompt: "Don't have an account? ",
+            actionLabel: 'Register',
+            onActionTap: _onRegister,
+          ),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+          const AuthLabeledDivider(label: 'Or sign in with'),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+          AuthSocialSignInRow(
+            isGoogleLoading: _isGoogleLoading,
+            isAppleLoading: _isAppleLoading,
+            onGoogleTap: _onGoogleSignIn,
+            onAppleTap: _onAppleSignIn,
+          ),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+        ],
       ),
     );
   }
@@ -328,6 +323,7 @@ class _SignInScreenState extends State<SignInScreen> {
           AuthLoginIdentifierField(
             controller: _usernameController,
             onChanged: _onFieldChanged,
+            hint: 'Email',
           )
         else
           AuthPhoneField(
@@ -351,16 +347,16 @@ class _SignInScreenState extends State<SignInScreen> {
       showPhoneCode: true,
       favorite: const ['GB', 'AE'],
       countryListTheme: CountryListThemeData(
-        backgroundColor: const Color(0xFF12081C),
-        textStyle: const TextStyle(color: Colors.white),
+        backgroundColor: AppTheme.lightScaffoldBackground,
+        textStyle: const TextStyle(color: AppTheme.lightOnSurface),
         inputDecoration: InputDecoration(
           labelText: 'Search country',
-          labelStyle: TextStyle(color: AppTheme.secondaryTextColor),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: White24.value),
+          labelStyle: const TextStyle(color: AppTheme.lightSecondaryText),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.lightUnfocusedUnderline),
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.primary),
+            borderSide: BorderSide(color: AppTheme.lightFocusedUnderline),
           ),
         ),
       ),

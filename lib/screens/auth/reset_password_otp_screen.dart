@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/auth_service.dart';
+import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import 'reset_password_screen.dart';
 
@@ -14,9 +15,11 @@ class ResetPasswordOTPScreen extends StatefulWidget {
     super.key,
     this.emailOrUsername,
     this.oobCode,
+    this.displayPhone,
   });
 
   final String? emailOrUsername;
+  final String? displayPhone;
 
   /// Code from Firebase password reset email link. Pass through to [ResetPasswordScreen].
   final String? oobCode;
@@ -73,6 +76,11 @@ class _ResetPasswordOTPScreenState extends State<ResetPasswordOTPScreen> {
   }
 
   String? _maskedDestination() {
+    if (widget.displayPhone != null && widget.displayPhone!.trim().isNotEmpty) {
+      final phone = widget.displayPhone!.trim();
+      if (phone.length <= 4) return phone;
+      return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
+    }
     final raw = widget.emailOrUsername?.trim();
     if (raw == null || raw.isEmpty) return null;
     if (!_isEmail) return raw;
@@ -130,54 +138,56 @@ class _ResetPasswordOTPScreenState extends State<ResetPasswordOTPScreen> {
   Widget build(BuildContext context) {
     final destination = _maskedDestination();
 
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      padding: AppPadding.authFormHorizontal,
+      stackChildren: [
+        AuthFloatingBackButton(onPressed: () => Navigator.of(context).pop()),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            child: AuthCenteredScrollBody(
+          const SizedBox(height: AppSpacing.sm),
+          const AuthScreenHeader(
+            centerAlign: true,
+            titleTextAlign: TextAlign.start,
+            title: 'Verify\nCode',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          Text(
+            _isEmail
+                ? "Please enter the code we've just sent to your email"
+                : "Please enter the code we've just sent to your number",
+            style: AppTypography.authSmallBody.copyWith(
+              color: AppTheme.lightMutedBody,
+            ),
+          ),
+          if (destination != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(destination, style: AppTypography.authAccentLink),
+          ],
+          if (_errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              _errorMessage!,
+              style: AppTypography.caption.copyWith(color: Colors.red),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.xl),
+          AuthOtpInputRow(
+            length: _otpLength,
+            controllers: _controllers,
+            focusNodes: _focusNodes,
+            onChanged: () => setState(() {}),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Center(
+            child: Column(
               children: [
-                AuthScreenHeader(
-                  centerAlign: true,
-                  titleTextAlign: TextAlign.start,
-                  title: 'Verify\nCode',
-                  subtitle: _isEmail
-                      ? "Please enter the code we've just sent to your email"
-                      : "Please enter the code we've sent you",
-                  belowSubtitle: [
-                    if (destination != null) ...[
-                      const SizedBox(height: AppSpacing.sm),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          destination,
-                          style: AppTypography.authAccentLink,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                if (_errorMessage != null) ...[
-                  Text(
-                    _errorMessage!,
-                    style: AppTypography.caption.copyWith(color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: AppSpacing.sm),
-                ],
-                AuthOtpInputRow(
-                  length: _otpLength,
-                  controllers: _controllers,
-                  focusNodes: _focusNodes,
-                  onChanged: () => setState(() {}),
-                ),
-                const SizedBox(height: AppSpacing.xxl),
-                const Text(
+                Text(
                   "Didn't receive OTP?",
-                  style: AppTypography.authSmallBody,
-                  textAlign: TextAlign.center,
+                  style: AppTypography.authSmallBody.copyWith(
+                    color: AppTheme.lightMutedBody,
+                  ),
                 ),
                 const SizedBox(height: AppSpacing.sm),
                 GestureDetector(
@@ -185,28 +195,26 @@ class _ResetPasswordOTPScreenState extends State<ResetPasswordOTPScreen> {
                   child: Text(
                     _resendInFlight ? 'Sending…' : 'Resend Code',
                     style: AppTypography.authSmallBodyBold.copyWith(
+                      color: AppTheme.lightOnSurface,
                       decoration: TextDecoration.underline,
-                      decorationColor: AppTypography.authAccentLinkColor,
-                      color: _isEmail
-                          ? AppTypography.authAccentLinkColor
-                          : AppTypography.authSmallBody.color,
+                      decorationColor: AppTheme.lightOnSurface,
                     ),
-                    textAlign: TextAlign.center,
                   ),
-                ),
-                SizedBox(
-                  height: AppSpacing.authFloatingNavBottom +
-                      AppSizes.buttonHeight +
-                      AppSpacing.md,
                 ),
               ],
             ),
           ),
-          AuthFloatingNavRow(
-            onBack: () => Navigator.of(context).pop(),
-            onForward: _onVerify,
-            forwardEnabled: _isOtpComplete,
-            forwardLoading: _verifyInFlight,
+          const SizedBox(height: AppSpacing.authCtaTop),
+          AuthPrimaryButton(
+            label: 'Verify',
+            isLoading: _verifyInFlight,
+            enabled: _isOtpComplete,
+            onPressed: _onVerify,
+          ),
+          SizedBox(
+            height: AppSpacing.authFloatingNavBottom +
+                AppSizes.buttonHeight +
+                AppSpacing.md,
           ),
         ],
       ),

@@ -10,14 +10,26 @@ class AuthCenteredScrollBody extends StatelessWidget {
 
   final List<Widget> children;
 
+  double _availableHeight(BuildContext context, BoxConstraints constraints) {
+    final media = MediaQuery.of(context);
+    final fromMedia =
+        media.size.height - media.padding.top - media.padding.bottom;
+    if (constraints.maxHeight.isFinite && constraints.maxHeight > 0) {
+      return constraints.maxHeight;
+    }
+    return fromMedia;
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
+        final minHeight = _availableHeight(context, constraints);
         return SingleChildScrollView(
           padding: AppPadding.authFormHorizontal,
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
           child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: constraints.maxHeight),
+            constraints: BoxConstraints(minHeight: minHeight),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,

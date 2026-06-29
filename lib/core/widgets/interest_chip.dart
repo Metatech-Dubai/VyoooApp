@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_spacing.dart';
 import '../theme/app_theme.dart';
@@ -21,6 +22,17 @@ class InterestChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final selectedFill =
+        isLight ? AppColors.authBrandBurgundy : Colors.white;
+    final selectedText =
+        isLight ? Colors.white : Colors.black;
+    final unselectedBorder = isLight
+        ? AppTheme.lightUnfocusedUnderline
+        : Colors.white.withValues(alpha: 0.3);
+    final unselectedText =
+        isLight ? AppTheme.lightOnSurface : AppTheme.defaultTextColor;
+
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -29,12 +41,10 @@ class InterestChip extends StatelessWidget {
         height: 36,
         padding: EdgeInsets.symmetric(horizontal: AppSpacing.storyItem + 2),
         decoration: BoxDecoration(
-          color: isSelected ? Colors.white : Colors.transparent,
+          color: isSelected ? selectedFill : Colors.transparent,
           borderRadius: AppRadius.pillRadius,
           border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : Colors.white.withValues(alpha: 0.3),
+            color: isSelected ? selectedFill : unselectedBorder,
             width: 1,
           ),
         ),
@@ -47,14 +57,14 @@ class InterestChip extends StatelessWidget {
               style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w500,
-                color: isSelected ? Colors.black : AppTheme.defaultTextColor,
+                color: isSelected ? selectedText : unselectedText,
               ),
             ),
             const SizedBox(width: 6),
             Icon(
               isSelected ? Icons.check : Icons.add,
               size: 16,
-              color: isSelected ? Colors.black : AppTheme.defaultTextColor,
+              color: isSelected ? selectedText : unselectedText,
             ),
           ],
         ),

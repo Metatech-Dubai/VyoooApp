@@ -6,13 +6,10 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
 import '../../core/theme/app_padding.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
-import '../../core/widgets/vyooo_brand_logo.dart';
 import 'sign_in_screen.dart';
 import 'verify_code_screen.dart';
 
@@ -32,8 +29,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   static const _signupMethodPhone = 'phone';
 
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _surnameController = TextEditingController();
+  final _fullNameController = TextEditingController();
   final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -46,7 +42,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   String? _errorMessage;
   String _selectedCountryDialCode = '44';
   String _selectedCountryFlag = '🇬🇧';
-  String _selectedSignupMethod = _signupMethodPhone;
+  String _selectedSignupMethod = _signupMethodEmail;
 
   bool get _isEmailSignup => _selectedSignupMethod == _signupMethodEmail;
 
@@ -62,8 +58,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   void dispose() {
-    _nameController.dispose();
-    _surnameController.dispose();
+    _fullNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -73,75 +68,62 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.authFlow,
-        child: SingleChildScrollView(
-          padding: AppPadding.authFormHorizontal,
-          child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: AppSpacing.sm),
-                _buildHeader(),
-                const SizedBox(height: AppSpacing.md),
-                AuthSegmentedToggle(
-                  leftLabel: 'Phone',
-                  rightLabel: 'Email',
-                  isLeftSelected: !_isEmailSignup,
-                  onLeftTap: () => setState(
-                    () => _selectedSignupMethod = _signupMethodPhone,
+    return AuthLightScaffold(
+      padding: AppPadding.authFormHorizontal,
+      body: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: AppSpacing.sm),
+                  const AuthScreenHeader(
+                    centerAlign: true,
+                    titleTextAlign: TextAlign.start,
+                    title: 'Create an\nAccount',
                   ),
-                  onRightTap: () => setState(
-                    () => _selectedSignupMethod = _signupMethodEmail,
+                  const SizedBox(height: AppSpacing.md),
+                  AuthSegmentedToggle(
+                    leftLabel: 'Phone',
+                    rightLabel: 'Email',
+                    isLeftSelected: !_isEmailSignup,
+                    onLeftTap: () => setState(
+                      () => _selectedSignupMethod = _signupMethodPhone,
+                    ),
+                    onRightTap: () => setState(
+                      () => _selectedSignupMethod = _signupMethodEmail,
+                    ),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _buildForm(),
-                if (_errorMessage != null) ...[
-                  const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
-                  Text(
-                    _errorMessage!,
-                    style: AppTypography.caption.copyWith(color: Colors.red),
+                  const SizedBox(height: AppSpacing.md),
+                  _buildForm(),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
+                    Text(
+                      _errorMessage!,
+                      style: AppTypography.caption.copyWith(color: Colors.red),
+                    ),
+                  ],
+                  const SizedBox(height: AppSpacing.authCtaTop),
+                  AuthPrimaryButton(
+                    label: 'Register',
+                    isLoading: _isLoading,
+                    onPressed: _onRegister,
                   ),
+                  const SizedBox(height: AppSpacing.md),
+                  AuthLinkPrompt(
+                    prompt: 'Already have an account? ',
+                    actionLabel: 'Sign in',
+                    onActionTap: _onSignIn,
+                  ),
+                  const SizedBox(height: AppSpacing.authDividerBlock),
+                  const AuthLabeledDivider(label: 'Or sign up with'),
+                  const SizedBox(height: AppSpacing.authDividerBlock),
+                  AuthSocialSignInRow(
+                    isGoogleLoading: _isGoogleLoading,
+                    isAppleLoading: _isAppleLoading,
+                    onGoogleTap: _onGoogleSignIn,
+                    onAppleTap: _onAppleSignIn,
+                  ),
+                  const SizedBox(height: AppSpacing.authDividerBlock),
                 ],
-                const SizedBox(height: AppSpacing.authCtaTop),
-                AuthPrimaryButton(
-                  label: 'Register',
-                  isLoading: _isLoading,
-                  onPressed: _onRegister,
-                ),
-                const SizedBox(height: AppSpacing.md),
-                AuthLinkPrompt(
-                  prompt: 'Already have an account? ',
-                  actionLabel: 'Sign in',
-                  onActionTap: _onSignIn,
-                ),
-                const SizedBox(height: AppSpacing.authDividerBlock),
-                const AuthLabeledDivider(label: 'Or sign up with'),
-                const SizedBox(height: AppSpacing.authDividerBlock),
-                AuthSocialSignInRow(
-                  isGoogleLoading: _isGoogleLoading,
-                  isAppleLoading: _isAppleLoading,
-                  onGoogleTap: _onGoogleSignIn,
-                  onAppleTap: _onAppleSignIn,
-                ),
-                const SizedBox(height: AppSpacing.authDividerBlock),
-              ],
-            ),
-          ),
-        ),
-    );
-  }
-
-  Widget _buildHeader() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-        const SizedBox(height: AppSpacing.md),
-        const Text('Create an\nAccount', style: AppTypography.authHeadline),
-      ],
+      ),
     );
   }
 
@@ -150,8 +132,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       key: _formKey,
       child: AuthFieldColumn(
         children: [
-          AuthNameField(controller: _nameController),
-          AuthSurnameField(controller: _surnameController),
+          AuthFullNameField(controller: _fullNameController),
           if (_isEmailSignup)
             AuthEmailField(controller: _emailController)
           else
@@ -168,6 +149,17 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  ({String firstName, String surname}) _parsedFullName() {
+    final trimmed = _fullNameController.text.trim();
+    if (trimmed.isEmpty) return (firstName: '', surname: '');
+    final parts = trimmed.split(RegExp(r'\s+'));
+    if (parts.length == 1) return (firstName: parts.first, surname: '');
+    return (
+      firstName: parts.first,
+      surname: parts.sublist(1).join(' '),
     );
   }
 
@@ -219,9 +211,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     }
 
     final typedEmail = _emailController.text.trim();
-    final firstName = _nameController.text.trim();
-    final surname = _surnameController.text.trim();
-    final name = '$firstName $surname'.trim();
+    final name = _fullNameController.text.trim();
     final password = _passwordController.text.trim();
     final phone = _normalizedPhone();
     final otpChannel =
@@ -273,15 +263,15 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   }
 
   String? _validateRegistration() {
-    final firstName = _nameController.text.trim();
-    final surname = _surnameController.text.trim();
+    final parsedName = _parsedFullName();
     final password = _passwordController.text.trim();
     final confirm = _confirmPasswordController.text.trim();
     final phone = _normalizedPhone();
     final email = _emailController.text.trim();
 
-    if (firstName.isEmpty) return 'Please enter your name.';
-    if (surname.isEmpty) return 'Please enter your surname.';
+    if (parsedName.firstName.isEmpty) {
+      return 'Please enter your full name.';
+    }
     if (_isEmailSignup) {
       if (email.isEmpty || !email.contains('@') || !email.contains('.')) {
         return 'Please enter a valid email address.';
@@ -321,18 +311,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       Navigator.of(context).pushReplacement(
-      MaterialPageRoute(
-        builder: (_) => VerifyCodeScreen(
-          channel: channel,
-          maskedEmail: _maskEmailForDisplay(email),
-          phoneNumber: channel == _otpChannelPhone ? phone : '',
-          maskedPhone: channel == _otpChannelPhone
-              ? _maskPhoneForDisplay(phone)
-              : '',
-          autoSendOnOpen: true,
+        MaterialPageRoute(
+          builder: (_) => VerifyCodeScreen(
+            channel: channel,
+            maskedEmail: _maskEmailForDisplay(email),
+            phoneNumber: channel == _otpChannelPhone ? phone : '',
+            maskedPhone: channel == _otpChannelPhone
+                ? _maskPhoneForDisplay(phone)
+                : '',
+            autoSendOnOpen: true,
+          ),
         ),
-      ),
-    );
+      );
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -356,16 +346,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       showPhoneCode: true,
       favorite: const ['GB', 'AE'],
       countryListTheme: CountryListThemeData(
-        backgroundColor: const Color(0xFF12081C),
-        textStyle: const TextStyle(color: Colors.white),
+        backgroundColor: AppTheme.lightScaffoldBackground,
+        textStyle: const TextStyle(color: AppTheme.lightOnSurface),
         inputDecoration: InputDecoration(
           labelText: 'Search country',
-          labelStyle: TextStyle(color: AppTheme.secondaryTextColor),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: White24.value),
+          labelStyle: const TextStyle(color: AppTheme.lightSecondaryText),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.lightUnfocusedUnderline),
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.primary),
+            borderSide: BorderSide(color: AppTheme.lightFocusedUnderline),
           ),
         ),
       ),

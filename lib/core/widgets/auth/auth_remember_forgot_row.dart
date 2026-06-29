@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
@@ -19,6 +20,13 @@ class AuthRememberForgotRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final accentColor =
+        isLight ? AppColors.authBrandBurgundy : AppTheme.primary;
+    final labelColor =
+        isLight ? AppTheme.lightMutedBody : AppTheme.defaultTextColor;
+    final actionColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -31,24 +39,35 @@ class AuthRememberForgotRow extends StatelessWidget {
               child: Checkbox(
                 value: rememberMe,
                 onChanged: (v) => onRememberMeChanged(v ?? false),
-                activeColor: AppTheme.primary,
+                activeColor: accentColor,
+                checkColor: isLight ? Colors.white : AppTheme.buttonTextColor,
                 fillColor: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
-                    return AppTheme.primary;
+                    return accentColor;
                   }
                   return Colors.transparent;
                 }),
-                side: const BorderSide(color: AppTheme.primary),
+                side: BorderSide(
+                  color: isLight
+                      ? AppTheme.lightUnfocusedUnderline
+                      : AppTheme.primary,
+                ),
                 shape: const CircleBorder(),
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text('Remember me', style: AppTypography.authSmallBody),
+            Text(
+              'Remember me',
+              style: AppTypography.authSmallBody.copyWith(color: labelColor),
+            ),
           ],
         ),
         GestureDetector(
           onTap: onForgotPasswordTap,
-          child: Text('Forgot Password?', style: AppTypography.authSmallBodyBold),
+          child: Text(
+            'Forgot Password?',
+            style: AppTypography.authSmallBodyBold.copyWith(color: actionColor),
+          ),
         ),
       ],
     );

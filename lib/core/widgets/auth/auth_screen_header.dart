@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../theme/app_sizes.dart';
 import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import '../vyooo_brand_logo.dart';
 
@@ -42,13 +42,17 @@ class AuthScreenHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: columnAlign,
       children: [
-        const VyoooBrandLogo(size: AppSizes.authLogoHeight),
+        const VyoooBrandLogo.auth(),
         const SizedBox(height: AppSpacing.md),
         SizedBox(
           width: double.infinity,
           child: Text(
             title,
-            style: AppTypography.authHeadline,
+            style: AppTypography.authHeadline.copyWith(
+              color: AppTheme.isLight(context)
+                  ? AppTheme.lightOnSurface
+                  : AppTheme.defaultTextColor,
+            ),
             textAlign: titleAlign,
           ),
         ),

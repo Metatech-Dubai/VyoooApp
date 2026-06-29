@@ -10,6 +10,8 @@ class AppColors {
   static const Color brandDeepMagenta = Color(0xFFDE106B);
   /// Reel overlay "+ Follow" pill (Figma #660033).
   static const Color feedFollowButton = Color(0xFF660033);
+  /// Light auth surfaces — wordmark, primary CTA, accent links (Figma #600030).
+  static const Color authBrandBurgundy = Color(0xFF600030);
   /// Reel like heart — filled state (Figma #9F0E56).
   static const Color feedLikeActive = Color(0xFF9F0E56);
   /// Reel caption hashtags (Figma #FFB3CC).

@@ -11,17 +11,22 @@ class AuthLabeledDivider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final lineColor =
+        isLight ? AppTheme.lightUnfocusedUnderline : White24.value;
     return Row(
       children: [
-        Expanded(child: Container(height: 1, color: White24.value)),
+        Expanded(child: Container(height: 1, color: lineColor)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.storyItem),
           child: Text(
             label,
-            style: AppTypography.authDividerLabel,
+            style: AppTypography.authDividerLabel.copyWith(
+              color: isLight ? AppTheme.lightMutedBody : null,
+            ),
           ),
         ),
-        Expanded(child: Container(height: 1, color: White24.value)),
+        Expanded(child: Container(height: 1, color: lineColor)),
       ],
     );
   }

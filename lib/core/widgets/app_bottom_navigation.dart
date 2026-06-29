@@ -12,10 +12,12 @@ class _NavAssets {
   static const homeUnselected = '$_base/home_unselected.png';
   static const broadcastSelected = '$_base/broadcast_selected.png';
   static const broadcastUnselected = '$_base/broadcast_unselected.png';
-  static const addSelected = 'assets/vyooO_icons/Home/nav_bar_icons/create.png';
-  static const addUnselected = 'assets/vyooO_icons/Home/nav_bar_icons/create.png';
+  static const addSelected = '$_base/add_selected.png';
+  static const addUnselected = '$_base/add_unselected.png';
   static const chatSelected = '$_base/chat_selected.png';
   static const chatUnselected = '$_base/chat_unselected.png';
+  static const profileSelected = '$_base/profile_selected.png';
+  static const profileUnselected = '$_base/profile_unselected.png';
   static const profileDefault = 'assets/vyooO_icons/Home/profile_icon.png';
 }
 
@@ -56,36 +58,30 @@ class AppBottomNavigation extends StatelessWidget {
   Widget _buildProfileIcon(bool isSelected) {
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl!.trim().isNotEmpty;
+    if (!hasProfileImage) {
+      return _navIcon(
+        isSelected ? _NavAssets.profileSelected : _NavAssets.profileUnselected,
+      );
+    }
+
     final avatar = ClipOval(
-      child: hasProfileImage
-          ? Image.network(
-              profileImageUrl!,
-              fit: BoxFit.cover,
-              width: _profileIconSize,
-              height: _profileIconSize,
-              errorBuilder: (_, error, stackTrace) => Image.asset(
-                _NavAssets.profileDefault,
-                fit: BoxFit.cover,
-                width: _profileIconSize,
-                height: _profileIconSize,
-                errorBuilder: (_, error1, stack1) => Icon(
-                  Icons.person_rounded,
-                  size: _profileIconSize * 0.7,
-                  color: _iconColor,
-                ),
-              ),
-            )
-          : Image.asset(
-              _NavAssets.profileDefault,
-              fit: BoxFit.cover,
-              width: _profileIconSize,
-              height: _profileIconSize,
-              errorBuilder: (_, error2, stack2) => Icon(
-                Icons.person_rounded,
-                size: _profileIconSize * 0.7,
-                color: _iconColor,
-              ),
-            ),
+      child: Image.network(
+        profileImageUrl!,
+        fit: BoxFit.cover,
+        width: _profileIconSize,
+        height: _profileIconSize,
+        errorBuilder: (_, error, stackTrace) => Image.asset(
+          _NavAssets.profileDefault,
+          fit: BoxFit.cover,
+          width: _profileIconSize,
+          height: _profileIconSize,
+          errorBuilder: (_, error1, stack1) => Icon(
+            Icons.person_rounded,
+            size: _profileIconSize * 0.7,
+            color: _iconColor,
+          ),
+        ),
+      ),
     );
 
     if (!isSelected) return avatar;

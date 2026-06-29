@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../constants/app_colors.dart';
 import '../../theme/app_radius.dart';
 import '../../theme/app_sizes.dart';
+import '../../theme/app_text_field_style.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 
@@ -14,38 +16,54 @@ class AuthOtpInputRow extends StatelessWidget {
     required this.controllers,
     required this.focusNodes,
     this.onChanged,
+    this.boxSize,
   });
 
   final int length;
   final List<TextEditingController> controllers;
   final List<FocusNode> focusNodes;
   final VoidCallback? onChanged;
+  final double? boxSize;
 
   @override
   Widget build(BuildContext context) {
+    final resolvedBoxSize = boxSize ?? AppSizes.authOtpBoxSize;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(length, (index) => _buildOtpBox(context, index)),
+      children: List.generate(
+        length,
+        (index) => _buildOtpBox(context, index, resolvedBoxSize),
+      ),
     );
   }
 
-  Widget _buildOtpBox(BuildContext context, int index) {
+  Widget _buildOtpBox(BuildContext context, int index, double size) {
+    final isLight = AppTheme.isLight(context);
     return ListenableBuilder(
       listenable: focusNodes[index],
       builder: (_, _) {
         final hasFocus = focusNodes[index].hasFocus;
         return Container(
-          width: AppSizes.authOtpBoxSize,
-          height: AppSizes.authOtpBoxSize,
+          width: size,
+          height: size,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: isLight
+                ? AppTheme.lightOtpBoxFill
+                : Colors.white.withValues(alpha: 0.08),
             borderRadius: AppRadius.inputRadius,
             border: hasFocus
                 ? Border.all(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: isLight
+                        ? AppColors.authBrandBurgundy
+                        : Colors.white.withValues(alpha: 0.4),
                     width: 1.5,
                   )
-                : null,
+                : Border.all(
+                    color: isLight
+                        ? AppTheme.lightUnfocusedUnderline
+                        : Colors.transparent,
+                    width: 1,
+                  ),
           ),
           alignment: Alignment.center,
           child: TextField(
@@ -54,6 +72,8 @@ class AuthOtpInputRow extends StatelessWidget {
             maxLength: 1,
             textAlign: TextAlign.center,
             keyboardType: TextInputType.number,
+            keyboardAppearance: AppTextFieldStyle.keyboardAppearance(context),
+            cursorColor: AppTextFieldStyle.cursorColor(context),
             inputFormatters: [FilteringTextInputFormatter.digitsOnly],
             onTap: () {
               controllers[index].selection = TextSelection(
@@ -69,11 +89,15 @@ class AuthOtpInputRow extends StatelessWidget {
               }
               onChanged?.call();
             },
-            style: AppTypography.authOtpDigit,
+            style: AppTypography.authOtpDigit.copyWith(
+              color: isLight ? AppTheme.lightOnSurface : AppTheme.primary,
+            ),
             decoration: InputDecoration(
               hintText: '-',
               hintStyle: AppTypography.authOtpDigit.copyWith(
-                color: AppTheme.primary.withValues(alpha: 0.5),
+                color: isLight
+                    ? AppTheme.lightHintText
+                    : AppTheme.primary.withValues(alpha: 0.5),
               ),
               counterText: '',
               border: InputBorder.none,

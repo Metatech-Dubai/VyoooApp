@@ -37,6 +37,26 @@ class AuthNameField extends StatelessWidget {
   }
 }
 
+/// Single full-name field for light-theme sign-up (Figma).
+class AuthFullNameField extends StatelessWidget {
+  const AuthFullNameField({super.key, required this.controller, this.focusNode});
+
+  final TextEditingController controller;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    return AuthUnderlineTextField(
+      controller: controller,
+      focusNode: focusNode,
+      icon: Icons.person_outline,
+      hint: 'Full Name',
+      keyboardType: TextInputType.name,
+      textCapitalization: TextCapitalization.words,
+    );
+  }
+}
+
 class AuthSurnameField extends StatelessWidget {
   const AuthSurnameField({super.key, required this.controller, this.focusNode});
 

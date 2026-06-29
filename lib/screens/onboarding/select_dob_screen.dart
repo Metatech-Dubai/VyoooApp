@@ -1,16 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../core/constants/app_colors.dart';
 import '../../core/models/parent_consent_constants.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_background_assets.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 
 const List<String> _monthNames = [
@@ -155,84 +152,40 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    final isLight = AppTheme.isLight(context);
+    return AuthLightScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      stackChildren: [
+        AuthFloatingNavRow(
+          onBack: _onBack,
+          onForward: _onNext,
+          forwardEnabled: _isValid,
+        ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            backgroundAsset: AppBackgroundAssets.otpScreen,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: _horizontalPadding,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                    const SizedBox(height: 16),
-                    _buildProgressBar(),
-                    const SizedBox(height: 40),
-                    _buildAvatar(),
-                    const SizedBox(height: 30),
-                    const Text(
-                      'Select your Date of birth',
-                      style: AppTypography.onboardingSectionTitle,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    _buildPicker(),
-                    const SizedBox(height: 16),
-                    _buildPrivacyText(),
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
+          const SizedBox(height: 20),
+          const VyoooBrandLogo.auth(),
+          const SizedBox(height: 16),
+          const OnboardingProgressBar(progress: _progressFill),
+          const SizedBox(height: 40),
+          _buildAvatar(),
+          const SizedBox(height: 30),
+          Text(
+            'Select your Date of birth',
+            style: AppTypography.onboardingSectionTitle.copyWith(
+              color: isLight ? AppTheme.lightOnSurface : null,
             ),
+            textAlign: TextAlign.center,
           ),
-          AuthFloatingNavRow(
-            onBack: _onBack,
-            onForward: _onNext,
-            forwardEnabled: _isValid,
-          ),
+          const SizedBox(height: 30),
+          _buildPicker(isLight),
+          const SizedBox(height: 16),
+          _buildPrivacyText(isLight),
+          const SizedBox(height: 100),
         ],
       ),
-    );
-  }
-
-  Widget _buildProgressBar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fullWidth = constraints.maxWidth;
-        final fillWidth = fullWidth * _progressFill;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 3,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                Container(width: fullWidth, height: 3, color: White24.value),
-                SizedBox(
-                  width: fillWidth,
-                  child: Container(
-                    height: 3,
-                    decoration: const BoxDecoration(
-                      color: AppColors.brandPink,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(10),
-                        right: Radius.zero,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
     );
   }
 
@@ -247,18 +200,12 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
     );
   }
 
-  Widget _buildPicker() {
+  Widget _buildPicker(bool isLight) {
     return Container(
       height: _pickerHeight,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      // decoration: BoxDecoration(
-      //   borderRadius: BorderRadius.circular(20),
-      //   color: Colors.transparent,
-      //   border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      // ),
       child: Stack(
         children: [
-          /// PICKERS
           Row(
             children: [
               Expanded(
@@ -275,9 +222,16 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                     return Center(
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
-                        style: selected
-                            ? AppTypography.dobPickerSelected
-                            : AppTypography.dobPickerUnselected,
+                        style: (selected
+                                ? AppTypography.dobPickerSelected
+                                : AppTypography.dobPickerUnselected)
+                            .copyWith(
+                          color: isLight
+                              ? (selected
+                                  ? AppTheme.lightOnSurface
+                                  : AppTheme.lightSecondaryText)
+                              : null,
+                        ),
                         child: FittedBox(
                           fit: BoxFit.scaleDown,
                           child: Text(
@@ -306,9 +260,16 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                     return Center(
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
-                        style: selected
-                            ? AppTypography.dobPickerSelected
-                            : AppTypography.dobPickerUnselected,
+                        style: (selected
+                                ? AppTypography.dobPickerSelected
+                                : AppTypography.dobPickerUnselected)
+                            .copyWith(
+                          color: isLight
+                              ? (selected
+                                  ? AppTheme.lightOnSurface
+                                  : AppTheme.lightSecondaryText)
+                              : null,
+                        ),
                         child: Text('${_days[index]}'),
                       ),
                     );
@@ -330,9 +291,16 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                     return Center(
                       child: AnimatedDefaultTextStyle(
                         duration: const Duration(milliseconds: 200),
-                        style: selected
-                            ? AppTypography.dobPickerSelected
-                            : AppTypography.dobPickerUnselected,
+                        style: (selected
+                                ? AppTypography.dobPickerSelected
+                                : AppTypography.dobPickerUnselected)
+                            .copyWith(
+                          color: isLight
+                              ? (selected
+                                  ? AppTheme.lightOnSurface
+                                  : AppTheme.lightSecondaryText)
+                              : null,
+                        ),
                         child: Text('${_years[index]}'),
                       ),
                     );
@@ -349,7 +317,9 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                 height: _pickerItemExtent,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: isLight
+                      ? AppTheme.lightOtpBoxFill
+                      : Colors.white.withValues(alpha: 0.08),
                 ),
               ),
             ),
@@ -367,10 +337,15 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.45),
-                      Colors.transparent,
-                    ],
+                    colors: isLight
+                        ? [
+                            AppTheme.lightScaffoldBackground,
+                            AppTheme.lightScaffoldBackground.withValues(alpha: 0),
+                          ]
+                        : [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.transparent,
+                          ],
                   ),
                 ),
               ),
@@ -389,10 +364,15 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.bottomCenter,
                     end: Alignment.topCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.45),
-                      Colors.transparent,
-                    ],
+                    colors: isLight
+                        ? [
+                            AppTheme.lightScaffoldBackground,
+                            AppTheme.lightScaffoldBackground.withValues(alpha: 0),
+                          ]
+                        : [
+                            Colors.black.withValues(alpha: 0.45),
+                            Colors.transparent,
+                          ],
                   ),
                 ),
               ),
@@ -403,31 +383,39 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
     );
   }
 
-  Widget _buildPrivacyText() {
+  Widget _buildPrivacyText(bool isLight) {
     return Center(
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
-          style: AppTypography.onboardingPrivacyBody,
+          style: AppTypography.onboardingPrivacyBody.copyWith(
+            color: isLight ? AppTheme.lightMutedBody : null,
+          ),
           children: [
-            const TextSpan(
+            TextSpan(
               text: 'Please refer to our ',
-              style: AppTypography.onboardingPrivacyBody,
+              style: AppTypography.onboardingPrivacyBody.copyWith(
+                color: isLight ? AppTheme.lightMutedBody : null,
+              ),
             ),
             WidgetSpan(
               child: GestureDetector(
                 onTap: () {
                   // TODO: open Privacy Policy
                 },
-                child: const Text(
+                child: Text(
                   'Privacy Policy',
-                  style: AppTypography.onboardingPrivacyLink,
+                  style: AppTypography.onboardingPrivacyLink.copyWith(
+                    color: isLight ? AppTheme.lightOnSurface : null,
+                  ),
                 ),
               ),
             ),
-            const TextSpan(
+            TextSpan(
               text: ' for further information on how we process this data.',
-              style: AppTypography.onboardingPrivacyBody,
+              style: AppTypography.onboardingPrivacyBody.copyWith(
+                color: isLight ? AppTheme.lightMutedBody : null,
+              ),
             ),
           ],
         ),

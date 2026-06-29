@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../theme/app_radius.dart';
 import '../constants/app_colors.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_theme.dart';
 
 /// Reusable onboarding progress bar. Same style across profile, interests, etc.
 /// [progress] should be between 0.0 and 1.0.
@@ -12,6 +13,13 @@ class OnboardingProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final trackColor = isLight
+        ? AppTheme.lightUnfocusedUnderline
+        : Colors.white.withValues(alpha: 0.6);
+    final fillColor =
+        isLight ? AppColors.authBrandBurgundy : AppColors.brandPink;
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final fullWidth = constraints.maxWidth;
@@ -26,15 +34,15 @@ class OnboardingProgressBar extends StatelessWidget {
                 Container(
                   width: fullWidth,
                   height: 3,
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: trackColor,
                 ),
                 SizedBox(
                   width: fillWidth,
                   child: Container(
                     height: 3,
-                    decoration: const BoxDecoration(
-                      color: AppColors.brandPink,
-                      borderRadius: BorderRadius.horizontal(
+                    decoration: BoxDecoration(
+                      color: fillColor,
+                      borderRadius: const BorderRadius.horizontal(
                         left: Radius.circular(10),
                         right: Radius.zero,
                       ),

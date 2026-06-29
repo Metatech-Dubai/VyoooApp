@@ -21,6 +21,8 @@ class AuthPrimaryButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isLight = AppTheme.isLight(context);
     final canPress = enabled && !isLoading && onPressed != null;
     return SizedBox(
       width: double.infinity,
@@ -28,10 +30,18 @@ class AuthPrimaryButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: canPress ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.buttonBackground,
-          foregroundColor: AppTheme.buttonTextColor,
-          disabledBackgroundColor: Colors.white.withValues(alpha: 0.4),
-          disabledForegroundColor: AppTheme.secondaryTextColor,
+          backgroundColor: isLight
+              ? AppTheme.lightButtonBackground
+              : AppTheme.buttonBackground,
+          foregroundColor: isLight
+              ? AppTheme.lightButtonText
+              : AppTheme.buttonTextColor,
+          disabledBackgroundColor: isLight
+              ? AppTheme.lightButtonBackground.withValues(alpha: 0.4)
+              : Colors.white.withValues(alpha: 0.4),
+          disabledForegroundColor: isLight
+              ? AppTheme.lightButtonText.withValues(alpha: 0.7)
+              : AppTheme.secondaryTextColor,
           shape: RoundedRectangleBorder(borderRadius: AppRadius.buttonRadius),
         ),
         child: isLoading
@@ -41,11 +51,22 @@ class AuthPrimaryButton extends StatelessWidget {
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.buttonTextColor,
+                    isLight
+                        ? AppTheme.lightButtonText
+                        : AppTheme.buttonTextColor,
                   ),
                 ),
               )
-            : Text(label, style: AppTypography.primaryButton),
+            : Text(
+                label,
+                style: AppTypography.primaryButton.copyWith(
+                  color: isLight
+                      ? AppTheme.lightButtonText
+                      : theme.elevatedButtonTheme.style?.foregroundColor
+                              ?.resolve({}) ??
+                          AppTheme.buttonTextColor,
+                ),
+              ),
       ),
     );
   }

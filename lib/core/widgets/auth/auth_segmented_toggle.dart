@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_sizes.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 
 /// Email / phone (or similar) two-option toggle on auth screens.
@@ -22,13 +23,20 @@ class AuthSegmentedToggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     return Container(
       height: AppSizes.authToggleHeight,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
+        color: isLight
+            ? AppTheme.lightToggleTrack
+            : Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(AppSizes.authToggleHeight / 2),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.24)),
+        border: Border.all(
+          color: isLight
+              ? AppTheme.lightToggleBorder
+              : Colors.white.withValues(alpha: 0.24),
+        ),
       ),
       child: Row(
         children: [
@@ -65,6 +73,7 @@ class _Segment extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
@@ -74,13 +83,27 @@ class _Segment extends StatelessWidget {
         decoration: BoxDecoration(
           color: selected ? Colors.white : Colors.transparent,
           borderRadius: BorderRadius.circular(26),
+          boxShadow: selected && isLight
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 4,
+                    offset: const Offset(0, 1),
+                  ),
+                ]
+              : null,
         ),
         child: Text(
           label,
           style: AppTypography.toggleLabel.copyWith(
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
             color: selected
-                ? Colors.black.withValues(alpha: 0.9)
-                : Colors.white.withValues(alpha: 0.82),
+                ? (isLight
+                    ? AppTheme.lightOnSurface
+                    : Colors.black.withValues(alpha: 0.9))
+                : (isLight
+                    ? AppTheme.lightSecondaryText
+                    : Colors.white.withValues(alpha: 0.82)),
           ),
         ),
       ),
