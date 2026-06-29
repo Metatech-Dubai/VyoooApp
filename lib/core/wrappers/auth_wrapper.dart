@@ -8,6 +8,7 @@ import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../models/app_user_model.dart';
 import '../onboarding/parental_submit_handoff.dart';
+import '../onboarding/username_submit_handoff.dart';
 import '../services/auth_service.dart';
 import '../services/global_incoming_call_service.dart';
 import '../services/in_app_notification_alert_service.dart';
@@ -22,6 +23,7 @@ import '../../screens/auth/sign_in_screen.dart';
 import '../../screens/auth/verify_code_screen.dart';
 import '../../screens/debug/tier_picker_screen.dart';
 import '../../screens/onboarding/organization_details_screen.dart';
+import '../../services/username_validation.dart';
 import '../onboarding/onboarding_gate.dart';
 import '../subscription/subscription_controller.dart';
 import 'main_nav_wrapper.dart';
@@ -217,10 +219,15 @@ class _UserDocGateState extends State<_UserDocGate> {
     if (mounted) setState(() {});
   }
 
+  void _onUsernameHandoffChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     ParentalSubmitHandoff.instance.addListener(_onParentalHandoffChanged);
+    UsernameSubmitHandoff.instance.addListener(_onUsernameHandoffChanged);
     _readyFuture = _bootstrapUserDoc();
     _otpRequiredFuture = _isPasswordOtpRequired();
   }
@@ -228,9 +235,11 @@ class _UserDocGateState extends State<_UserDocGate> {
   @override
   void dispose() {
     ParentalSubmitHandoff.instance.removeListener(_onParentalHandoffChanged);
+    UsernameSubmitHandoff.instance.removeListener(_onUsernameHandoffChanged);
     // Only clear a handoff owned by this gate (avoids wiping state if another
     // [AuthWrapper] instance was stacked and disposed first).
     ParentalSubmitHandoff.instance.disarm(minorUid: widget.uid);
+    UsernameSubmitHandoff.instance.disarm(uid: widget.uid);
     super.dispose();
   }
 
@@ -239,6 +248,7 @@ class _UserDocGateState extends State<_UserDocGate> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.uid != widget.uid) {
       ParentalSubmitHandoff.instance.disarm();
+      UsernameSubmitHandoff.instance.disarm();
       _readyFuture = _bootstrapUserDoc();
       _otpRequiredFuture = _isPasswordOtpRequired();
       _selectedLoginOtpChannel = null;
@@ -326,7 +336,7 @@ class _UserDocGateState extends State<_UserDocGate> {
             }
             final appUser = userSnapshot.data;
             if (appUser == null) {
-              return const CreateUsernameScreen();
+              return const _AuthDeterminingScaffold();
             }
             return ListenableBuilder(
               listenable: Listenable.merge([
@@ -535,22 +545,60 @@ class _UserDocGateState extends State<_UserDocGate> {
         ParentalSubmitHandoff.instance.activeConsentIdForMinor(appUser.uid) !=
             null;
 
+    final handoffUsername =
+        UsernameSubmitHandoff.instance.savedUsernameFor(appUser.uid);
+    final handoffAccountType =
+        UsernameSubmitHandoff.instance.savedAccountTypeFor(appUser.uid);
+
+    final streamUsername =
+        UsernameValidation.normalize((appUser.username ?? '').trim());
+    if (handoffUsername != null &&
+        streamUsername.isNotEmpty &&
+        streamUsername == UsernameValidation.normalize(handoffUsername)) {
+      UsernameSubmitHandoff.instance.disarm(uid: appUser.uid);
+    }
+
+    final effectiveUser = _effectiveUserForOnboarding(
+      appUser,
+      handoffUsername: handoffUsername,
+      handoffAccountType: handoffAccountType,
+    );
+
     // Stale Firestore snapshots can miss username/org while a parent invite
     // handoff is active; always run [OnboardingGate] so the waiting screen wins.
     if (!hasParentalHandoff) {
-      final hasUsername = (appUser.username ?? '').trim().isNotEmpty;
+      final hasUsername =
+          (effectiveUser.username ?? '').trim().isNotEmpty;
       if (!hasUsername) {
         return const CreateUsernameScreen();
       }
 
-      final accountType = appUser.accountType.trim().toLowerCase();
+      final accountType = effectiveUser.accountType.trim().toLowerCase();
       if (accountType == 'business' || accountType == 'government') {
-        if (!appUser.orgProfileCompleted) {
+        if (!effectiveUser.orgProfileCompleted) {
           return OrganizationDetailsScreen(accountType: accountType);
         }
       }
     }
 
-    return OnboardingGate.nextScreen(appUser);
+    return OnboardingGate.nextScreen(effectiveUser);
+  }
+
+  AppUserModel _effectiveUserForOnboarding(
+    AppUserModel appUser, {
+    String? handoffUsername,
+    String? handoffAccountType,
+  }) {
+    var user = appUser;
+    final handoffActive = handoffUsername != null && handoffUsername.trim().isNotEmpty;
+    if (handoffActive && (user.username ?? '').trim().isEmpty) {
+      user = user.copyWith(username: handoffUsername.trim());
+    }
+    if (handoffActive &&
+        handoffAccountType != null &&
+        handoffAccountType.trim().isNotEmpty) {
+      user = user.copyWith(accountType: handoffAccountType.trim().toLowerCase());
+    }
+    return user;
   }
 }

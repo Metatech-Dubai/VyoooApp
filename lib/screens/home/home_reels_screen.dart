@@ -1298,8 +1298,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       // Ensure "Following" tab reflects latest follows immediately.
       _loadReels();
     }
-    // Following starts expanded; first upward swipe collapses story strip.
-    _followingStoriesCollapse.value = 0;
+    // Following status row starts collapsed; tap the chevron to open.
+    _followingStoriesCollapse.value = 1.0;
     if (tab != HomeTab.vr) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted || currentTab != tab) return;
@@ -1332,13 +1332,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final animatedStoriesTop =
         lerpDouble(followingStoriesTop, storiesCollapsedTop, collapseT) ??
         followingStoriesTop;
-    final storiesToggleTop = isFollowing
-        ? followingStoriesToggleTop(
-            headerBottom: headerBottom,
-            storiesRowTop: animatedStoriesTop,
-            collapseT: collapseT,
-          )
-        : 0.0;
 
     final feedChromeBottom = AppBottomNavigation.totalHeightFor(context);
     final feedBottomInset = feedChromeBottom + AppSpacing.feedPostNavGap;
@@ -1360,7 +1353,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                 bottom: feedBottomInset,
                 child: _buildFeedClipArea(),
               ),
-            _buildHeader(),
+            _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
             if (isFollowing)
               if (collapseT < 0.999)
                 _buildStoryRow(
@@ -1368,15 +1361,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   opacity: 1 - collapseT,
                   ignorePointer: collapseT > 0.95,
                 ),
-            if (isFollowing)
-              Positioned(
-                top: storiesToggleTop,
-                right: AppSpacing.md,
-                child: FollowingStoriesToggle(
-                  isExpanded: collapseT < 0.5,
-                  onTap: _toggleFollowingStories,
-                ),
-              ),
             if (currentTab == HomeTab.forYou && _showForYouAiVerifiedTooltip)
               Positioned.fill(
                 child: GestureDetector(
@@ -1815,7 +1799,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({required bool isFollowing, required double collapseT}) {
     return Positioned(
       top: 0,
       left: 0,
@@ -1825,6 +1809,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           selectedIndex: currentTab.index,
           onTabSelected: (index) => _onTabChanged(HomeTab.values[index]),
           trailing: _buildHeaderActions(),
+          tabRowTrailing: isFollowing
+              ? FollowingStoriesToggle(
+                  isExpanded: collapseT < 0.5,
+                  onTap: _toggleFollowingStories,
+                )
+              : null,
         ),
       ),
     );

@@ -48,9 +48,9 @@ abstract final class AppSizes {
   /// Following tab — horizontal story row (avatar only, Figma).
   static const double followingStoryRowHeight = 80;
 
-  /// Following tab — collapse chevron square (Figma, right of story row).
-  static const double followingStoriesToggleSize = 28;
-  static const double followingStoriesToggleIcon = 20;
+  /// Following tab — status chevron after tab pills (Figma SVG 37×17).
+  static const double followingStoriesToggleWidth = 37;
+  static const double followingStoriesToggleHeight = 17;
 
   /// How far the story row slides up when collapsed (under header).
   static const double followingStoriesCollapsedOverlap = 30;

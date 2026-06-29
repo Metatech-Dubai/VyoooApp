@@ -18,12 +18,16 @@ class AppFeedHeader extends StatelessWidget {
     this.labels = _defaultLabels,
     this.onTabSelected,
     this.trailing,
+    this.tabRowTrailing,
   });
 
   final int selectedIndex;
   final List<String> labels;
   final void Function(int index)? onTabSelected;
   final Widget? trailing;
+
+  /// Shown at the end of the tab pill row (e.g. Following status toggle).
+  final Widget? tabRowTrailing;
 
   static const List<String> _defaultLabels = [
     'Trending',
@@ -76,6 +80,7 @@ class AppFeedHeader extends StatelessWidget {
               labels: labels,
               selectedIndex: selectedIndex,
               onTabSelected: onTabSelected,
+              trailing: tabRowTrailing,
             ),
           ),
         ],
@@ -91,11 +96,13 @@ class AppFeedTabSelector extends StatelessWidget {
     required this.labels,
     required this.selectedIndex,
     this.onTabSelected,
+    this.trailing,
   });
 
   final List<String> labels;
   final int selectedIndex;
   final void Function(int)? onTabSelected;
+  final Widget? trailing;
 
   static double _estimateTabsWidth(List<String> labels, int selectedIndex) {
     var total = 0.0;
@@ -164,15 +171,26 @@ class AppFeedTabSelector extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         final maxWidth = constraints.maxWidth;
-        final needsScroll =
-            _estimateTabsWidth(labels, selectedIndex) > maxWidth;
+        final trailingExtra = trailing == null
+            ? 0.0
+            : AppSizes.followingStoriesToggleWidth + AppSpacing.xs;
+        final tabsWidth = _estimateTabsWidth(labels, selectedIndex);
+        final needsScroll = tabsWidth + trailingExtra > maxWidth;
 
-        if (needsScroll) {
+        if (trailing != null || needsScroll) {
+          final rowChildren = <Widget>[
+            ..._tabChildren(compactGaps: true),
+            if (trailing != null) ...[
+              const SizedBox(width: AppSpacing.xs),
+              trailing!,
+            ],
+          ];
           return SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            clipBehavior: Clip.none,
             child: Row(
               mainAxisSize: MainAxisSize.min,
-              children: _tabChildren(compactGaps: true),
+              children: rowChildren,
             ),
           );
         }

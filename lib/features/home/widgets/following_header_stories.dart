@@ -37,7 +37,7 @@ class FollowingHeaderStories extends StatelessWidget {
         padding: const EdgeInsets.fromLTRB(
           AppSpacing.md,
           AppSpacing.xs + 2,
-          AppSpacing.md + AppSizes.followingStoriesToggleSize + AppSpacing.sm,
+          AppSpacing.md,
           AppSpacing.xs + 2,
         ),
         itemCount: total,

@@ -11,6 +11,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_text_field_style.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/onboarding/username_submit_handoff.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
@@ -194,12 +195,16 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 
   /// Valid format, finished checking, and available (or reserved + acknowledged).
+  ///
+  /// When availability is still unknown ([_available] == null), allow Continue so
+  /// [_onNext] can run a one-shot server check (stream errors are common on slow networks).
   bool get _isUsernameValid {
     final text = _usernameController.text.trim();
     if (!UsernameValidation.isValidFormat(text)) return false;
     if (_isChecking || _isSubmitting || _awaitingGateHandoff) return false;
     if (_isReserved) return _reservedContinueConfirmed;
-    return _available == true;
+    if (_available == false) return false;
+    return _available == true || _available == null;
   }
 
   // Future<void> _logout(BuildContext context) async {
@@ -584,11 +589,18 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         }
       }
 
+      UsernameSubmitHandoff.instance.arm(
+        uid: uid,
+        username: usernameToSave,
+        accountType: selectedType.name,
+      );
+
       _gateHandoffTimeout?.cancel();
       _gateHandoffTimeout = Timer(const Duration(seconds: 12), () {
         if (!mounted) return;
         if (!_awaitingGateHandoff) return;
         setState(() => _awaitingGateHandoff = false);
+        UsernameSubmitHandoff.instance.disarm(uid: uid);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -607,6 +619,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     } catch (_) {
       if (!mounted) return;
       _gateHandoffTimeout?.cancel();
+      UsernameSubmitHandoff.instance.disarm(
+        uid: AuthService().currentUser?.uid,
+      );
       setState(() {
         _isSubmitting = false;
         _awaitingGateHandoff = false;

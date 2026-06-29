@@ -1,11 +1,11 @@
+import 'dart:math' show pi;
+
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../core/theme/app_gradients.dart';
-import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_sizes.dart';
-import '../../../core/theme/app_spacing.dart';
 
-/// Pink chevron control for expanding / collapsing the Following tab story row.
+/// Maroon status chevron after the tab pills on Following (Figma SVG asset).
 class FollowingStoriesToggle extends StatelessWidget {
   const FollowingStoriesToggle({
     super.key,
@@ -13,48 +13,36 @@ class FollowingStoriesToggle extends StatelessWidget {
     required this.onTap,
   });
 
+  static const String asset =
+      'assets/vyooO_icons/Home/following_status_toggle.svg';
+
   final bool isExpanded;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
+    return Semantics(
+      button: true,
+      label: isExpanded ? 'Hide status' : 'Show status',
+      child: GestureDetector(
         onTap: onTap,
-        borderRadius: AppRadius.inputRadius,
-        child: Ink(
-          width: AppSizes.followingStoriesToggleSize,
-          height: AppSizes.followingStoriesToggleSize,
-          decoration: BoxDecoration(
-            gradient: AppGradients.vrGetStartedButtonGradient,
-            borderRadius: AppRadius.inputRadius,
-          ),
-          child: Icon(
-            isExpanded
-                ? Icons.keyboard_arrow_up_rounded
-                : Icons.keyboard_arrow_down_rounded,
-            color: Colors.white,
-            size: AppSizes.followingStoriesToggleIcon,
+        behavior: HitTestBehavior.opaque,
+        child: SizedBox(
+          width: AppSizes.followingStoriesToggleWidth,
+          height: AppSizes.feedTabChipHeight,
+          child: Center(
+            child: Transform.rotate(
+              angle: isExpanded ? pi : 0,
+              child: SvgPicture.asset(
+                asset,
+                width: AppSizes.followingStoriesToggleWidth,
+                height: AppSizes.followingStoriesToggleHeight,
+                fit: BoxFit.contain,
+              ),
+            ),
           ),
         ),
       ),
     );
   }
-}
-
-/// Vertical offset for the toggle — centered on story avatars when expanded,
-/// tucked under the tab row when collapsed.
-double followingStoriesToggleTop({
-  required double headerBottom,
-  required double storiesRowTop,
-  required double collapseT,
-}) {
-  final expandedTop =
-      storiesRowTop +
-      (AppSizes.followingStoryAvatarSize -
-              AppSizes.followingStoriesToggleSize) /
-          2;
-  final collapsedTop = headerBottom + AppSpacing.xs;
-  return expandedTop + (collapsedTop - expandedTop) * collapseT;
 }
