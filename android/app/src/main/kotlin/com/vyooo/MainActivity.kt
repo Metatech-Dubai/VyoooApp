@@ -4,12 +4,17 @@ import android.app.NotificationManager
 import android.graphics.Color
 import android.os.Build
 import android.os.Bundle
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
 
 class MainActivity : FlutterActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // FlutterActivity is not a ComponentActivity — use WindowCompat (Android 15+ edge-to-edge).
+        installSplashScreen()
+        super.onCreate(savedInstanceState)
+
+        // After super.onCreate so NormalTheme is applied — calling this earlier can
+        // surface a native title bar with android:label on some API/OEM combos.
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (Build.VERSION.SDK_INT < 35) {
             // Android 14 and below: theme default paints an opaque black system nav bar over
@@ -23,7 +28,6 @@ class MainActivity : FlutterActivity() {
                 window.isNavigationBarContrastEnforced = false
             }
         }
-        super.onCreate(savedInstanceState)
 
         val notificationManager =
             getSystemService(NotificationManager::class.java) ?: return
