@@ -980,18 +980,21 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
                               icon: Icons.circle_outlined,
                               size: iconSize,
                               slotHeight: iconSlotHeight,
+                              iconColor: ProfileFigmaTokens.sideDrawerSecondaryIcon,
                               onTap: widget.onWalletTap,
                             ),
                             _ProfileSideRailIconButton(
                               icon: Icons.chat_bubble_outline_rounded,
                               size: iconSize,
                               slotHeight: iconSlotHeight,
+                              iconColor: ProfileFigmaTokens.sideDrawerSecondaryIcon,
                               onTap: widget.onChatTap,
                             ),
                             _ProfileSideRailIconButton(
                               icon: Icons.bar_chart_rounded,
                               size: iconSize,
                               slotHeight: iconSlotHeight,
+                              iconColor: ProfileFigmaTokens.sideDrawerSecondaryIcon,
                               onTap: widget.onRevenueTap,
                             ),
                           ],
@@ -1015,12 +1018,14 @@ class _ProfileSideRailIconButton extends StatelessWidget {
     required this.size,
     required this.slotHeight,
     required this.onTap,
+    this.iconColor = Colors.white,
   });
 
   final IconData icon;
   final double size;
   final double slotHeight;
   final VoidCallback onTap;
+  final Color iconColor;
 
   @override
   Widget build(BuildContext context) {
@@ -1035,7 +1040,7 @@ class _ProfileSideRailIconButton extends StatelessWidget {
             child: Icon(
               icon,
               size: size,
-              color: Colors.white,
+              color: iconColor,
             ),
           ),
         ),

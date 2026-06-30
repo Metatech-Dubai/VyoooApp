@@ -36,6 +36,9 @@ class AppColors {
   /// Profile tab bookmark / star icon default (Figma #808080).
   static const Color profileTabAccessoryIcon = Color(0xFF808080);
 
+  /// Profile side drawer — wallet / chat / revenue icons (Figma #EC709C @ 70%).
+  static const Color profileDrawerSecondaryIcon = Color(0xB3EC709C);
+
   /// Verify-code masked email / phone destination (same Figma accent).
   static const Color authVerifyDestination = storyRing;
   /// Light auth primary CTA fill — muted mauve (Figma sign-in / register).

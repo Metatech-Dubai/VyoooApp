@@ -146,6 +146,8 @@ abstract final class ProfileFigmaTokens {
   static const double profileSideRailRadius = 20;
   /// Drawer fill — open and collapsed handle (Figma #660033).
   static const Color sideDrawerFill = AppColors.feedFollowButton;
+  /// Drawer wallet / chat / revenue icons (Figma #EC709C @ 70%).
+  static const Color sideDrawerSecondaryIcon = AppColors.profileDrawerSecondaryIcon;
   /// Vertical offset — lines up with [profileHeaderHorizontalPad] above the avatar.
   static const double profileSideRailTop = 16;
   /// Same height as [avatarOuterSize] (profile photo frame).
