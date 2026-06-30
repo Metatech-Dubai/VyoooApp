@@ -17,6 +17,7 @@ class AuthOtpInputRow extends StatelessWidget {
     required this.focusNodes,
     this.onChanged,
     this.boxSize,
+    this.boxHeight,
   });
 
   final int length;
@@ -24,46 +25,53 @@ class AuthOtpInputRow extends StatelessWidget {
   final List<FocusNode> focusNodes;
   final VoidCallback? onChanged;
   final double? boxSize;
+  final double? boxHeight;
 
   @override
   Widget build(BuildContext context) {
-    final resolvedBoxSize = boxSize ?? AppSizes.authOtpBoxSize;
+    final resolvedBoxWidth = boxSize ?? AppSizes.authOtpBoxSize;
+    final resolvedBoxHeight = boxHeight ?? AppSizes.authOtpBoxHeight;
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(
         length,
-        (index) => _buildOtpBox(context, index, resolvedBoxSize),
+        (index) => _buildOtpBox(
+          context,
+          index,
+          resolvedBoxWidth,
+          resolvedBoxHeight,
+        ),
       ),
     );
   }
 
-  Widget _buildOtpBox(BuildContext context, int index, double size) {
+  Widget _buildOtpBox(
+    BuildContext context,
+    int index,
+    double width,
+    double height,
+  ) {
     final isLight = AppTheme.isLight(context);
     return ListenableBuilder(
       listenable: focusNodes[index],
       builder: (_, _) {
         final hasFocus = focusNodes[index].hasFocus;
         return Container(
-          width: size,
-          height: size,
+          width: width,
+          height: height,
           decoration: BoxDecoration(
             color: isLight
-                ? AppTheme.lightOtpBoxFill
+                ? AppTheme.lightOtpBoxFillTranslucent
                 : Colors.white.withValues(alpha: 0.08),
-            borderRadius: AppRadius.inputRadius,
+            borderRadius: AppRadius.authOtpBoxRadius,
             border: hasFocus
                 ? Border.all(
                     color: isLight
-                        ? AppColors.authBrandBurgundy
+                        ? AppColors.authVerifyCta
                         : Colors.white.withValues(alpha: 0.4),
                     width: 1.5,
                   )
-                : Border.all(
-                    color: isLight
-                        ? AppTheme.lightUnfocusedUnderline
-                        : Colors.transparent,
-                    width: 1,
-                  ),
+                : null,
           ),
           alignment: Alignment.center,
           child: TextField(

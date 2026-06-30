@@ -12,11 +12,13 @@ class AuthFloatingBackButton extends StatelessWidget {
     required this.onPressed,
     this.enabled = true,
     this.alwaysShowBack = false,
+    this.backgroundColor,
   });
 
   final VoidCallback? onPressed;
   final bool enabled;
   final bool alwaysShowBack;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +38,7 @@ class AuthFloatingBackButton extends StatelessWidget {
       child: AuthFloatingCircleButton.back(
         onPressed: onPressed,
         enabled: enabled,
+        backgroundColor: backgroundColor,
       ),
     );
   }

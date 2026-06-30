@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
 import '../../core/theme/app_padding.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
@@ -92,39 +92,38 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         AuthFloatingBackButton(
           onPressed: _onBack,
           alwaysShowBack: true,
+          backgroundColor: AppColors.authVerifyCta,
         ),
       ],
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(height: AppSpacing.sm),
           const AuthScreenHeader(
             centerAlign: true,
-            titleTextAlign: TextAlign.start,
-            title: 'Verify\nCode',
+            titleTextAlign: TextAlign.center,
+            title: 'Verify Code',
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             _usePhone
                 ? "Please enter the code we've just sent to your number"
                 : "Please enter the code we've just sent to email",
-            style: AppTypography.authSmallBody.copyWith(
-              color: AppTheme.lightMutedBody,
-            ),
+            style: AppTypography.authVerifyInstruction,
+            textAlign: TextAlign.center,
           ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              _destinationLabel(),
-              style: AppTypography.authAccentLink,
-              textAlign: TextAlign.start,
-            ),
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            _destinationLabel(),
+            style: AppTypography.authVerifyDestination,
+            textAlign: TextAlign.center,
           ),
           if (_errorMessage != null) ...[
             const SizedBox(height: AppSpacing.sm),
             Text(
               _errorMessage!,
               style: AppTypography.caption.copyWith(color: Colors.red),
+              textAlign: TextAlign.center,
             ),
           ],
           const SizedBox(height: AppSpacing.xl),
@@ -132,68 +131,76 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
             length: _otpLength,
             controllers: _controllers,
             focusNodes: _focusNodes,
-            boxSize: _usePhone ? 48 : AppSizes.authOtpBoxSize,
             onChanged: () => setState(() {}),
           ),
           const SizedBox(height: AppSpacing.xl),
-          Center(
-            child: Column(
-              children: [
-                Text(
-                  "Didn't receive OTP?",
-                  style: AppTypography.authSmallBody.copyWith(
-                    color: AppTheme.lightMutedBody,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                GestureDetector(
-                  onTap: _onResendCode,
-                  child: Text(
-                    'Resend Code',
-                    style: AppTypography.authSmallBodyBold.copyWith(
-                      color: AppTheme.lightOnSurface,
-                      decoration: TextDecoration.underline,
-                      decorationColor: AppTheme.lightOnSurface,
-                    ),
-                  ),
-                ),
-              ],
+          Text(
+            "Didn't receive OTP?",
+            style: AppTypography.authVerifyMutedLabel,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          GestureDetector(
+            onTap: _onResendCode,
+            child: Text(
+              _sendInFlight ? 'Sending…' : 'Resend Code',
+              style: AppTypography.authSmallBodyBold.copyWith(
+                color: AppTheme.lightOnSurface,
+                decoration: TextDecoration.underline,
+                decorationColor: AppTheme.lightOnSurface,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
-          if (!widget.forPhoneLogin && _usePhone) ...[
-            const SizedBox(height: AppSpacing.md),
-            Center(
-              child: GestureDetector(
-                onTap: _onSwitchVerificationMethod,
-                child: Text(
-                  'Try another way',
-                  style: AppTypography.authSmallBody.copyWith(
-                    color: AppTheme.lightMutedBody,
-                  ),
-                ),
-              ),
-            ),
-          ],
           const SizedBox(height: AppSpacing.authCtaTop),
           AuthPrimaryButton(
             label: 'Verify',
             isLoading: _verifyInFlight,
             enabled: _isOtpComplete,
+            backgroundColor: AppColors.authVerifyCta,
             onPressed: _onVerify,
           ),
+          if (!widget.forPhoneLogin && _usePhone) ...[
+            const SizedBox(height: AppSpacing.md),
+            GestureDetector(
+              onTap: _onSwitchVerificationMethod,
+              child: Text(
+                'Try another way',
+                style: AppTypography.authVerifySecondaryLink,
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ],
           SizedBox(height: AuthFloatingNavRow.scrollBottomClearance(context)),
         ],
       ),
     );
   }
 
+  String _maskEmailForDisplay(String value) {
+    final t = value.trim();
+    final at = t.indexOf('@');
+    if (at <= 0 || at >= t.length - 1) return t;
+    final local = t.substring(0, at);
+    final domain = t.substring(at + 1);
+    if (local.length <= 1) return '***@$domain';
+    return '${local[0]}${'*' * (local.length - 1)}@$domain';
+  }
+
   String _destinationLabel() {
     if (_usePhone) {
-      return widget.maskedPhone.isEmpty
-          ? 'your phone number'
-          : widget.maskedPhone;
+      if (widget.maskedPhone.isNotEmpty) return widget.maskedPhone;
+      final phone = _activePhoneNumber;
+      if (phone.isNotEmpty) {
+        if (phone.length <= 4) return phone;
+        return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
+      }
+      return 'your phone number';
     }
-    return widget.maskedEmail.isEmpty ? 'your email' : widget.maskedEmail;
+    if (widget.maskedEmail.isNotEmpty) return widget.maskedEmail;
+    final email = _activeEmailForOtp();
+    if (email.isNotEmpty) return _maskEmailForDisplay(email);
+    return 'your email';
   }
 
   bool get _isOtpComplete {

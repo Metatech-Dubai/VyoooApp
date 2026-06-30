@@ -12,12 +12,14 @@ class AuthFloatingCircleButton extends StatelessWidget {
     this.onPressed,
     this.enabled = true,
     this.isLoading = false,
+    this.backgroundColor,
   });
 
   const AuthFloatingCircleButton.back({
     super.key,
     required this.onPressed,
     this.enabled = true,
+    this.backgroundColor,
   }) : icon = Icons.arrow_back,
        isLoading = false;
 
@@ -26,12 +28,14 @@ class AuthFloatingCircleButton extends StatelessWidget {
     required this.onPressed,
     this.enabled = true,
     this.isLoading = false,
+    this.backgroundColor,
   }) : icon = Icons.arrow_forward;
 
   final IconData icon;
   final VoidCallback? onPressed;
   final bool enabled;
   final bool isLoading;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -42,9 +46,8 @@ class AuthFloatingCircleButton extends StatelessWidget {
     final canTap = enabled && onPressed != null && !isLoading;
     final showActiveStyle = canTap || isLoading;
 
-    final activeColor = isLight
-        ? AppColors.authBrandBurgundy
-        : AppTheme.buttonBackground;
+    final activeColor = backgroundColor ??
+        (isLight ? AppColors.authBrandBurgundy : AppTheme.buttonBackground);
     final activeIconColor =
         isLight ? AppTheme.lightButtonText : AppTheme.buttonTextColor;
     final disabledColor = isLight

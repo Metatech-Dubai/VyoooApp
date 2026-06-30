@@ -12,6 +12,10 @@ class AppColors {
   static const Color feedFollowButton = Color(0xFF660033);
   /// Light auth surfaces — wordmark and accent links (Figma #600030).
   static const Color authBrandBurgundy = Color(0xFF600030);
+  /// Verify-code CTA + floating back (Figma #7B0A3F).
+  static const Color authVerifyCta = Color(0xFF7B0A3F);
+  /// Verify-code masked email / phone destination (Figma #E51147).
+  static const Color authVerifyDestination = Color(0xFFE51147);
   /// Light auth primary CTA fill — muted mauve (Figma sign-in / register).
   static const Color authPrimaryButton = Color(0xFFB8869E);
   /// Reel like heart — filled state (Figma #9F0E56).

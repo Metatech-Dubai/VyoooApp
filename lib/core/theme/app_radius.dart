@@ -7,6 +7,9 @@ abstract final class AppRadius {
 
   /// Auth Phone/Email segmented control outer track (Figma rx 27).
   static const double authToggle = 27;
+
+  /// Verify-code OTP digit box (Figma rx 9.67742 on 50px width).
+  static const double authOtpBox = 9.67742;
   static const double button = 30;
   static const double card = 8;
 
@@ -28,4 +31,6 @@ abstract final class AppRadius {
   static BorderRadius get pillRadius => BorderRadius.circular(pill);
   static BorderRadius get buttonRadius => BorderRadius.circular(button);
   static BorderRadius get feedTabRadius => BorderRadius.circular(feedTab);
+  static BorderRadius get authOtpBoxRadius =>
+      BorderRadius.circular(authOtpBox);
 }

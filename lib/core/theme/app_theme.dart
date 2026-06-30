@@ -41,6 +41,8 @@ class AppTheme {
 
   static const Color lightToggleBorder = Color(0xFFE5E5E5);
   static const Color lightOtpBoxFill = Color(0xFFF5F5F5);
+  /// Verify-code OTP boxes — black @ 6% (Figma).
+  static const Color lightOtpBoxFillTranslucent = Color(0x0F000000);
   static const Color lightSearchBarFill = Color(0xFFF0F0F0);
   static const Color lightInputPillFill = Color(0xFFF8F8F8);
 

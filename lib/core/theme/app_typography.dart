@@ -249,6 +249,42 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
+  /// Verify-code instruction line — DM Sans Regular 14 @ #808080.
+  static const TextStyle authVerifyInstruction = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF808080),
+  );
+
+  /// "Didn't receive OTP?" — DM Sans Regular 12 @ 78% #808080.
+  static const TextStyle authVerifyMutedLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xC7808080),
+  );
+
+  /// Verify-code masked destination — DM Sans Regular 14 @ #E51147.
+  static const TextStyle authVerifyDestination = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.authVerifyDestination,
+  );
+
+  /// Verify-code secondary link — DM Sans Regular 12 @ 90% black.
+  static const TextStyle authVerifySecondaryLink = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xE6000000),
+  );
+
   /// Accent link (e.g. "Can't reset your password?") — DM Sans Medium 12.
   static const Color authAccentLinkColor = Color(0xFFD10057);
 

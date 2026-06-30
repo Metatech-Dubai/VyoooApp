@@ -12,33 +12,33 @@ class AuthPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.enabled = true,
+    this.backgroundColor,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
   final bool enabled;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isLight = AppTheme.isLight(context);
     final canPress = enabled && !isLoading && onPressed != null;
+    final fillColor = backgroundColor ??
+        (isLight ? AppTheme.lightButtonBackground : AppTheme.buttonBackground);
     return SizedBox(
       width: double.infinity,
       height: AppSizes.buttonHeight,
       child: ElevatedButton(
         onPressed: canPress ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isLight
-              ? AppTheme.lightButtonBackground
-              : AppTheme.buttonBackground,
+          backgroundColor: fillColor,
           foregroundColor: isLight
               ? AppTheme.lightButtonText
               : AppTheme.buttonTextColor,
-          disabledBackgroundColor: isLight
-              ? AppTheme.lightButtonBackground.withValues(alpha: 0.4)
-              : Colors.white.withValues(alpha: 0.4),
+          disabledBackgroundColor: fillColor.withValues(alpha: 0.4),
           disabledForegroundColor: isLight
               ? AppTheme.lightButtonText.withValues(alpha: 0.7)
               : AppTheme.secondaryTextColor,

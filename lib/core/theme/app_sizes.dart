@@ -120,8 +120,9 @@ abstract final class AppSizes {
   static const double socialIconContainer = 40;
   static const double iconTapTarget = 40;
 
-  // — OTP —
-  static const double authOtpBoxSize = 70;
+  // — OTP (Figma verify-code: 50×50 boxes) —
+  static const double authOtpBoxSize = 50;
+  static const double authOtpBoxHeight = 50;
 
   // — Chat (Figma inbox / thread) —
   static const double chatInboxAvatar = 48;
