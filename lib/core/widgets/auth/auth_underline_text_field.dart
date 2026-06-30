@@ -40,6 +40,10 @@ class AuthUnderlineTextField extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLight = AppTheme.isLight(context);
     final iconColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
+    final prefixWidget = prefix ??
+        (icon != null
+            ? Icon(icon, color: iconColor, size: AppSizes.fieldIcon)
+            : null);
 
     return TextFormField(
       controller: controller,
@@ -51,21 +55,24 @@ class AuthUnderlineTextField extends StatelessWidget {
       textCapitalization: textCapitalization,
       keyboardAppearance: AppTextFieldStyle.keyboardAppearance(context),
       cursorColor: AppTextFieldStyle.cursorColor(context),
-      style: AppTypography.input.copyWith(
-        color: isLight ? AppTheme.lightOnSurface : AppTheme.defaultTextColor,
-      ),
+      style: isLight
+          ? AppTypography.authInput
+          : AppTypography.input.copyWith(color: AppTheme.defaultTextColor),
       decoration: AppTextFieldStyle.underlineDecoration(
         context,
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: isLight
-              ? AppTypography.inputHint.copyWith(color: AppTheme.lightHintText)
+              ? AppTypography.authInputHint
               : AppTypography.inputHint,
-          prefixIcon: prefix ??
-              (icon != null
-                  ? Icon(icon, color: iconColor, size: AppSizes.fieldIcon)
+          prefixIcon: prefixWidget,
+          prefixIconConstraints: prefixIconConstraints ??
+              (prefixWidget != null
+                  ? const BoxConstraints(
+                      minWidth: AppSizes.authFieldPrefixWidth,
+                      maxWidth: AppSizes.authFieldPrefixWidth,
+                    )
                   : null),
-          prefixIconConstraints: prefixIconConstraints,
           suffixIcon: suffixIcon,
           suffixIconConstraints: const BoxConstraints(
             minWidth: AppSizes.iconTapTarget,

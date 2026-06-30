@@ -10,8 +10,8 @@ import 'app_theme.dart';
 
 /// Figma-aligned text styles for Vyooo (auth + shared UI). All use DM Sans.
 abstract final class AppTypography {
-  // — Auth / section titles (DM Sans) —
-  static const double authHeadlineSize = 30;
+  // — Auth / section titles —
+  static const double authHeadlineSize = 40;
   static const double authHeadlineLetterSpacingPercent = -0.03;
 
   // — Figma UI (DM Sans) —
@@ -28,9 +28,9 @@ abstract final class AppTypography {
   /// White @ 90% — Figma layer opacity on small body copy.
   static const Color smallBodyColor = Color(0xE6FFFFFF);
 
-  /// "Create an Account" — DM Sans Semi Bold / −3% tracking.
+  /// "Create an Account" / auth titles — Inter Semi Bold 40 / 100% line height / −3%.
   static const TextStyle authHeadline = TextStyle(
-    fontFamily: AppFonts.body,
+    fontFamily: AppFonts.headline,
     fontSize: authHeadlineSize,
     height: 1.0,
     fontWeight: FontWeight.w600,
@@ -169,6 +169,24 @@ abstract final class AppTypography {
     color: AppTheme.defaultTextColor,
   );
 
+  /// Light auth underline field — typed text (Figma #000 @ 100% lh).
+  static const TextStyle authInput = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppTheme.lightOnSurface,
+  );
+
+  /// Light auth underline field — empty placeholder (Figma #999999).
+  static const TextStyle authInputHint = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF999999),
+  );
+
   /// Field placeholder — DM Sans 16 @ ~30% white.
   static const TextStyle inputHint = TextStyle(
     fontFamily: AppFonts.body,
@@ -178,12 +196,21 @@ abstract final class AppTypography {
     color: Color(0x4DFFFFFF),
   );
 
-  /// Segmented toggle — DM Sans Medium 16.
+  /// Live comment field — DM Sans Regular 16 @ #EEEEEE (Figma).
+  static const TextStyle liveCommentInput = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.liveCommentInputText,
+  );
+
+  /// Segmented toggle — DM Sans Regular 16, 100% line height (Figma).
   static const TextStyle toggleLabel = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: inputSize,
-    height: 1.25,
-    fontWeight: FontWeight.w500,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
   );
 
   /// OTP digit in verify boxes — DM Sans Semi Bold 32.

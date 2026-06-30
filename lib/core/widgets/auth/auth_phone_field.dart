@@ -4,6 +4,7 @@ import '../../theme/app_sizes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
+import 'auth_field_icon.dart';
 import 'auth_underline_text_field.dart';
 
 /// Phone number field with country flag / dial-code picker prefix.
@@ -41,12 +42,19 @@ class AuthPhoneField extends StatelessWidget {
       prefix: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: AppSpacing.storyItem),
-          Icon(
-            Icons.phone_outlined,
-            color: iconColor,
-            size: AppSizes.fieldIcon,
-          ),
+          isLight
+              ? const AuthFieldIcon.phone()
+              : SizedBox(
+                  width: AppSizes.authFieldPrefixWidth,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Icon(
+                      Icons.phone_outlined,
+                      color: iconColor,
+                      size: AppSizes.authPhoneIconWidth,
+                    ),
+                  ),
+                ),
           const SizedBox(width: AppSpacing.sm),
           GestureDetector(
             behavior: HitTestBehavior.opaque,

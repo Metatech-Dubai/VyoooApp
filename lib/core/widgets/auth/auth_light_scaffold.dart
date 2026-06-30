@@ -33,6 +33,11 @@ class AuthLightScaffold extends StatelessWidget {
     if (useSafeArea) {
       content = SafeArea(child: content);
     }
+    // Non-scrollable auth bodies (e.g. centered register) must fill the safe
+    // area so [LayoutBuilder] / [MainAxisAlignment.center] get a real height.
+    if (!scrollable) {
+      content = SizedBox.expand(child: content);
+    }
 
     return Theme(
       data: AppTheme.light,

@@ -24,7 +24,9 @@ class AuthLinkPrompt extends StatelessWidget {
       child: RichText(
         text: TextSpan(
           style: AppTypography.authSmallBody.copyWith(
-            color: isLight ? AppTheme.lightMutedBody : null,
+            color: isLight
+                ? AppTheme.lightOnSurface.withValues(alpha: 0.9)
+                : null,
           ),
           children: [
             TextSpan(text: prompt),
@@ -32,6 +34,7 @@ class AuthLinkPrompt extends StatelessWidget {
               text: actionLabel,
               style: AppTypography.authSmallBodyBold.copyWith(
                 color: isLight ? AppTheme.lightOnSurface : AppTheme.primary,
+                fontWeight: FontWeight.w700,
               ),
               recognizer: TapGestureRecognizer()..onTap = onActionTap,
             ),

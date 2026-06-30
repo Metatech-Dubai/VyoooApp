@@ -7,6 +7,9 @@ abstract final class AppFonts {
   /// Default family for all UI (see [AppTheme.dark] `fontFamily`).
   static const String body = 'DM Sans';
 
+  /// Auth / marketing headlines (Figma register, sign-in titles).
+  static const String headline = 'Inter';
+
   /// Alias of [body] — kept so existing `AppFonts.display` call sites stay valid.
   static const String display = body;
 }

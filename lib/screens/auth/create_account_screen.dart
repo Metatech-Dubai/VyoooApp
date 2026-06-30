@@ -5,7 +5,7 @@ import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
-import '../../core/theme/app_padding.dart';
+import '../../core/constants/auth_assets.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
@@ -69,60 +69,60 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthLightScaffold(
-      padding: AppPadding.authFormHorizontal,
-      body: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  const AuthScreenHeader(
-                    centerAlign: true,
-                    titleTextAlign: TextAlign.start,
-                    title: 'Create an\nAccount',
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  AuthSegmentedToggle(
-                    leftLabel: 'Phone',
-                    rightLabel: 'Email',
-                    isLeftSelected: !_isEmailSignup,
-                    onLeftTap: () => setState(
-                      () => _selectedSignupMethod = _signupMethodPhone,
-                    ),
-                    onRightTap: () => setState(
-                      () => _selectedSignupMethod = _signupMethodEmail,
-                    ),
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildForm(),
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
-                    Text(
-                      _errorMessage!,
-                      style: AppTypography.caption.copyWith(color: Colors.red),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.authCtaTop),
-                  AuthPrimaryButton(
-                    label: 'Register',
-                    isLoading: _isLoading,
-                    onPressed: _onRegister,
-                  ),
-                  const SizedBox(height: AppSpacing.md),
-                  AuthLinkPrompt(
-                    prompt: 'Already have an account? ',
-                    actionLabel: 'Sign in',
-                    onActionTap: _onSignIn,
-                  ),
-                  const SizedBox(height: AppSpacing.authDividerBlock),
-                  const AuthLabeledDivider(label: 'Or sign up with'),
-                  const SizedBox(height: AppSpacing.authDividerBlock),
-                  AuthSocialSignInRow(
-                    isGoogleLoading: _isGoogleLoading,
-                    isAppleLoading: _isAppleLoading,
-                    onGoogleTap: _onGoogleSignIn,
-                    onAppleTap: _onAppleSignIn,
-                  ),
-                  const SizedBox(height: AppSpacing.authDividerBlock),
-                ],
+      scrollable: false,
+      body: AuthCenteredScrollBody(
+        children: [
+          const AuthScreenHeader(
+            centerAlign: true,
+            titleTextAlign: TextAlign.start,
+            title: 'Create an\nAccount',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AuthSegmentedToggle(
+            leftLabel: 'Phone',
+            rightLabel: 'Email',
+            isLeftSelected: !_isEmailSignup,
+            onLeftTap: () => setState(
+              () => _selectedSignupMethod = _signupMethodPhone,
+            ),
+            onRightTap: () => setState(
+              () => _selectedSignupMethod = _signupMethodEmail,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildForm(),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
+            Text(
+              _errorMessage!,
+              style: AppTypography.caption.copyWith(color: Colors.red),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.authCtaTop),
+          AuthPrimaryButton(
+            label: 'Register',
+            isLoading: _isLoading,
+            onPressed: _onRegister,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AuthLinkPrompt(
+            prompt: 'Already have an account? ',
+            actionLabel: 'Sign in',
+            onActionTap: _onSignIn,
+          ),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+          const AuthLabeledDivider(
+            label: 'Or sign up with',
+            centerAsset: AuthAssets.orSignUpWith,
+          ),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+          AuthSocialSignInRow(
+            isGoogleLoading: _isGoogleLoading,
+            isAppleLoading: _isAppleLoading,
+            onGoogleTap: _onGoogleSignIn,
+            onAppleTap: _onAppleSignIn,
+          ),
+        ],
       ),
     );
   }
@@ -132,7 +132,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       key: _formKey,
       child: AuthFieldColumn(
         children: [
-          AuthFullNameField(controller: _fullNameController),
+          AuthNameField(controller: _fullNameController),
           if (_isEmailSignup)
             AuthEmailField(controller: _emailController)
           else

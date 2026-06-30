@@ -10,6 +10,7 @@ class AuthScreenHeader extends StatelessWidget {
   const AuthScreenHeader({
     super.key,
     required this.title,
+    this.titleWidget,
     this.subtitle,
     this.belowSubtitle = const [],
     this.centerAlign = false,
@@ -18,6 +19,10 @@ class AuthScreenHeader extends StatelessWidget {
   });
 
   final String title;
+
+  /// Optional vector/custom headline (e.g. register "Create an Account" SVG).
+  final Widget? titleWidget;
+
   final String? subtitle;
   final List<Widget> belowSubtitle;
 
@@ -43,18 +48,19 @@ class AuthScreenHeader extends StatelessWidget {
       crossAxisAlignment: columnAlign,
       children: [
         const VyoooBrandLogo.auth(),
-        const SizedBox(height: AppSpacing.md),
+        const SizedBox(height: AppSpacing.authLogoToHeadline),
         SizedBox(
           width: double.infinity,
-          child: Text(
-            title,
-            style: AppTypography.authHeadline.copyWith(
-              color: AppTheme.isLight(context)
-                  ? AppTheme.lightOnSurface
-                  : AppTheme.defaultTextColor,
-            ),
-            textAlign: titleAlign,
-          ),
+          child: titleWidget ??
+              Text(
+                title,
+                style: AppTypography.authHeadline.copyWith(
+                  color: AppTheme.isLight(context)
+                      ? AppTheme.lightOnSurface
+                      : AppTheme.defaultTextColor,
+                ),
+                textAlign: titleAlign,
+              ),
         ),
         if (subtitle != null) ...[
           const SizedBox(height: AppSpacing.md),

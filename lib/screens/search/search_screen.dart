@@ -28,7 +28,17 @@ import '../upload/creator_live_route.dart';
 /// Search tab: search bar, Live/VR/Camera tabs, Ongoing Now & Recommended sections.
 /// Matches Figma: search field + # button, pink gradient active tab, live cards.
 class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+  const SearchScreen({
+    super.key,
+    this.initialQuery,
+    this.initialCategoryTabIndex,
+  });
+
+  /// Pre-filled query when opened from home search or hashtag links.
+  final String? initialQuery;
+
+  /// `0` Live, `1` Posts, `2` VR, `3` Users.
+  final int? initialCategoryTabIndex;
 
   @override
   SearchScreenState createState() => SearchScreenState();
@@ -98,6 +108,10 @@ class SearchScreenState extends State<SearchScreen>
     _bindMyFollowingRealtime();
     // Keep previously selected tab during parent/widget rebuilds.
     _selectedTabIndex = _lastSelectedTabIndex;
+    final initialQuery = widget.initialQuery?.trim();
+    if (initialQuery != null && initialQuery.isNotEmpty) {
+      _applyQuery(initialQuery, widget.initialCategoryTabIndex ?? 1);
+    }
     _loadUsers();
     _loadVrItems();
     unawaited(_loadRecentSearches());
@@ -131,6 +145,10 @@ class SearchScreenState extends State<SearchScreen>
   /// Called from [MainNavWrapper] when user taps a hashtag elsewhere.
   void applyExternalQuery(String query, int categoryTabIndex) {
     if (!mounted) return;
+    _applyQuery(query, categoryTabIndex);
+  }
+
+  void _applyQuery(String query, int categoryTabIndex) {
     final trimmed = query.trim();
     if (trimmed.isEmpty) return;
     final normalized = HashtagUtils.normalizeForQuery(trimmed);

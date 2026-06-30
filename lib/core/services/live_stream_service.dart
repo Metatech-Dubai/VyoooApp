@@ -115,6 +115,22 @@ class LiveStreamService {
     });
   }
 
+  /// Ends orphan `live` docs for [hostId] after app kill / crash (no active Agora session).
+  Future<void> endStaleLiveStreamsForHost(String hostId) async {
+    if (hostId.isEmpty) return;
+    final stale = await _db
+        .collection(_streamsCol)
+        .where('hostId', isEqualTo: hostId)
+        .where('status', isEqualTo: LiveStreamStatus.live.name)
+        .get();
+    for (final doc in stale.docs) {
+      await doc.reference.update({
+        'status': LiveStreamStatus.ended.name,
+        'endedAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
   /// Fetches a single stream document once.
   Future<LiveStreamModel?> getStream(String streamId) async {
     final doc = await _db.collection(_streamsCol).doc(streamId).get();

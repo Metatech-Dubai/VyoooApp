@@ -9,7 +9,7 @@ import '../widgets/app_bottom_navigation.dart';
 import '../../screens/home/home_reels_screen.dart';
 import '../navigation/search_tab_launcher.dart';
 import '../../screens/search/search_screen.dart';
-import '../../screens/upload/creator_live_route.dart';
+import '../../screens/upload/broadcast_tab_host.dart';
 import '../../screens/upload/upload_screen.dart';
 import '../../features/chat/screens/chat_inbox_screen.dart';
 import '../../features/chat/services/chat_service.dart';
@@ -19,8 +19,8 @@ import '../../screens/profile/profile_figma_tokens.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/profile/user_profile_screen.dart';
 
-/// Main app shell: IndexedStack (0 Home, 1 Search, 2 placeholder, 3 Notifications, 4 Profile) + single bottom nav.
-/// Plus (index 2): subscribers → push Upload screen; standard users → push Membership screen.
+/// Main app shell: IndexedStack (0 Home, 1 Broadcast, 2 placeholder, 3 Messages, 4 Profile) + single bottom nav.
+/// Plus (index 2): push Upload screen. Search opens as a pushed route from home / hashtags.
 class MainNavWrapper extends StatefulWidget {
   const MainNavWrapper({super.key, this.initialIndex});
 
@@ -53,21 +53,14 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
   final UserService _userService = UserService();
   StreamSubscription<String>? _reelDeepLinkSub;
   StreamSubscription<String>? _profileDeepLinkSub;
-  final GlobalKey<SearchScreenState> _searchScreenKey =
-      GlobalKey<SearchScreenState>();
   late final SearchTabLaunchCallback _searchTabLaunchHandler;
 
   void _onTabNotifierChanged() {
     final v = MainNavWrapper.tabNotifier.value;
     if (v != null && mounted) {
       MainNavWrapper.tabNotifier.value = null;
-      // Index 1 from in-app links (home search icon, hashtags) → Search tab.
-      // Bottom-nav broadcast uses [_onNavTap] directly → creator live.
       if (v == 1) {
-        setState(() {
-          _currentIndex = 1;
-          _lastSelectedIndex = 1;
-        });
+        _openSearchScreen();
         return;
       }
       _onNavTap(v);
@@ -121,17 +114,10 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
 
     _searchTabLaunchHandler = (String query, int categoryTabIndex) {
       if (!mounted) return;
-      setState(() {
-        _currentIndex = 1;
-        _lastSelectedIndex = 1;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        _searchScreenKey.currentState?.applyExternalQuery(
-          query,
-          categoryTabIndex,
-        );
-      });
+      _openSearchScreen(
+        query: query,
+        categoryTabIndex: categoryTabIndex,
+      );
     };
     SearchTabLauncher.instance.register(_searchTabLaunchHandler);
   }
@@ -177,6 +163,22 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
     );
   }
 
+  Future<void> _openSearchScreen({
+    String query = '',
+    int categoryTabIndex = 0,
+  }) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => SearchScreen(
+          initialQuery: query.trim().isEmpty ? null : query.trim(),
+          initialCategoryTabIndex: query.trim().isEmpty
+              ? null
+              : categoryTabIndex,
+        ),
+      ),
+    );
+  }
+
   Future<void> _onNavTap(int index) async {
     if (index == 2) {
       Navigator.of(context)
@@ -192,7 +194,10 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
       return;
     }
     if (index == 1) {
-      await openCreatorLiveScreen(context);
+      setState(() {
+        _currentIndex = 1;
+        _lastSelectedIndex = 1;
+      });
       return;
     }
     setState(() {
@@ -211,7 +216,10 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
         deepLinkReelId: _deepLinkedReelId,
         deepLinkNonce: _deepLinkNonce,
       ),
-      SearchScreen(key: _searchScreenKey),
+      BroadcastTabHost(
+        isActive: _currentIndex == 1,
+        onRequestHome: () => _onNavTap(0),
+      ),
       const Placeholder(), // Plus opens Upload or Membership via push; no tab content.
       const ChatInboxScreen(),
       const ProfileScreen(),

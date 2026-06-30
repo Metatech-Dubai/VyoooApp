@@ -25,7 +25,7 @@ class AppPadding {
 
   /// Auth/onboarding form (wider horizontal)
   static const authFormHorizontal =
-      EdgeInsets.symmetric(horizontal: 28);
+      EdgeInsets.symmetric(horizontal: 30);
 
   /// Gap after auth headline before form controls
   static const authBelowHeadlineGap = SizedBox(height: 24);
@@ -44,4 +44,8 @@ class AppPadding {
   /// Reel overlay "+ Follow" chip (Figma 12 horizontal, 4 vertical).
   static const feedReelFollowChip =
       EdgeInsets.symmetric(horizontal: 12, vertical: 4);
+
+  /// Live stream comment field — horizontal inset after rounded corner (Figma ~12).
+  static const liveCommentInputContent =
+      EdgeInsets.symmetric(horizontal: 12, vertical: 8);
 }

@@ -33,8 +33,12 @@ class AppTheme {
   static const Color lightSecondaryText = Color(0x99000000);
   static const Color lightMutedBody = Color(0x99000000);
   static const Color lightButtonBackground = AppColors.authBrandBurgundy;
+  /// Segmented toggle — unselected segment label (Figma ~70% black).
+  static const Color lightToggleUnselected = Color(0xB3000000);
   static const Color lightButtonText = Colors.white;
-  static const Color lightToggleTrack = Color(0xFFF0F0F0);
+  /// Auth Phone/Email track (Figma #D8D8D8).
+  static const Color lightToggleTrack = Color(0xFFD8D8D8);
+
   static const Color lightToggleBorder = Color(0xFFE5E5E5);
   static const Color lightOtpBoxFill = Color(0xFFF5F5F5);
   static const Color lightSearchBarFill = Color(0xFFF0F0F0);

@@ -21,8 +21,7 @@ class VyoooBrandLogo extends StatelessWidget {
     this.alignment = Alignment.center,
   });
 
-  static const String assetPath =
-      'assets/BrandLogo/Logo2.png';
+  static const String assetPath = 'assets/BrandLogo/Logo2.png';
 
   /// Default layout height (auth headers).
   static const double defaultHeight = 52;
@@ -31,7 +30,7 @@ class VyoooBrandLogo extends StatelessWidget {
   static const double defaultContentScale = 2.25;
 
   /// Auth sign-in / sign-up — wide wordmark, tight crop (Figma).
-  static const double authContentScale = 2.25;
+  static const double authContentScale = 2.45;
 
   /// Inner settings/account header — smaller slot, less zoom (matches title scale).
   static const double innerHeaderContentScale = 1.55;

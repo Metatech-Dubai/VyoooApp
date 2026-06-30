@@ -290,7 +290,7 @@ class _SignInScreenState extends State<SignInScreen> {
           ],
           const SizedBox(height: AppSpacing.authCtaTop),
           AuthPrimaryButton(
-            label: _isEmailLogin ? 'Sign in' : 'Continue',
+            label: 'Login',
             isLoading: _isLoading,
             enabled: _canLogin,
             onPressed: _onLogin,
@@ -298,7 +298,7 @@ class _SignInScreenState extends State<SignInScreen> {
           const SizedBox(height: AppSpacing.md),
           AuthLinkPrompt(
             prompt: "Don't have an account? ",
-            actionLabel: 'Register',
+            actionLabel: 'Register Here',
             onActionTap: _onRegister,
           ),
           const SizedBox(height: AppSpacing.authDividerBlock),
@@ -323,7 +323,6 @@ class _SignInScreenState extends State<SignInScreen> {
           AuthLoginIdentifierField(
             controller: _usernameController,
             onChanged: _onFieldChanged,
-            hint: 'Email',
           )
         else
           AuthPhoneField(

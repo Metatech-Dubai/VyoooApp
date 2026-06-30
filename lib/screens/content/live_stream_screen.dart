@@ -3,15 +3,19 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:share_plus/share_plus.dart';
 
 import '../../core/config/agora_config.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/live_stream_assets.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_sizes.dart';
+import '../../core/widgets/live_comment_input_field.dart';
 
 /// Viewer live stream screen.
 /// Pass a [LiveStreamModel] to open any live stream as a viewer.
@@ -230,6 +234,14 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
     try {
       await _liveService.addLike(widget.stream.id);
     } catch (_) {}
+  }
+
+  Future<void> _shareStream(LiveStreamModel doc) async {
+    final title = doc.title.trim().isEmpty ? 'Live on VyooO' : doc.title.trim();
+    final body = doc.description.trim().isNotEmpty ? doc.description.trim() : title;
+    await SharePlus.instance.share(
+      ShareParams(text: 'Watch this live stream on VyooO: $body'),
+    );
   }
 
   void _showToast(String msg) {
@@ -518,44 +530,36 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   }
 
   Widget _buildInputRow(LiveStreamModel doc) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: TextField(
-              controller: _chatCtrl,
-              style: const TextStyle(color: Colors.white, fontSize: 14),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-              decoration: InputDecoration(
-                hintText: 'Comment...',
-                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 14),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
-            ),
+    return Row(
+      children: [
+        Expanded(
+          child: LiveCommentInputField(
+            controller: _chatCtrl,
+            onSubmitted: (_) => _sendMessage(),
           ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _sendLike,
-            child: Row(
-              children: [
-                Icon(Icons.favorite_rounded, color: Colors.white.withValues(alpha: 0.9), size: 20),
-                const SizedBox(width: 4),
-                Text(_formatCount(doc.likeCount), style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13)),
-              ],
-            ),
+        ),
+        const SizedBox(width: 8),
+        GestureDetector(
+          onTap: _sendLike,
+          child: Row(
+            children: [
+              Icon(Icons.favorite_rounded, color: Colors.white.withValues(alpha: 0.9), size: 20),
+              const SizedBox(width: 4),
+              Text(_formatCount(doc.likeCount), style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13)),
+            ],
           ),
-          const SizedBox(width: 12),
-          Icon(Icons.reply_rounded, color: Colors.white.withValues(alpha: 0.9), size: 21),
-        ],
-      ),
+        ),
+        const SizedBox(width: 12),
+        GestureDetector(
+          onTap: () => _shareStream(doc),
+          behavior: HitTestBehavior.opaque,
+          child: SvgPicture.asset(
+            LiveStreamAssets.share,
+            width: AppSizes.liveShareIconWidth,
+            height: AppSizes.liveShareIconHeight,
+          ),
+        ),
+      ],
     );
   }
 }

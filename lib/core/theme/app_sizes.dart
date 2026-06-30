@@ -8,8 +8,12 @@ import 'package:flutter/material.dart';
 abstract final class AppSizes {
   // — Controls (typography → [AppTypography]) —
   static const double buttonHeight = 56;
-  static const double authToggleHeight = 54;
-  static const double authLogoHeight = 52;
+  /// Auth Phone/Email pill track (Figma 60×342, rx 27).
+  static const double authToggleHeight = 60;
+
+  /// Inset between auth toggle track edge and selected pill.
+  static const double authToggleInset = 3;
+  static const double authLogoHeight = 40;
   static const double feedLogoHeight = 28;
 
   /// Settings / account inner app bar — compact wordmark on the right.
@@ -37,6 +41,16 @@ abstract final class AppSizes {
 
   /// Reel like heart icon — matches [feedInteractionIcon].
   static const double feedLikeIcon = 14;
+
+  /// Live stream comment field height (Figma 32).
+  static const double liveCommentInputHeight = 32;
+
+  /// Live stream comment field corner radius (Figma rx=8).
+  static const double liveCommentInputRadius = 8;
+
+  /// Live stream share icon (Figma 20×18).
+  static const double liveShareIconWidth = 20;
+  static const double liveShareIconHeight = 18;
 
   /// Reel author avatar on feed overlay.
   static const double feedReelAvatarRadius = 18;
@@ -74,6 +88,34 @@ abstract final class AppSizes {
 
   // — Icons —
   static const double fieldIcon = 22;
+
+  /// Auth field prefix slot — aligns mixed-width Figma SVG icons.
+  static const double authFieldPrefixWidth = 24;
+  static const double authNameIconWidth = 15;
+  static const double authNameIconHeight = 16;
+  static const double authEmailIconWidth = 16;
+  static const double authEmailIconHeight = 11;
+  static const double authPhoneIconWidth = 14;
+  static const double authPhoneIconHeight = 14;
+  static const double authPasswordIconWidth = 15;
+  static const double authPasswordIconHeight = 13;
+  static const double authPasswordVisibilityIconWidth = 15;
+  static const double authPasswordVisibilityIconHeight = 8;
+
+  /// Figma auth divider line artboard height.
+  static const double authDividerLineHeight = 9;
+
+  /// Figma "Or sign up with" vector label height.
+  static const double authDividerLabelHeight = 10;
+
+  /// Figma remember-me label height.
+  static const double authRememberMeLabelHeight = 9;
+
+  /// Figma forgot-password label height.
+  static const double authForgotPasswordLabelHeight = 12;
+
+  /// Nudge divider_line.svg stroke (top of viewBox) to label vertical center.
+  static const double authDividerLineStrokeOffsetY = 4;
   static const double socialIcon = 24;
   static const double socialIconContainer = 40;
   static const double iconTapTarget = 40;

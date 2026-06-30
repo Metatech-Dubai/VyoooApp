@@ -8,6 +8,46 @@ import '../theme/app_theme.dart';
 import '../theme/app_typography.dart';
 import 'vyooo_brand_logo.dart';
 
+/// Logo row only: VyooO + optional trailing actions (search, notifications).
+/// Matches the top row of [AppFeedHeader] without feed tabs.
+class AppFeedLogoBar extends StatelessWidget {
+  const AppFeedLogoBar({super.key, this.trailing});
+
+  final Widget? trailing;
+
+  /// Vertical space occupied by the logo row + padding (no safe area).
+  static double layoutHeight({
+    double topPadding = AppSpacing.sm,
+    double bottomPadding = AppSpacing.md,
+  }) {
+    return topPadding + AppSizes.feedHeaderLogoRowHeight + bottomPadding;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        top: AppSpacing.sm,
+        bottom: AppSpacing.md,
+      ),
+      child: Padding(
+        padding: AppPadding.screenHorizontal,
+        child: SizedBox(
+          height: AppSizes.feedHeaderLogoRowHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const VyoooBrandLogo.feed(),
+              const Spacer(),
+              ?trailing,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Common header for feed screens: VyooO logo + actions on top,
 /// full-width tab pills on the row below (Figma home feed).
 /// Tab text: unselected DM Sans Regular 16 white; selected Bold 16 black.
@@ -50,41 +90,22 @@ class AppFeedHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        top: AppSpacing.sm,
-        bottom: AppSpacing.md,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: AppPadding.screenHorizontal,
-            child: SizedBox(
-              height: AppSizes.feedHeaderLogoRowHeight,
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const VyoooBrandLogo.feed(),
-                  const Spacer(),
-                  ?trailing,
-                ],
-              ),
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppFeedLogoBar(trailing: trailing),
+        SizedBox(height: AppSpacing.sm),
+        Padding(
+          padding: AppPadding.feedTabRowHorizontal,
+          child: AppFeedTabSelector(
+            labels: labels,
+            selectedIndex: selectedIndex,
+            onTabSelected: onTabSelected,
+            trailing: tabRowTrailing,
           ),
-          SizedBox(height: AppSpacing.sm),
-          Padding(
-            padding: AppPadding.feedTabRowHorizontal,
-            child: AppFeedTabSelector(
-              labels: labels,
-              selectedIndex: selectedIndex,
-              onTabSelected: onTabSelected,
-              trailing: tabRowTrailing,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

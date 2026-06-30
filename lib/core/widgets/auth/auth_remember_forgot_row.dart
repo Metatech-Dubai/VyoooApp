@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../constants/app_colors.dart';
+import '../../constants/auth_assets.dart';
+import '../../theme/app_sizes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
@@ -24,7 +27,7 @@ class AuthRememberForgotRow extends StatelessWidget {
     final accentColor =
         isLight ? AppColors.authBrandBurgundy : AppTheme.primary;
     final labelColor =
-        isLight ? AppTheme.lightMutedBody : AppTheme.defaultTextColor;
+        isLight ? AppTheme.lightOnSurface : AppTheme.defaultTextColor;
     final actionColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
 
     return Row(
@@ -56,18 +59,34 @@ class AuthRememberForgotRow extends StatelessWidget {
               ),
             ),
             const SizedBox(width: AppSpacing.sm),
-            Text(
-              'Remember me',
-              style: AppTypography.authSmallBody.copyWith(color: labelColor),
-            ),
+            if (isLight)
+              SvgPicture.asset(
+                AuthAssets.rememberMe,
+                height: AppSizes.authRememberMeLabelHeight,
+              )
+            else
+              Text(
+                'Remember me',
+                style: AppTypography.authSmallBody.copyWith(color: labelColor),
+              ),
           ],
         ),
         GestureDetector(
           onTap: onForgotPasswordTap,
-          child: Text(
-            'Forgot Password?',
-            style: AppTypography.authSmallBodyBold.copyWith(color: actionColor),
-          ),
+          behavior: HitTestBehavior.opaque,
+          child: isLight
+              ? SvgPicture.asset(
+                  AuthAssets.forgotPassword,
+                  height: AppSizes.authForgotPasswordLabelHeight,
+                )
+              : Text(
+                  'Forgot Password?',
+                  style: AppTypography.authSmallBodyBold.copyWith(
+                    color: actionColor,
+                    decoration: TextDecoration.underline,
+                    decorationColor: actionColor,
+                  ),
+                ),
         ),
       ],
     );

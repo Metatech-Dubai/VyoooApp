@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_padding.dart';
+import 'auth_field_icon.dart';
 import 'auth_underline_text_field.dart';
 
 export 'auth_password_field.dart' show AuthPasswordField;
@@ -29,7 +30,7 @@ class AuthNameField extends StatelessWidget {
     return AuthUnderlineTextField(
       controller: controller,
       focusNode: focusNode,
-      icon: Icons.person_outline,
+      prefix: const AuthFieldIcon.name(),
       hint: 'Name',
       keyboardType: TextInputType.name,
       textCapitalization: TextCapitalization.words,
@@ -87,7 +88,7 @@ class AuthEmailField extends StatelessWidget {
     return AuthUnderlineTextField(
       controller: controller,
       focusNode: focusNode,
-      icon: Icons.mail_outline,
+      prefix: const AuthFieldIcon.email(),
       hint: 'Email',
       keyboardType: TextInputType.emailAddress,
     );
@@ -101,7 +102,7 @@ class AuthLoginIdentifierField extends StatelessWidget {
     required this.controller,
     this.focusNode,
     this.onChanged,
-    this.hint = 'Email, Username or Name',
+    this.hint = 'Email , Username or Name',
   });
 
   final TextEditingController controller;
@@ -115,7 +116,7 @@ class AuthLoginIdentifierField extends StatelessWidget {
       controller: controller,
       focusNode: focusNode,
       onChanged: onChanged,
-      icon: Icons.mail_outline,
+      prefix: const AuthFieldIcon.email(),
       hint: hint,
       keyboardType: TextInputType.emailAddress,
     );

@@ -10,8 +10,10 @@ class AppColors {
   static const Color brandDeepMagenta = Color(0xFFDE106B);
   /// Reel overlay "+ Follow" pill (Figma #660033).
   static const Color feedFollowButton = Color(0xFF660033);
-  /// Light auth surfaces — wordmark, primary CTA, accent links (Figma #600030).
+  /// Light auth surfaces — wordmark and accent links (Figma #600030).
   static const Color authBrandBurgundy = Color(0xFF600030);
+  /// Light auth primary CTA fill — muted mauve (Figma sign-in / register).
+  static const Color authPrimaryButton = Color(0xFFB8869E);
   /// Reel like heart — filled state (Figma #9F0E56).
   static const Color feedLikeActive = Color(0xFF9F0E56);
   /// Reel caption hashtags (Figma #FFB3CC).
@@ -44,6 +46,10 @@ class AppColors {
   static const Color chatIncomingBubble = Color(0xFFF2F2F7);
   static const Color chatOutgoingBubble = authBrandBurgundy;
   static const Color chatInputBar = Color(0xFF2C2C2E);
+  /// Live comment glass field — Figma white @ 10% on blurred backdrop.
+  static const Color liveCommentInputGlassFill = Color(0x1AFFFFFF);
+  /// Live comment typed + placeholder text — Figma #EEEEEE.
+  static const Color liveCommentInputText = Color(0xFFEEEEEE);
   static const Color chatInputHint = Color(0xFFAEAEB2);
   static const Color chatDivider = Color(0xFFE5E5EA);
   static const Color chatVerified = Color(0xFF34C759);

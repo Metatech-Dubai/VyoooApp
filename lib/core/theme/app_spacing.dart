@@ -38,6 +38,9 @@ abstract final class AppSpacing {
   /// Nudge Following status chevron down to align with tab pill text (Figma).
   static const double followingStoriesToggleDown = xs;
 
+  /// Gap between auth logo and headline (Figma register).
+  static const double authLogoToHeadline = xl;
+
   /// Space above primary auth CTA (50 = xl + lg + xs)
   static const double authCtaTop = xl + lg + xs;
 
