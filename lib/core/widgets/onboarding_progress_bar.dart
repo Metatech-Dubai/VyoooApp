@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
-import '../theme/app_radius.dart';
+import '../theme/app_sizes.dart';
 import '../theme/app_theme.dart';
 
 /// Reusable onboarding progress bar. Same style across profile, interests, etc.
@@ -15,37 +15,34 @@ class OnboardingProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final isLight = AppTheme.isLight(context);
     final trackColor = isLight
-        ? AppTheme.lightUnfocusedUnderline
+        ? AppColors.onboardingProgressTrack
         : Colors.white.withValues(alpha: 0.6);
     final fillColor =
-        isLight ? AppColors.authBrandBurgundy : AppColors.brandPink;
+        isLight ? AppColors.onboardingProgressFill : AppColors.brandPink;
 
     return LayoutBuilder(
       builder: (context, constraints) {
         final fullWidth = constraints.maxWidth;
         final fillWidth = fullWidth * progress.clamp(0.0, 1.0);
         return ClipRRect(
-          borderRadius: AppRadius.inputRadius,
+          borderRadius: BorderRadius.circular(1),
           child: SizedBox(
-            height: 3,
+            height: AppSizes.onboardingProgressBarHeight,
             width: double.infinity,
             child: Stack(
               children: [
                 Container(
                   width: fullWidth,
-                  height: 3,
+                  height: AppSizes.onboardingProgressBarHeight,
                   color: trackColor,
                 ),
                 SizedBox(
                   width: fillWidth,
                   child: Container(
-                    height: 3,
+                    height: AppSizes.onboardingProgressBarHeight,
                     decoration: BoxDecoration(
                       color: fillColor,
-                      borderRadius: const BorderRadius.horizontal(
-                        left: Radius.circular(10),
-                        right: Radius.zero,
-                      ),
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
                 ),

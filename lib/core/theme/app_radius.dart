@@ -5,6 +5,9 @@ abstract final class AppRadius {
   static const double input = 12;
   static const double pill = 20;
 
+  /// Onboarding DOB picker selection band corner radius (Figma rx 7).
+  static const double onboardingDobPickerSelection = 7;
+
   /// Auth Phone/Email segmented control outer track (Figma rx 27).
   static const double authToggle = 27;
 

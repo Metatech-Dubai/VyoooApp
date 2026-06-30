@@ -14,6 +14,10 @@ class AppColors {
   static const Color authBrandBurgundy = Color(0xFF600030);
   /// Verify-code CTA + floating back (Figma #7B0A3F).
   static const Color authVerifyCta = Color(0xFF7B0A3F);
+  /// Onboarding progress bar fill (Figma #D30A57).
+  static const Color onboardingProgressFill = Color(0xFFD30A57);
+  /// Onboarding progress bar track (Figma #D9D9D9).
+  static const Color onboardingProgressTrack = Color(0xFFD9D9D9);
   /// Verify-code masked email / phone destination (Figma #E51147).
   static const Color authVerifyDestination = Color(0xFFE51147);
   /// Light auth primary CTA fill — muted mauve (Figma sign-in / register).

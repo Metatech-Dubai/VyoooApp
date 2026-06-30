@@ -41,6 +41,9 @@ abstract final class AppSpacing {
   /// Gap between auth logo and headline (Figma register).
   static const double authLogoToHeadline = xl;
 
+  /// Inset above pinned auth wordmark (verify-code and similar).
+  static const double authLogoTop = xl;
+
   /// Space above primary auth CTA (50 = xl + lg + xs)
   static const double authCtaTop = xl + lg + xs;
 
@@ -53,4 +56,19 @@ abstract final class AppSpacing {
   /// Bottom inset for floating auth back/forward row (above home indicator).
   /// Add [AppSystemUi.bottomChromeInset] in the widget for the system nav bar.
   static const double authFloatingNavBottom = xl + md;
+
+  /// Onboarding username pill — horizontal inset (Figma ~21px).
+  static const double onboardingUsernameFieldHorizontal = 21;
+
+  /// Onboarding username pill — vertical inset (Figma ~11px).
+  static const double onboardingUsernameFieldVertical = 11;
+
+  /// Figma — value baseline ~28px from field top when label is shown.
+  static const double onboardingUsernameFieldValueTop = 11;
+
+  /// Gap between floating label and typed value (Figma ~5px).
+  static const double onboardingUsernameFieldLabelGap = 5;
+
+  /// Vertical offset for empty-state placeholder (centers ~16px text in 62px field).
+  static const double onboardingUsernameFieldEmptyTop = 15;
 }

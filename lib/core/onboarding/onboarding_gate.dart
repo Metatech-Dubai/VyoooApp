@@ -5,7 +5,6 @@ import '../models/parent_consent_constants.dart';
 import 'onboarding_route_resolver.dart';
 import 'parental_submit_handoff.dart';
 import '../../screens/auth/create_username_screen.dart';
-import '../../screens/onboarding/add_profile_screen.dart';
 import '../../screens/onboarding/onboarding_complete_screen.dart';
 import '../../screens/onboarding/organization_details_screen.dart';
 import '../../screens/onboarding/parent_contact_screen.dart';
@@ -30,7 +29,6 @@ class OnboardingGate {
       // successful invite; never drop the handoff for those routes or we snap
       // back to the wrong onboarding step.
       const postParentMinor = <String>{
-        OnboardingRouteId.addProfile,
         OnboardingRouteId.selectLocation,
         OnboardingRouteId.selectInterests,
         OnboardingRouteId.onboardingComplete,
@@ -64,8 +62,6 @@ class OnboardingGate {
         return ParentContactScreen(previousDenied: denied);
       case OnboardingRouteId.parentalPending:
         return ParentalPendingScreen(consentId: user.parentConsentId.trim());
-      case OnboardingRouteId.addProfile:
-        return const AddProfileScreen();
       case OnboardingRouteId.selectLocation:
         return const SelectLocationScreen();
       case OnboardingRouteId.selectInterests:

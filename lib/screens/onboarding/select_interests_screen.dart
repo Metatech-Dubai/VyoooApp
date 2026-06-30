@@ -40,6 +40,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
   late List<String> _interests;
   late TextEditingController _searchController;
   String _searchQuery = '';
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -80,6 +81,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
   }
 
   Future<void> _onNext() async {
+    if (_isSaving) return;
     if (!_canContinue) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,23 +90,25 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
       return;
     }
     final uid = AuthService().currentUser?.uid;
-    if (uid != null && uid.isNotEmpty) {
-      try {
-        await UserService().updateUserProfile(
-          uid: uid,
-          interests: _state.selectedInterests,
-        );
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not save interests. Check your connection and try again.',
-            ),
+    if (uid == null || uid.isEmpty) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await UserService().updateUserProfile(
+        uid: uid,
+        interests: _state.selectedInterests,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not save interests. Check your connection and try again.',
           ),
-        );
-        return;
-      }
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
     // [OnboardingGate] shows terms / complete screen when interests are saved.
   }
@@ -118,7 +122,8 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
         AuthFloatingNavRow(
           onBack: _onBack,
           onForward: _onNext,
-          forwardEnabled: _canContinue,
+          forwardEnabled: _canContinue && !_isSaving,
+          forwardLoading: _isSaving,
         ),
       ],
       body: Column(

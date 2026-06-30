@@ -11,7 +11,6 @@ abstract class OnboardingRouteId {
   static const selectEstablishmentDate = 'selectEstablishmentDate';
   static const parentContact = 'parentContact';
   static const parentalPending = 'parentalPending';
-  static const addProfile = 'addProfile';
   static const selectLocation = 'selectLocation';
   static const selectInterests = 'selectInterests';
   static const onboardingComplete = 'onboardingComplete';
@@ -72,12 +71,6 @@ class OnboardingRouteResolver {
 
   static String _postIdentityRoute(AppUserModel user) {
     if (user.interests.isEmpty) {
-      if (!user.isProfileImageOnboardingDone) {
-        return OnboardingRouteId.addProfile;
-      }
-      if (!user.isLocationOnboardingDone) {
-        return OnboardingRouteId.selectLocation;
-      }
       return OnboardingRouteId.selectInterests;
     }
     return OnboardingRouteId.onboardingComplete;

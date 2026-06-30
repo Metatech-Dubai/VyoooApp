@@ -170,6 +170,43 @@ class _AuthDeterminingScaffold extends StatelessWidget {
   }
 }
 
+class _ProfileLoadErrorScaffold extends StatelessWidget {
+  const _ProfileLoadErrorScaffold({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0015),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Could not set up your profile on the server. Check your connection and try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 String _maskEmailForDisplay(String email) {
   final t = email.trim();
   final at = t.indexOf('@');
@@ -273,20 +310,23 @@ class _UserDocGateState extends State<_UserDocGate> {
     }
   }
 
+  void _retryBootstrapUserDoc() {
+    setState(() {
+      _readyFuture = _bootstrapUserDoc();
+      _userDocStreamGeneration++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<void>(
       future: _readyFuture,
       builder: (context, readySnapshot) {
         if (readySnapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF0D0015),
-            body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-          );
+          return const _AuthDeterminingScaffold();
+        }
+        if (readySnapshot.hasError) {
+          return _ProfileLoadErrorScaffold(onRetry: _retryBootstrapUserDoc);
         }
         return StreamBuilder<AppUserModel?>(
           key: ValueKey<String>('userDoc_${widget.uid}_$_userDocStreamGeneration'),
@@ -336,7 +376,10 @@ class _UserDocGateState extends State<_UserDocGate> {
             }
             final appUser = userSnapshot.data;
             if (appUser == null) {
-              return const _AuthDeterminingScaffold();
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const _AuthDeterminingScaffold();
+              }
+              return _ProfileLoadErrorScaffold(onRetry: _retryBootstrapUserDoc);
             }
             return ListenableBuilder(
               listenable: Listenable.merge([

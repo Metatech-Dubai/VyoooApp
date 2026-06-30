@@ -95,6 +95,12 @@ service cloud.firestore {
         && !username.matches('.*\\.\\..*');
     }
 
+    // Onboarding creates the user doc before a handle is chosen on CreateUsernameScreen.
+    function validUsernameFieldOrEmpty(username) {
+      return username is string
+        && (username == '' || validUsernameField(username));
+    }
+
     function validUserDoc(userId) {
       return request.resource.data.keys().hasOnly([
         'uid',
@@ -138,7 +144,7 @@ service cloud.firestore {
       (!('displayName' in request.resource.data) ||
         request.resource.data.displayName is string) &&
       request.resource.data.username is string &&
-      validUsernameField(request.resource.data.username) &&
+      validUsernameFieldOrEmpty(request.resource.data.username) &&
       (!('bio' in request.resource.data) ||
         request.resource.data.bio is string) &&
       (!('profileMusic' in request.resource.data) ||

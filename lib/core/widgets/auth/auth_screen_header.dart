@@ -16,6 +16,7 @@ class AuthScreenHeader extends StatelessWidget {
     this.centerAlign = false,
     this.titleTextAlign,
     this.subtitleTextAlign,
+    this.showLogo = true,
   });
 
   final String title;
@@ -35,6 +36,9 @@ class AuthScreenHeader extends StatelessWidget {
   /// Defaults to [titleTextAlign] when null.
   final TextAlign? subtitleTextAlign;
 
+  /// When false, only the headline/subtitle block is shown (logo pinned elsewhere).
+  final bool showLogo;
+
   @override
   Widget build(BuildContext context) {
     final columnAlign =
@@ -47,8 +51,10 @@ class AuthScreenHeader extends StatelessWidget {
     return Column(
       crossAxisAlignment: columnAlign,
       children: [
-        const VyoooBrandLogo.auth(),
-        const SizedBox(height: AppSpacing.authLogoToHeadline),
+        if (showLogo) ...[
+          const VyoooBrandLogo.auth(),
+          const SizedBox(height: AppSpacing.authLogoToHeadline),
+        ],
         SizedBox(
           width: double.infinity,
           child: titleWidget ??

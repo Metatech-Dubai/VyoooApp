@@ -124,6 +124,20 @@ abstract final class AppSizes {
   static const double authOtpBoxSize = 50;
   static const double authOtpBoxHeight = 50;
 
+  /// Username onboarding — profile placeholder avatar (Figma 162×162).
+  static const double onboardingProfileAvatarSize = 162;
+
+  /// Username onboarding — input pill height (Figma 62).
+  static const double onboardingUsernameFieldHeight = 62;
+
+  /// Onboarding step progress bar height (Figma 2).
+  static const double onboardingProgressBarHeight = 2;
+
+  /// Onboarding DOB picker — Figma artboard 297×179.
+  static const double onboardingDobPickerHeight = 179;
+  static const double onboardingDobPickerItemExtent = 35;
+  static const double onboardingDobPickerFadeHeight = 72;
+
   // — Chat (Figma inbox / thread) —
   static const double chatInboxAvatar = 48;
   static const double chatThreadBubbleAvatar = 24;

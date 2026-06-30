@@ -5,14 +5,13 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_radius.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
-import '../../core/theme/app_text_field_style.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/onboarding/username_submit_handoff.dart';
+import '../../core/platform/app_system_ui.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/onboarding_profile_avatar.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/firestore_username_service.dart';
@@ -221,10 +220,15 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     return AuthLightScaffold(
       padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
       stackChildren: [
-        AuthFloatingNavRow(
-          onBack: _onBack,
-          onForward: _onNext,
-          forwardEnabled: _isUsernameValid,
+        Positioned(
+          right: AppSpacing.xl,
+          bottom:
+              AppSpacing.authFloatingNavBottom +
+              AppSystemUi.bottomChromeInset(context),
+          child: AuthFloatingCircleButton.forward(
+            onPressed: _onNext,
+            enabled: _isUsernameValid,
+          ),
         ),
         if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
       ],
@@ -240,9 +244,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           const SizedBox(height: 30),
           Text(
             "Let's get you started",
-            style: AppTypography.onboardingSectionTitle.copyWith(
-              color: AppTheme.lightOnSurface,
-            ),
+            style: AppTypography.onboardingLightSectionTitle,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 30),
@@ -257,14 +259,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 
   Widget _buildAvatar() {
-    return Center(
-      child: Image.asset(
-        'assets/vyooO_icons/Onboarding/username_profile_avatar.png',
-        width: 150,
-        height: 150,
-        fit: BoxFit.contain,
-      ),
-    );
+    return const Center(child: OnboardingProfileAvatar());
   }
 
   Widget _buildUsernameSection() {
@@ -289,7 +284,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           const SizedBox(height: AppSpacing.sm),
           Text(
             'The Username ${UsernameValidation.normalize(_usernameController.text)} is not available',
-            style: AppTypography.usernameAvailabilityError,
+            style: AppTypography.usernameAvailabilityError.copyWith(
+              color: AppColors.onboardingProgressFill,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
         ],
@@ -305,126 +302,26 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         UsernameValidation.normalize(_usernameController.text),
       );
 
-  ({Color color, double width}) _usernameFieldBorder() {
-    if (_usernameShowsAvailabilityError) {
-      return (color: AppColors.brandPink, width: 1.5);
-    }
-    if (_available == true) {
-      return (color: Colors.green, width: 1.5);
-    }
-    if (_usernameFocusNode.hasFocus) {
-      return (color: AppTheme.lightOnSurface, width: 1.5);
-    }
-    return (color: AppTheme.lightUnfocusedUnderline, width: 1);
-  }
-
   Widget _buildUsernameInput() {
-    final hasError = _usernameShowsAvailabilityError;
-    final hasSuccess = _available == true;
-    final isFocused = _usernameFocusNode.hasFocus;
     final hasText = _usernameController.text.isNotEmpty;
-    final showInsetLabel = isFocused || hasText;
-    final border = _usernameFieldBorder();
+    final hasSuccess = _available == true;
 
-    return GestureDetector(
-      onTap: () => _usernameFocusNode.requestFocus(),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: _borderAnimationDuration,
-        curve: Curves.easeInOut,
-        height: 60,
-        decoration: BoxDecoration(
-          color: AppTheme.lightScaffoldBackground,
-          borderRadius: AppRadius.pillRadius,
-          border: Border.all(color: border.color, width: border.width),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedSize(
-                    duration: _borderAnimationDuration,
-                    curve: Curves.easeInOut,
-                    alignment: Alignment.topLeft,
-                    child: showInsetLabel
-                        ? Padding(
-                            padding: const EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              'Username',
-                              style: AppTypography.usernameFieldLabel.copyWith(
-                                color: AppTheme.lightSecondaryText,
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                  TextField(
-                    controller: _usernameController,
-                    focusNode: _usernameFocusNode,
-                    keyboardAppearance:
-                        AppTextFieldStyle.keyboardAppearance(context),
-                    cursorColor: AppTextFieldStyle.cursorColor(context),
-                    style: AppTypography.usernameFieldValue.copyWith(
-                      color: AppTheme.lightOnSurface,
-                    ),
-                    decoration: InputDecoration(
-                      hintText: showInsetLabel ? null : 'Username',
-                      hintStyle: AppTypography.usernameFieldLabel.copyWith(
-                        color: AppTheme.lightSecondaryText,
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                      isCollapsed: showInsetLabel,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'[a-zA-Z0-9_.]'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          if (_isChecking)
-            SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(
-                  AppColors.authBrandBurgundy,
-                ),
-              ),
-            )
-          else if (hasError)
-            GestureDetector(
-              onTap: () {
-                _usernameController.clear();
-                _availabilityFromLength(0);
-              },
-              child: Icon(
-                Icons.close,
-                color: AppTheme.secondaryTextColor.withValues(alpha: 0.8),
-                size: AppSizes.fieldIcon,
-              ),
-            )
-          else if (hasSuccess)
-            const Icon(
-              Icons.check,
-              color: Colors.green,
-              size: AppSizes.fieldIcon,
-            ),
-          ],
-        ),
-      ),
+    return AuthOnboardingUsernameField(
+      controller: _usernameController,
+      focusNode: _usernameFocusNode,
+      isChecking: _isChecking,
+      showErrorBorder: _usernameShowsAvailabilityError,
+      showSuccessBorder: hasSuccess,
+      showClearButton: hasText && !_isChecking && !hasSuccess,
+      showSuccessIcon: hasSuccess && !_isChecking,
+      onClear: () {
+        _usernameController.clear();
+        _availabilityFromLength(0);
+      },
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+      ],
+      borderAnimationDuration: _borderAnimationDuration,
     );
   }
 
@@ -737,15 +634,6 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         }),
       ),
     );
-  }
-
-  Future<void> _onBack() async {
-    final nav = Navigator.of(context);
-    if (nav.canPop()) {
-      nav.pop();
-      return;
-    }
-    await AuthService().signOut();
   }
 }
 

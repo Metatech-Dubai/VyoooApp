@@ -1,12 +1,17 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import '../../core/platform/app_system_ui.dart';
 import '../../core/models/parent_consent_constants.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/theme/app_radius.dart';
+import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/onboarding_profile_avatar.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 
@@ -38,8 +43,6 @@ class SelectDobScreen extends StatefulWidget {
 class _SelectDobScreenState extends State<SelectDobScreen> {
   static const double _horizontalPadding = 28;
   static const double _progressFill = 0.4;
-  static const double _pickerHeight = 190;
-  static const double _pickerItemExtent = 44;
 
   late int _monthIndex;
   late int _dayIndex;
@@ -141,7 +144,7 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
       }
     }
     if (!mounted) return;
-    // Do not push ParentContact / AddProfile here. [AuthWrapper] rebuilds from the user
+    // Do not push ParentContact here. [AuthWrapper] rebuilds from the user
     // stream after DOB saves and [OnboardingRouteResolver] already picks the next screen.
     // Pushing duplicated routes (e.g. two ParentContact screens) broke navigation after
     // "Send request" — the gate showed one instance while another stayed underneath.
@@ -152,14 +155,18 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLight = AppTheme.isLight(context);
     return AuthLightScaffold(
       padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
       stackChildren: [
-        AuthFloatingNavRow(
-          onBack: _onBack,
-          onForward: _onNext,
-          forwardEnabled: _isValid,
+        Positioned(
+          right: AppSpacing.xl,
+          bottom:
+              AppSpacing.authFloatingNavBottom +
+              AppSystemUi.bottomChromeInset(context),
+          child: AuthFloatingCircleButton.forward(
+            onPressed: _onNext,
+            enabled: _isValid,
+          ),
         ),
       ],
       body: Column(
@@ -174,15 +181,13 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
           const SizedBox(height: 30),
           Text(
             'Select your Date of birth',
-            style: AppTypography.onboardingSectionTitle.copyWith(
-              color: isLight ? AppTheme.lightOnSurface : null,
-            ),
+            style: AppTypography.onboardingLightSectionTitle,
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 30),
-          _buildPicker(isLight),
+          _buildPicker(),
           const SizedBox(height: 16),
-          _buildPrivacyText(isLight),
+          _buildPrivacyText(),
           const SizedBox(height: 100),
         ],
       ),
@@ -190,214 +195,202 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
   }
 
   Widget _buildAvatar() {
-    return Center(
-      child: Image.asset(
-        'assets/vyooO_icons/Onboarding/username_profile_avatar.png',
-        width: 150,
-        height: 150,
-        fit: BoxFit.contain,
-      ),
-    );
+    return const Center(child: OnboardingProfileAvatar());
   }
 
-  Widget _buildPicker(bool isLight) {
-    return Container(
-      height: _pickerHeight,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Stack(
-        children: [
-          Row(
+  Widget _buildPicker() {
+    final pickerHeight = AppSizes.onboardingDobPickerHeight;
+    final itemExtent = AppSizes.onboardingDobPickerItemExtent;
+    final fadeHeight = AppSizes.onboardingDobPickerFadeHeight;
+    final fadeBase = AppTheme.lightScaffoldBackground;
+
+    return CupertinoTheme(
+      data: AppTheme.onboardingDobCupertinoTheme,
+      child: Theme(
+        data: AppTheme.light,
+        child: SizedBox(
+          height: pickerHeight,
+          child: Stack(
+            clipBehavior: Clip.none,
             children: [
-              Expanded(
-                flex: 3,
-                child: CupertinoPicker.builder(
-                  scrollController: _monthController,
-                  itemExtent: _pickerItemExtent,
-                  selectionOverlay: const SizedBox(),
-                  onSelectedItemChanged: _onMonthChanged,
-                  childCount: 12,
-                  itemBuilder: (context, index) {
-                    final selected = _monthIndex == index;
-
-                    return Center(
-                      child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 200),
-                        style: (selected
-                                ? AppTypography.dobPickerSelected
-                                : AppTypography.dobPickerUnselected)
-                            .copyWith(
-                          color: isLight
-                              ? (selected
-                                  ? AppTheme.lightOnSurface
-                                  : AppTheme.lightSecondaryText)
-                              : null,
-                        ),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          child: Text(
-                            _monthNames[index],
-                            maxLines: 1,
-                            softWrap: false,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
+              // Selection band — behind wheels (Figma #787880 @ 8%, rx 7).
+              Align(
+                child: Container(
+                  height: itemExtent,
+                  decoration: BoxDecoration(
+                    color: AppTheme.onboardingDobPickerSelectionFill,
+                    borderRadius: BorderRadius.circular(
+                      AppRadius.onboardingDobPickerSelection,
+                    ),
+                  ),
                 ),
               ),
-
-              Expanded(
-                flex: 1,
-                child: CupertinoPicker.builder(
-                  scrollController: _dayController,
-                  itemExtent: _pickerItemExtent,
-                  selectionOverlay: const SizedBox(),
-                  onSelectedItemChanged: _onDayChanged,
-                  childCount: _days.length,
-                  itemBuilder: (context, index) {
-                    final selected = _dayIndex == index;
-
-                    return Center(
-                      child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 200),
-                        style: (selected
-                                ? AppTypography.dobPickerSelected
-                                : AppTypography.dobPickerUnselected)
-                            .copyWith(
-                          color: isLight
-                              ? (selected
-                                  ? AppTheme.lightOnSurface
-                                  : AppTheme.lightSecondaryText)
-                              : null,
-                        ),
-                        child: Text('${_days[index]}'),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: _buildPickerColumn(
+                      scrollController: _monthController,
+                      childCount: 12,
+                      onSelectedItemChanged: _onMonthChanged,
+                      selectedIndex: _monthIndex,
+                      labelBuilder: (index) => _monthNames[index],
+                      shrinkFit: true,
+                    ),
+                  ),
+                  Expanded(
+                    flex: 1,
+                    child: _buildPickerColumn(
+                      scrollController: _dayController,
+                      childCount: _days.length,
+                      onSelectedItemChanged: _onDayChanged,
+                      selectedIndex: _dayIndex,
+                      labelBuilder: (index) => '${_days[index]}',
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: _buildPickerColumn(
+                      scrollController: _yearController,
+                      childCount: _years.length,
+                      onSelectedItemChanged: _onYearChanged,
+                      selectedIndex: _yearIndex,
+                      labelBuilder: (index) => '${_years[index]}',
+                    ),
+                  ),
+                ],
+              ),
+              // Top fade — white into transparent.
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                height: fadeHeight,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          fadeBase,
+                          fadeBase.withValues(alpha: 0),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
-
-              Expanded(
-                flex: 2,
-                child: CupertinoPicker.builder(
-                  scrollController: _yearController,
-                  itemExtent: _pickerItemExtent,
-                  selectionOverlay: const SizedBox(),
-                  onSelectedItemChanged: _onYearChanged,
-                  childCount: _years.length,
-                  itemBuilder: (context, index) {
-                    final selected = _yearIndex == index;
-
-                    return Center(
-                      child: AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 200),
-                        style: (selected
-                                ? AppTypography.dobPickerSelected
-                                : AppTypography.dobPickerUnselected)
-                            .copyWith(
-                          color: isLight
-                              ? (selected
-                                  ? AppTheme.lightOnSurface
-                                  : AppTheme.lightSecondaryText)
-                              : null,
-                        ),
-                        child: Text('${_years[index]}'),
+              // Bottom fade.
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                height: fadeHeight,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [
+                          fadeBase,
+                          fadeBase.withValues(alpha: 0),
+                        ],
                       ),
-                    );
-                  },
+                    ),
+                  ),
                 ),
               ),
             ],
           ),
-
-          /// CENTER SELECTION HIGHLIGHT
-          Center(
-            child: IgnorePointer(
-              child: Container(
-                height: _pickerItemExtent,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(10),
-                  color: isLight
-                      ? AppTheme.lightOtpBoxFill
-                      : Colors.white.withValues(alpha: 0.08),
-                ),
-              ),
-            ),
-          ),
-
-          /// TOP FADE
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 60,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: isLight
-                        ? [
-                            AppTheme.lightScaffoldBackground,
-                            AppTheme.lightScaffoldBackground.withValues(alpha: 0),
-                          ]
-                        : [
-                            Colors.black.withValues(alpha: 0.45),
-                            Colors.transparent,
-                          ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-
-          /// BOTTOM FADE
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: 60,
-            child: IgnorePointer(
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
-                    colors: isLight
-                        ? [
-                            AppTheme.lightScaffoldBackground,
-                            AppTheme.lightScaffoldBackground.withValues(alpha: 0),
-                          ]
-                        : [
-                            Colors.black.withValues(alpha: 0.45),
-                            Colors.transparent,
-                          ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildPrivacyText(bool isLight) {
+  Widget _buildPickerColumn({
+    required FixedExtentScrollController scrollController,
+    required int childCount,
+    required ValueChanged<int> onSelectedItemChanged,
+    required int selectedIndex,
+    required String Function(int index) labelBuilder,
+    bool shrinkFit = false,
+  }) {
+    return CupertinoPicker.builder(
+      scrollController: scrollController,
+      itemExtent: AppSizes.onboardingDobPickerItemExtent,
+      backgroundColor: Colors.transparent,
+      selectionOverlay: const SizedBox.shrink(),
+      onSelectedItemChanged: onSelectedItemChanged,
+      childCount: childCount,
+      itemBuilder: (context, index) => _buildPickerLabel(
+        labelBuilder(index),
+        _pickerItemStyle(index: index, selectedIndex: selectedIndex),
+        shrinkFit: shrinkFit,
+      ),
+    );
+  }
+
+  /// Ignores CupertinoPicker's inherited DefaultTextStyle (dark theme → white text).
+  Widget _buildPickerLabel(
+    String text,
+    TextStyle style, {
+    bool shrinkFit = false,
+  }) {
+    final resolved = style.copyWith(
+      color: style.color ?? const Color(0xFF000000),
+      decoration: TextDecoration.none,
+      inherit: false,
+    );
+    final label = Text(
+      text,
+      style: resolved,
+      maxLines: 1,
+      softWrap: false,
+      textAlign: TextAlign.center,
+    );
+    return Center(
+      child: shrinkFit
+          ? FittedBox(fit: BoxFit.scaleDown, child: label)
+          : label,
+    );
+  }
+
+  /// Figma: selected row black; adjacent rows ~52% black; fade with distance.
+  TextStyle _pickerItemStyle({
+    required int index,
+    required int selectedIndex,
+  }) {
+    final distance = (index - selectedIndex).abs();
+    if (distance == 0) {
+      return AppTypography.onboardingDobPickerSelected.copyWith(
+        color: const Color(0xFF000000),
+        decoration: TextDecoration.none,
+        inherit: false,
+      );
+    }
+    final alpha = switch (distance) {
+      1 => 0.52,
+      2 => 0.38,
+      _ => 0.28,
+    };
+    return AppTypography.onboardingDobPickerUnselected.copyWith(
+      color: const Color(0xFF000000).withValues(alpha: alpha),
+      inherit: false,
+    );
+  }
+
+  Widget _buildPrivacyText() {
     return Center(
       child: RichText(
         textAlign: TextAlign.center,
         text: TextSpan(
           style: AppTypography.onboardingPrivacyBody.copyWith(
-            color: isLight ? AppTheme.lightMutedBody : null,
+            color: AppTheme.lightMutedBody,
           ),
           children: [
-            TextSpan(
-              text: 'Please refer to our ',
-              style: AppTypography.onboardingPrivacyBody.copyWith(
-                color: isLight ? AppTheme.lightMutedBody : null,
-              ),
-            ),
+            const TextSpan(text: 'Please refer to our '),
             WidgetSpan(
               child: GestureDetector(
                 onTap: () {
@@ -406,29 +399,17 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
                 child: Text(
                   'Privacy Policy',
                   style: AppTypography.onboardingPrivacyLink.copyWith(
-                    color: isLight ? AppTheme.lightOnSurface : null,
+                    color: AppTheme.lightOnSurface,
                   ),
                 ),
               ),
             ),
-            TextSpan(
+            const TextSpan(
               text: ' for further information on how we process this data.',
-              style: AppTypography.onboardingPrivacyBody.copyWith(
-                color: isLight ? AppTheme.lightMutedBody : null,
-              ),
             ),
           ],
         ),
       ),
     );
-  }
-
-  Future<void> _onBack() async {
-    final nav = Navigator.of(context);
-    if (nav.canPop()) {
-      nav.pop();
-      return;
-    }
-    await AuthService().signOut();
   }
 }

@@ -64,17 +64,17 @@ void main() {
     expect(r, OnboardingRouteId.selectDob);
   });
 
-  test('resolve adult -> addProfile', () {
+  test('resolve adult -> selectInterests (vibes)', () {
     final r = OnboardingRouteResolver.resolve(
       base(
         dob: '2000-01-01',
         parentConsentStatus: ParentConsentStatusValue.notRequired,
       ),
     );
-    expect(r, OnboardingRouteId.addProfile);
+    expect(r, OnboardingRouteId.selectInterests);
   });
 
-  test('resolve adult who skipped photo, no location -> selectLocation', () {
+  test('resolve adult who skipped photo -> selectInterests', () {
     final r = OnboardingRouteResolver.resolve(
       base(
         dob: '2000-01-01',
@@ -82,10 +82,10 @@ void main() {
         profileImageSetupComplete: true,
       ),
     );
-    expect(r, OnboardingRouteId.selectLocation);
+    expect(r, OnboardingRouteId.selectInterests);
   });
 
-  test('resolve adult who skipped photo, location done -> selectInterests', () {
+  test('resolve adult with photo and location done -> selectInterests', () {
     final r = OnboardingRouteResolver.resolve(
       base(
         dob: '2000-01-01',
@@ -97,24 +97,12 @@ void main() {
     expect(r, OnboardingRouteId.selectInterests);
   });
 
-  test('resolve adult with photo, no location -> selectLocation', () {
+  test('resolve adult with photo, no location -> selectInterests', () {
     final r = OnboardingRouteResolver.resolve(
       base(
         dob: '2000-01-01',
         parentConsentStatus: ParentConsentStatusValue.notRequired,
         profileImage: 'https://example.com/a.jpg',
-      ),
-    );
-    expect(r, OnboardingRouteId.selectLocation);
-  });
-
-  test('resolve adult with photo and location done -> selectInterests', () {
-    final r = OnboardingRouteResolver.resolve(
-      base(
-        dob: '2000-01-01',
-        parentConsentStatus: ParentConsentStatusValue.notRequired,
-        profileImage: 'https://example.com/a.jpg',
-        locationSetupComplete: true,
       ),
     );
     expect(r, OnboardingRouteId.selectInterests);
@@ -160,7 +148,7 @@ void main() {
     expect(r, OnboardingRouteId.selectEstablishmentDate);
   });
 
-  test('government with establishment, no photo -> addProfile', () {
+  test('government with establishment -> selectInterests', () {
     final r = OnboardingRouteResolver.resolve(
       base(
         accountType: 'government',
@@ -169,7 +157,7 @@ void main() {
         dob: '',
       ),
     );
-    expect(r, OnboardingRouteId.addProfile);
+    expect(r, OnboardingRouteId.selectInterests);
   });
 
   test('government never routes to selectDob or parentContact', () {
@@ -184,6 +172,6 @@ void main() {
     );
     expect(r, isNot(OnboardingRouteId.selectDob));
     expect(r, isNot(OnboardingRouteId.parentContact));
-    expect(r, OnboardingRouteId.addProfile);
+    expect(r, OnboardingRouteId.selectInterests);
   });
 }

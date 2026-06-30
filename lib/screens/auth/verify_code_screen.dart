@@ -11,6 +11,7 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/vyooo_brand_logo.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   const VerifyCodeScreen({
@@ -87,7 +88,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   @override
   Widget build(BuildContext context) {
     return AuthLightScaffold(
-      padding: AppPadding.authFormHorizontal,
+      scrollable: false,
       stackChildren: [
         AuthFloatingBackButton(
           onPressed: _onBack,
@@ -96,80 +97,97 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         ),
       ],
       body: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          const SizedBox(height: AppSpacing.sm),
-          const AuthScreenHeader(
-            centerAlign: true,
-            titleTextAlign: TextAlign.center,
-            title: 'Verify Code',
-          ),
-          const SizedBox(height: AppSpacing.md),
-          Text(
-            _usePhone
-                ? "Please enter the code we've just sent to your number"
-                : "Please enter the code we've just sent to email",
-            style: AppTypography.authVerifyInstruction,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          Text(
-            _destinationLabel(),
-            style: AppTypography.authVerifyDestination,
-            textAlign: TextAlign.center,
-          ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              _errorMessage!,
-              style: AppTypography.caption.copyWith(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-          ],
-          const SizedBox(height: AppSpacing.xl),
-          AuthOtpInputRow(
-            length: _otpLength,
-            controllers: _controllers,
-            focusNodes: _focusNodes,
-            onChanged: () => setState(() {}),
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(
-            "Didn't receive OTP?",
-            style: AppTypography.authVerifyMutedLabel,
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          GestureDetector(
-            onTap: _onResendCode,
-            child: Text(
-              _sendInFlight ? 'Sending…' : 'Resend Code',
-              style: AppTypography.authSmallBodyBold.copyWith(
-                color: AppTheme.lightOnSurface,
-                decoration: TextDecoration.underline,
-                decorationColor: AppTheme.lightOnSurface,
-              ),
-              textAlign: TextAlign.center,
+          Padding(
+            padding: AppPadding.authFormHorizontal,
+            child: Column(
+              children: const [
+                SizedBox(height: AppSpacing.authLogoTop),
+                Center(child: VyoooBrandLogo.auth()),
+              ],
             ),
           ),
-          const SizedBox(height: AppSpacing.authCtaTop),
-          AuthPrimaryButton(
-            label: 'Verify',
-            isLoading: _verifyInFlight,
-            enabled: _isOtpComplete,
-            backgroundColor: AppColors.authVerifyCta,
-            onPressed: _onVerify,
+          Expanded(
+            child: AuthCenteredScrollBody(
+              children: [
+                const AuthScreenHeader(
+                  showLogo: false,
+                  centerAlign: true,
+                  titleTextAlign: TextAlign.center,
+                  title: 'Verify Code',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  _usePhone
+                      ? "Please enter the code we've just sent to your number"
+                      : "Please enter the code we've just sent to email",
+                  style: AppTypography.authVerifyInstruction,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _destinationLabel(),
+                  style: AppTypography.authVerifyDestination,
+                  textAlign: TextAlign.center,
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    _errorMessage!,
+                    style: AppTypography.caption.copyWith(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.xl),
+                AuthOtpInputRow(
+                  length: _otpLength,
+                  controllers: _controllers,
+                  focusNodes: _focusNodes,
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  "Didn't receive OTP?",
+                  style: AppTypography.authVerifyMutedLabel,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                GestureDetector(
+                  onTap: _onResendCode,
+                  child: Text(
+                    _sendInFlight ? 'Sending…' : 'Resend Code',
+                    style: AppTypography.authSmallBodyBold.copyWith(
+                      color: AppTheme.lightOnSurface,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppTheme.lightOnSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.authCtaTop),
+                AuthPrimaryButton(
+                  label: 'Verify',
+                  isLoading: _verifyInFlight,
+                  enabled: _isOtpComplete,
+                  backgroundColor: AppColors.authVerifyCta,
+                  onPressed: _onVerify,
+                ),
+              ],
+            ),
           ),
           if (!widget.forPhoneLogin && _usePhone) ...[
-            const SizedBox(height: AppSpacing.md),
-            GestureDetector(
-              onTap: _onSwitchVerificationMethod,
-              child: Text(
-                'Try another way',
-                style: AppTypography.authVerifySecondaryLink,
-                textAlign: TextAlign.center,
+            Padding(
+              padding: AppPadding.authFormHorizontal,
+              child: GestureDetector(
+                onTap: _onSwitchVerificationMethod,
+                child: Text(
+                  'Try another way',
+                  style: AppTypography.authVerifySecondaryLink,
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
+            const SizedBox(height: AppSpacing.md),
           ],
           SizedBox(height: AuthFloatingNavRow.scrollBottomClearance(context)),
         ],

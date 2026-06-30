@@ -1,6 +1,7 @@
 /// Barrel import for auth UI building blocks.
 library;
 
+export 'auth_onboarding_username_field.dart';
 export 'auth_light_scaffold.dart';
 export 'auth_account_type_picker_dialog.dart';
 export 'auth_branded_dialog.dart';

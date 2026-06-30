@@ -43,6 +43,43 @@ class AppTheme {
   static const Color lightOtpBoxFill = Color(0xFFF5F5F5);
   /// Verify-code OTP boxes — black @ 6% (Figma).
   static const Color lightOtpBoxFillTranslucent = Color(0x0F000000);
+  /// Onboarding username pill fill (Figma ~#F2F2F2).
+  static const Color onboardingUsernameFieldFill = Color(0xFFF2F2F2);
+  /// Onboarding DOB picker selection band (Figma #787880 @ 8%).
+  static const Color onboardingDobPickerSelectionFill = Color(0x14787880);
+
+  /// Onboarding DOB picker edge fade (Figma #B3B3B3).
+  static const Color onboardingDobPickerFade = Color(0xFFB3B3B3);
+
+  /// Cupertino picker chrome for light onboarding DOB (forces black selected text).
+  static const CupertinoThemeData onboardingDobCupertinoTheme =
+      CupertinoThemeData(
+    brightness: Brightness.light,
+    primaryColor: AppColors.authBrandBurgundy,
+    textTheme: CupertinoTextThemeData(
+      textStyle: TextStyle(
+        fontFamily: AppFonts.body,
+        color: Color(0xFF000000),
+      ),
+      pickerTextStyle: TextStyle(
+        fontFamily: AppFonts.body,
+        fontSize: 20,
+        height: 1.0,
+        fontWeight: FontWeight.w600,
+        color: Color(0xFF000000),
+      ),
+    ),
+  );
+
+  /// Onboarding username clear icon — #828282 @ 45% (Figma).
+  static const Color onboardingUsernameClearIcon = Color(0x73828282);
+  static const List<BoxShadow> onboardingUsernameFieldShadow = [
+    BoxShadow(
+      color: Color(0x26000000),
+      blurRadius: 4,
+      offset: Offset(0, 1),
+    ),
+  ];
   static const Color lightSearchBarFill = Color(0xFFF0F0F0);
   static const Color lightInputPillFill = Color(0xFFF8F8F8);
 

@@ -52,6 +52,30 @@ abstract final class AppTypography {
     color: AppTheme.defaultTextColor,
   );
 
+  /// Light onboarding step title — DM Sans Medium 24 / 98% / −3% / #464646 (Figma).
+  static const Color onboardingLightSectionTitleColor = Color(0xFF464646);
+
+  static const TextStyle onboardingLightSectionTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: onboardingSectionTitleSize,
+    height: 0.98,
+    fontWeight: FontWeight.w500,
+    letterSpacing:
+        onboardingSectionTitleSize * onboardingSectionTitleLetterSpacingPercent,
+    color: onboardingLightSectionTitleColor,
+  );
+
+  /// Light onboarding step subtitle — DM Sans Regular 12 @ #808080 (Figma).
+  static const Color onboardingLightSectionSubtitleColor = Color(0xFF808080);
+
+  static const TextStyle onboardingLightSectionSubtitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 14 / smallBodySize,
+    fontWeight: FontWeight.w400,
+    color: onboardingLightSectionSubtitleColor,
+  );
+
   /// DOB privacy body — DM Sans Regular 12 @ 61% white.
   static const TextStyle onboardingPrivacyBody = TextStyle(
     fontFamily: AppFonts.body,
@@ -88,6 +112,24 @@ abstract final class AppTypography {
     color: Color(0x59FFFFFF),
   );
 
+  /// Light onboarding DOB picker — selected row (DM Sans Semi Bold 20 / black).
+  static const TextStyle onboardingDobPickerSelected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 20,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: Color(0xFF000000),
+  );
+
+  /// Light onboarding DOB picker — adjacent faded row (DM Sans Regular 16).
+  static const TextStyle onboardingDobPickerUnselected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0x85000000),
+  );
+
   /// Username pill floating label — DM Sans Semi Bold 12 @ 52% white.
   static const TextStyle usernameFieldLabel = TextStyle(
     fontFamily: AppFonts.body,
@@ -97,14 +139,29 @@ abstract final class AppTypography {
     color: usernameFieldLabelColor,
   );
 
-  /// Username pill value — DM Sans Semi Bold 16 (light auth surfaces).
-  static const TextStyle usernameFieldValue = TextStyle(
+  /// Light onboarding username pill label — DM Sans Semi Bold 12 / #686868 @ 52%.
+  static const Color onboardingUsernameFieldLabelColor = Color(0x84686868);
+
+  static const TextStyle onboardingUsernameFieldLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: onboardingUsernameFieldLabelColor,
+  );
+
+  /// Light onboarding username pill value — DM Sans Medium 16 / 100% lh / black.
+  static const TextStyle onboardingUsernameFieldValue = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: inputSize,
     height: 1.0,
-    fontWeight: FontWeight.w600,
-    color: AppTheme.lightOnSurface,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    color: Color(0xFF000000),
   );
+
+  /// Username pill value — alias for light auth / onboarding surfaces.
+  static const TextStyle usernameFieldValue = onboardingUsernameFieldValue;
 
   /// Username unavailable — DM Sans Regular 10 @ brand pink.
   static const TextStyle usernameAvailabilityError = TextStyle(
