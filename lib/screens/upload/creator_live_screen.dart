@@ -12,6 +12,7 @@ import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/models/video_360_metadata.dart';
 import '../../core/services/agora_token_service.dart';
+import '../../core/services/gyro_look_controller.dart';
 import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/user_service.dart';
@@ -85,6 +86,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   // not speed, so it stays slow regardless of how far it's pushed. ~1°/sec at a 40ms tick.
   static const double _kJogStepDeg = 0.04;
 
+  // Gyro look-around: tilt the phone to pan the 360 view (composes with slider/drag).
+  final GyroLookController _gyro = GyroLookController(sensitivity: 0.03);
+  bool _gyroEnabled = false;
+
   // ── Toast ─────────────────────────────────────────────────────────────────────
   String? _toast;
   Timer? _toastTimer;
@@ -151,6 +156,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _chatScrollCtrl.dispose();
     _instaConnectTimer?.cancel();
     _jogTimer?.cancel();
+    _gyro.dispose();
     _instaFrameSub?.cancel();
     _insta.state.removeListener(_onInstaState);
     if (_cameraSource == _CameraSource.insta360) {
@@ -481,7 +487,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             _cameraSource == _CameraSource.insta360 &&
             !_insta.state.value.connected) {
           _showToast(_insta.state.value.lastError ??
-              '360 camera didn’t start — check it’s on and connected via USB');
+              '360 camera didn’t start — check it’s on and its Wi-Fi is joined');
           _disableInsta360();
         }
       });
@@ -547,6 +553,24 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _jogTimer?.cancel();
     _jogTimer = null;
     setState(() => _jogYaw = 0.0);
+  }
+
+  /// Toggle gyro look-around: tilt the phone to pan the 360 view. Composes with the slider/drag
+  /// (both add to the same accumulated yaw/pitch).
+  void _toggleGyro() {
+    setState(() => _gyroEnabled = !_gyroEnabled);
+    if (_gyroEnabled) {
+      _gyro.onDelta = (dYaw, dPitch) {
+        _viewYaw += dYaw;
+        _viewPitch = (_viewPitch + dPitch).clamp(-89.0, 89.0);
+        _insta.setViewOrientation(_viewYaw, _viewPitch);
+      };
+      _gyro.start();
+      _showToast('Gyro on — tilt to look around');
+    } else {
+      _gyro.stop();
+      _showToast('Gyro off');
+    }
   }
 
   /// Toggle forward-only masking on the live 360 feed (masked ↔ full 360°).
@@ -735,6 +759,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             onPointerMove: (e) => _onPreviewDrag(e.delta),
           ),
         ),
+        // (Gyro toggle moved into the right-hand tool column, under the mask icon.)
         // Horizontal rotation jog slider — sits above the Start Live button. Hold the thumb
         // left/right to rotate the 360 view at a constant slow rate; release and it springs back
         // to centre while the view keeps its angle.
@@ -1015,6 +1040,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                       active: _maskEnabled,
                       size: 38,
                     ),
+                  // Gyro look-around toggle — under the mask icon, only for the 360 feed.
+                  if (_cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _gyroEnabled
+                          ? Icons.screen_rotation_rounded
+                          : Icons.screen_rotation_alt_outlined,
+                      onTap: _toggleGyro,
+                      active: _gyroEnabled,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.mic_none_rounded,
                     onTap: _toggleMute,
@@ -1274,6 +1309,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                           : Icons.panorama_horizontal_rounded,
                       onTap: _toggleMask,
                       active: _maskEnabled,
+                      size: 38,
+                    ),
+                  // Gyro look-around toggle — under the mask icon, only for the 360 feed.
+                  if (_cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _gyroEnabled
+                          ? Icons.screen_rotation_rounded
+                          : Icons.screen_rotation_alt_outlined,
+                      onTap: _toggleGyro,
+                      active: _gyroEnabled,
                       size: 38,
                     ),
                   _CircleIconButton(
@@ -1954,7 +1999,7 @@ class _CameraPickerSheet extends StatelessWidget {
               selected: current == _CameraSource.insta360,
               enabled: insta360Supported,
               onTap: insta360Supported
-                  ? () => onSelectInsta360(Insta360ConnectType.usb)
+                  ? () => onSelectInsta360(Insta360ConnectType.wifi)
                   : null,
             ),
             if (insta360Supported) ...[
@@ -1962,8 +2007,8 @@ class _CameraPickerSheet extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 6),
                 child: Text(
-                  'Connect the camera to the phone with a USB cable, then tap USB. '
-                  '(Wi-Fi also works but disables the phone\'s internet while live.)',
+                  'Join the camera\'s Wi-Fi in Settings first, then connect via Wi-Fi. '
+                  '(USB keeps the phone\'s internet — used for going live.)',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 12,
@@ -1974,17 +2019,17 @@ class _CameraPickerSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _connectButton(
-                      icon: Icons.usb_rounded,
-                      label: 'USB',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
+                      icon: Icons.wifi_rounded,
+                      label: 'Wi-Fi',
+                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _connectButton(
-                      icon: Icons.wifi_rounded,
-                      label: 'Wi-Fi',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
+                      icon: Icons.usb_rounded,
+                      label: 'USB',
+                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
                     ),
                   ),
                 ],

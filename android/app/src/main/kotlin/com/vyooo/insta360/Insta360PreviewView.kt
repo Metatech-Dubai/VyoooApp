@@ -136,15 +136,8 @@ class Insta360PreviewView(
         }
         player.post {
             if (disposed) return@post
-            val w = player.width
-            val h = player.height
-            Log.i(TAG, "onOpened → prepare+play (live panorama, view ${w}x$h)")
-            // Match the render aspect to the actual (portrait) view so the sphere projection isn't
-            // stretched — without this the SDK renders for a default aspect and the surface squishes
-            // it vertically (objects look too short / extra cropping at the stitch seam).
-            val params = buildCaptureParams()
-            if (w > 0 && h > 0) params.setScreenRatio(w, h)
-            player.prepare(params)
+            Log.i(TAG, "onOpened → prepare+play (live panorama, view ${player.width}x${player.height})")
+            player.prepare(buildCaptureParams())
             player.play()
             player.keepScreenOn = true
         }
