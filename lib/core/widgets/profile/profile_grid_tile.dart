@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../models/reel_count_privacy.dart';
 import '../../theme/app_spacing.dart';
 import '../../../screens/profile/profile_figma_tokens.dart';
-import 'profile_grid_metric_overlay.dart';
 import 'profile_grid_title_overlay.dart';
 
 /// Square thumbnail for profile modular grids.
@@ -13,10 +11,6 @@ class ProfileGridTile extends StatelessWidget {
     required this.thumbnailUrl,
     this.isVideo = false,
     this.showVrBadge = false,
-    this.viewCount,
-    this.likeCount,
-    this.shareCount,
-    this.privacy = ReelCountPrivacy.visible,
     this.isHero = false,
     this.isRepost = false,
     this.gridTitle = '',
@@ -27,17 +21,11 @@ class ProfileGridTile extends StatelessWidget {
   final String thumbnailUrl;
   final bool isVideo;
   final bool showVrBadge;
-  final int? viewCount;
-  final int? likeCount;
-  final int? shareCount;
-  final ReelCountPrivacy privacy;
   final bool isHero;
   final bool isRepost;
   final String gridTitle;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-
-  static String formatViewCount(int n) => ReelCountPrivacy.formatCount(n);
 
   @override
   Widget build(BuildContext context) {
@@ -77,14 +65,6 @@ class ProfileGridTile extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
-          if (viewCount != null)
-            ProfileGridMetricOverlay(
-              views: viewCount!,
-              likes: likeCount ?? 0,
-              shares: shareCount ?? 0,
-              privacy: privacy,
-              isHero: isHero,
             ),
           ProfileGridTitleOverlay(
             title: gridTitle,

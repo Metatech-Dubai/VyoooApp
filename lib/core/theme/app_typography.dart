@@ -503,6 +503,24 @@ abstract final class AppTypography {
     color: AppColors.profileStatLabel,
   );
 
+  /// Highlights add chip label — DM Sans Regular 12 / #554247 (Figma).
+  static const TextStyle profileHighlightAddLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 14 / 12,
+    color: AppColors.profileStatLabel,
+  );
+
+  /// Highlight album title — DM Sans Regular 12 / #1B1C1C (Figma).
+  static const TextStyle profileHighlightAlbumLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 14 / 12,
+    color: AppColors.profileDisplayName,
+  );
+
   /// Profile primary action pill — DM Sans Medium 16 / 16 line height / white (Figma Edit Profile).
   static const TextStyle profileActionButtonLabel = TextStyle(
     fontFamily: AppFonts.body,

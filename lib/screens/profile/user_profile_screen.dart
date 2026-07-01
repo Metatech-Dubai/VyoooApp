@@ -672,47 +672,33 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             }
             final highlights = snap.data ?? const <StoryHighlightModel>[];
             if (highlights.isEmpty) return const SizedBox.shrink();
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Highlights',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+            return SizedBox(
+              height: ProfileFigmaTokens.highlightRowHeight,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: highlights.length,
+                separatorBuilder: (_, _) => const SizedBox(
+                  width: ProfileFigmaTokens.highlightTileGap,
                 ),
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: ProfileFigmaTokens.highlightRowHeight,
-                  child: ListView.separated(
-                    scrollDirection: Axis.horizontal,
-                    itemCount: highlights.length,
-                    separatorBuilder: (_, _) => const SizedBox(
-                      width: ProfileFigmaTokens.highlightTileGap,
-                    ),
-                    itemBuilder: (_, i) {
-                      final h = highlights[i];
-                      return ProfileHighlightAlbumTile(
-                        title: h.title,
-                        onTap: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute<void>(
-                              builder: (_) => HighlightViewerScreen(
-                                userId: uid,
-                                highlightId: h.id,
-                                title: h.title,
-                              ),
-                            ),
-                          );
-                        },
+                itemBuilder: (_, i) {
+                  final h = highlights[i];
+                  return ProfileHighlightAlbumTile(
+                    title: h.title,
+                    coverMediaUrl: h.coverMediaUrl,
+                    onTap: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => HighlightViewerScreen(
+                            userId: uid,
+                            highlightId: h.id,
+                            title: h.title,
+                          ),
+                        ),
                       );
                     },
-                  ),
-                ),
-              ],
+                  );
+                },
+              ),
             );
           },
         ),

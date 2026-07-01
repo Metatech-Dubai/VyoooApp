@@ -82,14 +82,14 @@ abstract final class AppSizes {
 
   // — Bottom nav —
   /// Figma tab icon slot — BottomNavBar SVGs use a 24×24 viewBox.
-  static const double bottomNavIconSlot = 20;
+  static const double bottomNavIconSlot = 25;
 
-  /// Tab icon render size inside the 44px tap target / selected pill.
+  /// Tab icon render size inside the tap target / selected pill.
   static const double bottomNavIcon = bottomNavIconSlot;
 
   /// Profile tab — avatar / placeholder larger than other tab icons.
-  static const double bottomNavProfileIcon = 36;
-  static const double bottomNavTapTarget = 44;
+  static const double bottomNavProfileIcon = 45;
+  static const double bottomNavTapTarget = 45;
   static const double bottomNavBarHeight = 60;
 
   // — Icons —

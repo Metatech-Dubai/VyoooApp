@@ -183,22 +183,41 @@ class ProfileFigmaActionButton extends StatelessWidget {
   }
 }
 
-/// Circular secondary action (Share, etc.) — #F2F2F2 fill.
+/// Circular secondary action (Share, etc.) — #E9E8E7 fill via SVG or #F2F2F2 fallback.
 class ProfileFigmaIconActionButton extends StatelessWidget {
   const ProfileFigmaIconActionButton({
     super.key,
     required this.onPressed,
     this.icon,
     this.iconAssetPath,
+    this.svgAssetPath,
   });
 
   final VoidCallback onPressed;
   final IconData? icon;
   final String? iconAssetPath;
+  final String? svgAssetPath;
 
   @override
   Widget build(BuildContext context) {
     final size = ProfileFigmaTokens.actionIconButtonSize;
+
+    if (svgAssetPath != null) {
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onPressed,
+          customBorder: const CircleBorder(),
+          child: SvgPicture.asset(
+            svgAssetPath!,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+          ),
+        ),
+      );
+    }
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -405,6 +424,57 @@ class ProfileFigmaTabBar extends StatelessWidget {
   }
 }
 
+/// Lays out [child] in the tab-track column of [ProfileFigmaTabBar].
+/// When [alignWithPostsStart] is true, content begins under the Posts tab label.
+class ProfileTabTrackRow extends StatelessWidget {
+  const ProfileTabTrackRow({
+    super.key,
+    required this.child,
+    this.showBookmarkAccessory = false,
+    this.showStarAccessory = false,
+    this.alignWithPostsStart = false,
+  });
+
+  final Widget child;
+  final bool showBookmarkAccessory;
+  final bool showStarAccessory;
+  final bool alignWithPostsStart;
+
+  @override
+  Widget build(BuildContext context) {
+    final accessoryWidth = ProfileFigmaTokens.tabAccessoryWidth;
+    final outerPad = ProfileFigmaTokens.tabBarOuterPadding;
+
+    final Widget trackChild;
+    if (alignWithPostsStart) {
+      trackChild = Padding(
+        padding: EdgeInsets.only(left: outerPad),
+        child: child,
+      );
+    } else {
+      trackChild = Padding(
+        padding: EdgeInsets.symmetric(horizontal: outerPad),
+        child: child,
+      );
+    }
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: trackChild),
+        if (showBookmarkAccessory) ...[
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: accessoryWidth),
+        ],
+        if (showStarAccessory) ...[
+          const SizedBox(width: AppSpacing.sm),
+          SizedBox(width: accessoryWidth),
+        ],
+      ],
+    );
+  }
+}
+
 /// Aligns [child] under the first tab (Posts) matching [ProfileFigmaTabBar] layout.
 class ProfileTabUnderFirstTab extends StatelessWidget {
   const ProfileTabUnderFirstTab({
@@ -522,24 +592,11 @@ class ProfileHighlightAddChip extends StatelessWidget {
               borderRadius: BorderRadius.circular(
                 ProfileFigmaTokens.highlightTileRadius,
               ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(
-                  ProfileFigmaTokens.highlightTileRadius,
-                ),
-                child: SizedBox(
-                  width: ProfileFigmaTokens.highlightTileWidth,
-                  height: ProfileFigmaTokens.highlightTileHeight,
-                  child: ColoredBox(
-                    color: ProfileFigmaTokens.highlightAddFill,
-                    child: Center(
-                      child: Icon(
-                        Icons.add_rounded,
-                        color: ProfileFigmaTokens.screenBackground,
-                        size: 24,
-                      ),
-                    ),
-                  ),
-                ),
+              child: SvgPicture.asset(
+                ProfileAssets.profileHighlightAddTile,
+                width: ProfileFigmaTokens.highlightTileWidth,
+                height: ProfileFigmaTokens.highlightTileHeight,
+                fit: BoxFit.contain,
               ),
             ),
           ),
@@ -549,14 +606,7 @@ class ProfileHighlightAddChip extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: AppFonts.body,
-              color: ProfileFigmaTokens.highlightLabelColor,
-              fontSize: ProfileFigmaTokens.highlightLabelFontSize,
-              fontWeight: ProfileFigmaTokens.highlightLabelFontWeight,
-              height: ProfileFigmaTokens.highlightLabelLineHeight /
-                  ProfileFigmaTokens.highlightLabelFontSize,
-            ),
+            style: AppTypography.profileHighlightAddLabel,
           ),
         ],
       ),

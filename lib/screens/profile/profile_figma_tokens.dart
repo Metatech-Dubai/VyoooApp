@@ -49,20 +49,26 @@ abstract final class ProfileFigmaTokens {
   static const double highlightTileWidth = 64;
   static const double highlightTileHeight = 64;
   static const double highlightTileRadius = 12;
-  static const double highlightTileGap = 10;
+  static const double highlightTileGap = 20;
   static const double highlightLabelGap = 6;
-  static const double highlightLabelFontSize = 11;
-  static const FontWeight highlightLabelFontWeight = FontWeight.w700;
+  static const double highlightLabelFontSize = 12;
+  static const FontWeight highlightLabelFontWeight = FontWeight.w400;
   static const double highlightLabelLineHeight = 14;
-  static const Color highlightLabelColor = Color(0xFF494949);
+  /// Add-chip label — Figma #554247.
+  static const Color highlightAddLabelColor = AppColors.profileStatLabel;
+  /// Album title under cover — Figma #1B1C1C.
+  static const Color highlightAlbumLabelColor = AppColors.profileDisplayName;
   /// Highlight album placeholder / empty cover (Figma #EFEDED).
   static const Color highlightTileBackground = AppColors.profileStatChipBackground;
   /// Story / highlight add "+" tile fill — matches selected tab chip (#660033).
   static const Color highlightAddFill = tabSelectedFill;
+  /// Album cover drop shadow — Figma dy=1, blur 2px @ 5% black.
+  static const Color highlightTileShadowColor = Color(0x0D000000);
+  static const double highlightTileShadowBlur = 2;
+  static const Offset highlightTileShadowOffset = Offset(0, 1);
 
-  /// Tile + gap + single-line label — used for the horizontal highlights row.
-  static const double highlightRowHeight =
-      highlightTileHeight + highlightLabelGap + highlightLabelLineHeight;
+  /// Tile + gap + single-line label — Figma row 97px.
+  static const double highlightRowHeight = 97;
 
   /// Magenta chevron handle — toggles highlights list (width matches Posts tab cell).
   static const double highlightsToggleHeight = 24;
@@ -84,6 +90,11 @@ abstract final class ProfileFigmaTokens {
 
   /// Horizontal inset of the header column (matches [AppSpacing.md]).
   static const double profileHeaderHorizontalPad = 16;
+
+  /// Posts grid / tab content — same left and right inset as the tab bar row.
+  static const EdgeInsets profileGridPadding = EdgeInsets.symmetric(
+    horizontal: profileHeaderHorizontalPad,
+  );
 
   static const double displayNameFontSize = 20;
   static const double displayNameHeight = 25 / 20;

@@ -4,10 +4,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/controllers/reels_controller.dart';
-import '../../core/models/reel_count_privacy.dart';
 import '../../core/models/reel_media_item.dart';
 import '../../core/models/video_360_metadata.dart';
-import '../../core/utils/reel_engagement.dart';
 import '../../core/widgets/post_media_carousel.dart';
 import '../../features/reel/widgets/owner_post_options_sheet.dart';
 import '../../core/config/deep_link_config.dart';
@@ -15,6 +13,7 @@ import '../../core/theme/app_gradients.dart';
 import '../../core/widgets/profile/profile_screen_background.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
+import '../../core/constants/profile_assets.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/models/story_highlight_model.dart';
@@ -686,7 +685,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             width: ProfileFigmaTokens.actionButtonGap,
                           ),
                           ProfileFigmaIconActionButton(
-                            icon: Icons.share_rounded,
+                            svgAssetPath: ProfileAssets.profileActionShare,
                             onPressed: () => _shareProfile(
                               uid: profileUid,
                               username: user?.username,
@@ -696,7 +695,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                             width: ProfileFigmaTokens.actionButtonGap,
                           ),
                           ProfileFigmaIconActionButton(
-                            icon: Icons.add_rounded,
+                            svgAssetPath: ProfileAssets.profileActionPlus,
                             onPressed: profileUid.isEmpty
                                 ? () {}
                                 : () => _openMyStoryComposerOrViewer(
@@ -859,73 +858,83 @@ class _ProfileScreenState extends State<ProfileScreen>
             !snap.hasData;
 
         if (snap.hasError) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: Text(
-              'Could not load highlights. Pull to refresh or try again.',
-              style: TextStyle(
-                fontFamily: 'DM Sans',
-                color: ProfileFigmaTokens.secondaryText,
-                fontSize: 12,
-                height: 1.3,
+          return ProfileTabTrackRow(
+            showBookmarkAccessory: true,
+            showStarAccessory: true,
+            alignWithPostsStart: true,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text(
+                'Could not load highlights. Pull to refresh or try again.',
+                style: TextStyle(
+                  fontFamily: 'DM Sans',
+                  color: ProfileFigmaTokens.secondaryText,
+                  fontSize: 12,
+                  height: 1.3,
+                ),
               ),
             ),
           );
         }
 
-        return SizedBox(
-          height: ProfileFigmaTokens.highlightRowHeight,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              ListView.separated(
-                scrollDirection: Axis.horizontal,
-                itemCount: highlights.length + 1,
-                separatorBuilder: (_, _) => const SizedBox(
-                  width: ProfileFigmaTokens.highlightTileGap,
-                ),
-                itemBuilder: (_, i) {
-                  if (i == 0) {
-                    return ProfileHighlightAddChip(
-                      onTap: () => _openMyStoryComposerOrViewer(
-                        context,
-                        userId: profileUid,
-                        username: user?.username ?? 'you',
-                        avatarUrl: user?.profileImage ?? '',
-                      ),
-                    );
-                  }
-                  final h = highlights[i - 1];
-                  return ProfileHighlightAlbumTile(
-                    title: h.title,
-                    coverMediaUrl: h.coverMediaUrl,
-                    onTap: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => HighlightViewerScreen(
-                            userId: profileUid,
-                            highlightId: h.id,
-                            title: h.title,
-                          ),
+        return ProfileTabTrackRow(
+          showBookmarkAccessory: true,
+          showStarAccessory: true,
+          alignWithPostsStart: true,
+          child: SizedBox(
+            height: ProfileFigmaTokens.highlightRowHeight,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: highlights.length + 1,
+                  separatorBuilder: (_, _) => const SizedBox(
+                    width: ProfileFigmaTokens.highlightTileGap,
+                  ),
+                  itemBuilder: (_, i) {
+                    if (i == 0) {
+                      return ProfileHighlightAddChip(
+                        onTap: () => _openMyStoryComposerOrViewer(
+                          context,
+                          userId: profileUid,
+                          username: user?.username ?? 'you',
+                          avatarUrl: user?.profileImage ?? '',
                         ),
                       );
-                    },
-                  );
-                },
-              ),
-              if (loading)
-                const Positioned(
-                  right: 0,
-                  child: SizedBox(
-                    width: 14,
-                    height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: ProfileFigmaTokens.tabSelectedFill,
+                    }
+                    final h = highlights[i - 1];
+                    return ProfileHighlightAlbumTile(
+                      title: h.title,
+                      coverMediaUrl: h.coverMediaUrl,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => HighlightViewerScreen(
+                              userId: profileUid,
+                              highlightId: h.id,
+                              title: h.title,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                if (loading)
+                  const Positioned(
+                    right: 0,
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ProfileFigmaTokens.tabSelectedFill,
+                      ),
                     ),
                   ),
-                ),
-            ],
+              ],
+            ),
           ),
         );
       },
@@ -1032,10 +1041,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               return _buildEmptySavedPlaceholder();
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: savedReels,
                 thumbnailFor: _thumbnailFromSavedReel,
@@ -1099,6 +1105,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: ProfileCachedPostsGrid(
           key: ValueKey('profile-posts-$uid'),
           userId: uid,
+          padding: ProfileFigmaTokens.profileGridPadding,
           thumbnailFor: _thumbnailFromReel,
           onItemTap: _openPostFeedFromReels,
           onItemLongPress: (context, posts, index) {
@@ -1232,10 +1239,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: reels,
                 thumbnailFor: _thumbnailFromReel,
@@ -1290,10 +1294,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               );
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: tagged,
                 thumbnailFor: _thumbnailFromReel,
@@ -1952,7 +1953,6 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
     final handle = ((currentReel?['handle'] as String?) ?? '').trim();
     final caption = ((currentReel?['caption'] as String?) ?? '').trim();
     final normalizedHandle = ProfileFigmaTokens.displayUsername(handle);
-    final privacy = ReelCountPrivacy.fromMap(currentReel);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -2067,64 +2067,6 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
           ),
           if (currentReel != null)
             Positioned(
-              right: 16,
-              bottom: 120,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (privacy.showViews())
-                    _OverlayMetric(
-                      icon: Icons.remove_red_eye_outlined,
-                      value: privacy.displayCount(
-                        ReelCountMetric.views,
-                        (currentReel['views'] as int?) ?? 0,
-                      ),
-                    ),
-                  if (privacy.showViews() && privacy.showLikes())
-                    const SizedBox(height: 14),
-                  if (privacy.showLikes())
-                    _OverlayMetric(
-                      icon: Icons.favorite_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.likes,
-                        (currentReel['likes'] as int?) ?? 0,
-                      ),
-                    ),
-                  if (privacy.showLikes() && privacy.showComments())
-                    const SizedBox(height: 14),
-                  if (privacy.showComments())
-                    _OverlayMetric(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.comments,
-                        (currentReel['comments'] as int?) ?? 0,
-                      ),
-                    ),
-                  if (privacy.showComments() && privacy.showShares())
-                    const SizedBox(height: 14),
-                  if (privacy.showShares())
-                    _OverlayMetric(
-                      icon: Icons.reply_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.shares,
-                        ReelEngagement.repostCount(currentReel),
-                      ),
-                    ),
-                  if (privacy.showShares() && privacy.showSaves())
-                    const SizedBox(height: 14),
-                  if (privacy.showSaves())
-                    _OverlayMetric(
-                      icon: Icons.star_outline_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.saves,
-                        (currentReel['saves'] as int?) ?? 0,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          if (currentReel != null)
-            Positioned(
               left: 16,
               right: 80,
               bottom: 34,
@@ -2203,39 +2145,6 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _OverlayMetric extends StatelessWidget {
-  const _OverlayMetric({required this.icon, required this.value});
-
-  final IconData icon;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 22),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }

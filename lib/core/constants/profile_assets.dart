@@ -39,4 +39,16 @@ abstract final class ProfileAssets {
   /// Star glyph only — tinted in [ProfileFigmaTabBar].
   static const String profileTabStarIcon =
       'assets/vyooO_icons/Profile/profile_tab_star_icon.svg';
+
+  /// Share action next to Edit Profile (40×40 circle + glyph).
+  static const String profileActionShare =
+      'assets/vyooO_icons/Profile/profile_action_share.svg';
+
+  /// Plus / story action next to Edit Profile (40×40 circle + glyph).
+  static const String profileActionPlus =
+      'assets/vyooO_icons/Profile/profile_action_plus.svg';
+
+  /// Highlights add tile (64×64 #660033 + white plus).
+  static const String profileHighlightAddTile =
+      'assets/vyooO_icons/Profile/profile_highlight_add_tile.svg';
 }
