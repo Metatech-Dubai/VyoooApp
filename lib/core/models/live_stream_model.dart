@@ -27,6 +27,7 @@ class LiveStreamModel {
     this.savedToProfile = false,
     this.video360 = Video360Metadata.flat,
     this.isVR = false,
+    this.hlsUrl,
   });
 
   final String id;
@@ -58,10 +59,21 @@ class LiveStreamModel {
   /// Routing flag for VR/immersive surfaces (mirrors reels' `isVR`).
   final bool isVR;
 
+  /// HLS/CDN URL for the live stream, if exposed via Media Push. The interactive
+  /// 360 viewer plays a URL, so this is required to render the sphere; null until
+  /// the Media-Push bridge is active (viewer falls back to flat Agora otherwise).
+  final String? hlsUrl;
+
   bool get isLive => status == LiveStreamStatus.live;
 
-  /// True when the viewer should render this stream with the interactive 360 player.
+  /// True when this stream is tagged as interactive 360 (equirectangular).
   bool get use360Player => video360.use360Player;
+
+  /// True when the viewer can render the interactive 360 sphere — needs both the
+  /// 360 tag AND a playable URL (the URL-based renderer has nothing to show
+  /// without [hlsUrl]). When false, the viewer uses the flat Agora path.
+  bool get canRenderInteractive360 =>
+      use360Player && hlsUrl != null && hlsUrl!.trim().isNotEmpty;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -83,6 +95,7 @@ class LiveStreamModel {
         'savedToProfile': savedToProfile,
         ...video360.toFirestore(),
         'isVR': isVR,
+        if (hlsUrl != null) 'hlsUrl': hlsUrl,
       };
 
   factory LiveStreamModel.fromJson(Map<String, dynamic> json) {
@@ -111,6 +124,9 @@ class LiveStreamModel {
       savedToProfile: json['savedToProfile'] as bool? ?? false,
       video360: Video360Metadata.fromPost(json),
       isVR: json['isVR'] == true,
+      hlsUrl: (json['hlsUrl'] as String?)?.trim().isNotEmpty == true
+          ? (json['hlsUrl'] as String).trim()
+          : null,
     );
   }
 
@@ -123,6 +139,7 @@ class LiveStreamModel {
     bool? savedToProfile,
     Video360Metadata? video360,
     bool? isVR,
+    String? hlsUrl,
   }) {
     return LiveStreamModel(
       id: id,
@@ -144,6 +161,7 @@ class LiveStreamModel {
       savedToProfile: savedToProfile ?? this.savedToProfile,
       video360: video360 ?? this.video360,
       isVR: isVR ?? this.isVR,
+      hlsUrl: hlsUrl ?? this.hlsUrl,
     );
   }
 }

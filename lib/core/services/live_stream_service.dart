@@ -85,6 +85,11 @@ class LiveStreamService {
     await _db.collection(_streamsCol).doc(streamId).update({'hostAgoraUid': uid});
   }
 
+  /// Stores the live HLS URL (from Media Push) so the 360 viewer can play it.
+  Future<void> updateHlsUrl(String streamId, String hlsUrl) async {
+    await _db.collection(_streamsCol).doc(streamId).update({'hlsUrl': hlsUrl});
+  }
+
   /// Updates stream metadata (title, description, etc).
   Future<void> updateStreamMetadata({
     required String streamId,

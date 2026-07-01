@@ -15,6 +15,7 @@ import '../../core/services/agora_token_service.dart';
 import '../../core/services/gyro_look_controller.dart';
 import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
+import '../../core/services/media_push_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -359,6 +360,15 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         ),
       );
 
+      // 360 → cloud URL bridge for the interactive viewer (DORMANT: MediaPushService
+      // is gated off, so this is a no-op until CDN ingest is provisioned. No stream
+      // is pushed live in this pass.) When enabled, it starts Media Push and stores
+      // the resulting HLS URL on the stream doc for the 360 viewer to play.
+      if (MediaPushService.enabled &&
+          _cameraSource == _CameraSource.insta360) {
+        await _maybeStartMediaPush(streamId);
+      }
+
       // Subscribe to real-time updates
       _streamSub = _liveService.streamDoc(streamId).listen((doc) {
         if (mounted && doc != null) setState(() => _streamDoc = doc);
@@ -553,6 +563,25 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _jogTimer?.cancel();
     _jogTimer = null;
     setState(() => _jogYaw = 0.0);
+  }
+
+  /// Start Media Push (Agora → CDN) and store the resulting HLS URL so the 360
+  /// viewer can play it. DORMANT: guarded by [MediaPushService.enabled] (false),
+  /// so this never runs a live push in this pass — the CDN ingest/playback URLs
+  /// come from provisioning that is not configured here. Out-of-scope add-on.
+  Future<void> _maybeStartMediaPush(String streamId) async {
+    if (!MediaPushService.enabled) return;
+    // NOTE: rtmpIngestUrl + hlsPlaybackUrl come from the provisioned CDN input.
+    // Left unconfigured on purpose (no live push): fill these when activating.
+    const rtmpIngestUrl = ''; // e.g. rtmps://<cloudflare-live-input-ingest>
+    const hlsPlaybackUrl = ''; // e.g. https://videodelivery.net/<id>/manifest/video.m3u8
+    if (rtmpIngestUrl.isEmpty || hlsPlaybackUrl.isEmpty) return;
+    final url = await const MediaPushService().start(
+      engine: _engine,
+      rtmpIngestUrl: rtmpIngestUrl,
+      hlsPlaybackUrl: hlsPlaybackUrl,
+    );
+    if (url != null) await _liveService.updateHlsUrl(streamId, url);
   }
 
   /// Toggle gyro look-around: tilt the phone to pan the 360 view. Composes with the slider/drag
