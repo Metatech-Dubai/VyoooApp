@@ -10,6 +10,7 @@ import '../../core/config/agora_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
+import '../../core/models/video_360_metadata.dart';
 import '../../core/services/agora_token_service.dart';
 import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
@@ -317,6 +318,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         category: _streamCategory,
         tags: _streamTags,
         pricePerMinute: _streamPrice,
+        // Tag the feed as 360 when broadcasting the Insta360 (equirectangular),
+        // so the viewer can detect it and route to the interactive 360 player.
+        video360: _cameraSource == _CameraSource.insta360
+            ? const Video360Metadata(
+                is360Video: true,
+                projectionType: Video360Projection.equirectangular,
+                stereoMode: Video360StereoMode.mono,
+              )
+            : Video360Metadata.flat,
+        isVR: _cameraSource == _CameraSource.insta360,
       );
       _streamId = streamId;
 
@@ -470,7 +481,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             _cameraSource == _CameraSource.insta360 &&
             !_insta.state.value.connected) {
           _showToast(_insta.state.value.lastError ??
-              '360 camera didn’t start — check it’s on and its Wi-Fi is joined');
+              '360 camera didn’t start — check it’s on and connected via USB');
           _disableInsta360();
         }
       });
@@ -1877,7 +1888,7 @@ class _ConfirmDialog extends StatelessWidget {
 
 // ── Camera-source picker sheet ─────────────────────────────────────────────────
 
-/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, Wi-Fi/USB).
+/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, USB by default; Wi-Fi optional).
 class _CameraPickerSheet extends StatelessWidget {
   const _CameraPickerSheet({
     required this.current,
@@ -1943,7 +1954,7 @@ class _CameraPickerSheet extends StatelessWidget {
               selected: current == _CameraSource.insta360,
               enabled: insta360Supported,
               onTap: insta360Supported
-                  ? () => onSelectInsta360(Insta360ConnectType.wifi)
+                  ? () => onSelectInsta360(Insta360ConnectType.usb)
                   : null,
             ),
             if (insta360Supported) ...[
@@ -1951,7 +1962,8 @@ class _CameraPickerSheet extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 6),
                 child: Text(
-                  'Join the camera\'s Wi-Fi in Settings first, then connect via',
+                  'Connect the camera to the phone with a USB cable, then tap USB. '
+                  '(Wi-Fi also works but disables the phone\'s internet while live.)',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 12,
@@ -1962,17 +1974,17 @@ class _CameraPickerSheet extends StatelessWidget {
                 children: [
                   Expanded(
                     child: _connectButton(
-                      icon: Icons.wifi_rounded,
-                      label: 'Wi-Fi',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
+                      icon: Icons.usb_rounded,
+                      label: 'USB',
+                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: _connectButton(
-                      icon: Icons.usb_rounded,
-                      label: 'USB',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
+                      icon: Icons.wifi_rounded,
+                      label: 'Wi-Fi',
+                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
                     ),
                   ),
                 ],

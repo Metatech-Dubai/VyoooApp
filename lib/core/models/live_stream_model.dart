@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'video_360_metadata.dart';
+
 enum LiveStreamStatus { live, ended }
 
 /// Firestore document model for a live stream.
@@ -23,6 +25,8 @@ class LiveStreamModel {
     required this.createdAt,
     this.endedAt,
     this.savedToProfile = false,
+    this.video360 = Video360Metadata.flat,
+    this.isVR = false,
   });
 
   final String id;
@@ -48,7 +52,16 @@ class LiveStreamModel {
   final Timestamp? endedAt;
   final bool savedToProfile;
 
+  /// 360/immersive metadata for this stream (shared shape with 360 VOD reels).
+  final Video360Metadata video360;
+
+  /// Routing flag for VR/immersive surfaces (mirrors reels' `isVR`).
+  final bool isVR;
+
   bool get isLive => status == LiveStreamStatus.live;
+
+  /// True when the viewer should render this stream with the interactive 360 player.
+  bool get use360Player => video360.use360Player;
 
   Map<String, dynamic> toJson() => {
         'id': id,
@@ -68,6 +81,8 @@ class LiveStreamModel {
         'createdAt': createdAt,
         'endedAt': endedAt,
         'savedToProfile': savedToProfile,
+        ...video360.toFirestore(),
+        'isVR': isVR,
       };
 
   factory LiveStreamModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +109,8 @@ class LiveStreamModel {
       createdAt: json['createdAt'] is Timestamp ? json['createdAt'] as Timestamp : Timestamp.now(),
       endedAt: json['endedAt'] is Timestamp ? json['endedAt'] as Timestamp : null,
       savedToProfile: json['savedToProfile'] as bool? ?? false,
+      video360: Video360Metadata.fromPost(json),
+      isVR: json['isVR'] == true,
     );
   }
 
@@ -104,6 +121,8 @@ class LiveStreamModel {
     LiveStreamStatus? status,
     Timestamp? endedAt,
     bool? savedToProfile,
+    Video360Metadata? video360,
+    bool? isVR,
   }) {
     return LiveStreamModel(
       id: id,
@@ -123,6 +142,8 @@ class LiveStreamModel {
       createdAt: createdAt,
       endedAt: endedAt ?? this.endedAt,
       savedToProfile: savedToProfile ?? this.savedToProfile,
+      video360: video360 ?? this.video360,
+      isVR: isVR ?? this.isVR,
     );
   }
 }
