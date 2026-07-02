@@ -10,6 +10,7 @@ import com.arashivision.sdkcamera.camera.InstaCameraManager
 import com.arashivision.sdkcamera.camera.callback.ICameraOperateCallback
 import com.arashivision.sdkcamera.camera.callback.ICaptureSupportConfigCallback
 import com.arashivision.sdkcamera.camera.callback.IPreviewStatusListener
+import com.arashivision.insta360.basemedia.ui.player.capture.IMediaFrameCallback
 import com.arashivision.sdkmedia.player.capture.CaptureParamsBuilder
 import com.arashivision.sdkmedia.player.capture.InstaCapturePlayerView
 import com.arashivision.sdkmedia.player.listener.PlayerViewListener
@@ -38,6 +39,8 @@ class Insta360PreviewView(
 
     private val player = InstaCapturePlayerView(context)
     private var disposed = false
+    private val extractWidth = (creationParams?.get("width") as? Int) ?: 1920
+    private val extractHeight = (creationParams?.get("height") as? Int) ?: 960
 
     init {
         active = this
@@ -193,14 +196,27 @@ class Insta360PreviewView(
 
     override fun onLoadingFinish() {
         if (disposed) return
-        Log.i(TAG, "onLoadingFinish → setPipeline (interactive render)")
+        Log.i(TAG, "onLoadingFinish → setPipeline + startExtractMediaFrame ${extractWidth}x$extractHeight")
         // Connect the camera stream to the player so it renders the live interactive view.
         InstaCameraManager.getInstance().setPipeline(player.pipeline)
-        // NOTE: media-frame extraction (startExtractMediaFrame → Insta360FrameSink, the transmit
-        // path) is intentionally NOT started here. The SDK's extract SequenceSource aborts when the
-        // player renders the interactive AUTO view (it only works with the flat PLANE_STITCH render).
-        // Extraction belongs to the streaming feature and needs its own offscreen path — out of
-        // scope for the interactive host preview.
+        // Extract the stitched ERP as MediaFrames for the transmit path:
+        //   startExtractMediaFrame → Insta360FrameSink.submit → frames() → _pushInstaFrame → Agora.
+        // EMPIRICAL: this tests whether extraction can coexist with the interactive sphere render.
+        // Historically it aborted under the AUTO/normal render (extract worked only in flat
+        // PLANE_STITCH). If this crashes on-device, fall back to a flat extract render for broadcast.
+        try {
+            player.startExtractMediaFrame(
+                extractWidth,
+                extractHeight,
+                EXTRACT_FPS,
+                EXTRACT_QUEUE,
+                IMediaFrameCallback { mediaFrame ->
+                    mediaFrame?.let { Insta360FrameSink.submit(it) }
+                },
+            )
+        } catch (t: Throwable) {
+            Log.e(TAG, "startExtractMediaFrame failed", t)
+        }
     }
 
     override fun onReleaseCameraPipeline() {
@@ -229,6 +245,8 @@ class Insta360PreviewView(
 
     companion object {
         private const val TAG = "Insta360PreviewView"
+        private const val EXTRACT_FPS = 60
+        private const val EXTRACT_QUEUE = 32
 
         /** The currently-mounted preview (only one exists at a time). */
         @Volatile private var active: Insta360PreviewView? = null
