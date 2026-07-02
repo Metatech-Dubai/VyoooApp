@@ -9,6 +9,7 @@ import '../../core/config/deep_link_config.dart';
 import '../../core/profile/creator_monetization.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/feed_interaction_assets.dart';
+import '../../core/constants/profile_assets.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../core/widgets/profile/profile_screen_background.dart';
 import '../../core/widgets/profile/profile_grid.dart';
@@ -168,6 +169,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     'restricted': 'Restricted',
   };
   int _selectedTabIndex = 0;
+  bool _highlightsExpanded = false;
   late bool _isFollowing;
   late bool _isSubscribed;
   bool _followActionBusy = false;
@@ -241,6 +243,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       _otherHighlightsStream = null;
       _activeStoriesStreamUid = null;
       _activeStoriesStream = null;
+      _highlightsExpanded = false;
       final nextUid = widget.payload.targetUserId?.trim() ?? '';
       if (nextUid.isNotEmpty) {
         ProfileCachedPostsGrid.invalidateCacheFor(nextUid);
@@ -645,36 +648,100 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return _otherHighlightsStream!;
   }
 
-  Widget _buildOtherUserHighlightsBar(
-    BuildContext context,
-    UserProfilePayload p,
-  ) {
-    if (!_canViewTheirHighlights(p)) return const SizedBox.shrink();
+  Widget _buildOtherUserHighlightsArea(UserProfilePayload p) {
+    if (!_canViewTheirHighlights(p)) return const SizedBox(height: 8);
     final uid = (p.targetUserId ?? '').trim();
-    return Material(
-      color: _profileSurface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          10,
-          AppSpacing.md,
-          10,
-        ),
-        child: StreamBuilder<List<StoryHighlightModel>>(
-          stream: _otherUserHighlightsStream(uid),
-          builder: (context, snap) {
-            if (snap.hasError) {
-              dev.log(
-                'UserProfileScreen highlights stream',
-                error: snap.error,
-              );
-              return const SizedBox.shrink();
-            }
-            final highlights = snap.data ?? const <StoryHighlightModel>[];
-            if (highlights.isEmpty) return const SizedBox.shrink();
-            return SizedBox(
-              height: ProfileFigmaTokens.highlightRowHeight,
-              child: ListView.separated(
+    if (uid.isEmpty) return const SizedBox(height: 8);
+
+    return StreamBuilder<List<StoryHighlightModel>>(
+      stream: _otherUserHighlightsStream(uid),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          dev.log(
+            'UserProfileScreen highlights stream',
+            error: snap.error,
+          );
+          return const SizedBox(height: 8);
+        }
+        final highlights = snap.data ?? const <StoryHighlightModel>[];
+        final loading =
+            snap.connectionState == ConnectionState.waiting && !snap.hasData;
+        if (!loading && highlights.isEmpty) return const SizedBox(height: 8);
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!_highlightsExpanded) ...[
+              const SizedBox(
+                height: ProfileFigmaTokens.highlightsToggleTopGap,
+              ),
+              ProfileTabUnderFirstTab(
+                tabCount: _tabs.length,
+                showBookmarkAccessory: true,
+                showStarAccessory: true,
+                child: ProfileHighlightsToggleHandle(
+                  expanded: false,
+                  onTap: () => setState(() => _highlightsExpanded = true),
+                ),
+              ),
+            ] else ...[
+              const SizedBox(
+                height: ProfileFigmaTokens.highlightsSectionTopGap,
+              ),
+              AnimatedSize(
+                duration: const Duration(milliseconds: 240),
+                curve: Curves.easeInOut,
+                alignment: Alignment.topCenter,
+                child: _buildOtherUserHighlightsRow(
+                  context,
+                  uid: uid,
+                  highlights: highlights,
+                  loading: loading,
+                ),
+              ),
+              const SizedBox(
+                height: ProfileFigmaTokens.highlightsToggleTopGap,
+              ),
+              ProfileTabUnderFirstTab(
+                tabCount: _tabs.length,
+                showBookmarkAccessory: true,
+                showStarAccessory: true,
+                child: ProfileHighlightsToggleHandle(
+                  expanded: true,
+                  onTap: () => setState(() => _highlightsExpanded = false),
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildOtherUserHighlightsRow(
+    BuildContext context, {
+    required String uid,
+    required List<StoryHighlightModel> highlights,
+    required bool loading,
+  }) {
+    return ProfileTabTrackRow(
+      showBookmarkAccessory: true,
+      showStarAccessory: true,
+      alignWithPostsStart: true,
+      child: SizedBox(
+        height: ProfileFigmaTokens.highlightRowHeight,
+        child: loading && highlights.isEmpty
+            ? const Center(
+                child: SizedBox(
+                  width: 14,
+                  height: 14,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: ProfileFigmaTokens.tabSelectedFill,
+                  ),
+                ),
+              )
+            : ListView.separated(
                 scrollDirection: Axis.horizontal,
                 itemCount: highlights.length,
                 separatorBuilder: (_, _) => const SizedBox(
@@ -699,9 +766,6 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   );
                 },
               ),
-            );
-          },
-        ),
       ),
     );
   }
@@ -902,20 +966,21 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             vipVerified: _liveVipVerified ?? p.vipVerified,
           );
     final showVerificationBadge = isVerified || showCreatorMonetization;
+    final currentUid = AuthService().currentUser?.uid ?? '';
     return Scaffold(
       backgroundColor: ProfileFigmaTokens.screenBackground,
-      bottomNavigationBar: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildOtherUserHighlightsBar(context, p),
-          AppBottomNavigation(
+      bottomNavigationBar: StreamBuilder<AppUserModel?>(
+        stream: currentUid.isEmpty ? null : UserService().userStream(currentUid),
+        builder: (context, snapshot) {
+          return AppBottomNavigation(
             currentIndex: -1,
+            profileImageUrl: snapshot.data?.profileImage,
             onTap: (index) {
               MainNavWrapper.tabNotifier.value = index;
               Navigator.of(context).popUntil((route) => route.isFirst);
             },
-          ),
-        ],
+          );
+        },
       ),
       body: Stack(
         children: [
@@ -1058,13 +1123,25 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                           ProfileFigmaTokens.profileHeaderHorizontalPad,
                           0,
                         ),
-                        child: _buildTabs(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _buildTabs(),
+                            _buildOtherUserHighlightsArea(p),
+                          ],
+                        ),
                       ),
                     ),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
                     ..._buildContentSlivers(p),
-                    const SliverToBoxAdapter(child: SizedBox(height: 16)),
                   ],
+                ),
+              ),
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: AppBottomNavigation.totalHeightFor(context),
+                ),
+                sliver: const SliverToBoxAdapter(
+                  child: SizedBox.shrink(),
                 ),
               ),
             ],
@@ -1294,35 +1371,38 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: _ProfileFollowButton(
-                  label: followLabel,
-                  outlined: followOutlined,
-                  onPressed: _followActionBusy ? () {} : _onFollowTap,
-                ),
+              _ProfileFollowButton(
+                label: followLabel,
+                outlined: followOutlined,
+                onPressed: _followActionBusy ? () {} : _onFollowTap,
               ),
               if (_showSubscribeFeatures(p) && !_isViewingOwnProfile(p)) ...[
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _ProfileSubscribeButton(
-                    label: _isSubscribed ? 'Subscribed' : 'Subscribe',
-                    outlined: _isSubscribed,
-                    onPressed: () => _onSubscribeTap(p),
-                  ),
+                const SizedBox(
+                  width: ProfileFigmaTokens.actionButtonGap,
+                ),
+                _ProfileSubscribeButton(
+                  label: _isSubscribed ? 'Subscribed' : 'Subscribe',
+                  outlined: _isSubscribed,
+                  onPressed: () => _onSubscribeTap(p),
                 ),
               ],
               if (showChat) ...[
-                const SizedBox(width: 8),
-                _ProfileCircleIconButton(
+                const SizedBox(
+                  width: ProfileFigmaTokens.actionButtonGap,
+                ),
+                ProfileFigmaIconActionButton(
                   icon: Icons.chat_bubble_outline_rounded,
-                  onTap: _openChat,
+                  onPressed: _openChat,
                 ),
               ],
-              const SizedBox(width: 8),
-              _ProfileCircleIconButton(
-                icon: Icons.share_rounded,
-                onTap: _shareProfile,
+              const SizedBox(
+                width: ProfileFigmaTokens.actionButtonGap,
+              ),
+              ProfileFigmaIconActionButton(
+                svgAssetPath: ProfileAssets.profileActionShare,
+                onPressed: _shareProfile,
               ),
             ],
           ),
@@ -1828,6 +1908,9 @@ class _ProfileFollowButton extends StatelessWidget {
         borderRadius: radius,
         child: Ink(
           height: ProfileFigmaTokens.profileFollowButtonHeight,
+          padding: const EdgeInsets.symmetric(
+            horizontal: ProfileFigmaTokens.actionButtonPaddingH,
+          ),
           decoration: BoxDecoration(
             color: outlined ? Colors.transparent : _profileAccentMagenta,
             borderRadius: radius,
@@ -1835,14 +1918,15 @@ class _ProfileFollowButton extends StatelessWidget {
               color: outlined
                   ? ProfileFigmaTokens.profileFollowingBorder
                   : const Color(0xFFC4185A),
-              width: outlined ? 1 : 1,
             ),
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: Colors.white,
+                color: outlined
+                    ? ProfileFigmaTokens.primaryText
+                    : Colors.white,
                 fontSize: ProfileFigmaTokens.profileFollowLabelFontSize,
                 fontWeight: outlined ? FontWeight.w500 : FontWeight.w600,
               ),
@@ -1874,7 +1958,10 @@ class _ProfileSubscribeButton extends StatelessWidget {
         onTap: onPressed,
         borderRadius: radius,
         child: Ink(
-          height: 44,
+          height: ProfileFigmaTokens.actionButtonHeight,
+          padding: const EdgeInsets.symmetric(
+            horizontal: ProfileFigmaTokens.actionButtonPaddingH,
+          ),
           decoration: BoxDecoration(
             gradient: outlined ? null : AppGradients.subscribeNowButtonGradient,
             color: outlined ? Colors.transparent : null,
@@ -1886,66 +1973,19 @@ class _ProfileSubscribeButton extends StatelessWidget {
                   )
                 : Border.all(
                     color: const Color(0xFFB8862E).withValues(alpha: 0.85),
-                    width: 1,
                   ),
           ),
           child: Center(
             child: Text(
               label,
               style: TextStyle(
-                color: outlined ? Colors.white : Colors.black,
+                color: outlined
+                    ? ProfileFigmaTokens.primaryText
+                    : Colors.black,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileCircleIconButton extends StatelessWidget {
-  const _ProfileCircleIconButton({
-    this.icon,
-    this.assetPath,
-    required this.onTap,
-  }) : assert(icon != null || assetPath != null);
-
-  final IconData? icon;
-  final String? assetPath;
-  final VoidCallback onTap;
-
-  static const double _size = 44;
-  static const double _iconSize = 20;
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Ink(
-          width: _size,
-          height: _size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: Colors.white.withValues(alpha: 0.06),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15),
-              width: 1,
-            ),
-          ),
-          child: Center(
-            child: assetPath != null
-                ? Image.asset(
-                    assetPath!,
-                    width: _iconSize,
-                    height: _iconSize,
-                    fit: BoxFit.contain,
-                  )
-                : Icon(icon, size: _iconSize, color: Colors.white),
           ),
         ),
       ),
