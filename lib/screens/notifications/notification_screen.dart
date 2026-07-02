@@ -1,7 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
-import 'package:vyooo/core/widgets/app_gradient_background.dart';
 
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
@@ -37,17 +36,14 @@ class _NotificationScreenState extends State<NotificationScreen>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.premiumDark,
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildAppBar(context),
-              Expanded(child: _buildList()),
-            ],
-          ),
+      backgroundColor: AppColors.chatBackground,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildAppBar(context),
+            Expanded(child: _buildList()),
+          ],
         ),
       ),
     );
@@ -57,6 +53,7 @@ class _NotificationScreenState extends State<NotificationScreen>
     return const SettingsInnerAppBar(
       title: 'Notifications',
       showLogo: false,
+      light: true,
     );
   }
 
@@ -72,7 +69,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                 messageForFirestore(snapshot.error),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: AppColors.chatTextSecondary,
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -87,16 +84,16 @@ class _NotificationScreenState extends State<NotificationScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.notifications_none_rounded,
-                  color: Colors.white,
+                  color: AppColors.chatTextSecondary,
                   size: 28,
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'No new notifications',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.chatTextPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -105,7 +102,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                 Text(
                   "You're all caught up!",
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppColors.chatTextSecondary,
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
@@ -492,7 +489,7 @@ class _NotificationScreenState extends State<NotificationScreen>
       style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
-        color: Colors.white.withValues(alpha: 0.55),
+        color: AppColors.chatTextSecondary,
       ),
     );
   }
@@ -653,16 +650,16 @@ class _NotifTile extends StatelessWidget {
                   '$actorLabel ${item.message}',
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.white,
+                    color: AppColors.chatTextPrimary,
                     height: 1.35,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   _timeAgo(item.createdAt),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: AppColors.chatTextSecondary,
                   ),
                 ),
               ],
@@ -694,7 +691,7 @@ class _NotifTile extends StatelessWidget {
       fallback: Center(
         child: Icon(
           Icons.person_rounded,
-          color: Colors.white.withValues(alpha: 0.6),
+          color: AppColors.chatTextSecondary,
           size: 24,
         ),
       ),
@@ -843,10 +840,10 @@ class _NotifPostPreviewState extends State<_NotifPostPreview> {
 
   Widget _placeholder() {
     return ColoredBox(
-      color: Colors.white.withValues(alpha: 0.12),
+      color: AppColors.chatSearchFill,
       child: Icon(
         Icons.image_outlined,
-        color: Colors.white.withValues(alpha: 0.45),
+        color: AppColors.chatTextSecondary,
         size: 22,
       ),
     );
@@ -896,14 +893,16 @@ class _OutlinePillButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          border: Border.all(color: AppColors.chatDivider),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.85),
+            color: onTap == null
+                ? AppColors.chatTextSecondary
+                : AppColors.chatTextPrimary,
           ),
         ),
       ),

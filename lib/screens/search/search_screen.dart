@@ -12,7 +12,6 @@ import '../../core/services/live_stream_service.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_background_assets.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/live_now_strip.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -24,6 +23,46 @@ import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
 import '../profile/user_profile_screen.dart';
 import '../upload/creator_live_route.dart';
+
+class _SearchChrome {
+  const _SearchChrome({required this.onDecorBackground});
+
+  final bool onDecorBackground;
+
+  Color get primaryText =>
+      onDecorBackground ? Colors.white : AppColors.chatTextPrimary;
+
+  Color get secondaryText => onDecorBackground
+      ? Colors.white.withValues(alpha: 0.65)
+      : AppColors.chatTextSecondary;
+
+  Color get mutedText => onDecorBackground
+      ? Colors.white.withValues(alpha: 0.55)
+      : AppColors.chatAppBarActionIcon;
+
+  Color get searchBarFill => onDecorBackground
+      ? Colors.white.withValues(alpha: 0.12)
+      : AppColors.chatSearchFill;
+
+  Color get iconColor => onDecorBackground
+      ? Colors.white.withValues(alpha: 0.5)
+      : AppColors.chatAppBarActionIcon;
+
+  Color get hashButtonFill => onDecorBackground
+      ? Colors.white.withValues(alpha: 0.12)
+      : AppColors.chatSearchFill;
+
+  Color get tabTrackFill => onDecorBackground
+      ? const Color(0xFF1B1327).withValues(alpha: 0.9)
+      : AppColors.chatSearchFill;
+
+  Color get divider => onDecorBackground
+      ? Colors.white.withValues(alpha: 0.1)
+      : AppColors.chatDivider;
+
+  Color get chevronColor =>
+      onDecorBackground ? Colors.white : AppColors.chatTextPrimary;
+}
 
 /// Search tab: search bar, Live/VR/Camera tabs, Ongoing Now & Recommended sections.
 /// Matches Figma: search field + # button, pink gradient active tab, live cards.
@@ -560,6 +599,11 @@ class SearchScreenState extends State<SearchScreen>
     return t;
   }
 
+  _SearchChrome get _chrome => _SearchChrome(
+        onDecorBackground:
+            _isSearchActive || _searchController.text.trim().isNotEmpty,
+      );
+
   void _activateHashtagSearch() {
     final raw = _searchController.text.trimLeft();
     if (!raw.startsWith('#')) {
@@ -729,6 +773,21 @@ class SearchScreenState extends State<SearchScreen>
     setState(() => _isSearchActive = false);
   }
 
+  void _onSearchBackPressed() {
+    if (_isSearchActive) {
+      _exitSearchMode();
+      return;
+    }
+    if (_searchController.text.trim().isNotEmpty) {
+      _searchController.clear();
+      _lastSearchQuery = '';
+      _searchFocusNode.unfocus();
+      setState(() => _isSearchActive = false);
+      return;
+    }
+    Navigator.of(context).maybePop();
+  }
+
   Future<void> _removeRecentSearch(int index) async {
     try {
       final updated = await _searchHistory.removeAt(
@@ -747,11 +806,11 @@ class SearchScreenState extends State<SearchScreen>
 
   /// While typing a query, show tabbed results. Empty query + focus shows recents;
   /// empty + no focus shows the default explore layout.
-  Widget _buildMainSearchBody() {
+  Widget _buildMainSearchBody(_SearchChrome chrome) {
     final hasQuery = _searchController.text.trim().isNotEmpty;
-    if (hasQuery) return _buildSearchResultsView();
-    if (_isSearchActive) return _buildSearchActiveView();
-    return _buildSearchIdleView();
+    if (hasQuery) return _buildSearchResultsView(chrome);
+    if (_isSearchActive) return _buildSearchActiveView(chrome);
+    return _buildSearchIdleView(chrome);
   }
 
   List<_VRSearchItem> get _filteredVrSearchItems {
@@ -781,29 +840,39 @@ class SearchScreenState extends State<SearchScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final chrome = _chrome;
     return Scaffold(
-      body: AppGradientBackground(
-        type: GradientType.authFlow,
-        backgroundAsset: AppBackgroundAssets.search,
-        child: Column(
-          children: [
-            _buildSearchBar(
-              showBackButton: _isSearchActive,
-              showHashButton: !_isSearchActive,
+      backgroundColor: AppColors.chatBackground,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          if (chrome.onDecorBackground)
+            Positioned.fill(
+              child: Image.asset(
+                AppBackgroundAssets.search,
+                fit: BoxFit.cover,
+              ),
             ),
-            const SizedBox(height: 12),
-            Expanded(child: _buildMainSearchBody()),
-          ],
-        ),
+          Column(
+            children: [
+              _buildSearchBar(
+                chrome: chrome,
+                showHashButton: !_isSearchActive,
+              ),
+              const SizedBox(height: 12),
+              Expanded(child: _buildMainSearchBody(chrome)),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildSearchIdleView() {
+  Widget _buildSearchIdleView(_SearchChrome chrome) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildTabs(),
+        _buildTabs(chrome),
         if (_selectedTabIndex == 0 && _liveStreams.isNotEmpty) ...[
           const SizedBox(height: 16),
           _buildLiveNowStrip(),
@@ -813,18 +882,18 @@ class SearchScreenState extends State<SearchScreen>
         ],
         Expanded(
           child: _selectedTabIndex == 0
-              ? _buildIdleLiveContent()
+              ? _buildIdleLiveContent(chrome)
               : _selectedTabIndex == 1
-              ? _buildIdlePostsContent()
+              ? _buildIdlePostsContent(chrome)
               : _selectedTabIndex == 2
               ? _buildIdleVRContent()
-              : _buildIdleUsersContent(),
+              : _buildIdleUsersContent(chrome),
         ),
       ],
     );
   }
 
-  Widget _buildIdleLiveContent() {
+  Widget _buildIdleLiveContent(_SearchChrome chrome) {
     if (_isLiveDiscoverEmpty) {
       _ensureUsersLoaded();
       return RefreshIndicator(
@@ -834,10 +903,10 @@ class SearchScreenState extends State<SearchScreen>
           physics: const AlwaysScrollableScrollPhysics(),
           padding: const EdgeInsets.only(bottom: AppSpacing.xl),
           children: [
-            _buildLiveDiscoverEmptyState(),
+            _buildLiveDiscoverEmptyState(chrome),
             if (_allUsers.isNotEmpty) ...[
               const SizedBox(height: AppSpacing.xl),
-              _buildDiscoverCreatorsPrompt(),
+              _buildDiscoverCreatorsPrompt(chrome),
             ],
           ],
         ),
@@ -855,24 +924,26 @@ class SearchScreenState extends State<SearchScreen>
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.only(bottom: AppSpacing.xl),
         children: [
-          _buildLiveNowSection(),
+          _buildLiveNowSection(chrome),
           if (recommended.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
             _buildSection(
               'Recommended For you',
               recommended,
+              chrome: chrome,
               showViewAll: recommended.length >= _liveSectionViewAllMinItems,
             ),
           ],
           if (categories.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
-            _buildLiveCategoriesSection(),
+            _buildLiveCategoriesSection(chrome),
           ],
           if (explore.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
             _buildSection(
               'Explore More',
               explore,
+              chrome: chrome,
               showViewAll: explore.length >= _liveSectionViewAllMinItems,
             ),
           ],
@@ -903,7 +974,7 @@ class SearchScreenState extends State<SearchScreen>
     return LiveNowStrip(items: items);
   }
 
-  Widget _buildLiveDiscoverEmptyState() {
+  Widget _buildLiveDiscoverEmptyState(_SearchChrome chrome) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 48),
       child: Column(
@@ -912,14 +983,14 @@ class SearchScreenState extends State<SearchScreen>
           Icon(
             Icons.sensors_rounded,
             size: 56,
-            color: Colors.white.withValues(alpha: 0.35),
+            color: chrome.mutedText,
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'No one\'s live right now',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white,
+              color: chrome.primaryText,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -930,7 +1001,7 @@ class SearchScreenState extends State<SearchScreen>
             'Start a stream or browse posts while you wait.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.65),
+              color: chrome.secondaryText,
               fontSize: 15,
               height: 1.35,
             ),
@@ -968,7 +1039,7 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildDiscoverCreatorsPrompt() {
+  Widget _buildDiscoverCreatorsPrompt(_SearchChrome chrome) {
     final preview = _allUsers.take(8).toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -978,10 +1049,10 @@ class SearchScreenState extends State<SearchScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
+              Text(
                 'Discover creators',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: chrome.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -991,7 +1062,7 @@ class SearchScreenState extends State<SearchScreen>
                 child: Text(
                   'See all',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: chrome.mutedText,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1018,14 +1089,14 @@ class SearchScreenState extends State<SearchScreen>
                     children: [
                       CircleAvatar(
                         radius: 28,
-                        backgroundColor: Colors.white.withValues(alpha: 0.12),
+                        backgroundColor: chrome.searchBarFill,
                         backgroundImage: user.avatarUrl.isNotEmpty
                             ? NetworkImage(user.avatarUrl)
                             : null,
                         child: user.avatarUrl.isEmpty
                             ? Icon(
                                 Icons.person,
-                                color: Colors.white.withValues(alpha: 0.5),
+                                color: chrome.mutedText,
                               )
                             : null,
                       ),
@@ -1036,7 +1107,7 @@ class SearchScreenState extends State<SearchScreen>
                         overflow: TextOverflow.ellipsis,
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: chrome.primaryText,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
                         ),
@@ -1052,7 +1123,7 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildIdlePostsContent() {
+  Widget _buildIdlePostsContent(_SearchChrome chrome) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -1060,7 +1131,7 @@ class SearchScreenState extends State<SearchScreen>
           'Use the search bar to find posts by hashtag or keyword. Tap the # button to start a hashtag search.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
+            color: chrome.secondaryText,
             fontSize: 15,
             height: 1.4,
           ),
@@ -1073,17 +1144,17 @@ class SearchScreenState extends State<SearchScreen>
     return const VrComingSoonView(compact: true);
   }
 
-  Widget _buildIdleUsersContent() {
+  Widget _buildIdleUsersContent(_SearchChrome chrome) {
     _ensureUsersLoaded();
     return ListView(
       padding: const EdgeInsets.only(bottom: AppSpacing.xl),
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'Suggested for you',
             style: TextStyle(
-              color: Colors.white,
+              color: chrome.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -1091,10 +1162,14 @@ class SearchScreenState extends State<SearchScreen>
         ),
         const SizedBox(height: AppSpacing.md),
         if (_usersLoading)
-          const Padding(
-            padding: EdgeInsets.all(24),
+          Padding(
+            padding: const EdgeInsets.all(24),
             child: Center(
-              child: CircularProgressIndicator(color: Colors.white54),
+              child: CircularProgressIndicator(
+                color: chrome.onDecorBackground
+                    ? Colors.white54
+                    : AppColors.brandMagenta,
+              ),
             ),
           )
         else if (_usersError != null)
@@ -1102,7 +1177,7 @@ class SearchScreenState extends State<SearchScreen>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
             child: Text(
               'Could not load users right now.',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: chrome.secondaryText),
             ),
           )
         else
@@ -1116,6 +1191,7 @@ class SearchScreenState extends State<SearchScreen>
                 itemCount: users.length,
                 itemBuilder: (context, index) => _UserSearchResultTile(
                   user: users[index],
+                  chrome: chrome,
                   isFollowBusy: _followInFlightIds.contains(users[index].uid),
                   onTap: () => _openUserProfile(users[index]),
                   onFollowTap: () => _toggleFollow(users[index]),
@@ -1128,33 +1204,33 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildSearchResultsView() {
+  Widget _buildSearchResultsView(_SearchChrome chrome) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        _buildTabs(),
+        _buildTabs(chrome),
         const SizedBox(height: 16),
         Expanded(
           child: _selectedTabIndex == 0
-              ? _buildLiveSearchResultsGrid()
+              ? _buildLiveSearchResultsGrid(chrome)
               : _selectedTabIndex == 1
-              ? _buildPostsSearchResultsGrid()
+              ? _buildPostsSearchResultsGrid(chrome)
               : _selectedTabIndex == 2
               ? _buildVRSearchResultsGrid()
-              : _buildUserSearchResultsList(),
+              : _buildUserSearchResultsList(chrome),
         ),
       ],
     );
   }
 
-  Widget _buildLiveSearchResultsGrid() {
+  Widget _buildLiveSearchResultsGrid(_SearchChrome chrome) {
     final items = _dynamicLiveSearchResultItems;
     if (items.isEmpty) {
       return Center(
         child: Text(
           'No live results found',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
+            color: chrome.secondaryText,
             fontSize: 14,
           ),
         ),
@@ -1179,14 +1255,14 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildPostsSearchResultsGrid() {
+  Widget _buildPostsSearchResultsGrid(_SearchChrome chrome) {
     final q = _normalizedQuery;
     if (q.isEmpty) {
       return Center(
         child: Text(
           'Enter a search to find posts',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.65),
+            color: chrome.secondaryText,
             fontSize: 14,
           ),
         ),
@@ -1197,8 +1273,12 @@ class SearchScreenState extends State<SearchScreen>
       future: _futurePostsForQuery(q),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white54),
+          return Center(
+            child: CircularProgressIndicator(
+              color: chrome.onDecorBackground
+                  ? Colors.white54
+                  : AppColors.brandMagenta,
+            ),
           );
         }
         if (snapshot.hasError) {
@@ -1208,7 +1288,7 @@ class SearchScreenState extends State<SearchScreen>
               child: Text(
                 messageForFirestore(snapshot.error),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+                style: TextStyle(color: chrome.secondaryText),
               ),
             ),
           );
@@ -1221,7 +1301,7 @@ class SearchScreenState extends State<SearchScreen>
                   ? 'No posts for #$q yet'
                   : 'No posts matching "$q"',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
+                color: chrome.secondaryText,
                 fontSize: 14,
               ),
             ),
@@ -1274,11 +1354,15 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildUserSearchResultsList() {
+  Widget _buildUserSearchResultsList(_SearchChrome chrome) {
     _ensureUsersLoaded();
     if (_usersLoading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white54),
+      return Center(
+        child: CircularProgressIndicator(
+          color: chrome.onDecorBackground
+              ? Colors.white54
+              : AppColors.brandMagenta,
+        ),
       );
     }
     if (_usersError != null) {
@@ -1288,9 +1372,9 @@ class SearchScreenState extends State<SearchScreen>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Could not load users right now.',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: chrome.secondaryText),
               ),
               const SizedBox(height: 8),
               TextButton(onPressed: _loadUsers, child: const Text('Retry')),
@@ -1301,8 +1385,11 @@ class SearchScreenState extends State<SearchScreen>
     }
     final users = _filteredUsers;
     if (users.isEmpty) {
-      return const Center(
-        child: Text('No users found.', style: TextStyle(color: Colors.white70)),
+      return Center(
+        child: Text(
+          'No users found.',
+          style: TextStyle(color: chrome.secondaryText),
+        ),
       );
     }
     return ListView.builder(
@@ -1313,6 +1400,7 @@ class SearchScreenState extends State<SearchScreen>
       itemCount: users.length,
       itemBuilder: (context, index) => _UserSearchResultTile(
         user: users[index],
+        chrome: chrome,
         isFollowBusy: _followInFlightIds.contains(users[index].uid),
         onTap: () => _openUserProfile(users[index]),
         onFollowTap: () => _toggleFollow(users[index]),
@@ -1320,17 +1408,17 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildSearchActiveView() {
+  Widget _buildSearchActiveView(_SearchChrome chrome) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         const SizedBox(height: 8),
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'Recent',
             style: TextStyle(
-              color: Colors.white,
+              color: chrome.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -1343,7 +1431,7 @@ class SearchScreenState extends State<SearchScreen>
                   child: Text(
                     'No recent searches yet',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: chrome.mutedText,
                       fontSize: 14,
                     ),
                   ),
@@ -1358,6 +1446,7 @@ class SearchScreenState extends State<SearchScreen>
                       const SizedBox(height: AppSpacing.sm),
                   itemBuilder: (context, index) => _RecentSearchTile(
                     query: _recentSearches[index],
+                    chrome: chrome,
                     onTap: () {
                       final q = _recentSearches[index];
                       _searchController.text = q;
@@ -1378,7 +1467,7 @@ class SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildSearchBar({
-    required bool showBackButton,
+    required _SearchChrome chrome,
     required bool showHashButton,
   }) {
     return SafeArea(
@@ -1387,26 +1476,25 @@ class SearchScreenState extends State<SearchScreen>
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
         child: Row(
           children: [
-            if (showBackButton) ...[
-              GestureDetector(
-                onTap: _exitSearchMode,
-                child: Padding(
-                  padding: EdgeInsets.only(right: 12),
-                  child: Image.asset(
-                    'assets/vyooO_icons/Home/chevron_left.png',
-                    color: Colors.white,
-                    width: 22,
-                    height: 22,
-                  ),
+            GestureDetector(
+              onTap: _onSearchBackPressed,
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 12),
+                child: Image.asset(
+                  'assets/vyooO_icons/Home/chevron_left.png',
+                  color: chrome.chevronColor,
+                  width: 22,
+                  height: 22,
                 ),
               ),
-            ],
+            ),
             Expanded(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
                   height: 48,
-                  color: Colors.white.withValues(alpha: 0.12),
+                  color: chrome.searchBarFill,
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -1414,7 +1502,7 @@ class SearchScreenState extends State<SearchScreen>
                         padding: const EdgeInsets.only(left: 12, right: 8),
                         child: Image.asset(
                           'assets/vyooO_icons/Home/nav_bar_icons/search.png',
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: chrome.iconColor,
                           width: 24,
                           height: 24,
                         ),
@@ -1431,10 +1519,12 @@ class SearchScreenState extends State<SearchScreen>
                             _searchFocusNode.unfocus();
                           },
                           textAlignVertical: TextAlignVertical.center,
-                          cursorColor: Colors.white70,
+                          cursorColor: chrome.onDecorBackground
+                              ? Colors.white70
+                              : AppColors.brandMagenta,
                           cursorWidth: 1.2,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: chrome.primaryText,
                             fontSize: 16,
                             fontWeight: FontWeight.w400,
                             height: 1.0,
@@ -1445,7 +1535,7 @@ class SearchScreenState extends State<SearchScreen>
                             hintStyle: TextStyle(
                               color: _isVoiceListening
                                   ? AppColors.brandMagenta.withValues(alpha: 0.9)
-                                  : Colors.white.withValues(alpha: 0.4),
+                                  : chrome.mutedText,
                               fontSize: 16,
                               fontWeight: FontWeight.w400,
                               height: 1.0,
@@ -1469,7 +1559,7 @@ class SearchScreenState extends State<SearchScreen>
                             'assets/vyooO_icons/Search/microphone.png',
                             color: _isVoiceListening
                                 ? AppColors.brandMagenta
-                                : Colors.white.withValues(alpha: 0.5),
+                                : chrome.iconColor,
                             width: 22,
                             height: 22,
                           ),
@@ -1488,7 +1578,7 @@ class SearchScreenState extends State<SearchScreen>
                   width: 48,
                   height: 48,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
+                    color: chrome.hashButtonFill,
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
@@ -1496,7 +1586,7 @@ class SearchScreenState extends State<SearchScreen>
                       'assets/vyooO_icons/Search/hashtag.png',
                       width: 24,
                       height: 24,
-                      color: Colors.white,
+                      color: chrome.primaryText,
                     ),
                   ),
                 ),
@@ -1508,15 +1598,19 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildTabs() {
+  Widget _buildTabs(_SearchChrome chrome) {
     return Container(
       height: 44,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1327).withValues(alpha: 0.9),
+        color: chrome.tabTrackFill,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(
+          color: chrome.onDecorBackground
+              ? Colors.white.withValues(alpha: 0.08)
+              : AppColors.chatDivider,
+        ),
       ),
       child: Row(
         children: [
@@ -1548,7 +1642,9 @@ class SearchScreenState extends State<SearchScreen>
                     style: TextStyle(
                       color: index == _selectedTabIndex
                           ? Colors.white
-                          : Colors.white.withValues(alpha: 0.9),
+                          : (chrome.onDecorBackground
+                              ? Colors.white.withValues(alpha: 0.9)
+                              : AppColors.chatTextSecondary),
                       fontSize: 14,
                       fontWeight: index == _selectedTabIndex
                           ? FontWeight.w700
@@ -1562,7 +1658,9 @@ class SearchScreenState extends State<SearchScreen>
               Container(
                 width: 1,
                 margin: const EdgeInsets.symmetric(vertical: 8),
-                color: Colors.white.withValues(alpha: 0.16),
+                color: chrome.onDecorBackground
+                    ? Colors.white.withValues(alpha: 0.16)
+                    : AppColors.chatDivider,
               ),
           ],
         ],
@@ -1570,18 +1668,18 @@ class SearchScreenState extends State<SearchScreen>
     );
   }
 
-  Widget _buildLiveNowSection() {
+  Widget _buildLiveNowSection(_SearchChrome chrome) {
     if (_liveStreams.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'Ongoing Now',
             style: TextStyle(
-              color: Colors.white,
+              color: chrome.primaryText,
               fontSize: 20,
               fontWeight: FontWeight.w700,
             ),
@@ -1612,6 +1710,7 @@ class SearchScreenState extends State<SearchScreen>
   Widget _buildSection(
     String title,
     List<_LiveCardItem> items, {
+    required _SearchChrome chrome,
     bool showViewAll = false,
   }) {
     if (items.isEmpty) return const SizedBox.shrink();
@@ -1626,8 +1725,8 @@ class SearchScreenState extends State<SearchScreen>
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: chrome.primaryText,
                   fontSize: 20,
                   fontWeight: FontWeight.w700,
                 ),
@@ -1636,7 +1735,7 @@ class SearchScreenState extends State<SearchScreen>
                 Text(
                   'View All',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: chrome.mutedText,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1685,19 +1784,19 @@ class SearchScreenState extends State<SearchScreen>
     return null;
   }
 
-  Widget _buildLiveCategoriesSection() {
+  Widget _buildLiveCategoriesSection(_SearchChrome chrome) {
     final categories = _dynamicCategoryItems;
     if (categories.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 16),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
             'Live Categories',
             style: TextStyle(
-              color: Colors.white,
+              color: chrome.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -1713,7 +1812,7 @@ class SearchScreenState extends State<SearchScreen>
             separatorBuilder: (context, index) =>
                 const SizedBox(width: AppSpacing.md),
             itemBuilder: (context, index) =>
-                _CategoryCard(item: categories[index]),
+                _CategoryCard(item: categories[index], chrome: chrome),
           ),
         ),
       ],
@@ -1724,11 +1823,13 @@ class SearchScreenState extends State<SearchScreen>
 class _RecentSearchTile extends StatelessWidget {
   const _RecentSearchTile({
     required this.query,
+    required this.chrome,
     required this.onTap,
     required this.onRemove,
   });
 
   final String query;
+  final _SearchChrome chrome;
   final VoidCallback onTap;
   final VoidCallback onRemove;
 
@@ -1741,7 +1842,7 @@ class _RecentSearchTile extends StatelessWidget {
         decoration: BoxDecoration(
           border: Border(
             bottom: BorderSide(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: chrome.divider,
               width: 0.8,
             ),
           ),
@@ -1751,8 +1852,8 @@ class _RecentSearchTile extends StatelessWidget {
             Expanded(
               child: Text(
                 query,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: chrome.primaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
@@ -1768,7 +1869,7 @@ class _RecentSearchTile extends StatelessWidget {
                   'assets/vyooO_icons/Search/close.png',
                   width: 20,
                   height: 20,
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: chrome.mutedText,
                 ),
               ),
             ),
@@ -2211,12 +2312,14 @@ class _VRSearchResultGridCard extends StatelessWidget {
 class _UserSearchResultTile extends StatelessWidget {
   const _UserSearchResultTile({
     required this.user,
+    required this.chrome,
     this.isFollowBusy = false,
     this.onTap,
     this.onFollowTap,
   });
 
   final _UserSearchItem user;
+  final _SearchChrome chrome;
   final bool isFollowBusy;
   final VoidCallback? onTap;
   final VoidCallback? onFollowTap;
@@ -2259,7 +2362,7 @@ class _UserSearchResultTile extends StatelessWidget {
       decoration: BoxDecoration(
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: chrome.divider,
             width: 0.8,
           ),
         ),
@@ -2276,7 +2379,7 @@ class _UserSearchResultTile extends StatelessWidget {
                   children: [
                     CircleAvatar(
                       radius: 26,
-                      backgroundColor: Colors.white.withValues(alpha: 0.12),
+                      backgroundColor: chrome.searchBarFill,
                       backgroundImage:
                           Uri.tryParse(user.avatarUrl)?.isAbsolute == true
                           ? NetworkImage(user.avatarUrl)
@@ -2294,8 +2397,8 @@ class _UserSearchResultTile extends StatelessWidget {
                               Flexible(
                                 child: Text(
                                   handle,
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                                    color: chrome.primaryText,
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -2318,7 +2421,7 @@ class _UserSearchResultTile extends StatelessWidget {
                           Text(
                             _subtitleLine,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
+                              color: chrome.mutedText,
                               fontSize: 13,
                               fontWeight: FontWeight.w400,
                             ),
@@ -2335,6 +2438,7 @@ class _UserSearchResultTile extends StatelessWidget {
             const SizedBox(width: 10),
             _SearchUserFollowButton(
               user: user,
+              chrome: chrome,
               isBusy: isFollowBusy,
               onTap: onFollowTap,
             ),
@@ -2349,11 +2453,13 @@ class _UserSearchResultTile extends StatelessWidget {
 class _SearchUserFollowButton extends StatelessWidget {
   const _SearchUserFollowButton({
     required this.user,
+    required this.chrome,
     required this.isBusy,
     this.onTap,
   });
 
   final _UserSearchItem user;
+  final _SearchChrome chrome;
   final bool isBusy;
   final VoidCallback? onTap;
 
@@ -2372,7 +2478,7 @@ class _SearchUserFollowButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isFollowing = user.isFollowing;
     final background = isFollowing || _isRequested
-        ? Colors.white.withValues(alpha: 0.12)
+        ? chrome.searchBarFill
         : AppColors.brandPink;
 
     return Material(
@@ -2386,7 +2492,11 @@ class _SearchUserFollowButton extends StatelessWidget {
             color: background,
             borderRadius: BorderRadius.circular(AppRadius.pill),
             border: _isRequested
-                ? Border.all(color: Colors.white.withValues(alpha: 0.35))
+                ? Border.all(
+                    color: chrome.onDecorBackground
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : AppColors.chatDivider,
+                  )
                 : null,
           ),
           child: isBusy
@@ -2400,8 +2510,10 @@ class _SearchUserFollowButton extends StatelessWidget {
                 )
               : Text(
                   _label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: (isFollowing || _isRequested) && !chrome.onDecorBackground
+                        ? AppColors.chatTextPrimary
+                        : Colors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -2706,9 +2818,10 @@ class _LiveCard extends StatelessWidget {
 }
 
 class _CategoryCard extends StatelessWidget {
-  const _CategoryCard({required this.item});
+  const _CategoryCard({required this.item, required this.chrome});
 
   final _CategoryItem item;
+  final _SearchChrome chrome;
 
   @override
   Widget build(BuildContext context) {
@@ -2718,10 +2831,10 @@ class _CategoryCard extends StatelessWidget {
         width: 120,
         height: 100,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: chrome.searchBarFill,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: chrome.divider,
             width: 1,
           ),
         ),
@@ -2734,7 +2847,7 @@ class _CategoryCard extends StatelessWidget {
                 Icon(
                   item.icon,
                   size: 32,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: chrome.primaryText,
                 ),
                 const SizedBox(height: 12),
                 Padding(
@@ -2743,8 +2856,8 @@ class _CategoryCard extends StatelessWidget {
                     item.label,
                     textAlign: TextAlign.center,
                     maxLines: 1,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: chrome.primaryText,
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                     ),
