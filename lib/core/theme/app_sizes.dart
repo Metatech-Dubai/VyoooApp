@@ -116,6 +116,13 @@ abstract final class AppSizes {
   /// Touch target below the 3px live progress bar (scrub area extends downward).
   static const double liveFeedStreamProgressHitHeight = 12;
 
+  /// Live scrub preview thumbnail (Figma — vertical frame above progress thumb).
+  static const double liveFeedSeekPreviewWidth = 72;
+  static const double liveFeedSeekPreviewHeight = 128;
+  static const double liveFeedSeekPreviewRadius = 10;
+  static const double liveFeedSeekPreviewToBarGap = 10;
+  static const double liveFeedSeekThumbSize = 10;
+
   /// Inset above clip bottom so the 3px bar sits inside the rounded feed area.
   static const double liveFeedProgressClipBottomInset = 8;
 

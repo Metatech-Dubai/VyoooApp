@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../../core/config/agora_config.dart';
@@ -73,6 +76,10 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   bool _likeInFlight = false;
   bool _showHostCaption = true;
   double _streamProgress = 1.0;
+  final Map<int, Uint8List> _frameCache = {};
+  Timer? _snapshotTimer;
+  bool _snapshotInFlight = false;
+  int? _pendingSnapshotElapsedSec;
 
   String? _toast;
   Timer? _toastTimer;
@@ -82,6 +89,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
     super.initState();
     _streamsSub = _liveService.liveStreams().listen(_onStreamsUpdated);
     widget.chromeController?.seekFraction.addListener(_onChromeSeek);
+    widget.chromeController?.isLiveScrubbing.addListener(_onScrubbingChanged);
     if (widget.isActive) {
       unawaited(_ensureAgoraAndJoin());
     }
@@ -95,7 +103,11 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.chromeController != widget.chromeController) {
       oldWidget.chromeController?.seekFraction.removeListener(_onChromeSeek);
+      oldWidget.chromeController?.isLiveScrubbing.removeListener(
+        _onScrubbingChanged,
+      );
       widget.chromeController?.seekFraction.addListener(_onChromeSeek);
+      widget.chromeController?.isLiveScrubbing.addListener(_onScrubbingChanged);
     }
     if (oldWidget.isActive != widget.isActive) {
       if (widget.isActive) {
@@ -112,7 +124,9 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   @override
   void dispose() {
     widget.chromeController?.seekFraction.removeListener(_onChromeSeek);
+    widget.chromeController?.isLiveScrubbing.removeListener(_onScrubbingChanged);
     _syncChromeProgressVisibility(hide: true);
+    _snapshotTimer?.cancel();
     _streamsSub?.cancel();
     _streamDocSub?.cancel();
     _chatSub?.cancel();
@@ -160,6 +174,10 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
     if (hide || !_showLiveProgressBar(hostCaptionVisible: hostCaptionVisible)) {
       chrome.progress.value = null;
       chrome.seekFraction.value = null;
+      chrome.isLiveScrubbing.value = false;
+      chrome.liveSeekPreviewBytes.value = null;
+      chrome.liveSeekPreviewTimeLabel.value = null;
+      chrome.liveSeekPreviewFallbackUrl.value = null;
       return;
     }
     chrome.progress.value = progress;
@@ -171,6 +189,140 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
     final clamped = fraction.clamp(0.0, 1.0);
     if (clamped == _streamProgress) return;
     setState(() => _streamProgress = clamped);
+    _updateSeekPreview(clamped);
+    unawaited(_syncLivePlaybackMode(clamped));
+  }
+
+  void _onScrubbingChanged() {
+    if (_chrome?.isLiveScrubbing.value == true) {
+      _updateSeekPreview(_streamProgress);
+      return;
+    }
+    if (_streamProgress >= 0.99) {
+      unawaited(_syncLivePlaybackMode(1.0));
+    }
+  }
+
+  Duration _streamElapsed(LiveStreamModel stream) {
+    final started = stream.createdAt.toDate();
+    final elapsed = DateTime.now().difference(started);
+    if (elapsed.isNegative) return Duration.zero;
+    return elapsed;
+  }
+
+  String _formatStreamTime(Duration duration) {
+    final totalSeconds = duration.inSeconds;
+    final hours = totalSeconds ~/ 3600;
+    final minutes = (totalSeconds % 3600) ~/ 60;
+    final seconds = totalSeconds % 60;
+    if (hours > 0) {
+      return '$hours:${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+    }
+    return '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
+  }
+
+  void _clearFrameCache() {
+    _frameCache.clear();
+    _chrome?.liveSeekPreviewBytes.value = null;
+  }
+
+  Uint8List? _frameForFraction(LiveStreamModel stream, double fraction) {
+    if (_frameCache.isEmpty) return null;
+    final elapsedMs = _streamElapsed(stream).inMilliseconds;
+    if (elapsedMs <= 0) return null;
+    final targetSec = (elapsedMs * fraction / 1000).round();
+    int? bestKey;
+    var bestDelta = 1 << 30;
+    for (final key in _frameCache.keys) {
+      final delta = (key - targetSec).abs();
+      if (delta < bestDelta) {
+        bestDelta = delta;
+        bestKey = key;
+      }
+    }
+    return bestKey != null ? _frameCache[bestKey] : null;
+  }
+
+  void _updateSeekPreview(double fraction) {
+    final chrome = _chrome;
+    final stream = _currentStream;
+    if (chrome == null || stream == null) return;
+
+    final elapsed = _streamElapsed(stream);
+    final previewDuration = Duration(
+      milliseconds: (elapsed.inMilliseconds * fraction).round(),
+    );
+    chrome.liveSeekPreviewTimeLabel.value = _formatStreamTime(previewDuration);
+    chrome.liveSeekPreviewFallbackUrl.value = stream.hostProfileImage;
+    chrome.liveSeekPreviewBytes.value = _frameForFraction(stream, fraction);
+  }
+
+  Future<void> _syncLivePlaybackMode(double fraction) async {
+    final engine = _engine;
+    if (engine == null) return;
+    final atLiveEdge = fraction >= 0.99;
+    try {
+      await engine.muteAllRemoteAudioStreams(!atLiveEdge);
+    } catch (_) {}
+  }
+
+  void _startSnapshotTimer() {
+    _snapshotTimer?.cancel();
+    _snapshotTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!widget.isActive || _streamProgress < 0.99) return;
+      unawaited(_captureStreamFrame());
+    });
+  }
+
+  Future<void> _captureStreamFrame() async {
+    if (_snapshotInFlight) return;
+    final engine = _engine;
+    final stream = _currentStream;
+    if (engine == null ||
+        stream == null ||
+        _remoteUid == 0 ||
+        !_hostVideoAvailable) {
+      return;
+    }
+
+    final elapsedSec = _streamElapsed(stream).inSeconds;
+    if (_frameCache.containsKey(elapsedSec)) return;
+
+    try {
+      final dir = await getTemporaryDirectory();
+      final filePath =
+          '${dir.path}/live_snap_${stream.id}_$elapsedSec.jpg';
+      _snapshotInFlight = true;
+      _pendingSnapshotElapsedSec = elapsedSec;
+      await engine.takeSnapshot(uid: _remoteUid, filePath: filePath);
+    } catch (_) {
+      _snapshotInFlight = false;
+      _pendingSnapshotElapsedSec = null;
+    }
+  }
+
+  Future<void> _onSnapshotTaken(String filePath, int errCode) async {
+    _snapshotInFlight = false;
+    final elapsedSec = _pendingSnapshotElapsedSec;
+    _pendingSnapshotElapsedSec = null;
+    if (!mounted || errCode != 0 || elapsedSec == null) return;
+
+    try {
+      final file = File(filePath);
+      if (!await file.exists()) return;
+      final bytes = await file.readAsBytes();
+      if (bytes.isNotEmpty) {
+        _frameCache[elapsedSec] = bytes;
+        if (_chrome?.isLiveScrubbing.value == true ||
+            _streamProgress < 0.99) {
+          _updateSeekPreview(_streamProgress);
+          if (_streamProgress < 0.99) {
+            setState(() {});
+          }
+        }
+      }
+      await file.delete();
+    } catch (_) {}
   }
 
   void _onHostCaptionVisibilityChanged(bool visible) {
@@ -328,6 +480,9 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
           if (!mounted) return;
           _showToast('Connection error');
         },
+        onSnapshotTaken: (connection, uid, filePath, width, height, errCode) {
+          unawaited(_onSnapshotTaken(filePath, errCode));
+        },
       ),
     );
 
@@ -343,6 +498,9 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   }
 
   Future<void> _teardownAgora() async {
+    _snapshotTimer?.cancel();
+    _snapshotTimer = null;
+    _clearFrameCache();
     await _leaveCurrentStream();
     final engine = _engine;
     _engine = null;
@@ -453,6 +611,9 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
         _liveDoc = stream;
         _chatMessages = [];
       });
+      _clearFrameCache();
+      _startSnapshotTimer();
+      unawaited(_captureStreamFrame());
 
       _streamDocSub = _liveService.streamDoc(stream.id).listen((doc) {
         if (!mounted || doc == null) return;
@@ -490,8 +651,11 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       _pageIndex = index;
       _streamProgress = 1.0;
     });
+    _clearFrameCache();
+    _chrome?.isLiveScrubbing.value = false;
     _chatCtrl.clear();
     _applyChromeProgressState();
+    unawaited(_syncLivePlaybackMode(1.0));
     unawaited(_joinStreamAtIndex(index));
   }
 
@@ -825,12 +989,28 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
         _remoteUid == 0) {
       return _buildVideoPlaceholder(doc);
     }
-    return AgoraVideoView(
-      controller: VideoViewController.remote(
-        rtcEngine: engine,
-        canvas: VideoCanvas(uid: _remoteUid),
-        connection: RtcConnection(channelId: doc.agoraChannelName),
-      ),
+
+    final replayFrame = _streamProgress < 0.99
+        ? _frameForFraction(doc, _streamProgress)
+        : null;
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        AgoraVideoView(
+          controller: VideoViewController.remote(
+            rtcEngine: engine,
+            canvas: VideoCanvas(uid: _remoteUid),
+            connection: RtcConnection(channelId: doc.agoraChannelName),
+          ),
+        ),
+        if (replayFrame != null)
+          Image.memory(
+            replayFrame,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
+          ),
+      ],
     );
   }
 

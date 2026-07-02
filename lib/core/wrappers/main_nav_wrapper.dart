@@ -293,6 +293,23 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
                                     _broadcastFeedChrome.seekFraction.value =
                                         fraction;
                                   },
+                                  onFeedLiveSeekStart: () {
+                                    _broadcastFeedChrome.isLiveScrubbing.value =
+                                        true;
+                                  },
+                                  onFeedLiveSeekEnd: () {
+                                    _broadcastFeedChrome.isLiveScrubbing.value =
+                                        false;
+                                  },
+                                  feedLiveScrubbing:
+                                      _broadcastFeedChrome.isLiveScrubbing,
+                                  feedLiveSeekPreviewBytes:
+                                      _broadcastFeedChrome.liveSeekPreviewBytes,
+                                  feedLiveSeekPreviewTimeLabel: _broadcastFeedChrome
+                                      .liveSeekPreviewTimeLabel,
+                                  feedLiveSeekPreviewFallbackUrl:
+                                      _broadcastFeedChrome
+                                          .liveSeekPreviewFallbackUrl,
                                   squareChromeBottomCorners:
                                       _currentIndex == 1,
                                 );

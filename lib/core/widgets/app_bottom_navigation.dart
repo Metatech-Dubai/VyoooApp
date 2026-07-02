@@ -9,6 +9,7 @@ import '../theme/app_radius.dart';
 import '../theme/app_sizes.dart';
 import '../theme/app_spacing.dart';
 import 'feed_reel_progress_bar.dart';
+import 'live_feed_scrub_preview.dart';
 import 'live_feed_stream_progress_bar.dart';
 import '../../screens/profile/profile_figma_tokens.dart';
 
@@ -43,6 +44,12 @@ class AppBottomNavigation extends StatelessWidget {
     this.feedLiveProgress,
     this.onFeedReelSeekUpdate,
     this.onFeedLiveSeekUpdate,
+    this.onFeedLiveSeekStart,
+    this.onFeedLiveSeekEnd,
+    this.feedLiveScrubbing,
+    this.feedLiveSeekPreviewBytes,
+    this.feedLiveSeekPreviewTimeLabel,
+    this.feedLiveSeekPreviewFallbackUrl,
     this.squareChromeBottomCorners = false,
   });
 
@@ -66,6 +73,18 @@ class AppBottomNavigation extends StatelessWidget {
 
   /// Scrub updates from the broadcast live chrome progress bar.
   final ValueChanged<double>? onFeedLiveSeekUpdate;
+
+  /// Called when the user starts scrubbing the live progress bar.
+  final VoidCallback? onFeedLiveSeekStart;
+
+  /// Called when the user stops scrubbing the live progress bar.
+  final VoidCallback? onFeedLiveSeekEnd;
+
+  /// Live scrub state for preview thumbnail overlay.
+  final ValueListenable<bool>? feedLiveScrubbing;
+  final ValueListenable<Uint8List?>? feedLiveSeekPreviewBytes;
+  final ValueListenable<String?>? feedLiveSeekPreviewTimeLabel;
+  final ValueListenable<String?>? feedLiveSeekPreviewFallbackUrl;
 
   /// When true, bottom chrome uses square corners (broadcast tab).
   final bool squareChromeBottomCorners;
@@ -329,9 +348,13 @@ class AppBottomNavigation extends StatelessWidget {
   Widget _buildChromeProgressBar({
     required double progress,
     required bool isLive,
+    bool showLiveScrubThumb = false,
   }) {
     if (isLive) {
-      return LiveFeedStreamProgressBar(progress: progress);
+      return LiveFeedStreamProgressBar(
+        progress: progress,
+        showScrubThumb: showLiveScrubThumb,
+      );
     }
     return FeedReelProgressBar(progress: progress);
   }
@@ -339,10 +362,31 @@ class AppBottomNavigation extends StatelessWidget {
   Widget _buildProgressScrubBand({
     required Widget progressBar,
     ValueChanged<double>? onSeekUpdate,
+    VoidCallback? onSeekStart,
+    VoidCallback? onSeekEnd,
+    bool isLive = false,
+    double progress = 0,
+    bool showLivePreview = false,
+    Uint8List? previewBytes,
+    String? previewTimeLabel,
+    String? previewFallbackUrl,
   }) {
     return LayoutBuilder(
       builder: (context, constraints) {
         final width = constraints.maxWidth;
+        final clamped = progress.clamp(0.0, 1.0);
+        final previewWidth = AppSizes.liveFeedScaleW(
+          context,
+          AppSizes.liveFeedSeekPreviewWidth,
+        );
+        final previewGap = AppSizes.liveFeedScaleH(
+          context,
+          AppSizes.liveFeedSeekPreviewToBarGap,
+        );
+        final thumbCenterX = width > 0
+            ? (width * clamped).clamp(previewWidth / 2, width - previewWidth / 2)
+            : previewWidth / 2;
+        final previewLeft = thumbCenterX - previewWidth / 2;
 
         void handleSeek(double localX) {
           if (width <= 0) return;
@@ -351,17 +395,43 @@ class AppBottomNavigation extends StatelessWidget {
 
         return GestureDetector(
           behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (_) => onSeekStart?.call(),
           onHorizontalDragUpdate: (details) {
             handleSeek(details.localPosition.dx);
           },
-          onTapDown: (details) => handleSeek(details.localPosition.dx),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          onHorizontalDragEnd: (_) => onSeekEnd?.call(),
+          onHorizontalDragCancel: () => onSeekEnd?.call(),
+          onTapDown: (details) {
+            onSeekStart?.call();
+            handleSeek(details.localPosition.dx);
+            onSeekEnd?.call();
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
             children: [
-              const SizedBox(height: AppSpacing.feedReelProgressTopGap),
-              progressBar,
-              const SizedBox(height: AppSizes.liveFeedProgressToBottomNavGap),
+              if (isLive && showLivePreview && previewTimeLabel != null)
+                Positioned(
+                  left: previewLeft,
+                  bottom: AppSpacing.feedReelProgressTopGap +
+                      AppSizes.liveFeedStreamProgressHeight +
+                      AppSizes.liveFeedProgressToBottomNavGap +
+                      previewGap,
+                  child: LiveFeedScrubPreview(
+                    timeLabel: previewTimeLabel,
+                    imageBytes: previewBytes,
+                    fallbackImageUrl: previewFallbackUrl,
+                  ),
+                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: AppSpacing.feedReelProgressTopGap),
+                  progressBar,
+                  const SizedBox(height: AppSizes.liveFeedProgressToBottomNavGap),
+                ],
+              ),
             ],
           ),
         );
@@ -380,7 +450,7 @@ class AppBottomNavigation extends StatelessWidget {
 
     return ClipRRect(
       borderRadius: chromeBottomRadius,
-      clipBehavior: Clip.antiAlias,
+      clipBehavior: Clip.none,
       child: DecoratedBox(
         decoration: BoxDecoration(
           gradient: AppGradients.feedBottomNavChrome,
@@ -423,14 +493,33 @@ class AppBottomNavigation extends StatelessWidget {
                       },
                     )
                   else if (liveProgressListenable != null)
-                    ValueListenableBuilder<double?>(
-                      valueListenable: liveProgressListenable,
-                      builder: (context, progress, _) {
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        liveProgressListenable,
+                        ?feedLiveScrubbing,
+                        ?feedLiveSeekPreviewBytes,
+                        ?feedLiveSeekPreviewTimeLabel,
+                        ?feedLiveSeekPreviewFallbackUrl,
+                      ]),
+                      builder: (context, _) {
+                        final progress = liveProgressListenable.value ?? 1;
+                        final isScrubbing = feedLiveScrubbing?.value ?? false;
                         return _buildProgressScrubBand(
+                          isLive: true,
+                          progress: progress,
+                          showLivePreview: isScrubbing,
+                          previewBytes: feedLiveSeekPreviewBytes?.value,
+                          previewTimeLabel:
+                              feedLiveSeekPreviewTimeLabel?.value,
+                          previewFallbackUrl:
+                              feedLiveSeekPreviewFallbackUrl?.value,
+                          onSeekStart: onFeedLiveSeekStart,
+                          onSeekEnd: onFeedLiveSeekEnd,
                           onSeekUpdate: onFeedLiveSeekUpdate,
                           progressBar: _buildChromeProgressBar(
-                            progress: progress ?? 1,
+                            progress: progress,
                             isLive: true,
+                            showLiveScrubThumb: isScrubbing,
                           ),
                         );
                       },

@@ -274,6 +274,15 @@ abstract final class AppTypography {
     color: Colors.white,
   );
 
+  /// Live scrub preview timestamp overlay (Figma white label on thumbnail).
+  static const TextStyle liveFeedSeekPreviewTime = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  );
+
   /// Live feed host caption — Figma Poppins SemiBold 16/17 @ #F0F0F0 (DM Sans 600).
   static const TextStyle liveFeedHostCaption = TextStyle(
     fontFamily: AppFonts.body,
