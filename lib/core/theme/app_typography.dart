@@ -599,11 +599,11 @@ abstract final class AppTypography {
     color: Colors.white,
   );
 
-  /// Profile tab — unselected label (Figma #5D5F5F).
+  /// Profile tab — unselected chip label (Figma Inter Bold 12 / #5D5F5F).
   static const TextStyle profileTabUnselectedLabel = TextStyle(
-    fontFamily: AppFonts.body,
+    fontFamily: AppFonts.headline,
     fontSize: 12,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w700,
     height: 1.0,
     color: AppColors.profileTabUnselectedLabel,
   );
