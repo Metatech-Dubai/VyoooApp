@@ -7,7 +7,9 @@
     "logs": "firebase functions:log",
     "cleanup:reels-media": "node scripts/normalize-reels-media-type.js",
     "seed:test-notifications": "node scripts/seed-test-notifications.js",
-    "seed:reserved-usernames": "node scripts/seed-reserved-usernames.js"
+    "seed:reserved-usernames": "node scripts/seed-reserved-usernames.js",
+    "seed:version-policy": "node scripts/seed-version-policy.js",
+    "sync:version-policy": "node scripts/sync-version-policy-from-pubspec.js"
   },
   "engines": {
     "node": "20"

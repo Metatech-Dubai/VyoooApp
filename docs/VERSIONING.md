@@ -21,14 +21,16 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 
 | Field | Value |
 |-------|--------|
-| Marketing version | **1.2.3** |
-| Build number | **48** |
-| `pubspec.yaml` | `1.2.3+48` |
+| Marketing version | **1.2.4** |
+| Build number | **50** |
+| `pubspec.yaml` | `1.2.4+50` |
 
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |
 |-----------|-------|------|----------|--------|
+| 1.2.4 | 50 | 2026-07-02 | App Store, Play Store | iOS 1.2.3 train closed; marketing bump + build |
+| 1.2.3 | 49 | 2026-07-02 | App Store, Play Store | Live stream scrub preview with frame-based replay |
 | 1.2.3 | 48 | 2026-06-24 | Play Store | Profile share icon sharpness fix (vector icon) |
 | 1.2.3 | 47 | 2026-06-23 | Play Store, TestFlight | Profile grid gap, square tiles, repost badge bottom-left, bottom nav restore |
 | 1.2.2 | 44 | 2026-06-16 | TestFlight, Play Store | iOS 1.2.1 train closed; marketing bump + build |
@@ -65,6 +67,22 @@ Firestore document: **`app_config` / `version_policy`** (see `firestore/app_conf
 | Soft nudge | `latestVersion` → new marketing version (e.g. `1.2.0`), keep `minVersion` lower |
 | Force update | `minVersion` → new marketing version (and/or `minBuildNumber` → new build) |
 | Turn off | `enabled: false` |
+
+### Automate from pubspec
+
+`./scripts/bump_build.sh` updates `firestore/app_config_version_policy.json` (`latestVersion` + `minBuildNumber`) to match the new `pubspec.yaml` build.
+
+After the store build is **live**, push a force-update gate:
+
+```bash
+./scripts/sync_version_policy.sh --force-update --push
+```
+
+Sync local file only (no Firestore):
+
+```bash
+./scripts/sync_version_policy.sh
+```
 
 **iOS update link (production):** `https://apps.apple.com/app/id6757733269` — set `iosAppStoreId: "6757733269"` in the Firestore doc; TestFlight link only for beta-only policies.  
 **Android update link:** `https://play.google.com/store/apps/details?id=com.vyooo`

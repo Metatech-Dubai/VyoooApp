@@ -32,9 +32,17 @@ else
 fi
 
 echo "Updated pubspec.yaml: ${marketing}+${build} → ${marketing}+${next}"
+
+SYNC_SCRIPT="$ROOT/scripts/sync_version_policy.sh"
+if [[ -x "$SYNC_SCRIPT" ]]; then
+  "$SYNC_SCRIPT"
+else
+  bash "$SYNC_SCRIPT"
+fi
+
 echo ""
 echo "Next steps:"
 echo "  1. fvm flutter pub get"
 echo "  2. Add a row to docs/VERSIONING.md (Release history)"
 echo "  3. Upload to Play / App Store Connect"
-echo "  4. After live: update Firestore app_config/version_policy (see firestore/app_config_version_policy.example.json)"
+echo "  4. After live: ./scripts/sync_version_policy.sh --force-update --push"
