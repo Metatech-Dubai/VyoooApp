@@ -35,6 +35,7 @@ class ReelsService {
     final followingIds = await _followingIdsForCurrentUser();
     return reels
         .where((r) => _isDiscoverableToCurrentUser(r, followingIds: followingIds))
+        .where(ReelEngagement.isMainFeedEligible)
         .toList(growable: false);
   }
 
@@ -52,7 +53,7 @@ class ReelsService {
           .where((r) =>
               _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
-              ReelEngagement.isDiscoveryFeedEligible(r))
+              ReelEngagement.isMainFeedEligible(r))
           .take(limit)
           .toList();
       return _withPublicProfileFallback(list, limit: limit, pexels: _pexels.getForYou);
@@ -89,7 +90,9 @@ class ReelsService {
             .get();
         for (final d in q.docs) {
           final r = _docToReelMap(d);
-          if (_isVisibleToCurrentUser(r) && _isPlayableReel(r)) {
+          if (_isVisibleToCurrentUser(r) &&
+              _isPlayableReel(r) &&
+              ReelEngagement.isMainFeedEligible(r)) {
             list.add(r);
           }
         }
@@ -123,7 +126,7 @@ class ReelsService {
           .where((r) =>
               _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
-              ReelEngagement.isDiscoveryFeedEligible(r))
+              ReelEngagement.isMainFeedEligible(r))
           .take(limit)
           .toList();
       return _withPublicProfileFallback(list, limit: limit, pexels: _pexels.getTrending);
@@ -601,7 +604,7 @@ class ReelsService {
       final reel = _docToReelMap(d);
       if (!_passesModerationVisibility(reel) ||
           !_isPlayableReel(reel) ||
-          !ReelEngagement.isDiscoveryFeedEligible(reel)) {
+          !ReelEngagement.isMainFeedEligible(reel)) {
         continue;
       }
       out.add(reel);
@@ -640,7 +643,7 @@ class ReelsService {
         final reel = _docToReelMap(d);
         if (!_passesModerationVisibility(reel) ||
             !_isPlayableReel(reel) ||
-            !ReelEngagement.isDiscoveryFeedEligible(reel)) {
+            !ReelEngagement.isMainFeedEligible(reel)) {
           continue;
         }
         list.add(reel);

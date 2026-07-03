@@ -265,7 +265,7 @@ class VrScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppFeedHeader(selectedIndex: 1),
-            const Expanded(child: VrComingSoonView()),
+            const Expanded(child: VrGridView()),
           ],
         ),
       ),

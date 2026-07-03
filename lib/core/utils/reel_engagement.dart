@@ -25,4 +25,12 @@ abstract final class ReelEngagement {
   /// Discovery tabs (For You / Trending / VR) — exclude profile repost stubs.
   static bool isDiscoveryFeedEligible(Map<String, dynamic> reel) =>
       !isRepostStub(reel);
+
+  /// Immersive uploads belong on the VR tab, not the main scroll feed.
+  static bool isVrOr360Reel(Map<String, dynamic> reel) =>
+      reel['isVR'] == true || reel['is360Video'] == true;
+
+  /// Home feed tabs (For You / Following / Trending) — no VR-tab-only reels.
+  static bool isMainFeedEligible(Map<String, dynamic> reel) =>
+      isDiscoveryFeedEligible(reel) && !isVrOr360Reel(reel);
 }

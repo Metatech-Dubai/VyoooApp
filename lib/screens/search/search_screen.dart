@@ -17,8 +17,7 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/hashtag_utils.dart';
 import '../../core/utils/user_facing_errors.dart';
-import '../../features/vr/vr_screen.dart';
-import '../../features/vr/vr_player_screen.dart';
+import '../../features/vr/vr_reels_feed_view.dart';
 import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
 import '../profile/user_profile_screen.dart';
@@ -113,7 +112,7 @@ class SearchScreenState extends State<SearchScreen>
   final Set<String> _followInFlightIds = <String>{};
   final SearchHistoryStorage _searchHistory = SearchHistoryStorage();
   List<String> _recentSearches = <String>[];
-  List<_VRSearchItem> _vrSearchItems = <_VRSearchItem>[];
+  List<Map<String, dynamic>> _vrReels = const [];
   bool _vrLoading = false;
   final Map<String, Future<List<Map<String, dynamic>>>>
   _hashtagPostSearchFutures = {};
@@ -235,56 +234,25 @@ class SearchScreenState extends State<SearchScreen>
 
   Future<void> _loadVrItems() async {
     if (mounted) {
-      setState(() {
-        _vrLoading = true;
-      });
+      setState(() => _vrLoading = true);
     }
     try {
       final reels = await _reelsService.getReelsVR(limit: 120);
-      final mapped = reels
-          .map((r) {
-            final username = (r['username']?.toString() ?? '').trim();
-            final handleCore = username.isNotEmpty
-                ? username.replaceAll(' ', '_')
-                : (r['handle']?.toString() ?? '').replaceFirst('@', '').trim();
-            final creatorHandle = handleCore.isEmpty
-                ? '@creator'
-                : '@$handleCore';
-            final thumb = (r['thumbnailUrl']?.toString() ?? '').trim();
-            final avatar = (r['avatarUrl']?.toString() ?? '').trim();
+      final playable = reels
+          .where((r) {
             final video = (r['videoUrl']?.toString() ?? '').trim();
-            final views = (r['views'] as num?)?.toInt() ?? 0;
-            final rawTags = r['tags'];
-            final tagList = rawTags is List
-                ? rawTags
-                      .map((e) => HashtagUtils.normalizeForQuery(e.toString()))
-                      .where((t) => t.isNotEmpty)
-                      .toList()
-                : <String>[];
-            final caption = (r['caption']?.toString() ?? '').trim();
-            return _VRSearchItem(
-              thumbnailUrl: thumb.isNotEmpty ? thumb : avatar,
-              creatorName: username.isNotEmpty ? username : 'Creator',
-              creatorHandle: creatorHandle,
-              avatarUrl: avatar.isNotEmpty ? avatar : thumb,
-              viewerCount: views,
-              isVerified: (r['isVerified'] as bool?) ?? false,
-              videoUrl: video.isNotEmpty ? video : null,
-              caption: caption,
-              normalizedTags: tagList,
-            );
+            return video.isNotEmpty;
           })
-          .where((item) => item.thumbnailUrl.isNotEmpty)
           .toList(growable: false);
       if (!mounted) return;
       setState(() {
-        _vrSearchItems = mapped;
+        _vrReels = playable;
         _vrLoading = false;
       });
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _vrSearchItems = <_VRSearchItem>[];
+        _vrReels = const [];
         _vrLoading = false;
       });
     }
@@ -813,28 +781,39 @@ class SearchScreenState extends State<SearchScreen>
     return _buildSearchIdleView(chrome);
   }
 
-  List<_VRSearchItem> get _filteredVrSearchItems {
+  List<Map<String, dynamic>> get _filteredVrReels {
     final q = _normalizedQuery;
-    if (q.isEmpty) return _vrSearchItems;
-    final hashtagOnly = _isHashtagQuery;
-    return _vrSearchItems
-        .where((item) {
-          if (hashtagOnly) {
-            return HashtagUtils.matchesCaptionOrTags(
-              caption: item.caption,
-              tags: item.normalizedTags,
-              normalizedTag: q,
-            );
-          }
-          final name = item.creatorName.toLowerCase();
-          final handle = item.creatorHandle.toLowerCase();
-          final cap = item.caption.toLowerCase();
+    if (q.isEmpty) return _vrReels;
+    if (_isHashtagQuery) {
+      return _vrReels
+          .where((r) => HashtagUtils.reelMapMatchesHashtag(r, q))
+          .toList(growable: false);
+    }
+    return _vrReels
+        .where((r) {
+          final name = (r['username'] as String? ?? '').toLowerCase();
+          final handle = (r['handle'] as String? ?? '').toLowerCase();
+          final cap = (r['caption'] as String? ?? '').toLowerCase();
           return name.contains(q) ||
               handle.contains(q) ||
-              cap.contains(q) ||
-              item.normalizedTags.any((t) => t.contains(q));
+              cap.contains(q);
         })
         .toList(growable: false);
+  }
+
+  Widget _buildVrReelsFeed({required bool showSearchEmptyCopy}) {
+    final q = _normalizedQuery;
+    return VrReelsFeedView(
+      reels: _filteredVrReels,
+      isLoading: _vrLoading,
+      emptyTitle: showSearchEmptyCopy && q.isNotEmpty
+          ? 'No VR results found'
+          : 'No VR videos yet',
+      emptySubtitle: showSearchEmptyCopy && q.isNotEmpty
+          ? 'Try a different keyword or hashtag.'
+          : 'Immersive 360° content will appear here when creators publish it.',
+      onRefresh: _loadVrItems,
+    );
   }
 
   @override
@@ -1141,7 +1120,7 @@ class SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildIdleVRContent() {
-    return const VrComingSoonView(compact: true);
+    return _buildVrReelsFeed(showSearchEmptyCopy: false);
   }
 
   Widget _buildIdleUsersContent(_SearchChrome chrome) {
@@ -1327,7 +1306,7 @@ class SearchScreenState extends State<SearchScreen>
   }
 
   Widget _buildVRSearchResultsGrid() {
-    return const VrComingSoonView(compact: true);
+    return _buildVrReelsFeed(showSearchEmptyCopy: true);
   }
 
   void _openUserProfile(_UserSearchItem user) {
@@ -2152,163 +2131,6 @@ class _SearchResultGridCard extends StatelessWidget {
   }
 }
 
-class _VRSearchResultGridCard extends StatelessWidget {
-  const _VRSearchResultGridCard({required this.item});
-
-  final _VRSearchItem item;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            builder: (_) => VrPlayerScreen(
-              title: item.creatorName,
-              videoUrl: item.videoUrl,
-            ),
-          ),
-        );
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(AppRadius.input),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            Image.network(
-              item.thumbnailUrl,
-              fit: BoxFit.cover,
-              errorBuilder: (_, _, _) =>
-                  Container(color: const Color(0xFF1A0020)),
-            ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.25),
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.85),
-                  ],
-                  stops: const [0.0, 0.35, 1.0],
-                ),
-              ),
-            ),
-            Positioned(
-              top: AppSpacing.sm,
-              left: AppSpacing.sm,
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.95),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Text(
-                      'VR',
-                      style: TextStyle(
-                        color: Colors.black87,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Image.asset(
-                    'assets/vyooO_icons/Search/view_count.png',
-                    width: 12,
-                    height: 12,
-                    color: Colors.white.withValues(alpha: 0.92),
-                  ),
-                  const SizedBox(width: 2),
-                  Text(
-                    '${item.viewerCount}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.92),
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  const Text('👑', style: TextStyle(fontSize: 12)),
-                ],
-              ),
-            ),
-            Positioned(
-              left: AppSpacing.sm,
-              right: AppSpacing.sm,
-              bottom: AppSpacing.sm,
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: Colors.grey.shade700,
-                    backgroundImage:
-                        Uri.tryParse(item.avatarUrl)?.isAbsolute == true
-                        ? NetworkImage(item.avatarUrl)
-                        : null,
-                    onBackgroundImageError: (_, _) {},
-                  ),
-                  const SizedBox(width: AppSpacing.sm),
-                  Expanded(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                item.creatorName,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                                maxLines: 1,
-                              ),
-                            ),
-                            if (item.isVerified)
-                              Padding(
-                                padding: EdgeInsets.only(left: 4),
-                                child: Image.asset(
-                                  'assets/vyooO_icons/Search/verified_account.png',
-                                  width: 12,
-                                  height: 12,
-                                  color: const Color(0xFFFF2D55),
-                                ),
-                              ),
-                          ],
-                        ),
-                        Text(
-                          item.creatorHandle,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
-                            fontSize: 11,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                          maxLines: 1,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _UserSearchResultTile extends StatelessWidget {
   const _UserSearchResultTile({
     required this.user,
@@ -2602,29 +2424,6 @@ class _UserSearchItem {
           outgoingFollowRequestPending ?? this.outgoingFollowRequestPending,
     );
   }
-}
-
-class _VRSearchItem {
-  const _VRSearchItem({
-    required this.thumbnailUrl,
-    required this.creatorName,
-    required this.creatorHandle,
-    required this.avatarUrl,
-    this.viewerCount = 102,
-    required this.isVerified,
-    this.videoUrl,
-    this.caption = '',
-    this.normalizedTags = const [],
-  });
-  final String thumbnailUrl;
-  final String creatorName;
-  final String creatorHandle;
-  final String avatarUrl;
-  final int viewerCount;
-  final bool isVerified;
-  final String? videoUrl;
-  final String caption;
-  final List<String> normalizedTags;
 }
 
 class _CategoryItem {

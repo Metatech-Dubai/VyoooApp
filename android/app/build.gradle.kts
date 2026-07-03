@@ -71,6 +71,13 @@ android {
     }
 }
 
+// audio_waveforms pulls the legacy ExoPlayer 2 BOM (incl. exoplayer-ui). video_360
+// uses Media3 PlayerView — both UI modules merge conflicting layouts and crash with:
+// AspectRatioFrameLayout cannot be cast to androidx.media3.ui.AspectRatioFrameLayout
+configurations.configureEach {
+    exclude(group = "com.google.android.exoplayer", module = "exoplayer-ui")
+}
+
 flutter {
     source = "../.."
 }

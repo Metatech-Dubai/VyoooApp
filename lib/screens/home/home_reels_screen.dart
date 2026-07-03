@@ -28,6 +28,7 @@ import '../../core/services/feed_reels_cache_service.dart';
 import '../../core/services/feed_warmup_service.dart';
 import '../../core/services/reel_preload_service.dart';
 import '../../core/services/reels_service.dart';
+import '../../core/services/vr_video_cache_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/services/notification_service.dart';
@@ -68,7 +69,6 @@ import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../../features/reel/widgets/video_quality_sheet.dart';
 import '../../features/reel/widgets/why_seeing_this_sheet.dart';
 import '../../features/share/widgets/share_bottom_sheet.dart';
-import '../../features/vr/vr_screen.dart';
 import '../profile/user_profile_screen.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
@@ -257,7 +257,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
   bool _showHomeReelProgressBar() {
     if (!widget.isActive) return false;
-    if (currentTab == HomeTab.vr) return false;
     final reel = _currentFeedReel();
     if (reel == null) return false;
     if (ReelMediaItem.listFromPost(reel).length > 1) return false;
@@ -606,6 +605,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         }
         if (hydratedVr.isNotEmpty) {
           _reelsVR = _withLatestAuthorMeta(hydratedVr, authorMetaByUid);
+          unawaited(VrVideoCacheService.instance.syncForFeed(_reelsVR));
         }
         _storyGroups = filteredStories;
         _myStories = myStories;
@@ -880,16 +880,22 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   void _preloadUpcomingReel() {
     final reels = _currentReels;
     if (reels.isEmpty) return;
-    // Wraps so that the first reel is warmed up while the last one plays
-    // (auto-scroll loops back to the start of the feed).
     final nextPage = (_currentIndex + 1) % reels.length;
     if (nextPage == _currentIndex) return;
-    // PageView's itemBuilder maps page index -> reels[index] directly.
     final reel = reels[nextPage];
     final mediaType = ((reel['mediaType'] as String?) ?? 'video').toLowerCase();
     if (mediaType != 'video') return;
     final videoUrl = ((reel['videoUrl'] as String?) ?? '').trim();
     if (videoUrl.isEmpty) return;
+    if (currentTab == HomeTab.vr) {
+      VrVideoCacheService.instance.prefetch(videoUrl);
+      final current = reels[_currentIndex];
+      final currentUrl = ((current['videoUrl'] as String?) ?? '').trim();
+      if (currentUrl.isNotEmpty) {
+        VrVideoCacheService.instance.prefetch(currentUrl);
+      }
+      return;
+    }
     ReelPreloadService.instance.preload(videoUrl);
   }
 
@@ -1369,16 +1375,25 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       // Ensure "Following" tab reflects latest follows immediately.
       _loadReels();
     }
+    if (tab == HomeTab.vr && _reelsVR.isNotEmpty) {
+      unawaited(VrVideoCacheService.instance.syncForFeed(_reelsVR));
+    }
     // Following status row starts collapsed; tap the chevron to open.
     _followingStoriesCollapse.value = 1.0;
-    if (tab != HomeTab.vr) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || currentTab != tab) return;
-        _jumpPageControllerToStart();
-        _ensurePageControllerMatchesFeed();
-        _scheduleAutoScroll();
-      });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || currentTab != tab) return;
+      _jumpPageControllerToStart();
+      _ensurePageControllerMatchesFeed();
+      _scheduleAutoScroll();
+      _preloadUpcomingReel();
+    });
+  }
+
+  Video360Metadata _video360ForReel(Map<String, dynamic> reel) {
+    if (currentTab == HomeTab.vr) {
+      return Video360Metadata.forVrPlayback(reel);
     }
+    return Video360Metadata.fromPost(reel);
   }
 
   // void _onVideoTap() {
@@ -1388,7 +1403,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final isVrTab = currentTab == HomeTab.vr;
     final isFollowing = currentTab == HomeTab.following;
 
     final headerEstimate = AppFeedHeader.layoutHeight();
@@ -1408,33 +1422,25 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Container(
-        decoration: _homeFeedBackgroundDecoration(isVrTab: isVrTab),
-        child: Stack(
-          children: [
-            if (isVrTab)
-              Positioned.fill(
-                top: topPadding + headerEstimate + 8,
-                child: _buildVrContent(),
-              )
-            else
-              Stack(
-                children: [
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    height: feedBottomInset,
-                    child: const ColoredBox(color: AppColors.feedBottomChrome),
-                  ),
-                  Positioned.fill(
-                    top: 0,
-                    bottom: feedBottomInset,
-                    child: _buildFeedClipArea(),
-                  ),
-                ],
+      body: Stack(
+        children: [
+          Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: feedBottomInset,
+                child: const ColoredBox(color: AppColors.feedBottomChrome),
               ),
-            _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
+              Positioned.fill(
+                top: 0,
+                bottom: feedBottomInset,
+                child: _buildFeedClipArea(),
+              ),
+            ],
+          ),
+          _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
             if (isFollowing)
               if (collapseT < 0.999)
                 _buildStoryRow(
@@ -1450,7 +1456,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   child: const SizedBox.expand(),
                 ),
               ),
-            if (currentTab == HomeTab.forYou && !isVrTab)
+            if (currentTab == HomeTab.forYou)
               Positioned(
                 top: topPadding + headerEstimate + AppSpacing.sm,
                 right: AppSpacing.md,
@@ -1464,18 +1470,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   ),
                 ),
               ),
-            if (!isVrTab) ...[
-              _buildInteractionButtons(),
-              _buildBottomUserInfo(),
-            ],
+            _buildInteractionButtons(),
+            _buildBottomUserInfo(),
           ],
         ),
-      ),
     );
-  }
-
-  Widget _buildVrContent() {
-    return const VrComingSoonView();
   }
 
   void _openStoryViewer(int groupIndex) {
@@ -1633,7 +1632,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                 'carousel_${_asString(reel['id'], fallback: '$feedIndex')}',
               ),
               items: mediaItems,
-              video360: Video360Metadata.fromPost(reel),
+              video360: _video360ForReel(reel),
               imageFit: BoxFit.contain,
               isVisible:
                   widget.isActive &&
@@ -1681,7 +1680,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               key: ValueKey<String>(_asString(reel['id'], fallback: videoUrl)),
               videoUrl: videoUrl,
               thumbnailUrl: loadingThumb,
-              video360: Video360Metadata.fromPost(reel),
+              video360: _video360ForReel(reel),
               // Only play when this page is visible AND the home tab is active.
               isVisible:
                   widget.isActive &&
@@ -1837,7 +1836,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         'Pull to refresh later or check your connection.',
         Icons.play_circle_outline_rounded,
       ),
-      HomeTab.vr => ('No reels', '', Icons.video_library_outlined),
+      HomeTab.vr => (
+        'No VR videos yet',
+        'Immersive 360° content will appear here when creators publish it.',
+        Icons.vrpano_outlined,
+      ),
     };
 
     return SizedBox.expand(
@@ -2539,19 +2542,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       ),
     );
   }
-}
-
-BoxDecoration? _homeFeedBackgroundDecoration({required bool isVrTab}) {
-  if (isVrTab) {
-    return const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFF49113B), Color(0xFF000000)],
-      ),
-    );
-  }
-  return null;
 }
 
 class _CaptionWithSeeMore extends StatefulWidget {

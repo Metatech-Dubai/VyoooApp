@@ -40,8 +40,26 @@ class StreamPlaybackUrls {
     return all;
   }
 
+  /// HLS / manifest URLs first — adaptive streaming starts playback faster
+  /// than buffering a full progressive MP4 (important for large 360° sources).
+  static List<String> candidatesPreferStreamingStart(String raw) {
+    final all = candidates(raw);
+    all.sort((a, b) {
+      final aStream = _isStreamingUrl(a);
+      final bStream = _isStreamingUrl(b);
+      if (aStream == bStream) return 0;
+      return aStream ? -1 : 1;
+    });
+    return all;
+  }
+
   static bool _isMp4Url(String url) {
     final lower = url.toLowerCase();
     return lower.contains('.mp4') || lower.contains('/downloads/');
+  }
+
+  static bool _isStreamingUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.m3u8') || lower.contains('/manifest/');
   }
 }

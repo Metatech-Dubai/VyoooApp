@@ -1,3 +1,4 @@
+import '../../utils/reel_engagement.dart';
 import '../../utils/video_upload_policy.dart';
 
 /// Profile Posts tab: image and video reels with playable media only.
@@ -31,7 +32,7 @@ abstract final class ProfileGridPosts {
   /// 360° uploads belong on the VR tab, not Posts (even legacy docs with only
   /// [is360Video] and no [isVR]).
   static bool belongsInVrTab(Map<String, dynamic> reel) =>
-      isVrReel(reel) || reel['is360Video'] == true;
+      ReelEngagement.isVrOr360Reel(reel);
 
   /// Posts tab: playable image/video reels, excluding VR-tab-only content.
   static List<Map<String, dynamic>> filterForPostsTab(

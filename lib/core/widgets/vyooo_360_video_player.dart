@@ -10,6 +10,7 @@ import 'package:video_player/video_player.dart';
 import '../models/video_360_metadata.dart';
 import '../services/feed_offline_video_cache.dart';
 import '../services/feed_video_audio_controller.dart';
+import '../services/vr_video_cache_service.dart';
 import '../theme/app_spacing.dart';
 import '../utils/stream_playback_urls.dart';
 import '../utils/video_upload_policy.dart';
@@ -70,11 +71,15 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   int _urlIndex = 0;
   int _viewGeneration = 0;
   bool _nativeLayoutReady = false;
-  bool _useAndroidSurface = true;
+  bool _nativeMediaPrepared = false;
+  /// Android [AndroidViewSurface] often fails in release builds; prefer the
+  /// texture platform view first and retry with surface mode if needed.
+  bool _useAndroidSurface = !Platform.isAndroid;
   Timer? _hideTimer;
   Timer? _startupWatchdog;
 
-  static const Duration _startupTimeout = Duration(seconds: 12);
+  /// Large 360° MP4s over the network can buffer longer than a few seconds.
+  static const Duration _startupTimeout = Duration(seconds: 45);
 
   bool get _supportsNative360 =>
       !kIsWeb && (Platform.isAndroid || Platform.isIOS);
@@ -143,7 +148,8 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     _resolvedUrl = null;
     _nativeIsPlaying = false;
     _nativeLayoutReady = false;
-    _useAndroidSurface = true;
+    _nativeMediaPrepared = false;
+    _useAndroidSurface = !Platform.isAndroid;
   }
 
   void _disposeNative() {
@@ -166,6 +172,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
       if (mounted) setState(() => _showError = true);
       return;
     }
+    VrVideoCacheService.instance.prefetch(widget.videoUrl);
     if (!_supportsNative360 || !widget.video360.use360Player) {
       await _initializeFlatFallback();
       return;
@@ -174,24 +181,28 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   }
 
   Future<void> _resolveNativeUrl() async {
-    final urls = StreamPlaybackUrls.candidatesPreferMp4(widget.videoUrl);
-    if (urls.isEmpty) {
+    final local =
+        await VrVideoCacheService.instance.localFileFor(widget.videoUrl);
+    if (local != null) {
+      _applyResolvedPlaybackUrl(local.path);
+      return;
+    }
+
+    final feedLocal =
+        await FeedOfflineVideoCache.instance.localFileFor(widget.videoUrl);
+    if (feedLocal != null) {
+      _applyResolvedPlaybackUrl(feedLocal.path);
+      return;
+    }
+
+    final networkUrls = _networkCandidatesForIndex();
+    if (networkUrls.isEmpty) {
       if (mounted) setState(() => _showError = true);
       return;
     }
-    final raw = urls[_urlIndex.clamp(0, urls.length - 1)];
+    final raw = networkUrls[_urlIndex.clamp(0, networkUrls.length - 1)];
     try {
-      final resolved = await _resolveLocalOrRemote(raw);
-      if (!mounted) return;
-      setState(() {
-        _resolvedUrl = resolved;
-        _showError = false;
-        _nativeLayoutReady = false;
-      });
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) setState(() => _nativeLayoutReady = true);
-      });
-      _armStartupWatchdog();
+      _applyResolvedPlaybackUrl(raw);
     } catch (e) {
       debugPrint('Vyooo360VideoPlayer URL resolve failed: $e');
       if (!mounted) return;
@@ -199,38 +210,34 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     }
   }
 
-  Future<String> _resolveLocalOrRemote(String url) async {
-    if (!url.startsWith('http')) return url;
-    final local = await FeedOfflineVideoCache.instance.localFileFor(url);
-    return local?.path ?? url;
+  List<String> _networkCandidatesForIndex() =>
+      StreamPlaybackUrls.candidatesPreferStreamingStart(widget.videoUrl);
+
+  void _applyResolvedPlaybackUrl(String url) {
+    if (!mounted) return;
+    setState(() {
+      _resolvedUrl = url;
+      _showError = false;
+      _nativeLayoutReady = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() => _nativeLayoutReady = true);
+    });
   }
 
   void _armStartupWatchdog() {
     _startupWatchdog?.cancel();
     _startupWatchdog = Timer(_startupTimeout, () {
-      if (!mounted || _useFlatFallback || _hasNotifiedPlaybackStart) return;
+      if (!mounted || _useFlatFallback || _nativeMediaPrepared) return;
       debugPrint('Vyooo360VideoPlayer native startup timeout');
       unawaited(_retryOrFallback());
     });
   }
 
   Future<void> _retryOrFallback() async {
-    final urls = StreamPlaybackUrls.candidatesPreferMp4(widget.videoUrl);
+    final urls = _networkCandidatesForIndex();
     if (_urlIndex + 1 < urls.length) {
       _urlIndex++;
-      _viewGeneration++;
-      _disposeNative();
-      if (mounted) {
-        setState(() {
-          _resolvedUrl = null;
-          _nativeLayoutReady = false;
-        });
-      }
-      await _resolveNativeUrl();
-      return;
-    }
-    if (Platform.isAndroid && _useAndroidSurface) {
-      _useAndroidSurface = false;
       _viewGeneration++;
       _disposeNative();
       if (mounted) {
@@ -257,7 +264,11 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   }
 
   Future<void> _initializeFlatFallback() async {
-    final urls = StreamPlaybackUrls.candidatesPreferMp4(widget.videoUrl);
+    final local =
+        await VrVideoCacheService.instance.localFileFor(widget.videoUrl);
+    final urls = local != null
+        ? <String>[local.path]
+        : StreamPlaybackUrls.candidatesPreferStreamingStart(widget.videoUrl);
     if (urls.isEmpty) {
       if (mounted) setState(() => _showError = true);
       return;
@@ -307,20 +318,21 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _syncPlayback();
-      Future<void>.delayed(const Duration(milliseconds: 350), () {
-        if (!mounted || !_shouldPlay) return;
-        unawaited(controller.play());
-      });
+      unawaited(controller.play());
     });
+    _armStartupWatchdog();
   }
 
   void _onNativePlayInfo(Video360PlayInfo info) {
     if (!mounted) return;
     final wasPlaying = _nativeIsPlaying;
     _nativeIsPlaying = info.isPlaying;
+    if (info.total > 0 && !_nativeMediaPrepared) {
+      _nativeMediaPrepared = true;
+      _startupWatchdog?.cancel();
+    }
     if (info.isPlaying && info.total > 0 && !_hasNotifiedPlaybackStart) {
       _hasNotifiedPlaybackStart = true;
-      _startupWatchdog?.cancel();
       widget.onVideoPlaybackStarted?.call();
     }
     if (!_hasNotifiedCompletion &&
