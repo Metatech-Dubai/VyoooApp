@@ -33,6 +33,7 @@ class Insta360State {
     this.connected = false,
     this.connectType = 0,
     this.streaming = false,
+    this.previewReady = false,
     this.frameWidth,
     this.frameHeight,
     this.fps,
@@ -44,6 +45,10 @@ class Insta360State {
   final bool connected;
   final int connectType;
   final bool streaming;
+
+  /// True once the host preview has finished establishing (initial render + the warm refresh that
+  /// corrects the first-connect seam overlap). The UI covers the preview until this flips true.
+  final bool previewReady;
   final int? frameWidth;
   final int? frameHeight;
   final int? fps;
@@ -55,6 +60,7 @@ class Insta360State {
     bool? connected,
     int? connectType,
     bool? streaming,
+    bool? previewReady,
     int? frameWidth,
     int? frameHeight,
     int? fps,
@@ -66,6 +72,7 @@ class Insta360State {
       connected: connected ?? this.connected,
       connectType: connectType ?? this.connectType,
       streaming: streaming ?? this.streaming,
+      previewReady: previewReady ?? this.previewReady,
       frameWidth: frameWidth ?? this.frameWidth,
       frameHeight: frameHeight ?? this.frameHeight,
       fps: fps ?? this.fps,
@@ -89,7 +96,11 @@ class Insta360LiveService {
   final ValueNotifier<Insta360State> state =
       ValueNotifier<Insta360State>(const Insta360State());
 
+  /// Safety net: if the native "ready" signal is ever lost, drop the connecting overlay anyway.
+  static const Duration _previewReadyTimeout = Duration(seconds: 10);
+
   StreamSubscription<dynamic>? _eventsSub;
+  Timer? _previewReadyFallback;
 
   /// Begin listening to native status/stat events. Safe to call once.
   void start() {
@@ -100,6 +111,7 @@ class Insta360LiveService {
   }
 
   Future<void> dispose() async {
+    _previewReadyFallback?.cancel();
     await _eventsSub?.cancel();
     _eventsSub = null;
     state.dispose();
@@ -181,10 +193,26 @@ class Insta360LiveService {
     final m = (raw as Map).cast<String, dynamic>();
     switch (m['event'] as String?) {
       case 'connection':
+        final connected = m['connected'] as bool? ?? false;
+        if (!connected) {
+          _previewReadyFallback?.cancel();
+        }
         _update(state.value.copyWith(
-          connected: m['connected'] as bool? ?? false,
+          connected: connected,
           connectType: (m['connectType'] as num?)?.toInt() ?? 0,
+          // A dropped camera invalidates any established preview.
+          previewReady: connected ? state.value.previewReady : false,
         ));
+      case 'previewState':
+        final ready = (m['state'] as String?) == 'ready';
+        _previewReadyFallback?.cancel();
+        if (!ready) {
+          // "warming": hold the overlay, but never let it stick if "ready" is lost.
+          _previewReadyFallback = Timer(_previewReadyTimeout, () {
+            _update(state.value.copyWith(previewReady: true));
+          });
+        }
+        _update(state.value.copyWith(previewReady: ready));
       case 'frameStats':
         _update(state.value.copyWith(
           frameWidth: (m['width'] as num?)?.toInt(),

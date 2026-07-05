@@ -483,6 +483,19 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             useTexture: false,
             sourceType: ExternalVideoSourceType.videoFrame,
           );
+      // Encode the pushed 360 frames at their true 2:1 equirectangular resolution/aspect.
+      // Without this, Agora defaults to ~960x540 (16:9), down-scaling and cropping the ERP —
+      // which ruins the 360 for viewers. maintainResolution keeps the resolution under load
+      // (per-pixel detail matters more than fps for a sphere the viewer zooms into).
+      await _engine.setVideoEncoderConfiguration(
+        const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 1920, height: 960),
+          frameRate: 15,
+          bitrate: 6000,
+          orientationMode: OrientationMode.orientationModeFixedLandscape,
+          degradationPreference: DegradationPreference.maintainResolution,
+        ),
+      );
       _instaFrameSub = _insta.frames().listen(_pushInstaFrame);
       await _insta.setFrameStreaming(true);
 
@@ -525,6 +538,15 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             useTexture: false,
             sourceType: ExternalVideoSourceType.videoFrame,
           );
+      // Restore a portrait phone-camera encoder profile (the 360 profile is 2:1 landscape).
+      await _engine.setVideoEncoderConfiguration(
+        const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 720, height: 1280),
+          frameRate: 24,
+          orientationMode: OrientationMode.orientationModeAdaptive,
+          degradationPreference: DegradationPreference.maintainFramerate,
+        ),
+      );
       await _insta.disconnect();
       await _engine.startPreview(); // resume phone camera preview
     } catch (_) {}
@@ -879,7 +901,20 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       if (_insta.state.value.connected) {
         // Just the render here; the look-around controls live in the TOP layer (see
         // _build360LookControls) because anything in this background layer receives no touches.
-        return const Insta360PreviewView(extractWidth: 1920, extractHeight: 960);
+        // The preview widget stays stable (rebuilding a PlatformView would remount it); only the
+        // overlay reacts to previewReady, covering the establishing render until it's corrected.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const Insta360PreviewView(extractWidth: 1920, extractHeight: 960),
+            ValueListenableBuilder<Insta360State>(
+              valueListenable: _insta.state,
+              builder: (context, st, _) => st.previewReady
+                  ? const SizedBox.shrink()
+                  : const _Establishing360Overlay(),
+            ),
+          ],
+        );
       }
       return const ColoredBox(
         color: Color(0xFF0A000F),
@@ -2612,6 +2647,32 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Cover shown over the 360 host preview until the warm-refresh completes (native `previewState` →
+/// "ready"), so the host never sees the initial overlapping render or the reload.
+class _Establishing360Overlay extends StatelessWidget {
+  const _Establishing360Overlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFF0A000F),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'Waiting for camera stream…',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

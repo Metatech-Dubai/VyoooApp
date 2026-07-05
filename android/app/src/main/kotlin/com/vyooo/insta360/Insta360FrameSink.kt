@@ -61,10 +61,18 @@ object Insta360FrameSink {
     private var framesThisWindow: Int = 0
     private var lastFps: Int = 0
     private var basePtsNs: Long = 0
+    private var lastTransmitNs: Long = 0
+
+    // Cap the transmit copy rate. The pipeline runs at the extract rate (~60 fps) to keep the host
+    // display smooth, but each transmitted frame allocates a fresh ~7 MB copy (+ another ~7 MB in the
+    // platform-channel codec), so forwarding all 60 fps thrashes the heap. The Agora encoder runs at
+    // 15 fps; 24 fps here gives it full frames with headroom while cutting allocation churn ~2.5×.
+    private const val TRANSMIT_MIN_INTERVAL_NS = 1_000_000_000L / 24
 
     @Synchronized
     fun reset() {
         count = 0; windowStartNs = 0; framesThisWindow = 0; lastFps = 0; basePtsNs = 0
+        lastTransmitNs = 0
         pipeline.metrics.reset()
     }
 
@@ -112,10 +120,13 @@ object Insta360FrameSink {
         // Host display — reads the (reused) buffer immediately.
         onProcessedFrame?.invoke(result.pixels, outW, outH, ptsUs)
 
-        // Encoder / transport — own copy so the consumer may retain it.
-        if (streamingEnabled) {
+        // Encoder / transport — own copy so the consumer may retain it. Rate-capped (see
+        // TRANSMIT_MIN_INTERVAL_NS): the 60 fps pipeline feeds the display, but transmitting every
+        // frame allocated a fresh ~7 MB copy 60×/s and OOM-crashed the app under load.
+        if (streamingEnabled && now - lastTransmitNs >= TRANSMIT_MIN_INTERVAL_NS) {
             val cb = onFrame
             if (cb != null) {
+                lastTransmitNs = now
                 val outBytes = outW * outH * 4
                 val copy = ByteArray(outBytes)
                 System.arraycopy(result.pixels, 0, copy, 0, outBytes)

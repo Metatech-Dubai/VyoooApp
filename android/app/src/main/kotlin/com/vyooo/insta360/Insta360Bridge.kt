@@ -58,21 +58,38 @@ class Insta360Bridge(
                 Insta360FrameSink.onStats = { w, h, fps, count ->
                     send("frameStats", mapOf("width" to w, "height" to h, "fps" to fps, "count" to count))
                 }
+                // Host preview lifecycle ("warming" → "ready") so the UI can hold its overlay.
+                Insta360PreviewView.onPreviewState = { state ->
+                    send("previewState", mapOf("state" to state))
+                }
             }
             override fun onCancel(arguments: Any?) {
                 events = null
                 Insta360FrameSink.onStats = null
+                Insta360PreviewView.onPreviewState = null
             }
         })
 
         frameChannel.setStreamHandler(object : EventChannel.StreamHandler {
+            // Single-slot coalescing dispatch. Each frame is a ~7 MB RGBA byte array; posting every
+            // one straight through `main.post { sink.success(..) }` let the main-thread queue grow
+            // unbounded whenever the UI got busy (notably when a viewer joins), and StandardMethodCodec
+            // allocates a *fresh* ~7 MB direct buffer per delivery — together that OOM-crashed the app
+            // (java.lang.OutOfMemoryError in StandardMethodCodec.encodeSuccessEnvelope from here).
+            // A live stream only needs the most recent frame, so we keep just the latest one pending
+            // and drop stale frames: memory stays bounded to ~1 in-flight + 1 pending, regardless of
+            // main-thread load.
             override fun onListen(arguments: Any?, sink: EventChannel.EventSink?) {
+                val pending = java.util.concurrent.atomic.AtomicReference<Map<String, Any?>?>(null)
+                val drain = Runnable {
+                    val frame = pending.getAndSet(null) ?: return@Runnable
+                    sink?.success(frame)
+                }
                 Insta360FrameSink.onFrame = { bytes, w, h, ptsUs ->
-                    main.post {
-                        sink?.success(
-                            mapOf("bytes" to bytes, "width" to w, "height" to h, "ptsUs" to ptsUs),
-                        )
-                    }
+                    val frame = mapOf("bytes" to bytes, "width" to w, "height" to h, "ptsUs" to ptsUs)
+                    // If a frame is already queued, replace it (drop the stale one) instead of posting
+                    // another runnable — that replacement is what bounds the backlog.
+                    if (pending.getAndSet(frame) == null) main.post(drain)
                 }
             }
             override fun onCancel(arguments: Any?) {
@@ -88,6 +105,7 @@ class Insta360Bridge(
         Insta360FrameSink.onStats = null
         Insta360FrameSink.onFrame = null
         Insta360FrameSink.onProcessedFrame = null
+        Insta360PreviewView.onPreviewState = null
         glRenderer?.dispose()
         glRenderer = null
         events = null
