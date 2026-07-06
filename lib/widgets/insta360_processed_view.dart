@@ -50,10 +50,7 @@ class _Insta360ProcessedViewState extends State<Insta360ProcessedView> {
     return ColoredBox(
       color: const Color(0xFF0A000F),
       child: Center(
-        child: AspectRatio(
-          aspectRatio: 2,
-          child: Texture(textureId: id),
-        ),
+        child: AspectRatio(aspectRatio: 2, child: Texture(textureId: id)),
       ),
     );
   }

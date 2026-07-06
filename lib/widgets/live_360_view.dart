@@ -16,11 +16,7 @@ import '../core/utils/stream_playback_urls.dart';
 /// It plays a URL because that is the only input [Video360View] accepts; the URL
 /// is produced upstream by exposing the live stream as HLS (Agora Media Push).
 class Live360View extends StatefulWidget {
-  const Live360View({
-    super.key,
-    required this.streamUrl,
-    this.autoPlay = true,
-  });
+  const Live360View({super.key, required this.streamUrl, this.autoPlay = true});
 
   /// The live stream URL (Cloudflare/CDN HLS or MP4). May be a manifest URL that
   /// [StreamPlaybackUrls] expands into MP4/HLS candidates.
@@ -29,7 +25,8 @@ class Live360View extends StatefulWidget {
 
   /// Whether native interactive 360 is possible on this platform.
   static bool get supportsNative360 =>
-      !kIsWeb && (defaultTargetPlatform == TargetPlatform.android ||
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.android ||
           defaultTargetPlatform == TargetPlatform.iOS);
 
   @override
@@ -46,8 +43,9 @@ class _Live360ViewState extends State<Live360View> {
   bool _flatReady = false;
   bool _error = false;
 
-  String? get _currentUrl =>
-      (_urlIndex >= 0 && _urlIndex < _candidates.length) ? _candidates[_urlIndex] : null;
+  String? get _currentUrl => (_urlIndex >= 0 && _urlIndex < _candidates.length)
+      ? _candidates[_urlIndex]
+      : null;
 
   @override
   void initState() {
@@ -132,8 +130,10 @@ class _Live360ViewState extends State<Live360View> {
       return const ColoredBox(
         color: Colors.black,
         child: Center(
-          child: Text('360 playback unavailable — showing flat view',
-              style: TextStyle(color: Colors.white70)),
+          child: Text(
+            '360 playback unavailable — showing flat view',
+            style: TextStyle(color: Colors.white70),
+          ),
         ),
       );
     }

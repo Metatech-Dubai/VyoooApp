@@ -33,8 +33,9 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
   bool _spikeActive = false;
   int _pushedFrames = 0;
   String _spikeStatus = 'idle';
-  final TextEditingController _channelCtrl =
-      TextEditingController(text: 'insta360_spike');
+  final TextEditingController _channelCtrl = TextEditingController(
+    text: 'insta360_spike',
+  );
 
   // ── Pipeline metrics state ─────────────────────────────────────────────────
   Map<String, dynamic> _metrics = const {};
@@ -78,31 +79,35 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
       await [Permission.microphone].request();
 
       final engine = createAgoraRtcEngine();
-      await engine.initialize(const RtcEngineContext(
-        appId: AgoraConfig.appId,
-        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-      ));
+      await engine.initialize(
+        const RtcEngineContext(
+          appId: AgoraConfig.appId,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
       await engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
       await engine.enableVideo();
 
       // Route extracted frames in as the video source instead of the device camera.
       await engine.getMediaEngine().setExternalVideoSource(
-            enabled: true,
-            useTexture: false,
-            sourceType: ExternalVideoSourceType.videoFrame,
-          );
+        enabled: true,
+        useTexture: false,
+        sourceType: ExternalVideoSourceType.videoFrame,
+      );
 
       _frameSub = _service.frames().listen(_pushFrame);
       await _service.setFrameStreaming(true);
 
       await engine.joinChannel(
-        token: '', // testing mode / temp token; wire AgoraTokenService for App-Certificate projects
+        token:
+            '', // testing mode / temp token; wire AgoraTokenService for App-Certificate projects
         channelId: _channelCtrl.text.trim(),
         uid: 0,
         options: const ChannelMediaOptions(
           channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
           clientRoleType: ClientRoleType.clientRoleBroadcaster,
-          publishCameraTrack: true, // external video source publishes via the camera track
+          publishCameraTrack:
+              true, // external video source publishes via the camera track
           publishMicrophoneTrack: false,
           autoSubscribeAudio: false,
           autoSubscribeVideo: false,
@@ -136,8 +141,9 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
           ),
         )
         .then((_) {
-      if (mounted && (++_pushedFrames % 30 == 0)) setState(() {});
-    }).catchError((_) {});
+          if (mounted && (++_pushedFrames % 30 == 0)) setState(() {});
+        })
+        .catchError((_) {});
   }
 
   Future<void> _stopSpike() async {
@@ -180,8 +186,10 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
               const SizedBox(height: 12),
               _connectionButtons(s),
               const SizedBox(height: 16),
-              const Text('Preview (ERP 2:1)',
-                  style: TextStyle(color: Colors.white70, fontSize: 13)),
+              const Text(
+                'Preview (ERP 2:1)',
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
               const SizedBox(height: 8),
               AspectRatio(
                 aspectRatio: 2,
@@ -191,10 +199,15 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
                     border: Border.all(color: Colors.white24),
                   ),
                   child: s.connected
-                      ? const Insta360PreviewView(extractWidth: 960, extractHeight: 480)
+                      ? const Insta360PreviewView(
+                          extractWidth: 960,
+                          extractHeight: 480,
+                        )
                       : const Center(
-                          child: Text('Connect a camera to preview',
-                              style: TextStyle(color: Colors.white38)),
+                          child: Text(
+                            'Connect a camera to preview',
+                            style: TextStyle(color: Colors.white38),
+                          ),
                         ),
                 ),
               ),
@@ -220,26 +233,39 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
     final stages = (_metrics['stagesMs'] as Map?)?.cast<String, dynamic>();
 
     return _card([
-      const Text('Optimisation pipeline',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
-      const Text('Single processing path: Downscale → PanoramaDetect → ForwardMask → TemporalDedup.',
-          style: TextStyle(color: Colors.white54, fontSize: 12)),
+      const Text(
+        'Optimisation pipeline',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+      ),
+      const Text(
+        'Single processing path: Downscale → PanoramaDetect → ForwardMask → TemporalDedup.',
+        style: TextStyle(color: Colors.white54, fontSize: 12),
+      ),
       const SizedBox(height: 8),
       _row('Pipeline fps', '${fps ?? 0}'),
-      _row('Total latency', totalMs == null ? '—' : '${totalMs.toStringAsFixed(2)} ms'),
+      _row(
+        'Total latency',
+        totalMs == null ? '—' : '${totalMs.toStringAsFixed(2)} ms',
+      ),
       _row(
         'Spatial reduction',
-        reduction == null ? '—' : '${(reduction * 100).toStringAsFixed(0)}% px kept',
+        reduction == null
+            ? '—'
+            : '${(reduction * 100).toStringAsFixed(0)}% px kept',
       ),
       _row('Frames in / out', '${framesIn ?? 0} / ${framesOut ?? 0}'),
       _row('Dropped', '${dropped ?? 0}'),
       if (stages != null && stages.isNotEmpty) ...[
         const SizedBox(height: 6),
-        const Text('Per-stage (ms)',
-            style: TextStyle(color: Colors.white54, fontSize: 12)),
+        const Text(
+          'Per-stage (ms)',
+          style: TextStyle(color: Colors.white54, fontSize: 12),
+        ),
         for (final e in stages.entries)
-          _row('  ${e.key}',
-              '${(e.value as num).toDouble().toStringAsFixed(2)} ms'),
+          _row(
+            '  ${e.key}',
+            '${(e.value as num).toDouble().toStringAsFixed(2)} ms',
+          ),
       ],
     ]);
   }
@@ -293,11 +319,15 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
 
   Widget _spikeCard(Insta360State s) {
     return _card([
-      const Text('Agora test push',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700)),
+      const Text(
+        'Agora test push',
+        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700),
+      ),
       const SizedBox(height: 4),
-      const Text('Pushes extracted frames into an Agora channel as an external video source.',
-          style: TextStyle(color: Colors.white54, fontSize: 12)),
+      const Text(
+        'Pushes extracted frames into an Agora channel as an external video source.',
+        style: TextStyle(color: Colors.white54, fontSize: 12),
+      ),
       const SizedBox(height: 10),
       TextField(
         controller: _channelCtrl,
@@ -307,7 +337,8 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
           labelText: 'Channel name',
           labelStyle: TextStyle(color: Colors.white54),
           enabledBorder: UnderlineInputBorder(
-              borderSide: BorderSide(color: Colors.white24)),
+            borderSide: BorderSide(color: Colors.white24),
+          ),
         ),
       ),
       const SizedBox(height: 10),
@@ -323,7 +354,9 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
           Expanded(
             child: ElevatedButton(
               onPressed: _spikeActive ? _stopSpike : null,
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
               child: const Text('Stop'),
             ),
           ),
@@ -343,7 +376,10 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: Colors.white12),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
     );
   }
 
@@ -355,7 +391,10 @@ class _Insta360DebugScreenState extends State<Insta360DebugScreen> {
         children: [
           SizedBox(
             width: 120,
-            child: Text(k, style: const TextStyle(color: Colors.white54, fontSize: 13)),
+            child: Text(
+              k,
+              style: const TextStyle(color: Colors.white54, fontSize: 13),
+            ),
           ),
           Expanded(
             child: Text(

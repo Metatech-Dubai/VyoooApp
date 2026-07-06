@@ -30,8 +30,9 @@ class GyroLookController {
     _last = null;
     // ~50 Hz sampling: the default (normalInterval, ~5 Hz) delivers large,
     // steppy jumps. gameInterval makes the look-around smooth.
-    _sub = gyroscopeEventStream(samplingPeriod: SensorInterval.gameInterval)
-        .listen(_onEvent);
+    _sub = gyroscopeEventStream(
+      samplingPeriod: SensorInterval.gameInterval,
+    ).listen(_onEvent);
   }
 
   void stop() {
