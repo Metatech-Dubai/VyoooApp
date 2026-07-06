@@ -16,6 +16,8 @@ import 'core/platform/app_system_ui.dart';
 import 'core/navigation/app_keys.dart';
 import 'core/navigation/app_route_observer.dart';
 import 'core/services/deep_link_service.dart';
+import 'core/services/feed_warmup_service.dart';
+import 'core/services/incoming_call_kit_service.dart';
 import 'core/services/push_messaging_service.dart';
 import 'core/subscription/subscription_controller.dart';
 import 'core/theme/app_padding.dart';
@@ -78,7 +80,11 @@ void main() async {
     }
     await _configureFirebaseAppCheck();
     firebaseInitialized = true;
+    // Prefetch the Trending feed while the splash video plays so the home tab is
+    // populated (and the first reels cached for offline) before it is shown.
+    FeedWarmupService.instance.start();
     await PushMessagingService.instance.configure();
+    await IncomingCallKitService.instance.configure();
   } catch (e, st) {
     developer.log(
       'Firebase initialization failed',

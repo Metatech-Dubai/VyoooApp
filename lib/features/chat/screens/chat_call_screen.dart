@@ -1,11 +1,14 @@
 import 'dart:async';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/widgets/app_network_avatar.dart';
 import '../models/call_session_model.dart';
 import '../services/call_signaling_service.dart';
 import '../services/chat_call_service.dart';
+import '../utils/chat_helpers.dart';
 
 class ChatCallScreen extends StatefulWidget {
   const ChatCallScreen({
@@ -13,11 +16,15 @@ class ChatCallScreen extends StatefulWidget {
     required this.callSession,
     required this.currentUid,
     this.callerName,
+    this.remoteAvatarUrl,
+    this.remoteUserId,
   });
 
   final CallSessionModel callSession;
   final String currentUid;
   final String? callerName;
+  final String? remoteAvatarUrl;
+  final String? remoteUserId;
 
   @override
   State<ChatCallScreen> createState() => _ChatCallScreenState();
@@ -33,13 +40,48 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
   int _durationSeconds = 0;
   bool _initializing = true;
   String? _error;
+  String? _resolvedAvatarUrl;
+  String? _resolvedDisplayName;
 
   bool get _isVideo => widget.callSession.type == CallType.video;
+
+  String get _remoteUid {
+    final explicit = widget.remoteUserId?.trim();
+    if (explicit != null && explicit.isNotEmpty) return explicit;
+
+    final session = widget.callSession;
+    if (session.callerId == widget.currentUid) {
+      for (final id in session.participantIds) {
+        if (id != widget.currentUid) return id;
+      }
+      for (final id in session.calleeIds) {
+        if (id != widget.currentUid) return id;
+      }
+    }
+    return session.callerId;
+  }
+
+  String? get _avatarUrl {
+    final direct = widget.remoteAvatarUrl?.trim();
+    if (direct != null && direct.isNotEmpty) return direct;
+    final resolved = _resolvedAvatarUrl?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    return null;
+  }
+
+  String get _displayName {
+    final direct = widget.callerName?.trim();
+    if (direct != null && direct.isNotEmpty) return direct;
+    final resolved = _resolvedDisplayName?.trim();
+    if (resolved != null && resolved.isNotEmpty) return resolved;
+    return 'Call';
+  }
 
   @override
   void initState() {
     super.initState();
     _liveSession = widget.callSession;
+    unawaited(_resolveRemoteProfile());
     _initCall();
     _callSub = _signaling.watchCall(widget.callSession.id).listen((session) {
       if (!mounted) return;
@@ -56,6 +98,39 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
         _startDurationTimer();
       }
     });
+  }
+
+  Future<void> _resolveRemoteProfile() async {
+    final hasAvatar = widget.remoteAvatarUrl?.trim().isNotEmpty == true;
+    final hasName = widget.callerName?.trim().isNotEmpty == true;
+    if (hasAvatar && hasName) return;
+
+    try {
+      final chatDoc = await FirebaseFirestore.instance
+          .collection('chats')
+          .doc(widget.callSession.chatId)
+          .get();
+      if (!chatDoc.exists) return;
+      final data = chatDoc.data();
+      if (data == null) return;
+
+      final remoteUid = _remoteUid;
+      if (remoteUid.isEmpty) return;
+
+      final pMap = data['participantMap'] as Map<String, dynamic>?;
+      final participant = pMap?[remoteUid] as Map<String, dynamic>?;
+      if (participant == null) return;
+
+      final avatar = ChatHelpers.participantAvatarFromMap(participant);
+      final name = ChatHelpers.participantDisplayNameFromMap(participant);
+      if (!mounted) return;
+      setState(() {
+        if (!hasAvatar && avatar != null) _resolvedAvatarUrl = avatar;
+        if (!hasName && name != null) _resolvedDisplayName = name;
+      });
+    } catch (e) {
+      debugPrint('[ChatCallScreen] resolveRemoteProfile failed: $e');
+    }
   }
 
   Future<void> _initCall() async {
@@ -211,25 +286,41 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
   }
 
   Widget _buildAudioUI() {
-    final name = widget.callerName ?? 'Call';
     final status = _liveSession?.status ?? '';
     final statusText = status == CallStatus.active
         ? _formatDuration(_durationSeconds)
         : status == CallStatus.ringing
         ? 'Ringing...'
         : 'Connecting...';
+    final avatarUrl = _avatarUrl ?? '';
+    final remoteUid = _remoteUid;
 
     return Column(
       children: [
         const Spacer(flex: 2),
-        const CircleAvatar(
-          radius: 56,
-          backgroundColor: Color(0xFF2A1B2E),
-          child: Icon(Icons.person, color: Colors.white54, size: 48),
+        Container(
+          padding: const EdgeInsets.all(3),
+          decoration: const BoxDecoration(
+            shape: BoxShape.circle,
+            gradient: LinearGradient(
+              colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
+            ),
+          ),
+          child: CircleAvatar(
+            radius: 56,
+            backgroundColor: const Color(0xFF1A0A2E),
+            child: ClipOval(
+              child: AppNetworkAvatar(
+                imageUrl: avatarUrl,
+                userId: remoteUid.isEmpty ? null : remoteUid,
+                size: 112,
+              ),
+            ),
+          ),
         ),
         const SizedBox(height: 24),
         Text(
-          name,
+          _displayName,
           style: const TextStyle(
             color: Colors.white,
             fontSize: 24,
@@ -373,9 +464,9 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
             onTap: () => _callService.switchCamera(),
           ),
         _controlButton(
-          icon: _callService.speakerOn ? Icons.volume_up : Icons.volume_off,
-          label: 'Speaker',
-          active: !_callService.speakerOn,
+          icon: _callService.speakerOn ? Icons.volume_up : Icons.hearing,
+          label: _callService.speakerOn ? 'Speaker' : 'Earpiece',
+          active: _callService.speakerOn,
           onTap: () => _callService.toggleSpeaker(),
         ),
         _controlButton(

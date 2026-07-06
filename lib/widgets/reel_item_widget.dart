@@ -1,11 +1,19 @@
 import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/navigation/app_route_observer.dart';
-import '../core/utils/video_upload_policy.dart';
+import '../core/services/feed_video_audio_controller.dart';
+import '../core/services/feed_offline_video_cache.dart';
+import '../core/services/reel_preload_service.dart';
+import '../core/utils/stream_playback_urls.dart';
 import '../core/theme/app_spacing.dart';
+import '../core/widgets/double_tap_like_overlay.dart';
+import '../core/widgets/feed_reel_playback_control_pill.dart';
+import '../core/models/video_360_metadata.dart';
+import '../core/widgets/vyooo_360_video_player.dart';
 
 /// Single reel item for PageView. Handles video playback, auto-play, pause, preload.
 ///
@@ -26,17 +34,36 @@ class ReelItemWidget extends StatefulWidget {
     required this.videoUrl,
     required this.isVisible,
     this.thumbnailUrl,
+    this.video360 = Video360Metadata.flat,
     this.onVisibilityChanged,
     this.onVideoCompleted,
+    this.onVideoPlaybackStarted,
     this.onDoubleTap,
+    this.showEmbeddedProgressBar = true,
+    this.onPlaybackProgress,
+    this.seekFractionListenable,
   });
 
   final String videoUrl;
   final bool isVisible;
   final String? thumbnailUrl;
+  final Video360Metadata video360;
   final VoidCallback? onVisibilityChanged;
   final VoidCallback? onVideoCompleted;
+
+  /// Fired once per controller attach when playback actually begins. Lets the
+  /// feed distinguish a playing video from one stuck loading/retrying.
+  final VoidCallback? onVideoPlaybackStarted;
   final VoidCallback? onDoubleTap;
+
+  /// When false, the parent renders [FeedReelProgressBar] and drives seeking.
+  final bool showEmbeddedProgressBar;
+
+  /// Normalized position (0–1) while the reel is playing.
+  final ValueChanged<double>? onPlaybackProgress;
+
+  /// When set, seeks the visible reel to the given fraction.
+  final ValueListenable<double?>? seekFractionListenable;
 
   @override
   State<ReelItemWidget> createState() => _ReelItemWidgetState();
@@ -50,12 +77,23 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   int _retryCount = 0;
   int _urlIndex = 0;
   bool _showControls = false;
-  bool _isMuted = false;
+  final _feedAudio = FeedVideoAudioController.instance;
+  VoidCallback? _feedAudioListener;
   Timer? _hideTimer;
   Timer? _retryTimer;
   bool _lastIsPlaying = false;
   bool _hasNotifiedCompletion = false;
+  bool _hasNotifiedPlaybackStart = false;
+  bool _localPlaybackFailed = false;
   static const int _maxRetries = 24; // ~2m wait for Cloudflare processing
+
+  /// Monotonic token bumped by every [_initializePlayer] call. In-flight
+  /// initializations capture it and bail out after each async gap if a newer
+  /// init has started (or the reel was scrolled away), so a stale init can
+  /// never attach a hardware decoder to this keep-alive state. Android caps
+  /// concurrent decoders (~16); each stranded controller counts against that
+  /// cap and crashes the feed after ~15 reels.
+  int _initSession = 0;
 
   // Effective-visibility flags. Combined with [widget.isVisible] in
   // [_shouldPlay] to decide whether the controller may play right now.
@@ -63,6 +101,8 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   bool _isAppForeground = true;
   bool _isTickerActive = true;
   bool _isRouteObserverSubscribed = false;
+  bool _playStateRebuildScheduled = false;
+  VoidCallback? _seekListener;
 
   @override
   bool get wantKeepAlive => true;
@@ -70,11 +110,23 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   bool get _shouldPlay =>
       widget.isVisible && _isRouteOnTop && _isAppForeground && _isTickerActive;
 
+  bool get _uses360Player => widget.video360.use360Player;
+
+  bool get _isMuted => _feedAudio.isMuted.value;
+
+  void _onFeedAudioChanged() {
+    _controller?.setVolume(_feedAudio.volume);
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    if (_shouldPlay) {
+    _feedAudioListener = _onFeedAudioChanged;
+    _feedAudio.isMuted.addListener(_feedAudioListener!);
+    _attachSeekListener(widget.seekFractionListenable);
+    if (_shouldPlay && !_uses360Player) {
       _initializePlayer();
     }
   }
@@ -99,10 +151,17 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   @override
   void didUpdateWidget(ReelItemWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.videoUrl != widget.videoUrl) {
+    if (oldWidget.seekFractionListenable != widget.seekFractionListenable) {
+      _detachSeekListener(oldWidget.seekFractionListenable);
+      _attachSeekListener(widget.seekFractionListenable);
+    }
+    if (oldWidget.videoUrl != widget.videoUrl ||
+        oldWidget.video360.use360Player != widget.video360.use360Player) {
       _hasNotifiedCompletion = false;
+      _hasNotifiedPlaybackStart = false;
+      _localPlaybackFailed = false;
       _disposePlayer();
-      if (_shouldPlay) {
+      if (_shouldPlay && !_uses360Player) {
         _initializePlayer();
       }
       return;
@@ -137,52 +196,118 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   }
 
   @override
+  void activate() {
+    super.activate();
+    final ctrl = _controller;
+    if (ctrl != null) {
+      ctrl.removeListener(_onControllerValueChanged);
+      ctrl.addListener(_onControllerValueChanged);
+      _lastIsPlaying = ctrl.value.isPlaying;
+    }
+  }
+
+  @override
+  void deactivate() {
+    // Detach our listener first. pause() notifies all listeners (including
+    // VideoProgressIndicator) — defer it until after this frame so we never
+    // trigger setState/markNeedsBuild while the tree is deactivating.
+    final ctrl = _controller;
+    if (ctrl != null) {
+      ctrl.removeListener(_onControllerValueChanged);
+      if (ctrl.value.isPlaying) {
+        _lastIsPlaying = false;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!identical(_controller, ctrl)) return;
+          if (ctrl.value.isPlaying) ctrl.pause();
+        });
+      }
+    }
+    super.deactivate();
+  }
+
+  @override
   void dispose() {
     if (_isRouteObserverSubscribed) {
       appRouteObserver.unsubscribe(this);
       _isRouteObserverSubscribed = false;
     }
     WidgetsBinding.instance.removeObserver(this);
+    if (_feedAudioListener != null) {
+      _feedAudio.isMuted.removeListener(_feedAudioListener!);
+      _feedAudioListener = null;
+    }
+    _detachSeekListener(widget.seekFractionListenable);
     _disposePlayer();
     super.dispose();
   }
 
+  static VideoPlayerOptions get _playerOptions => VideoPlayerOptions(
+        mixWithOthers: true,
+        allowBackgroundPlayback: false,
+      );
+
   Future<void> _initializePlayer() async {
     if (!_shouldPlay) return;
+    final session = ++_initSession;
+    // True when this init must abandon its work: widget gone, reel no longer
+    // eligible to play, or a newer init superseded this one (URL change,
+    // visibility flapped off/on mid-await).
+    bool stale() => !mounted || session != _initSession || !_shouldPlay;
+
+    // Fastest path: a controller pre-initialized by [ReelPreloadService]
+    // (first reel during splash, next reel while the previous one plays).
+    final preloaded = await ReelPreloadService.instance.take(widget.videoUrl);
+    if (preloaded != null) {
+      if (stale()) {
+        preloaded.dispose();
+        return;
+      }
+      try {
+        await _attachAndPlay(preloaded, session);
+        return;
+      } catch (e) {
+        debugPrint('Preloaded reel controller failed, reinitializing: $e');
+        _disposePlayer();
+        if (stale()) return;
+      }
+    }
+
+    // Prefer the offline copy prefetched by [FeedOfflineVideoCache]: instant
+    // start and keeps the first feed reels playable with no internet.
+    if (!_localPlaybackFailed) {
+      final localFile =
+          await FeedOfflineVideoCache.instance.localFileFor(widget.videoUrl);
+      if (stale()) return;
+      if (localFile != null) {
+        try {
+          await _attachAndPlay(
+            VideoPlayerController.file(
+              localFile,
+              videoPlayerOptions: _playerOptions,
+            ),
+            session,
+          );
+          return;
+        } catch (e) {
+          debugPrint('Offline reel playback failed, using network: $e');
+          _localPlaybackFailed = true;
+          _disposePlayer();
+          if (stale()) return;
+        }
+      }
+    }
+
     final urls = _candidateUrls(widget.videoUrl);
     if (urls.isEmpty) return;
     final url = urls[_urlIndex.clamp(0, urls.length - 1)];
     try {
-      final ctrl = VideoPlayerController.networkUrl(
-        Uri.parse(url),
-        videoPlayerOptions: VideoPlayerOptions(
-          mixWithOthers: true,
-          allowBackgroundPlayback: false,
+      await _attachAndPlay(
+        VideoPlayerController.networkUrl(
+          Uri.parse(url),
+          videoPlayerOptions: _playerOptions,
         ),
+        session,
       );
-
-      ctrl.setLooping(true);
-      ctrl.setVolume(_isMuted ? 0 : 1.0);
-
-      await ctrl.initialize();
-
-      if (!mounted) {
-        ctrl.dispose();
-        return;
-      }
-      setState(() {
-        _controller = ctrl;
-        _isInitialized = true;
-        _showError = false;
-        _retryCount = 0;
-      });
-      _lastIsPlaying = ctrl.value.isPlaying;
-      ctrl.addListener(_onControllerValueChanged);
-      // Re-check after async gap: route may have been pushed away during
-      // initialize(), in which case we must NOT autoplay.
-      if (_shouldPlay) {
-        await ctrl.play();
-      }
     } catch (e) {
       debugPrint('Error initializing video: $e');
       _disposePlayer();
@@ -213,6 +338,54 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     }
   }
 
+  /// Initializes [ctrl] (unless already pre-initialized), attaches it to state
+  /// and starts playback.
+  /// Throws on initialization failure (caller owns retry/fallback policy).
+  Future<void> _attachAndPlay(VideoPlayerController ctrl, int session) async {
+    ctrl.setLooping(true);
+    ctrl.setVolume(_feedAudio.volume);
+
+    if (!ctrl.value.isInitialized) {
+      try {
+        await ctrl.initialize();
+      } catch (_) {
+        ctrl.dispose();
+        rethrow;
+      }
+    }
+
+    // Re-check after the initialize() async gap. Attaching a controller to a
+    // reel the user already scrolled past (or one superseded by a newer init)
+    // would strand a hardware decoder on this keep-alive state — the exact
+    // leak that exhausts Android's decoder cap during fast feed scrolling.
+    if (!mounted || session != _initSession || !_shouldPlay) {
+      ctrl.dispose();
+      return;
+    }
+    // Defensive: never overwrite a live controller without releasing it.
+    if (_controller != null && !identical(_controller, ctrl)) {
+      _disposePlayer();
+    }
+    setState(() {
+      _controller = ctrl;
+      _isInitialized = true;
+      _showError = false;
+      _retryCount = 0;
+    });
+    // Fresh controller restarts from zero: allow start/completion to notify
+    // again (fixes auto-scroll stalling on reels revisited after the keep-alive
+    // state outlived a disposed controller).
+    _hasNotifiedCompletion = false;
+    _hasNotifiedPlaybackStart = false;
+    _lastIsPlaying = ctrl.value.isPlaying;
+    ctrl.addListener(_onControllerValueChanged);
+    // Re-check after async gap: route may have been pushed away during
+    // initialize(), in which case we must NOT autoplay.
+    if (_shouldPlay) {
+      await ctrl.play();
+    }
+  }
+
   void _disposePlayer() {
     _retryTimer?.cancel();
     _retryTimer = null;
@@ -230,7 +403,11 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     final isPlaying = ctrl.value.isPlaying;
     if (isPlaying != _lastIsPlaying) {
       _lastIsPlaying = isPlaying;
-      if (mounted) setState(() {});
+      _schedulePlayStateRebuild();
+    }
+    if (isPlaying && !_hasNotifiedPlaybackStart) {
+      _hasNotifiedPlaybackStart = true;
+      widget.onVideoPlaybackStarted?.call();
     }
     if (!_hasNotifiedCompletion && widget.onVideoCompleted != null) {
       final duration = ctrl.value.duration;
@@ -241,31 +418,53 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
         widget.onVideoCompleted!();
       }
     }
+    _reportPlaybackProgress(ctrl);
   }
 
-  List<String> _candidateUrls(String raw) {
-    final url = raw.trim();
-    if (!VideoUploadPolicy.isPlayableUrl(url)) return const [];
-    final out = <String>[url];
-    final m = RegExp(
-      r'^(https?:\/\/[^/]+)\/([^/]+)\/manifest\/video\.m3u8$',
-      caseSensitive: false,
-    ).firstMatch(url);
-    if (m != null) {
-      final hostBase = m.group(1)!;
-      final videoId = m.group(2)!;
-      final mp4 = '$hostBase/$videoId/downloads/default.mp4';
-      if (VideoUploadPolicy.isPlayableUrl(mp4)) out.add(mp4);
-      // Backward compatibility: if saved host is wrong, still try Cloudflare global domain.
-      final hlsFallback =
-          'https://videodelivery.net/$videoId/manifest/video.m3u8';
-      final mp4Fallback =
-          'https://videodelivery.net/$videoId/downloads/default.mp4';
-      if (VideoUploadPolicy.isPlayableUrl(hlsFallback)) out.add(hlsFallback);
-      if (VideoUploadPolicy.isPlayableUrl(mp4Fallback)) out.add(mp4Fallback);
-    }
-    return out.toSet().toList();
+  void _reportPlaybackProgress(VideoPlayerController ctrl) {
+    final onProgress = widget.onPlaybackProgress;
+    if (onProgress == null) return;
+    final duration = ctrl.value.duration;
+    if (duration <= Duration.zero) return;
+    final fraction =
+        (ctrl.value.position.inMilliseconds / duration.inMilliseconds)
+            .clamp(0.0, 1.0);
+    onProgress(fraction);
   }
+
+  void _attachSeekListener(ValueListenable<double?>? listenable) {
+    if (listenable == null) return;
+    _seekListener = () => _onSeekFractionChanged(listenable);
+    listenable.addListener(_seekListener!);
+  }
+
+  void _detachSeekListener(ValueListenable<double?>? listenable) {
+    if (listenable == null || _seekListener == null) return;
+    listenable.removeListener(_seekListener!);
+    _seekListener = null;
+  }
+
+  void _onSeekFractionChanged(ValueListenable<double?> listenable) {
+    if (!widget.isVisible) return;
+    final fraction = listenable.value;
+    if (fraction == null) return;
+    final ctrl = _controller;
+    if (ctrl == null || !ctrl.value.isInitialized) return;
+    final duration = ctrl.value.duration;
+    if (duration <= Duration.zero) return;
+    ctrl.seekTo(duration * fraction.clamp(0.0, 1.0));
+  }
+
+  void _schedulePlayStateRebuild() {
+    if (_playStateRebuildScheduled || !mounted) return;
+    _playStateRebuildScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _playStateRebuildScheduled = false;
+      if (mounted) setState(() {});
+    });
+  }
+
+  List<String> _candidateUrls(String raw) => StreamPlaybackUrls.candidates(raw);
 
   /// Idempotent: drives the underlying controller toward [_shouldPlay].
   ///
@@ -285,12 +484,26 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
       }
       return;
     }
-    // Stop any pending retry to avoid bringing audio back on inactive routes.
+    // Not eligible to play: fully release the underlying decoder instead of
+    // only pausing. Android caps the number of concurrent hardware video
+    // decoders (commonly ~16), and this widget keeps itself alive
+    // ([wantKeepAlive] == true), so every scrolled-past reel that merely paused
+    // its controller would hold a decoder forever — exhausting the limit and
+    // crashing the app after ~13–16 reels. Releasing here keeps at most the
+    // currently visible reel (plus briefly an adjacent one mid-swipe) decoding.
+    // The thumbnail is shown via [_buildLoadingBackground] while uninitialized,
+    // so there is no visual regression, and playback re-initializes if the reel
+    // becomes visible again.
     _retryTimer?.cancel();
     _retryTimer = null;
-    final controller = _controller;
-    if (_isInitialized && controller != null && controller.value.isPlaying) {
-      controller.pause();
+    if (_controller != null || _isInitialized) {
+      _disposePlayer();
+      if (mounted) {
+        setState(() {
+          _showError = false;
+          _retryCount = 0;
+        });
+      }
     }
   }
 
@@ -310,10 +523,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
 
   void _toggleMute() {
     if (_controller == null || !_isInitialized) return;
-    setState(() {
-      _isMuted = !_isMuted;
-      _controller!.setVolume(_isMuted ? 0 : 1.0);
-    });
+    _feedAudio.toggle();
     _startHideTimer();
   }
 
@@ -329,6 +539,19 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    if (_uses360Player) {
+      return Vyooo360VideoPlayer(
+        videoUrl: widget.videoUrl,
+        isVisible: _shouldPlay,
+        video360: widget.video360,
+        muted: _feedAudio.isMuted.value,
+        thumbnailUrl: widget.thumbnailUrl,
+        onDoubleTap: widget.onDoubleTap,
+        onVideoCompleted: widget.onVideoCompleted,
+        onVideoPlaybackStarted: widget.onVideoPlaybackStarted,
+      );
+    }
 
     final loadingBg = _buildLoadingBackground();
 
@@ -421,7 +644,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
 
     // Reels style: fullscreen cover (crop to fill, no letterboxing)
     final size = _controller!.value.size;
-    return GestureDetector(
+    return DoubleTapLikeOverlay(
       onTap: _togglePlayPause,
       onDoubleTap: widget.onDoubleTap,
       child: Container(
@@ -440,22 +663,22 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
                 ),
               ),
             ),
-            // Progress Bar
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: VideoProgressIndicator(
-                _controller!,
-                allowScrubbing: true,
-                colors: const VideoProgressColors(
-                  playedColor: Color(0xFFEF4444),
-                  bufferedColor: Colors.white24,
-                  backgroundColor: Colors.transparent,
+            if (widget.showEmbeddedProgressBar)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: VideoProgressIndicator(
+                  _controller!,
+                  allowScrubbing: true,
+                  colors: const VideoProgressColors(
+                    playedColor: Color(0xFFEF4444),
+                    bufferedColor: Colors.white24,
+                    backgroundColor: Colors.transparent,
+                  ),
+                  padding: EdgeInsets.zero,
                 ),
-                padding: EdgeInsets.zero,
               ),
-            ),
             // ── Play/Pause & Mute Overlay ─────────────────────────────────────
             Center(
               child: AnimatedOpacity(
@@ -464,7 +687,12 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
                     ? 1.0
                     : 0.0,
                 duration: const Duration(milliseconds: 200),
-                child: _buildControlPill(),
+                child: FeedReelPlaybackControlPill(
+                  isPlaying: _controller?.value.isPlaying ?? false,
+                  isMuted: _isMuted,
+                  onPlayPause: _togglePlayPause,
+                  onMute: _toggleMute,
+                ),
               ),
             ),
           ],
@@ -476,61 +704,19 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
   Widget _buildLoadingBackground() {
     final thumb = (widget.thumbnailUrl ?? '').trim();
     if (thumb.isNotEmpty) {
+      // Decode at screen resolution: full-size thumbnails decoded for every
+      // visited keep-alive reel otherwise pile up in the image cache.
+      final mq = MediaQuery.of(context);
+      final targetWidth = (mq.size.width * mq.devicePixelRatio).round();
       return CachedNetworkImage(
         imageUrl: thumb,
         fit: BoxFit.cover,
+        memCacheWidth: targetWidth,
         fadeInDuration: const Duration(milliseconds: 120),
         placeholder: (_, _) => const ColoredBox(color: Colors.black),
         errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
       );
     }
     return const ColoredBox(color: Colors.black);
-  }
-
-  Widget _buildControlPill() {
-    final isPlaying = _controller?.value.isPlaying ?? false;
-    return GestureDetector(
-      onTap: () {}, // Swallow taps to prevent background video toggle
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.6),
-          borderRadius: BorderRadius.circular(40),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        ),
-        child: IntrinsicHeight(
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              GestureDetector(
-                onTap: _togglePlayPause,
-                behavior: HitTestBehavior.opaque,
-                child: Icon(
-                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const VerticalDivider(
-                color: Colors.white24,
-                thickness: 1,
-                width: 1,
-              ),
-              const SizedBox(width: 16),
-              GestureDetector(
-                onTap: _toggleMute,
-                behavior: HitTestBehavior.opaque,
-                child: Icon(
-                  _isMuted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                  color: Colors.white,
-                  size: 28,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

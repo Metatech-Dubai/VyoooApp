@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../../../core/platform/screenshot_protection.dart';
 import '../models/message_model.dart';
 import '../services/chat_service.dart';
 
@@ -38,6 +39,7 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    ScreenshotProtection.enable();
     if (_isVideo) {
       _initVideo();
     }
@@ -92,6 +94,7 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    ScreenshotProtection.disable();
     _videoController?.dispose();
     super.dispose();
   }

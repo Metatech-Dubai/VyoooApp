@@ -4,7 +4,12 @@
     "details": [
       {
         "appIDs": ["BTBWJXR552.com.vyooo"],
-        "paths": ["/open", "/open/*", "*"]
+        "components": [
+          { "/": "/u/*", "comment": "Public profile links" },
+          { "/": "/r/*", "comment": "Public reel links" },
+          { "/": "/open", "comment": "Legacy bridge" },
+          { "/": "/open/*", "comment": "Legacy bridge" }
+        ]
       }
     ]
   }

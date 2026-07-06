@@ -14,12 +14,63 @@ import {
   loadNotificationPrefs,
   shouldSendPushForType,
 } from './notification_preferences';
+import { sendVoipCallPushes } from './voip_push';
 
 admin.initializeApp();
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const APP_ID = '443105d5684f492088bb004196b3fee8';
 const TOKEN_TTL_SECONDS = 3600; // 1 hour
+const FCM_ANDROID_CHANNEL_ID = 'vyooo_high_importance';
+const STALE_FCM_ERROR_CODES = new Set([
+  'messaging/registration-token-not-registered',
+  'messaging/invalid-registration-token',
+  'messaging/invalid-argument',
+]);
+
+function fcmAndroidOptions(): admin.messaging.AndroidConfig {
+  return {
+    priority: 'high',
+    notification: { channelId: FCM_ANDROID_CHANNEL_ID },
+  };
+}
+
+function fcmApnsOptions(contentAvailable = false): admin.messaging.ApnsConfig {
+  return {
+    payload: {
+      aps: {
+        sound: 'default',
+        badge: 1,
+        ...(contentAvailable ? { 'content-available': 1 } : {}),
+      },
+    },
+  };
+}
+
+function fcmCallAndroidDataOnlyOptions(): admin.messaging.AndroidConfig {
+  // Data-only: wakes the app and runs Dart/native CallKit UI. A `notification`
+  // payload would show a silent tray banner and skip the background handler.
+  return {
+    priority: 'high',
+    ttl: 30_000,
+  };
+}
+
+async function pruneStalePushTokenDocs(
+  tokenDocs: FirebaseFirestore.QueryDocumentSnapshot[],
+  responses: admin.messaging.SendResponse[],
+): Promise<void> {
+  const deletes: Promise<unknown>[] = [];
+  for (let i = 0; i < responses.length; i++) {
+    const code = responses[i].error?.code?.trim();
+    if (code && STALE_FCM_ERROR_CODES.has(code) && tokenDocs[i]) {
+      deletes.push(tokenDocs[i].ref.delete().catch(() => undefined));
+    }
+  }
+  if (deletes.length > 0) {
+    await Promise.all(deletes);
+  }
+}
 
 // App Certificate is injected at deploy time via .env.vyooov1
 const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE ?? '';
@@ -27,6 +78,8 @@ const APP_CERTIFICATE = process.env.AGORA_APP_CERTIFICATE ?? '';
 // Cloudflare Stream credentials — set in .env.vyooov1
 const CF_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID ?? '';
 const CF_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN ?? '';
+// Matches app picker/trim cap (upload_screen.dart maxDuration: 10 minutes).
+const CF_STREAM_MAX_DURATION_SECONDS = 600;
 const HIVE_API_KEY = (process.env.HIVE_API_KEY ?? '').trim();
 const HIVE_ACCESS_KEY = (process.env.HIVE_ACCESS_KEY ?? '').trim();
 const HIVE_SECRET_KEY = (process.env.HIVE_SECRET_KEY ?? '').trim();
@@ -225,13 +278,13 @@ export const getCloudflareUploadUrl = onDocumentCreated(
   {
     document: 'cloudflare_upload_requests/{requestId}',
     timeoutSeconds: 30,
-    memory: '128MiB',
+    memory: '256MiB',
   },
   async (event) => {
     const snap = event.data;
     if (!snap) return;
 
-    const data = snap.data() as { userId?: unknown };
+    const data = snap.data() as { userId?: unknown; maxDurationSeconds?: unknown };
 
     if (typeof data.userId !== 'string' || !data.userId) {
       await snap.ref.update({ status: 'error', error: 'Missing userId.' });
@@ -243,6 +296,15 @@ export const getCloudflareUploadUrl = onDocumentCreated(
       return;
     }
 
+    const requestedDuration =
+      typeof data.maxDurationSeconds === 'number' && Number.isFinite(data.maxDurationSeconds)
+        ? Math.floor(data.maxDurationSeconds)
+        : CF_STREAM_MAX_DURATION_SECONDS;
+    const maxDurationSeconds = Math.min(
+      CF_STREAM_MAX_DURATION_SECONDS,
+      Math.max(1, requestedDuration),
+    );
+
     try {
       const response = await fetch(
         `https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/stream/direct_upload`,
@@ -252,16 +314,35 @@ export const getCloudflareUploadUrl = onDocumentCreated(
             'Authorization': `Bearer ${CF_API_TOKEN}`,
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ maxDurationSeconds: -1, requireSignedURLs: false }),
+          body: JSON.stringify({
+            maxDurationSeconds,
+            requireSignedURLs: false,
+            meta: { userId: data.userId },
+          }),
         },
       );
 
+      const rawBody = await response.text();
       if (!response.ok) {
-        await snap.ref.update({ status: 'error', error: `Cloudflare API error: ${response.status}` });
+        let detail = `Cloudflare API error: ${response.status}`;
+        try {
+          const parsed = JSON.parse(rawBody) as {
+            errors?: Array<{ message?: string }>;
+            messages?: Array<{ message?: string }>;
+          };
+          const msg =
+            parsed.errors?.[0]?.message
+            ?? parsed.messages?.[0]?.message;
+          if (msg) detail = `${detail} — ${msg}`;
+        } catch {
+          // Keep generic status-only message when body is not JSON.
+        }
+        logger.error('getCloudflareUploadUrl failed', { status: response.status, detail });
+        await snap.ref.update({ status: 'error', error: detail });
         return;
       }
 
-      const result = await response.json() as {
+      const result = JSON.parse(rawBody) as {
         result: { uid: string; uploadURL: string };
         success: boolean;
       };
@@ -277,6 +358,7 @@ export const getCloudflareUploadUrl = onDocumentCreated(
         uploadUrl: result.result.uploadURL,
       });
     } catch (e) {
+      logger.error('getCloudflareUploadUrl exception', e);
       await snap.ref.update({ status: 'error', error: String(e) });
     }
   },
@@ -578,6 +660,95 @@ function summarizeErrorBody(body: string): string {
   return compact.length <= 180 ? compact : `${compact.slice(0, 177)}...`;
 }
 
+type ReelModerationMediaData = {
+  videoUrl?: unknown;
+  imageUrl?: unknown;
+  thumbnailUrl?: unknown;
+  mediaItems?: unknown;
+};
+
+const MAX_MODERATED_MEDIA_ITEMS = 10;
+
+/**
+ * All image URLs Hive should check for one reel: the legacy/mirror media
+ * fields plus every entry of the carousel `mediaItems[]` array (videos are
+ * mapped to their Cloudflare Stream poster frame).
+ */
+function collectHiveMediaUrls(data: ReelModerationMediaData): string[] {
+  const urls: string[] = [];
+  const push = (raw: string) => {
+    const url = raw.trim();
+    if (url && !urls.includes(url)) urls.push(url);
+  };
+  const videoUrl = typeof data.videoUrl === 'string' ? data.videoUrl.trim() : '';
+  const imageUrl = typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '';
+  const thumbnailUrl = typeof data.thumbnailUrl === 'string' ? data.thumbnailUrl.trim() : '';
+  const primary = imageUrl || thumbnailUrl || (videoUrl ? toHiveImageUrl(videoUrl) : '');
+  if (primary) push(primary);
+
+  const items = Array.isArray(data.mediaItems)
+    ? data.mediaItems.slice(0, MAX_MODERATED_MEDIA_ITEMS)
+    : [];
+  for (const raw of items) {
+    if (!raw || typeof raw !== 'object') continue;
+    const item = raw as { type?: unknown; url?: unknown; thumbnailUrl?: unknown };
+    const type = typeof item.type === 'string' ? item.type : '';
+    const url = typeof item.url === 'string' ? item.url.trim() : '';
+    const thumb = typeof item.thumbnailUrl === 'string' ? item.thumbnailUrl.trim() : '';
+    if (type === 'video') {
+      push(thumb || (url ? toHiveImageUrl(url) : ''));
+    } else {
+      push(url || thumb);
+    }
+  }
+  return urls;
+}
+
+type CombinedHiveResult =
+  | { ok: true; status: 'clear' | 'review' | 'blocked'; score: number; reasons: string[] }
+  | { ok: false; reasons: string[] };
+
+/**
+ * Moderates every URL and combines to the **worst** verdict (fail-closed):
+ * one blocked carousel item blocks the whole post; any Hive HTTP failure
+ * keeps the post in `error` (hidden from feeds) instead of partially clearing.
+ */
+async function moderateHiveMediaUrls(urls: string[]): Promise<CombinedHiveResult> {
+  const rank: Record<'clear' | 'review' | 'blocked', number> = {
+    clear: 0,
+    review: 1,
+    blocked: 2,
+  };
+  let worst: 'clear' | 'review' | 'blocked' = 'clear';
+  let maxScore = 0;
+  const reasons: string[] = [];
+  for (const mediaUrl of urls) {
+    const res = await callHiveModeration(mediaUrl);
+    if (!res.ok) {
+      const errSummary = summarizeErrorBody(res.payloadText);
+      return {
+        ok: false,
+        reasons: [`http_${res.status}`, `hive_endpoint:${res.endpoint}`, `hive:${errSummary}`],
+      };
+    }
+    let classes: HiveClassScore[] = [];
+    if (res.endpoint === 'v3') {
+      const payload = JSON.parse(res.payloadText) as HiveV3Payload;
+      classes = extractHiveClassScores(payload);
+    } else {
+      const payload = JSON.parse(res.payloadText) as { output?: Array<{ classes?: HiveClassScore[] }> };
+      classes = payload.output?.[0]?.classes ?? [];
+    }
+    const result = evaluateHive(classes);
+    if (rank[result.status] > rank[worst]) worst = result.status;
+    if (result.score > maxScore) maxScore = result.score;
+    for (const reason of result.reasons) {
+      if (!reasons.includes(reason)) reasons.push(reason);
+    }
+  }
+  return { ok: true, status: worst, score: maxScore, reasons };
+}
+
 async function callHiveModeration(mediaUrl: string): Promise<HiveRequestResult> {
   // Preferred path: Hive V3 Visual Moderation API.
   const v3Res = await fetch(HIVE_MODERATION_URL, {
@@ -625,14 +796,15 @@ async function callHiveModeration(mediaUrl: string): Promise<HiveRequestResult> 
 export const moderateReelOnCreate = onDocumentCreated(
   {
     document: 'reels/{reelId}',
-    timeoutSeconds: 25,
+    // Carousel posts moderate up to MAX_MODERATED_MEDIA_ITEMS Hive calls.
+    timeoutSeconds: 120,
     memory: '256MiB',
   },
   async (event) => {
     const snap = event.data;
     if (!snap) return;
     const reelId = event.params.reelId as string;
-    const data = snap.data() as { videoUrl?: unknown; imageUrl?: unknown; thumbnailUrl?: unknown };
+    const data = snap.data() as ReelModerationMediaData;
     logger.info(`[moderateReelOnCreate] start reelId=${reelId}`);
     if (!HIVE_V3_BEARER && !HIVE_V2_TOKEN) {
       logger.warn(`[moderateReelOnCreate] skipped_missing_key reelId=${reelId}`);
@@ -651,24 +823,17 @@ export const moderateReelOnCreate = onDocumentCreated(
       return;
     }
 
-    const videoUrl = typeof data.videoUrl === 'string' ? data.videoUrl.trim() : '';
-    const imageUrl = typeof data.imageUrl === 'string' ? data.imageUrl.trim() : '';
-    const thumbnailUrl = typeof data.thumbnailUrl === 'string' ? data.thumbnailUrl.trim() : '';
-    const mediaUrl = imageUrl || thumbnailUrl || (videoUrl ? toHiveImageUrl(videoUrl) : '');
-    if (!mediaUrl) {
+    const mediaUrls = collectHiveMediaUrls(data);
+    if (mediaUrls.length === 0) {
       logger.warn(`[moderateReelOnCreate] no_media_url reelId=${reelId}`);
       return;
     }
 
     try {
-      const res = await callHiveModeration(mediaUrl);
-      logger.info(
-        `[moderateReelOnCreate] hive_http_status reelId=${reelId} endpoint=${res.endpoint} status=${res.status} ok=${res.ok}`,
-      );
-      if (!res.ok) {
-        const errSummary = summarizeErrorBody(res.payloadText);
+      const combined = await moderateHiveMediaUrls(mediaUrls);
+      if (!combined.ok) {
         logger.error(
-          `[moderateReelOnCreate] hive_http_error reelId=${reelId} endpoint=${res.endpoint} status=${res.status} body=${errSummary}`,
+          `[moderateReelOnCreate] hive_http_error reelId=${reelId} reasons=${combined.reasons.join('|')}`,
         );
         await snap.ref.set(
           {
@@ -676,7 +841,7 @@ export const moderateReelOnCreate = onDocumentCreated(
               provider: 'hive',
               status: 'error',
               score: 0,
-              reasons: [`http_${res.status}`, `hive_endpoint:${res.endpoint}`, `hive:${errSummary}`],
+              reasons: combined.reasons,
               checkedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
           },
@@ -684,30 +849,22 @@ export const moderateReelOnCreate = onDocumentCreated(
         );
         return;
       }
-      let classes: HiveClassScore[] = [];
-      if (res.endpoint === 'v3') {
-        const payload = JSON.parse(res.payloadText) as HiveV3Payload;
-        classes = extractHiveClassScores(payload);
-      } else {
-        const payload = JSON.parse(res.payloadText) as { output?: Array<{ classes?: HiveClassScore[] }> };
-        classes = payload.output?.[0]?.classes ?? [];
-      }
-      const result = evaluateHive(classes);
       await snap.ref.set(
         {
           moderation: {
             provider: 'hive',
-            status: result.status,
-            score: result.score,
-            reasons: result.reasons,
-            mediaUrl,
+            status: combined.status,
+            score: combined.score,
+            reasons: combined.reasons,
+            mediaUrl: mediaUrls[0],
+            mediaUrls,
             checkedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
         },
         { merge: true },
       );
       logger.info(
-        `[moderateReelOnCreate] final_status reelId=${reelId} status=${result.status} score=${result.score} reasons=${result.reasons.join('|')}`,
+        `[moderateReelOnCreate] final_status reelId=${reelId} status=${combined.status} score=${combined.score} items=${mediaUrls.length} reasons=${combined.reasons.join('|')}`,
       );
     } catch (e) {
       logger.error(`[moderateReelOnCreate] exception reelId=${reelId} error=${String(e)}`);
@@ -731,15 +888,16 @@ export const moderateReelOnCreate = onDocumentCreated(
 export const moderateReelOnWrite = onDocumentWritten(
   {
     document: 'reels/{reelId}',
-    timeoutSeconds: 25,
+    // Carousel posts moderate up to MAX_MODERATED_MEDIA_ITEMS Hive calls.
+    timeoutSeconds: 120,
     memory: '256MiB',
   },
   async (event) => {
     const before = event.data?.before.data() as
-      | { videoUrl?: unknown; imageUrl?: unknown; thumbnailUrl?: unknown; moderation?: unknown }
+      | (ReelModerationMediaData & { moderation?: unknown })
       | undefined;
     const after = event.data?.after.data() as
-      | { videoUrl?: unknown; imageUrl?: unknown; thumbnailUrl?: unknown; moderation?: unknown }
+      | (ReelModerationMediaData & { moderation?: unknown })
       | undefined;
     const ref = event.data?.after.ref;
     if (!after || !ref) return;
@@ -752,13 +910,19 @@ export const moderateReelOnWrite = onDocumentWritten(
     const afterVideo = typeof after.videoUrl === 'string' ? after.videoUrl.trim() : '';
     const afterImage = typeof after.imageUrl === 'string' ? after.imageUrl.trim() : '';
     const afterThumb = typeof after.thumbnailUrl === 'string' ? after.thumbnailUrl.trim() : '';
+    const beforeItems = JSON.stringify(Array.isArray(before?.mediaItems) ? before.mediaItems : null);
+    const afterItems = JSON.stringify(Array.isArray(after.mediaItems) ? after.mediaItems : null);
 
     const afterStatus =
       typeof (after.moderation as { status?: unknown } | undefined)?.status === 'string'
         ? String((after.moderation as { status: string }).status).toLowerCase()
         : '';
 
-    const mediaChanged = beforeVideo !== afterVideo || beforeImage !== afterImage || beforeThumb !== afterThumb;
+    const mediaChanged =
+      beforeVideo !== afterVideo ||
+      beforeImage !== afterImage ||
+      beforeThumb !== afterThumb ||
+      beforeItems !== afterItems;
     const needsModeration = afterStatus === 'pending' || afterStatus === 'review' || afterStatus === '';
     if (!mediaChanged && !needsModeration) {
       logger.info(`[moderateReelOnWrite] skip_no_change reelId=${reelId} afterStatus=${afterStatus}`);
@@ -782,21 +946,17 @@ export const moderateReelOnWrite = onDocumentWritten(
       return;
     }
 
-    const mediaUrl = afterImage || afterThumb || (afterVideo ? toHiveImageUrl(afterVideo) : '');
-    if (!mediaUrl) {
+    const mediaUrls = collectHiveMediaUrls(after);
+    if (mediaUrls.length === 0) {
       logger.warn(`[moderateReelOnWrite] no_media_url reelId=${reelId}`);
       return;
     }
 
     try {
-      const res = await callHiveModeration(mediaUrl);
-      logger.info(
-        `[moderateReelOnWrite] hive_http_status reelId=${reelId} endpoint=${res.endpoint} status=${res.status} ok=${res.ok}`,
-      );
-      if (!res.ok) {
-        const errSummary = summarizeErrorBody(res.payloadText);
+      const combined = await moderateHiveMediaUrls(mediaUrls);
+      if (!combined.ok) {
         logger.error(
-          `[moderateReelOnWrite] hive_http_error reelId=${reelId} endpoint=${res.endpoint} status=${res.status} body=${errSummary}`,
+          `[moderateReelOnWrite] hive_http_error reelId=${reelId} reasons=${combined.reasons.join('|')}`,
         );
         await ref.set(
           {
@@ -804,7 +964,7 @@ export const moderateReelOnWrite = onDocumentWritten(
               provider: 'hive',
               status: 'error',
               score: 0,
-              reasons: [`http_${res.status}`, `hive_endpoint:${res.endpoint}`, `hive:${errSummary}`],
+              reasons: combined.reasons,
               checkedAt: admin.firestore.FieldValue.serverTimestamp(),
             },
           },
@@ -812,30 +972,22 @@ export const moderateReelOnWrite = onDocumentWritten(
         );
         return;
       }
-      let classes: HiveClassScore[] = [];
-      if (res.endpoint === 'v3') {
-        const payload = JSON.parse(res.payloadText) as HiveV3Payload;
-        classes = extractHiveClassScores(payload);
-      } else {
-        const payload = JSON.parse(res.payloadText) as { output?: Array<{ classes?: HiveClassScore[] }> };
-        classes = payload.output?.[0]?.classes ?? [];
-      }
-      const result = evaluateHive(classes);
       await ref.set(
         {
           moderation: {
             provider: 'hive',
-            status: result.status,
-            score: result.score,
-            reasons: result.reasons,
-            mediaUrl,
+            status: combined.status,
+            score: combined.score,
+            reasons: combined.reasons,
+            mediaUrl: mediaUrls[0],
+            mediaUrls,
             checkedAt: admin.firestore.FieldValue.serverTimestamp(),
           },
         },
         { merge: true },
       );
       logger.info(
-        `[moderateReelOnWrite] final_status reelId=${reelId} status=${result.status} score=${result.score} reasons=${result.reasons.join('|')}`,
+        `[moderateReelOnWrite] final_status reelId=${reelId} status=${combined.status} score=${combined.score} items=${mediaUrls.length} reasons=${combined.reasons.join('|')}`,
       );
     } catch (e) {
       logger.error(`[moderateReelOnWrite] exception reelId=${reelId} error=${String(e)}`);
@@ -852,6 +1004,153 @@ export const moderateReelOnWrite = onDocumentWritten(
         { merge: true },
       );
     }
+  },
+);
+
+// ── Crowd-report threshold moderation ───────────────────────────────────────
+// Posts, stories, and VR streams are covered (frosted overlay) when distinct
+// reporters cross a view-count-dependent threshold. Reports are deduped per
+// user at write time (doc id `<uid>_<contentId>`), so `reportCount` equals
+// distinct reporters.
+//
+// Tiers (newest config wins; tweak here):
+//   < 100 views  : never auto-cover (not enough signal yet)
+//   100–499 views: 20% reported
+//   500–999 views: 10% reported
+//   1000+ views  : 2% reported (5% tier removed — product spec)
+//
+// Action is a soft cover: moderation.status -> 'report_covered' (recoverable).
+// Client shows frosted overlay; media is not deleted.
+const REPORT_MODERATION_TIERS: Array<{ minViews: number; fraction: number }> = [
+  { minViews: 1000, fraction: 0.02 },
+  { minViews: 500, fraction: 0.1 },
+  { minViews: 100, fraction: 0.2 },
+];
+
+function reportFractionForViews(views: number): number | null {
+  for (const tier of REPORT_MODERATION_TIERS) {
+    if (views >= tier.minViews) return tier.fraction;
+  }
+  return null;
+}
+
+function toFiniteNumber(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return 0;
+}
+
+function storyViewCount(data: Record<string, unknown>): number {
+  const viewedBy = data.viewedBy;
+  const fromArray = Array.isArray(viewedBy) ? viewedBy.length : 0;
+  return Math.max(toFiniteNumber(data.viewCount), fromArray);
+}
+
+async function aggregateContentReport(params: {
+  contentRef: FirebaseFirestore.DocumentReference;
+  contentId: string;
+  logPrefix: string;
+}): Promise<void> {
+  const { contentRef, contentId, logPrefix } = params;
+  try {
+    await admin.firestore().runTransaction(async (tx) => {
+      const contentSnap = await tx.get(contentRef);
+      if (!contentSnap.exists) return;
+      const data = contentSnap.data() as Record<string, unknown>;
+
+      const newCount = toFiniteNumber(data.reportCount) + 1;
+      const views = Math.max(
+        toFiniteNumber(data.views),
+        toFiniteNumber(data.viewsCount),
+        storyViewCount(data),
+      );
+
+      const moderation =
+        (data.moderation as Record<string, unknown> | undefined) ?? {};
+      const currentStatus =
+        typeof moderation.status === 'string' ? moderation.status.toLowerCase() : '';
+      const alreadyDown =
+        currentStatus === 'report_covered' ||
+        currentStatus === 'removed' ||
+        currentStatus === 'blocked';
+
+      const fraction = reportFractionForViews(views);
+      const shouldCover =
+        !alreadyDown && fraction != null && newCount >= Math.ceil(views * fraction);
+
+      const update: Record<string, unknown> = {
+        reportCount: newCount,
+        lastReportedAt: admin.firestore.FieldValue.serverTimestamp(),
+      };
+      if (shouldCover) {
+        update.moderation = {
+          ...moderation,
+          status: 'report_covered',
+          removedReason: 'report_threshold',
+          coveredAt: admin.firestore.FieldValue.serverTimestamp(),
+          coveredAtViews: views,
+          coveredAtReports: newCount,
+        };
+      }
+      tx.set(contentRef, update, { merge: true });
+
+      if (shouldCover) {
+        logger.warn(
+          `[${logPrefix}] auto_covered contentId=${contentId} reports=${newCount} views=${views} fraction=${fraction}`,
+        );
+      } else {
+        logger.info(
+          `[${logPrefix}] counted contentId=${contentId} reports=${newCount} views=${views} fraction=${fraction ?? 'none'}`,
+        );
+      }
+    });
+  } catch (e) {
+    logger.error(`[${logPrefix}] exception contentId=${contentId} error=${String(e)}`);
+  }
+}
+
+export const aggregateReelReportOnCreate = onDocumentCreated(
+  {
+    document: 'reel_reports/{reportId}',
+    timeoutSeconds: 30,
+    memory: '256MiB',
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const report = snap.data() as { reelId?: unknown };
+    const reelId = typeof report.reelId === 'string' ? report.reelId.trim() : '';
+    if (!reelId) return;
+
+    await aggregateContentReport({
+      contentRef: admin.firestore().collection('reels').doc(reelId),
+      contentId: reelId,
+      logPrefix: 'aggregateReelReportOnCreate',
+    });
+  },
+);
+
+export const aggregateStoryReportOnCreate = onDocumentCreated(
+  {
+    document: 'story_reports/{reportId}',
+    timeoutSeconds: 30,
+    memory: '256MiB',
+  },
+  async (event) => {
+    const snap = event.data;
+    if (!snap) return;
+    const report = snap.data() as { storyId?: unknown };
+    const storyId = typeof report.storyId === 'string' ? report.storyId.trim() : '';
+    if (!storyId) return;
+
+    await aggregateContentReport({
+      contentRef: admin.firestore().collection('stories').doc(storyId),
+      contentId: storyId,
+      logPrefix: 'aggregateStoryReportOnCreate',
+    });
   },
 );
 
@@ -1514,12 +1813,11 @@ export const sendPushOnNotificationCreate = onDocumentCreated(
       .doc(recipientId)
       .collection('push_tokens')
       .get();
-    const tokens = tokenSnap.docs
-      .map((d) => {
-        const token = d.data().token;
-        return typeof token === 'string' ? token.trim() : '';
-      })
-      .filter((t) => t.length > 0);
+    const tokenDocs = tokenSnap.docs.filter((d) => {
+      const token = d.data().token;
+      return typeof token === 'string' && token.trim().length > 0;
+    });
+    const tokens = tokenDocs.map((d) => (d.data().token as string).trim());
     if (tokens.length === 0) {
       await snap.ref.set(
         {
@@ -1546,9 +1844,11 @@ export const sendPushOnNotificationCreate = onDocumentCreated(
           recipientId,
           notificationId: snap.id,
         },
-        android: { priority: 'high' },
-        apns: { payload: { aps: { sound: 'default', badge: 1, 'content-available': 1 } } },
+        android: fcmAndroidOptions(),
+        apns: fcmApnsOptions(true),
       });
+
+      await pruneStalePushTokenDocs(tokenDocs, response.responses);
 
       const errorCodes = new Set<string>();
       for (const r of response.responses) {
@@ -1633,6 +1933,47 @@ export const syncStoryLikeCount = onDocumentWritten(
       if (!snap.exists) return;
       await ref.set({ likes: admin.firestore.FieldValue.increment(-1) }, { merge: true });
     }
+  },
+);
+
+/**
+ * Keeps `reels/{reelId}.likes` in sync with `userLikes/{uid}_{reelId}` creates/deletes.
+ * Clients write only `userLikes`; counts are clamped at zero on unlike.
+ */
+export const syncReelLikeCount = onDocumentWritten(
+  {
+    document: 'userLikes/{likeId}',
+    timeoutSeconds: 10,
+    memory: '128MiB',
+  },
+  async (event) => {
+    const db = admin.firestore();
+    const beforeExist = event.data?.before.exists ?? false;
+    const afterExist = event.data?.after.exists ?? false;
+    if (beforeExist === afterExist) return;
+
+    const beforeData = event.data?.before.data() as { reelId?: unknown } | undefined;
+    const afterData = event.data?.after.data() as { reelId?: unknown } | undefined;
+    const reelId =
+      typeof afterData?.reelId === 'string'
+        ? afterData.reelId.trim()
+        : typeof beforeData?.reelId === 'string'
+          ? beforeData.reelId.trim()
+          : '';
+    if (!reelId) return;
+
+    const ref = db.collection('reels').doc(reelId);
+    const delta = !beforeExist && afterExist ? 1 : -1;
+
+    await db.runTransaction(async (tx) => {
+      const snap = await tx.get(ref);
+      if (!snap.exists) return;
+      const raw = snap.data()?.likes;
+      const current =
+        typeof raw === 'number' && Number.isFinite(raw) ? Math.trunc(raw) : 0;
+      const next = Math.max(0, current + delta);
+      tx.update(ref, { likes: next });
+    });
   },
 );
 
@@ -1872,6 +2213,12 @@ export const onChatMessageCreate = onDocumentCreated(
       return;
     }
 
+    if (msgType === 'gif' && !mediaUrl) {
+      logger.error('onChatMessageCreate: missing gif mediaUrl', { chatId, messageId });
+      await snap.ref.update({ _rejected: true, _rejectedReason: 'missing_gif_url' });
+      return;
+    }
+
     const isViewOnce = msg.isViewOnce === true;
 
     if (isViewOnce && msgType === 'text') {
@@ -1899,6 +2246,8 @@ export const onChatMessageCreate = onDocumentCreated(
       preview = '🎥 Video';
     } else if (msgType === 'audio') {
       preview = '🎤 Voice message';
+    } else if (msgType === 'gif') {
+      preview = 'GIF';
     } else {
       preview = trimmedText.length <= 100 ? trimmedText : `${trimmedText.substring(0, 100)}…`;
     }
@@ -1961,10 +2310,14 @@ export const onChatMessageCreate = onDocumentCreated(
           ),
         );
         const tokens: string[] = [];
+        const tokenDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
         for (const snap of tokenSnaps) {
           for (const doc of snap.docs) {
             const t = doc.data()?.token;
-            if (typeof t === 'string' && t.length > 0) tokens.push(t);
+            if (typeof t === 'string' && t.length > 0) {
+              tokens.push(t);
+              tokenDocs.push(doc);
+            }
           }
         }
         if (tokens.length > 0) {
@@ -2010,9 +2363,13 @@ export const onChatMessageCreate = onDocumentCreated(
                 messageId,
                 chatType,
               },
-              android: { priority: 'high' },
-              apns: { payload: { aps: { sound: 'default', badge: 1 } } },
+              android: fcmAndroidOptions(),
+              apns: fcmApnsOptions(),
             });
+            await pruneStalePushTokenDocs(
+              tokenDocs.slice(t, t + FCM_BATCH),
+              response.responses,
+            );
             if (response.failureCount > 0) {
               response.responses.forEach((r, idx) => {
                 if (!r.success) {
@@ -2263,40 +2620,140 @@ export const onCallSessionCreate = onDocumentCreated(
         db.collection('users').doc(uid).collection('push_tokens').get(),
       ),
     );
-    const tokens: string[] = [];
+
+    const androidFcmTokens: string[] = [];
+    const androidFcmDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    const iosFcmTokens: string[] = [];
+    const iosFcmDocs: FirebaseFirestore.QueryDocumentSnapshot[] = [];
+    const iosVoipTokens: string[] = [];
+
     for (const tSnap of tokenSnaps) {
       for (const doc of tSnap.docs) {
-        const t = doc.data()?.token;
-        if (typeof t === 'string' && t.length > 0) tokens.push(t);
-      }
-    }
+        const raw = doc.data()?.token;
+        const token = typeof raw === 'string' ? raw.trim() : '';
+        if (!token) continue;
 
-    if (tokens.length === 0) {
-      logger.info('onCallSessionCreate: no push tokens for callees', { callId });
-      return;
+        if (doc.id === 'voip') {
+          iosVoipTokens.push(token);
+          continue;
+        }
+        if (doc.id !== 'default') continue;
+
+        const platform =
+          typeof doc.data()?.platform === 'string'
+            ? doc.data()!.platform.trim().toLowerCase()
+            : '';
+        if (platform === 'android') {
+          androidFcmTokens.push(token);
+          androidFcmDocs.push(doc);
+        } else if (platform === 'ios') {
+          // Data-only FCM fallback: triggers CallKit in Dart (no notification banner).
+          iosFcmTokens.push(token);
+          iosFcmDocs.push(doc);
+        }
+      }
     }
 
     const notifTitle = callerDisplayName;
     const notifBody = callType === 'video' ? 'Incoming video call' : 'Incoming audio call';
+    const isVideo = callType === 'video';
+    const callData: Record<string, string> = {
+      type: 'incoming_call',
+      callId,
+      chatId,
+      callerId,
+      callType,
+      agoraChannelName,
+      nameCaller: notifTitle,
+      handle: notifBody,
+    };
+
+    if (
+      androidFcmTokens.length === 0 &&
+      iosFcmTokens.length === 0 &&
+      iosVoipTokens.length === 0
+    ) {
+      logger.info('onCallSessionCreate: no push tokens for callees', { callId });
+      return;
+    }
+
+    if (iosVoipTokens.length > 0) {
+      const voipResult = await sendVoipCallPushes(iosVoipTokens, {
+        callId,
+        nameCaller: notifTitle,
+        handle: notifBody,
+        isVideo,
+        chatId,
+        callerId,
+        callType,
+        agoraChannelName,
+      });
+      logger.info('onCallSessionCreate: VoIP push result', {
+        callId,
+        sent: voipResult.sent,
+        failed: voipResult.failed,
+      });
+    }
 
     const FCM_BATCH = 500;
-    for (let t = 0; t < tokens.length; t += FCM_BATCH) {
-      const batch = tokens.slice(t, t + FCM_BATCH);
+
+    if (iosFcmTokens.length > 0) {
+      for (let t = 0; t < iosFcmTokens.length; t += FCM_BATCH) {
+        const batch = iosFcmTokens.slice(t, t + FCM_BATCH);
+        try {
+          const response = await admin.messaging().sendEachForMulticast({
+            tokens: batch,
+            data: callData,
+            apns: {
+              headers: {
+                'apns-priority': '10',
+                'apns-push-type': 'background',
+              },
+              payload: {
+                aps: { 'content-available': 1 },
+              },
+            },
+          });
+          await pruneStalePushTokenDocs(
+            iosFcmDocs.slice(t, t + FCM_BATCH),
+            response.responses,
+          );
+          if (response.failureCount > 0) {
+            logger.warn('onCallSessionCreate: iOS data FCM partial failure', {
+              callId,
+              failureCount: response.failureCount,
+            });
+          }
+        } catch (err) {
+          logger.error('onCallSessionCreate: iOS data FCM send error', {
+            callId,
+            error: String(err),
+          });
+        }
+      }
+    }
+
+    if (androidFcmTokens.length === 0) {
+      logger.info('onCallSessionCreate: push sent', {
+        callId,
+        iosVoipTokenCount: iosVoipTokens.length,
+        iosFcmTokenCount: iosFcmTokens.length,
+      });
+      return;
+    }
+
+    for (let t = 0; t < androidFcmTokens.length; t += FCM_BATCH) {
+      const batch = androidFcmTokens.slice(t, t + FCM_BATCH);
       try {
         const response = await admin.messaging().sendEachForMulticast({
           tokens: batch,
-          notification: { title: notifTitle, body: notifBody },
-          data: {
-            type: 'incoming_call',
-            callId,
-            chatId,
-            callerId,
-            callType,
-            agoraChannelName,
-          },
-          android: { priority: 'high' },
-          apns: { payload: { aps: { sound: 'default', badge: 1, 'content-available': 1 } } },
+          data: callData,
+          android: fcmCallAndroidDataOnlyOptions(),
         });
+        await pruneStalePushTokenDocs(
+          androidFcmDocs.slice(t, t + FCM_BATCH),
+          response.responses,
+        );
         if (response.failureCount > 0) {
           logger.warn('onCallSessionCreate: FCM partial failure', {
             callId,
@@ -2308,7 +2765,12 @@ export const onCallSessionCreate = onDocumentCreated(
       }
     }
 
-    logger.info('onCallSessionCreate: push sent', { callId, tokenCount: tokens.length });
+    logger.info('onCallSessionCreate: push sent', {
+      callId,
+      androidFcmTokenCount: androidFcmTokens.length,
+      iosFcmTokenCount: iosFcmTokens.length,
+      iosVoipTokenCount: iosVoipTokens.length,
+    });
   },
 );
 
@@ -2447,3 +2909,6 @@ export const cleanupStaleRingingCalls = onSchedule(
 );
 
 export { processHashtagGenerationRequest } from './hashtag_generation';
+export { enforceUserUsernamePolicy } from './username_enforcement';
+export { syncUserProfileDenormalized } from './sync_user_profile';
+export { shareLink } from './share_link';

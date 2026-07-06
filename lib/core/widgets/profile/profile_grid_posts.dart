@@ -1,3 +1,4 @@
+import '../../utils/reel_engagement.dart';
 import '../../utils/video_upload_policy.dart';
 
 /// Profile Posts tab: image and video reels with playable media only.
@@ -24,6 +25,22 @@ abstract final class ProfileGridPosts {
     }
     final videoUrl = (reel['videoUrl'] as String?) ?? '';
     return VideoUploadPolicy.isPlayableUrl(videoUrl);
+  }
+
+  static bool isVrReel(Map<String, dynamic> reel) => reel['isVR'] == true;
+
+  /// 360° uploads belong on the VR tab, not Posts (even legacy docs with only
+  /// [is360Video] and no [isVR]).
+  static bool belongsInVrTab(Map<String, dynamic> reel) =>
+      ReelEngagement.isVrOr360Reel(reel);
+
+  /// Posts tab: playable image/video reels, excluding VR-tab-only content.
+  static List<Map<String, dynamic>> filterForPostsTab(
+    List<Map<String, dynamic>> reels,
+  ) {
+    return reels
+        .where((r) => hasPlayableMedia(r) && !belongsInVrTab(r))
+        .toList(growable: false);
   }
 
   /// Keeps image and video posts that can render a thumbnail in the grid.

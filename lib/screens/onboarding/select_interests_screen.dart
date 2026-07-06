@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../core/onboarding/interest_vibes_catalog.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_text_field_style.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/interest/auto_sliding_chip_row.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
@@ -40,6 +40,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
   late List<String> _interests;
   late TextEditingController _searchController;
   String _searchQuery = '';
+  bool _isSaving = false;
 
   @override
   void initState() {
@@ -80,6 +81,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
   }
 
   Future<void> _onNext() async {
+    if (_isSaving) return;
     if (!_canContinue) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -88,75 +90,58 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
       return;
     }
     final uid = AuthService().currentUser?.uid;
-    if (uid != null && uid.isNotEmpty) {
-      try {
-        await UserService().updateUserProfile(
-          uid: uid,
-          interests: _state.selectedInterests,
-        );
-      } catch (_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Could not save interests. Check your connection and try again.',
-            ),
+    if (uid == null || uid.isEmpty) return;
+
+    setState(() => _isSaving = true);
+    try {
+      await UserService().updateUserProfile(
+        uid: uid,
+        interests: _state.selectedInterests,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Could not save interests. Check your connection and try again.',
           ),
-        );
-        return;
-      }
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
     // [OnboardingGate] shows terms / complete screen when interests are saved.
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      scrollable: false,
+      padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      stackChildren: [
+        AuthFloatingNavRow(
+          onBack: _onBack,
+          onForward: _onNext,
+          forwardEnabled: _canContinue && !_isSaving,
+          forwardLoading: _isSaving,
+        ),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(
-                horizontal: _horizontalPadding,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 5.0, right: 5),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const SizedBox(height: 20),
-                        const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                        const SizedBox(height: 16),
-                        const OnboardingProgressBar(progress: 0.85),
-                        const SizedBox(height: 40),
-                        _buildTitleSection(),
-                        const SizedBox(height: 20),
-                        _buildSearchBar(),
-                        const SizedBox(height: 20),
-                      ],
-                    ),
-                  ),
-
-                  Expanded(
-                    child: SingleChildScrollView(child: _buildChipsRows()),
-                  ),
-                  const SizedBox(height: 16),
-                  _buildHelperText(),
-                  const SizedBox(height: 100),
-                ],
-              ),
-            ),
-          ),
-          AuthFloatingNavRow(
-            onBack: _onBack,
-            onForward: _onNext,
-            forwardEnabled: _canContinue,
-          ),
+          const SizedBox(height: 20),
+          const VyoooBrandLogo.auth(),
+          const SizedBox(height: 16),
+          const OnboardingProgressBar(progress: 0.85),
+          const SizedBox(height: 40),
+          _buildTitleSection(),
+          const SizedBox(height: 20),
+          _buildSearchBar(),
+          const SizedBox(height: 20),
+          Expanded(child: SingleChildScrollView(child: _buildChipsRows())),
+          const SizedBox(height: 16),
+          _buildHelperText(),
+          const SizedBox(height: 100),
         ],
       ),
     );
@@ -170,19 +155,16 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
       children: [
         Text(
           "What's your vibe?",
-          style: TextStyle(
+          style: AppTypography.onboardingSectionTitle.copyWith(
+            color: AppTheme.lightOnSurface,
             fontSize: height * 0.05,
-            fontWeight: FontWeight.w700,
-            color: AppTheme.defaultTextColor,
           ),
         ),
         const SizedBox(height: 8),
         Text(
           'Powered by AI to match you with content that truly vibes with you',
-          style: const TextStyle(
-            fontSize: 14,
-            color: AppTheme.secondaryTextColor,
-            fontWeight: FontWeight.w400,
+          style: AppTypography.authSmallBody.copyWith(
+            color: AppTheme.lightMutedBody,
           ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -196,7 +178,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
       height: 50,
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: AppTheme.lightSearchBarFill,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -205,19 +187,21 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
             'assets/vyooO_icons/Home/nav_bar_icons/search.png',
             width: 22,
             height: 22,
-            color: AppTheme.searchBarColor,
+            color: AppTheme.lightSecondaryText,
           ),
           const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(
-                color: AppTheme.defaultTextColor,
-                fontSize: 16,
-              ),
+              keyboardAppearance:
+                  AppTextFieldStyle.keyboardAppearance(context),
+              cursorColor: AppTextFieldStyle.cursorColor(context),
+              style: AppTypography.input.copyWith(color: AppTheme.lightOnSurface),
               decoration: InputDecoration(
                 hintText: 'Search vibes...',
-                hintStyle: const TextStyle(color: White50.value, fontSize: 16),
+                hintStyle: AppTypography.inputHint.copyWith(
+                  color: AppTheme.lightHintText,
+                ),
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -230,7 +214,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
             'assets/vyooO_icons/Search/microphone.png',
             width: 22,
             height: 22,
-            color: AppTheme.searchBarColor,
+            color: AppTheme.lightSecondaryText,
           ),
         ],
       ),
@@ -248,9 +232,8 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
         child: Center(
           child: Text(
             'No vibes match your search',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.6),
+            style: AppTypography.authSmallBody.copyWith(
+              color: AppTheme.lightMutedBody,
             ),
           ),
         ),
@@ -273,10 +256,8 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
       child: Center(
         child: Text(
           'Select at least 3 vibes to continue',
-          style: const TextStyle(
-            fontSize: 12,
-            color: White60.value,
-            fontWeight: FontWeight.w400,
+          style: AppTypography.authSmallBody.copyWith(
+            color: AppTheme.lightMutedBody,
           ),
         ),
       ),

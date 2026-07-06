@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math' show min;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
+import '../models/reel_media_item.dart';
+import '../utils/engagement_counts.dart';
 import '../utils/hashtag_utils.dart';
 import '../utils/video_upload_policy.dart';
 import 'auth_service.dart';
@@ -10,8 +13,11 @@ import 'pexels_feed_service.dart';
 import '../utils/reel_engagement.dart';
 import 'user_service.dart';
 
+/// Outcome of submitting a report against a reel/post.
+enum ReelReportResult { success, alreadyReported, notSignedIn, failed }
+
 /// Reels feed by tab. For You / Trending / VR use reels collection; Following uses users/{uid}/following.
-/// When Firestore is empty and [AppConfig.usePexelsFeed] + API key are set, falls back to Pexels.
+/// When feeds are empty, falls back to reels from public profiles, then Pexels when configured.
 class ReelsService {
   ReelsService._();
   static final ReelsService _instance = ReelsService._();
@@ -19,34 +25,48 @@ class ReelsService {
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final PexelsFeedService _pexels = PexelsFeedService();
+  static final Set<String> _likeRepairInFlight = <String>{};
   static const String _reelsCollection = 'reels';
+
+  /// Client-side privacy filter for discovery feeds (FYP, trending, VR, cache).
+  Future<List<Map<String, dynamic>>> filterDiscoveryAudience(
+    Iterable<Map<String, dynamic>> reels,
+  ) async {
+    final followingIds = await _followingIdsForCurrentUser();
+    return reels
+        .where((r) => _isDiscoverableToCurrentUser(r, followingIds: followingIds))
+        .where(ReelEngagement.isMainFeedEligible)
+        .toList(growable: false);
+  }
 
   /// Reels for "For You": orderBy createdAt desc.
   Future<List<Map<String, dynamic>>> getReelsForYou({int limit = 20}) async {
     try {
+      final followingIds = await _followingIdsForCurrentUser();
       final q = await _firestore
           .collection(_reelsCollection)
           .orderBy('createdAt', descending: true)
-          .limit(limit)
+          .limit(limit * 4)
           .get();
       final list = q.docs
           .map((d) => _docToReelMap(d))
           .where((r) =>
-              _isVisibleToCurrentUser(r) &&
+              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
-              ReelEngagement.isDiscoveryFeedEligible(r))
+              ReelEngagement.isMainFeedEligible(r))
+          .take(limit)
           .toList();
-      if (list.isNotEmpty) return list;
-      if (_pexels.isAvailable) return _pexels.getForYou(limit: limit);
-      return [];
+      return _withPublicProfileFallback(list, limit: limit, pexels: _pexels.getForYou);
     } catch (_) {
+      final fallback = await getPublicProfileReels(limit: limit);
+      if (fallback.isNotEmpty) return fallback;
       if (_pexels.isAvailable) return _pexels.getForYou(limit: limit);
       return [];
     }
   }
 
   /// Reels from followed users only. Uses users/{uid}/following then reels where userId in that list.
-  /// Does not fall back to third-party demo feeds — empty means no reels from people you follow.
+  /// When empty, falls back to [getPublicProfileReels] so new users still see content.
   Future<List<Map<String, dynamic>>> getReelsFollowing({int limit = 20}) async {
     final uid = AuthService().currentUser?.uid;
     if (uid == null) {
@@ -70,7 +90,9 @@ class ReelsService {
             .get();
         for (final d in q.docs) {
           final r = _docToReelMap(d);
-          if (_isVisibleToCurrentUser(r) && _isPlayableReel(r)) {
+          if (_isVisibleToCurrentUser(r) &&
+              _isPlayableReel(r) &&
+              ReelEngagement.isMainFeedEligible(r)) {
             list.add(r);
           }
         }
@@ -84,55 +106,109 @@ class ReelsService {
         return list.take(limit).toList(growable: false);
       }
       if (list.isNotEmpty) return list;
-      return [];
+      return getPublicProfileReels(limit: limit);
     } catch (_) {
-      return [];
+      return getPublicProfileReels(limit: limit);
     }
   }
 
   /// Trending: orderBy viewsCount desc.
   Future<List<Map<String, dynamic>>> getReelsTrending({int limit = 20}) async {
     try {
+      final followingIds = await _followingIdsForCurrentUser();
       final q = await _firestore
           .collection(_reelsCollection)
           .orderBy('viewsCount', descending: true)
-          .limit(limit)
+          .limit(limit * 4)
           .get();
       final list = q.docs
           .map((d) => _docToReelMap(d))
           .where((r) =>
-              _isVisibleToCurrentUser(r) &&
+              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
-              ReelEngagement.isDiscoveryFeedEligible(r))
+              ReelEngagement.isMainFeedEligible(r))
+          .take(limit)
           .toList();
-      if (list.isNotEmpty) return list;
-      if (_pexels.isAvailable) return _pexels.getTrending(limit: limit);
-      return [];
+      return _withPublicProfileFallback(list, limit: limit, pexels: _pexels.getTrending);
     } catch (_) {
+      final fallback = await getPublicProfileReels(limit: limit);
+      if (fallback.isNotEmpty) return fallback;
       if (_pexels.isAvailable) return _pexels.getTrending(limit: limit);
       return [];
     }
   }
 
-  /// VR tab: where isVR == true.
+  /// Fallback when discovery feeds are empty: reels from users with a public
+  /// account (public / business / government) that pass moderation.
+  Future<List<Map<String, dynamic>>> getPublicProfileReels({
+    int limit = 20,
+  }) async {
+    try {
+      final fromRecent = await _publicReelsFromRecentScan(limit: limit);
+      if (fromRecent.isNotEmpty) return fromRecent;
+      return _publicReelsFromPublicUsers(limit: limit);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// VR tab: immersive posts ([isVR] or [is360Video]).
   Future<List<Map<String, dynamic>>> getReelsVR({int limit = 20}) async {
     try {
-      final q = await _firestore
+      final followingIds = await _followingIdsForCurrentUser();
+      final merged = <String, Map<String, dynamic>>{};
+
+      void takePlayable(Map<String, dynamic> r) {
+        final id = (r['id'] as String?)?.trim() ?? '';
+        if (id.isEmpty || merged.containsKey(id)) return;
+        if (!_isDiscoverableToCurrentUser(r, followingIds: followingIds) ||
+            !_isPlayableReel(r) ||
+            !ReelEngagement.isDiscoveryFeedEligible(r)) {
+          return;
+        }
+        merged[id] = r;
+      }
+
+      final vrSnap = await _firestore
           .collection(_reelsCollection)
           .where('isVR', isEqualTo: true)
-          .limit(limit)
+          .limit(limit * 4)
           .get();
-      final list = q.docs
-          .map((d) => _docToReelMap(d))
-          .where((r) =>
-              _isVisibleToCurrentUser(r) &&
-              _isPlayableReel(r) &&
-              ReelEngagement.isDiscoveryFeedEligible(r))
-          .toList();
+      for (final d in vrSnap.docs) {
+        takePlayable(_docToReelMap(d));
+      }
+
+      if (merged.length < limit) {
+        final three60Snap = await _firestore
+            .collection(_reelsCollection)
+            .where('is360Video', isEqualTo: true)
+            .limit(limit * 4)
+            .get();
+        for (final d in three60Snap.docs) {
+          takePlayable(_docToReelMap(d));
+        }
+      }
+
+      final list = _sortReelsByCreatedAtDesc(merged.values.toList())
+          .take(limit)
+          .toList(growable: false);
       if (list.isNotEmpty) return list;
-      if (_pexels.isAvailable) return _pexels.getVR(limit: limit);
-      return [];
+      final public = await getPublicProfileReels(limit: limit * 2);
+      final vrPublic = public
+          .where((r) => r['isVR'] == true || r['is360Video'] == true)
+          .take(limit)
+          .toList(growable: false);
+      if (vrPublic.isNotEmpty) return vrPublic;
+      return _withPublicProfileFallback(const [], limit: limit, pexels: _pexels.getVR);
     } catch (_) {
+      final fallback = await getPublicProfileReels(limit: limit);
+      if (fallback.isNotEmpty) {
+        final vrOnly = fallback
+            .where((r) => r['isVR'] == true || r['is360Video'] == true)
+            .take(limit)
+            .toList(growable: false);
+        if (vrOnly.isNotEmpty) return vrOnly;
+      }
       if (_pexels.isAvailable) return _pexels.getVR(limit: limit);
       return [];
     }
@@ -149,12 +225,16 @@ class ReelsService {
     final tag = HashtagUtils.normalizeForQuery(rawTag);
     if (tag.isEmpty) return [];
 
+    final followingIds = await _followingIdsForCurrentUser();
     final merged = <String, Map<String, dynamic>>{};
 
     void takePlayable(Map<String, dynamic> r) {
       final id = (r['id'] as String?)?.trim() ?? '';
       if (id.isEmpty || merged.containsKey(id)) return;
-      if (!_isVisibleToCurrentUser(r) || !_isPlayableReel(r)) return;
+      if (!_isDiscoverableToCurrentUser(r, followingIds: followingIds) ||
+          !_isPlayableReel(r)) {
+        return;
+      }
       if (!HashtagUtils.reelMapMatchesHashtag(r, tag)) return;
       merged[id] = r;
     }
@@ -250,17 +330,28 @@ class ReelsService {
         final data = doc.data();
         for (final idx in indicesBySource[doc.id] ?? const <int>[]) {
           final stub = out[idx];
-          stub['likes'] = (data['likes'] as num?)?.toInt() ?? 0;
-          stub['comments'] = (data['comments'] as num?)?.toInt() ?? 0;
-          stub['saves'] = (data['saves'] as num?)?.toInt() ?? 0;
-          stub['views'] =
-              (data['views'] as num?)?.toInt() ??
-              (data['viewsCount'] as num?)?.toInt() ??
-              0;
-          stub['reposts'] = (data['reposts'] as num?)?.toInt() ??
-              (data['shares'] as num?)?.toInt() ??
-              0;
-          stub['shares'] = (data['shares'] as num?)?.toInt() ?? 0;
+          stub['likes'] = EngagementCounts.sanitize(
+            (data['likes'] as num?)?.toInt() ?? 0,
+          );
+          stub['comments'] = EngagementCounts.sanitize(
+            (data['comments'] as num?)?.toInt() ?? 0,
+          );
+          stub['saves'] = EngagementCounts.sanitize(
+            (data['saves'] as num?)?.toInt() ?? 0,
+          );
+          stub['views'] = EngagementCounts.sanitize(
+            (data['views'] as num?)?.toInt() ??
+                (data['viewsCount'] as num?)?.toInt() ??
+                0,
+          );
+          stub['reposts'] = EngagementCounts.sanitize(
+            (data['reposts'] as num?)?.toInt() ??
+                (data['shares'] as num?)?.toInt() ??
+                0,
+          );
+          stub['shares'] = EngagementCounts.sanitize(
+            (data['shares'] as num?)?.toInt() ?? 0,
+          );
           stub['hideLikeCount'] = data['hideLikeCount'] == true;
           stub['hideViewCount'] = data['hideViewCount'] == true;
           stub['hideShareCount'] = data['hideShareCount'] == true;
@@ -281,11 +372,52 @@ class ReelsService {
       if (!doc.exists) return null;
       final data = doc.data();
       if (data == null) return null;
-      final reel = _snapshotDataToReelMap(doc.id, data);
-      if (!_isVisibleToCurrentUser(reel) || !_isPlayableReel(reel)) return null;
+      final rawLikes = (data['likes'] as num?)?.toInt() ?? 0;
+      final payload = Map<String, dynamic>.from(data);
+      if (rawLikes < 0) {
+        payload['likes'] = await _ensureRepairedLikeCount(id);
+      }
+      final reel = _snapshotDataToReelMap(doc.id, payload);
+      final followingIds = await _followingIdsForCurrentUser();
+      if (!_isDiscoverableToCurrentUser(reel, followingIds: followingIds) ||
+          !_isPlayableReel(reel)) {
+        return null;
+      }
       return reel;
     } catch (_) {
       return null;
+    }
+  }
+
+  /// Submit a user report against a reel/post.
+  ///
+  /// Uses a deterministic document id (`<reporterUid>_<reelId>`) so a given
+  /// user can only report a given reel once. This keeps the report count an
+  /// accurate count of distinct reporters, which the threshold-based
+  /// auto-moderation (Cloud Function) relies on.
+  Future<ReelReportResult> reportReel({
+    required String reelId,
+    required String reason,
+    String? reelOwnerId,
+  }) async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || uid.isEmpty) return ReelReportResult.notSignedIn;
+    if (reelId.isEmpty) return ReelReportResult.failed;
+    try {
+      final docRef =
+          _firestore.collection('reel_reports').doc('${uid}_$reelId');
+      final existing = await docRef.get();
+      if (existing.exists) return ReelReportResult.alreadyReported;
+      await docRef.set({
+        'reelId': reelId,
+        'reelOwnerId': reelOwnerId ?? '',
+        'reporterId': uid,
+        'reason': reason,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return ReelReportResult.success;
+    } catch (_) {
+      return ReelReportResult.failed;
     }
   }
 
@@ -386,23 +518,203 @@ class ReelsService {
       // Feed-safe default: only show content explicitly cleared by moderation.
       // Pending/review/blocked/error and empty statuses stay hidden from user feeds.
       if (s.isEmpty) return false;
+      if (s == 'report_covered') return true;
+      // Legacy crowd-report rows used `removed` — keep visible with frosted overlay.
+      if (s == 'removed' && m['removedReason'] == 'report_threshold') return true;
       return s == 'clear' || s == 'approved';
     }
     if (m is Map) {
       final raw = m['status'];
       final s = raw == null ? '' : raw.toString().toLowerCase();
       if (s.isEmpty) return false;
+      if (s == 'report_covered') return true;
+      if (s == 'removed' && m['removedReason'] == 'report_threshold') return true;
       return s == 'clear' || s == 'approved';
     }
     return false;
   }
 
   bool _isVisibleToCurrentUser(Map<String, dynamic> data) {
+    return _passesModerationVisibility(data);
+  }
+
+  Future<Set<String>> _followingIdsForCurrentUser() async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || uid.isEmpty) return const {};
+    try {
+      return (await UserService().getFollowing(uid)).toSet();
+    } catch (_) {
+      return const {};
+    }
+  }
+
+  bool _reelAuthorIsPrivate(Map<String, dynamic> data) {
+    if (data['authorAccountPrivate'] == true) return true;
+    return UserService.accountTypeRequiresFollowApproval(
+      data['accountType'] as String?,
+    );
+  }
+
+  static const List<String> _publicAccountTypes = <String>[
+    'public',
+    'business',
+    'government',
+  ];
+
+  Future<List<Map<String, dynamic>>> _withPublicProfileFallback(
+    List<Map<String, dynamic>> primary, {
+    required int limit,
+    required Future<List<Map<String, dynamic>>> Function({int limit}) pexels,
+  }) async {
+    if (primary.isNotEmpty) return primary;
+    final public = await getPublicProfileReels(limit: limit);
+    if (public.isNotEmpty) return public;
+    if (_pexels.isAvailable) return pexels(limit: limit);
+    return const [];
+  }
+
+  Future<List<Map<String, dynamic>>> _publicReelsFromRecentScan({
+    required int limit,
+  }) async {
+    final q = await _firestore
+        .collection(_reelsCollection)
+        .orderBy('createdAt', descending: true)
+        .limit(limit * 12)
+        .get();
+    if (q.docs.isEmpty) return const [];
+
+    final uidsNeedingType = <String>{};
+    for (final d in q.docs) {
+      final data = d.data();
+      if (data['authorAccountPrivate'] == true) continue;
+      final accountType = (data['accountType'] as String?)?.trim() ?? '';
+      if (accountType.isEmpty) {
+        final uid = (data['userId'] as String?)?.trim() ?? '';
+        if (uid.isNotEmpty) uidsNeedingType.add(uid);
+      }
+    }
+    final accountTypeByUid = await _fetchAccountTypesForUsers(uidsNeedingType);
+
+    final out = <Map<String, dynamic>>[];
+    for (final d in q.docs) {
+      final data = d.data();
+      if (!_isPublicAuthorReel(data, accountTypeByUid: accountTypeByUid)) {
+        continue;
+      }
+      final reel = _docToReelMap(d);
+      if (!_passesModerationVisibility(reel) ||
+          !_isPlayableReel(reel) ||
+          !ReelEngagement.isMainFeedEligible(reel)) {
+        continue;
+      }
+      out.add(reel);
+      if (out.length >= limit) break;
+    }
+    return out;
+  }
+
+  Future<List<Map<String, dynamic>>> _publicReelsFromPublicUsers({
+    required int limit,
+  }) async {
+    final usersSnap = await _firestore
+        .collection('users')
+        .where('accountType', whereIn: _publicAccountTypes)
+        .limit(40)
+        .get();
+    if (usersSnap.docs.isEmpty) return const [];
+
+    final publicUserIds = usersSnap.docs
+        .map((d) => d.id)
+        .where((id) => id.trim().isNotEmpty)
+        .toList(growable: false);
+    final list = <Map<String, dynamic>>[];
+    const chunkSize = 10;
+    for (var i = 0; i < publicUserIds.length; i += chunkSize) {
+      final chunk = publicUserIds.sublist(
+        i,
+        min(i + chunkSize, publicUserIds.length),
+      );
+      final q = await _firestore
+          .collection(_reelsCollection)
+          .where('userId', whereIn: chunk)
+          .limit(limit * 2)
+          .get();
+      for (final d in q.docs) {
+        final reel = _docToReelMap(d);
+        if (!_passesModerationVisibility(reel) ||
+            !_isPlayableReel(reel) ||
+            !ReelEngagement.isMainFeedEligible(reel)) {
+          continue;
+        }
+        list.add(reel);
+      }
+    }
+    return _sortReelsByCreatedAtDesc(list)
+        .take(limit)
+        .toList(growable: false);
+  }
+
+  Future<Map<String, String>> _fetchAccountTypesForUsers(
+    Set<String> userIds,
+  ) async {
+    if (userIds.isEmpty) return const {};
+    final out = <String, String>{};
+    final ids = userIds.toList(growable: false);
+    for (var i = 0; i < ids.length; i += 10) {
+      final chunk = ids.sublist(i, min(i + 10, ids.length));
+      try {
+        final q = await _firestore
+            .collection('users')
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+        for (final d in q.docs) {
+          out[d.id] =
+              (d.data()['accountType'] as String?)?.trim().toLowerCase() ?? '';
+        }
+      } catch (_) {}
+    }
+    return out;
+  }
+
+  bool _isPublicAuthorReel(
+    Map<String, dynamic> data, {
+    Map<String, String>? accountTypeByUid,
+  }) {
+    if (data['authorAccountPrivate'] == true) return false;
+    var accountType =
+        (data['accountType'] as String?)?.trim().toLowerCase() ?? '';
+    if (accountType.isEmpty) {
+      final uid = (data['userId'] as String?)?.trim() ?? '';
+      if (uid.isNotEmpty && accountTypeByUid != null) {
+        accountType = (accountTypeByUid[uid] ?? '').trim().toLowerCase();
+      }
+    }
+    if (accountType.isNotEmpty) {
+      return !UserService.accountTypeRequiresFollowApproval(accountType);
+    }
+    return data['authorAccountPrivate'] == false;
+  }
+
+  bool _passesModerationVisibility(Map<String, dynamic> data) {
     if (_isReelApproved(data)) return true;
     final currentUid = AuthService().currentUser?.uid ?? '';
     if (currentUid.isEmpty) return false;
     final ownerUid = (data['userId'] as String?) ?? '';
     return ownerUid == currentUid;
+  }
+
+  /// Discovery feeds hide private-account posts unless the viewer follows the author.
+  bool _isDiscoverableToCurrentUser(
+    Map<String, dynamic> data, {
+    required Set<String> followingIds,
+  }) {
+    if (!_passesModerationVisibility(data)) return false;
+    final currentUid = AuthService().currentUser?.uid ?? '';
+    final ownerUid = (data['userId'] as String?) ?? '';
+    if (ownerUid.isEmpty) return false;
+    if (currentUid.isNotEmpty && ownerUid == currentUid) return true;
+    if (!_reelAuthorIsPrivate(data)) return true;
+    return followingIds.contains(ownerUid);
   }
 
   static bool _isPlayableReel(Map<String, dynamic> data) {
@@ -434,6 +746,11 @@ class ReelsService {
     final tagsList = rawTags is List
         ? rawTags.map((e) => e.toString()).toList(growable: false)
         : <String>[];
+    final mediaItems = ReelMediaItem.sanitizedRawList(data['mediaItems']);
+    final rawLikes = (data['likes'] as num?)?.toInt() ?? 0;
+    if (rawLikes < 0) {
+      _triggerLikeCountRepairIfCorrupted(id);
+    }
 
     return {
       'id': id,
@@ -441,6 +758,8 @@ class ReelsService {
       'videoUrl': data['videoUrl'] ?? '',
       'imageUrl': data['imageUrl'] ?? '',
       'thumbnailUrl': data['thumbnailUrl'] ?? data['imageUrl'] ?? '',
+      'mediaItems': mediaItems,
+      'mediaCount': mediaItems.isNotEmpty ? mediaItems.length : 1,
       'username': data['username'] ?? '',
       'handle': data['handle'] ?? '',
       'caption': data['caption'] ?? '',
@@ -448,21 +767,38 @@ class ReelsService {
       'title': data['title'] ?? '',
       'tags': tagsList,
       'isVR': data['isVR'] == true,
-      'likes': (data['likes'] as num?)?.toInt() ?? 0,
-      'comments': (data['comments'] as num?)?.toInt() ?? 0,
-      'saves': (data['saves'] as num?)?.toInt() ?? 0,
-      'views':
-          (data['views'] as num?)?.toInt() ??
-          (data['viewsCount'] as num?)?.toInt() ??
-          0,
-      'shares': (data['shares'] as num?)?.toInt() ?? 0,
-      'reposts': (data['reposts'] as num?)?.toInt() ??
-          (data['shares'] as num?)?.toInt() ??
-          0,
+      'is360Video': data['is360Video'] == true,
+      'projectionType': data['projectionType'] ?? 'flat',
+      'stereoMode': data['stereoMode'] ?? 'mono',
+      'likes': EngagementCounts.sanitize(rawLikes),
+      'comments': EngagementCounts.sanitize(
+        (data['comments'] as num?)?.toInt() ?? 0,
+      ),
+      'saves': EngagementCounts.sanitize(
+        (data['saves'] as num?)?.toInt() ?? 0,
+      ),
+      'views': EngagementCounts.sanitize(
+        (data['views'] as num?)?.toInt() ??
+            (data['viewsCount'] as num?)?.toInt() ??
+            0,
+      ),
+      'shares': EngagementCounts.sanitize(
+        (data['shares'] as num?)?.toInt() ?? 0,
+      ),
+      'reposts': EngagementCounts.sanitize(
+        (data['reposts'] as num?)?.toInt() ??
+            (data['shares'] as num?)?.toInt() ??
+            0,
+      ),
       'avatarUrl': data['profileImage'] ?? data['avatarUrl'] ?? '',
       'userId': data['userId'] ?? '',
+      'authorAccountPrivate': data['authorAccountPrivate'] == true,
+      'isVerified': data['isVerified'] == true,
+      'accountType': (data['accountType'] as String?) ?? 'private',
+      'vipVerified': data['vipVerified'] == true,
       'createdAt': data['createdAt'],
       'moderation': data['moderation'],
+      'reportCount': (data['reportCount'] as num?)?.toInt() ?? 0,
       'isRepost': data['isRepost'] == true,
       'repostOf': data['repostOf'] ?? '',
       'repostOfUserId': data['repostOfUserId'] ?? '',
@@ -483,5 +819,61 @@ class ReelsService {
     final videoUrl = ((data['videoUrl'] as String?) ?? '').trim();
     if (imageUrl.isNotEmpty && videoUrl.isEmpty) return 'image';
     return 'video';
+  }
+
+  /// Recounts [userLikes] and patches the reel when Firestore has a negative count.
+  void repairCorruptedLikeCount(String reelId, {required int currentLikes}) {
+    if (currentLikes >= 0) return;
+    _triggerLikeCountRepairIfCorrupted(reelId);
+  }
+
+  void _triggerLikeCountRepairIfCorrupted(String reelId) {
+    final id = reelId.trim();
+    if (id.isEmpty || !_likeRepairInFlight.add(id)) return;
+    unawaited(_repairLikeCountFromUserLikes(id));
+  }
+
+  Future<int> _ensureRepairedLikeCount(String reelId) async {
+    if (!_likeRepairInFlight.add(reelId)) {
+      return _countUserLikesForReel(reelId);
+    }
+    return _repairLikeCountFromUserLikes(reelId);
+  }
+
+  Future<int> _repairLikeCountFromUserLikes(String reelId) async {
+    try {
+      final count = await _countUserLikesForReel(reelId);
+      await _firestore.collection(_reelsCollection).doc(reelId).update({
+        'likes': count,
+      });
+      debugPrint(
+        '[Vyooo][Like] repaired corrupted likes reelId=$reelId count=$count',
+      );
+      return count;
+    } catch (e) {
+      debugPrint(
+        '[Vyooo][Like] repair FAILED reelId=$reelId error=$e',
+      );
+      return 0;
+    } finally {
+      _likeRepairInFlight.remove(reelId);
+    }
+  }
+
+  Future<int> _countUserLikesForReel(String reelId) async {
+    try {
+      final agg = await _firestore
+          .collection('userLikes')
+          .where('reelId', isEqualTo: reelId)
+          .count()
+          .get();
+      return agg.count ?? 0;
+    } catch (_) {
+      final snap = await _firestore
+          .collection('userLikes')
+          .where('reelId', isEqualTo: reelId)
+          .get();
+      return snap.docs.length;
+    }
   }
 }

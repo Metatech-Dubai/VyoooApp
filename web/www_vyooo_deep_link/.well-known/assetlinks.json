@@ -1,10 +1,14 @@
 [
   {
-    "relation": ["delegate_permission/common.handle_all_urls"],
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
     "target": {
       "namespace": "android_app",
       "package_name": "com.vyooo",
       "sha256_cert_fingerprints": [
+        "E2:A2:3A:73:7F:F0:1A:7D:B6:5F:6E:6C:C9:18:68:FF:35:8E:F9:2F:C1:ED:33:09:90:E6:16:11:26:EE:46:1F",
         "6D:E8:DA:3C:70:B3:74:44:74:7D:83:0C:41:70:39:E5:DA:C8:09:63:7C:10:F7:EC:9B:B2:32:07:16:82:1D:E1"
       ]
     }

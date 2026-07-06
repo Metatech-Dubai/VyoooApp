@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/models/video_360_metadata.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -264,7 +265,7 @@ class VrScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             AppFeedHeader(selectedIndex: 1),
-            const Expanded(child: VrComingSoonView()),
+            const Expanded(child: VrGridView()),
           ],
         ),
       ),
@@ -733,6 +734,7 @@ class _VrGridViewState extends State<VrGridView> {
                           viewCount: (reel['views'] as int?) ?? 0,
                           shareCount: (reel['shares'] as int?) ?? 0,
                           saveCount: (reel['saves'] as int?) ?? 0,
+                          video360: Video360Metadata.forVrPlayback(reel),
                         ),
                       ),
                     ),

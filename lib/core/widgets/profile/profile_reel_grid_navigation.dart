@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../models/reel_media_item.dart';
+import '../../models/video_360_metadata.dart';
 import '../../../screens/content/post_feed_screen.dart';
 import '../../../screens/content/vr_detail_screen.dart';
 import '../../../screens/profile/profile_figma_tokens.dart';
@@ -25,14 +27,26 @@ abstract final class ProfileReelGridNavigation {
       'imageUrl': data['imageUrl'] as String? ?? '',
       'thumbnailUrl': data['thumbnailUrl'] as String? ?? '',
       'mediaType': data['mediaType'] as String? ?? '',
+      'mediaItems': ReelMediaItem.sanitizedRawList(data['mediaItems']),
+      'mediaCount': (data['mediaCount'] as num?)?.toInt() ?? 1,
       'caption': data['caption'] as String? ?? '',
+      'title': data['title'] as String? ?? '',
+      'description': data['description'] as String? ?? '',
+      'tags': data['tags'] is List
+          ? (data['tags'] as List).map((e) => e.toString()).toList()
+          : const <String>[],
       'likes': (data['likes'] as num?)?.toInt() ?? 0,
       'comments': (data['comments'] as num?)?.toInt() ?? 0,
       'shares': (data['shares'] as num?)?.toInt() ?? 0,
       'views': (data['views'] as num?)?.toInt() ?? 0,
       'saves': (data['saves'] as num?)?.toInt() ?? 0,
+      'reportCount': (data['reportCount'] as num?)?.toInt() ?? 0,
+      'moderation': data['moderation'],
       'createdAt': data['createdAt'],
       'isVR': data['isVR'] == true,
+      'is360Video': data['is360Video'] == true,
+      'projectionType': data['projectionType'] as String? ?? 'flat',
+      'stereoMode': data['stereoMode'] as String? ?? 'mono',
       'profileGridSpan': data['profileGridSpan'] as String? ?? '',
       'profileGridTitle': data['profileGridTitle'] as String? ?? '',
       'profileGridThumbnailUrl': data['profileGridThumbnailUrl'] as String? ?? '',
@@ -141,6 +155,7 @@ abstract final class ProfileReelGridNavigation {
     final creatorHandle = (item['handle']?.toString() ?? '').trim();
     final avatar = (item['avatarUrl']?.toString() ?? '').trim();
     final thumb = thumbnailFromReel(item);
+    final videoUrl = (item['videoUrl'] as String? ?? '').trim();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => VRDetailScreen(
@@ -152,7 +167,17 @@ abstract final class ProfileReelGridNavigation {
                 : 'creator',
             avatarUrl: avatar,
             thumbnailUrl: thumb,
+            videoUrl: videoUrl.isNotEmpty ? videoUrl : null,
+            description: (item['description'] as String? ??
+                    item['caption'] as String? ??
+                    '')
+                .trim(),
             likeCount: (item['likes'] as num?)?.toInt() ?? 0,
+            commentCount: (item['comments'] as num?)?.toInt() ?? 0,
+            viewCount: (item['views'] as num?)?.toInt() ?? 0,
+            shareCount: (item['shares'] as num?)?.toInt() ?? 0,
+            saveCount: (item['saves'] as num?)?.toInt() ?? 0,
+            video360: Video360Metadata.forVrPlayback(item),
           ),
         ),
       ),

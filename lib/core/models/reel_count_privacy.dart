@@ -1,3 +1,5 @@
+import '../utils/engagement_counts.dart';
+
 /// Per-post visibility for engagement counters (Instagram-style).
 class ReelCountPrivacy {
   const ReelCountPrivacy({
@@ -29,9 +31,10 @@ class ReelCountPrivacy {
   }
 
   static String formatCount(int n) {
-    if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
-    if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
-    return '$n';
+    final safe = EngagementCounts.sanitize(n);
+    if (safe >= 1000000) return '${(safe / 1000000).toStringAsFixed(1)}M';
+    if (safe >= 1000) return '${(safe / 1000).toStringAsFixed(1)}k';
+    return '$safe';
   }
 
   /// Merges privacy flags into an existing reel map.

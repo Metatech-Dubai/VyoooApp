@@ -45,10 +45,10 @@ enum Video360StereoMode {
 
 /// Playback + upload metadata for 360 content (VOD reels and live streams).
 ///
-/// Shared with the 360 VOD feature (`feature/360-video-integration`) so both
-/// paths tag immersive content identically and the viewer can detect + route on
-/// the same fields. Live streams embed this in their Firestore doc via
-/// [toFirestore] and read it back via [fromPost].
+/// Shared with the 360 VOD feature so both paths tag immersive content
+/// identically and the viewer can detect + route on the same fields. Live
+/// streams embed this in their Firestore doc via [toFirestore] and read it back
+/// via [fromPost].
 class Video360Metadata {
   const Video360Metadata({
     this.is360Video = false,
@@ -80,10 +80,10 @@ class Video360Metadata {
   }
 
   Map<String, dynamic> toFirestore() => {
-        'is360Video': is360Video,
-        'projectionType': projectionType.firestoreValue,
-        'stereoMode': stereoMode.firestoreValue,
-      };
+    'is360Video': is360Video,
+    'projectionType': projectionType.firestoreValue,
+    'stereoMode': stereoMode.firestoreValue,
+  };
 
   /// Reads post/reel/stream maps; unknown values fall back to safe defaults.
   static Video360Metadata fromPost(Map<String, dynamic> post) {

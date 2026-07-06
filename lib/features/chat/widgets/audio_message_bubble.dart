@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
 import '../models/message_model.dart';
+import 'message_reply_quote.dart';
 
 class AudioMessageBubble extends StatefulWidget {
   const AudioMessageBubble({
@@ -12,6 +14,8 @@ class AudioMessageBubble extends StatefulWidget {
     required this.time,
     this.senderName,
     this.seenText,
+    this.replyToSenderName,
+    this.replyToPreview,
   });
 
   final MessageModel message;
@@ -19,6 +23,8 @@ class AudioMessageBubble extends StatefulWidget {
   final String time;
   final String? senderName;
   final String? seenText;
+  final String? replyToSenderName;
+  final String? replyToPreview;
 
   @override
   State<AudioMessageBubble> createState() => _AudioMessageBubbleState();
@@ -102,20 +108,12 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
         ),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          gradient: widget.isSent
-              ? const LinearGradient(
-                  colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: widget.isSent ? null : const Color(0xFF1E0E2E),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(widget.isSent ? 18 : 4),
-            bottomRight: Radius.circular(widget.isSent ? 4 : 18),
-          ),
+          color: widget.isSent
+              ? AppColors.chatOutgoingBubble
+              : AppColors.chatIncomingBubble,
+          borderRadius: widget.isSent
+              ? AppRadius.chatOutgoingBubbleRadius
+              : AppRadius.pillRadius,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -129,11 +127,17 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                   style: TextStyle(
                     color: widget.isSent
                         ? Colors.white70
-                        : AppColors.brandMagenta,
+                        : AppColors.brandDeepMagenta,
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+              ),
+            if (widget.replyToSenderName != null && widget.replyToPreview != null)
+              MessageReplyQuote(
+                senderName: widget.replyToSenderName!,
+                preview: widget.replyToPreview!,
+                isSentBubble: widget.isSent,
               ),
             Row(
               children: [
@@ -145,7 +149,7 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                         : _isPlaying
                         ? Icons.pause_circle_filled
                         : Icons.play_circle_filled,
-                    color: Colors.white,
+                    color: widget.isSent ? Colors.white : AppColors.chatTextPrimary,
                     size: 30,
                   ),
                 ),
@@ -160,8 +164,12 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                           size: const Size(double.infinity, 18),
                           painter: _AudioWaveformPainter(
                             progress: progress.clamp(0.0, 1.0),
-                            activeColor: Colors.white,
-                            inactiveColor: Colors.white.withValues(alpha: 0.3),
+                            activeColor:
+                                widget.isSent ? Colors.white : AppColors.chatTextPrimary,
+                            inactiveColor: widget.isSent
+                                ? Colors.white.withValues(alpha: 0.3)
+                                : AppColors.chatTextSecondary
+                                    .withValues(alpha: 0.4),
                           ),
                         ),
                       ),
@@ -171,7 +179,9 @@ class _AudioMessageBubbleState extends State<AudioMessageBubble> {
                             ? _formatDuration(_position)
                             : _formatDuration(_duration),
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: widget.isSent
+                              ? Colors.white.withValues(alpha: 0.6)
+                              : AppColors.chatTextSecondary,
                           fontSize: 10,
                         ),
                       ),

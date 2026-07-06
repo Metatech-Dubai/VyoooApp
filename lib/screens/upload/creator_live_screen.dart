@@ -1,13 +1,17 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
 
 import '../../core/config/agora_config.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/constants/live_stream_assets.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/models/video_360_metadata.dart';
@@ -16,11 +20,21 @@ import '../../core/services/gyro_look_controller.dart';
 import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/media_push_service.dart';
+import '../../core/services/notification_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_typography.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/widgets/app_feed_header.dart';
+import '../../core/widgets/app_feed_header_icon_button.dart';
+import '../../core/widgets/app_feed_notification_button.dart';
+import '../../core/widgets/live_comment_input_field.dart';
+import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/story/story_upload_screen.dart';
 import '../../widgets/insta360_preview_view.dart';
+import '../../screens/notifications/notification_screen.dart';
 import 'upload_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
 
@@ -32,21 +46,57 @@ enum _LiveState { initializing, permissionDenied, offline, countdown, live }
 /// `insta360` = the Insta360 360° camera pushed in as an Agora external video source.
 enum _CameraSource { phone, insta360 }
 
+/// iOS needs extra time after removing [AgoraVideoView] before creating a new one.
+const Duration _kIosPlatformViewSettleDelay = Duration(milliseconds: 400);
+
 // ── Screen ─────────────────────────────────────────────────────────────────────
 
 /// Creator live streaming screen.
 /// Handles camera preview → countdown → live broadcast with Agora + Firebase.
 class CreatorLiveScreen extends StatefulWidget {
-  const CreatorLiveScreen({super.key});
+  const CreatorLiveScreen({
+    super.key,
+    this.autoStartLive = false,
+    this.embeddedInMainShell = false,
+    this.isActive = true,
+    this.shellBottomInset = AppBottomNavigation.barHeight,
+    this.onShellExit,
+    this.onOverlayRouteChanged,
+  });
+
+  /// When true, starts the go-live countdown once camera preview is ready.
+  final bool autoStartLive;
+
+  /// Embedded under [MainNavWrapper] broadcast tab — standard bottom nav stays visible.
+  final bool embeddedInMainShell;
+
+  /// Whether the broadcast tab is the active shell tab (pauses preview when false).
+  final bool isActive;
+
+  /// Space reserved for the main-shell bottom nav overlay.
+  final double shellBottomInset;
+
+  /// Called instead of [Navigator.pop] when [embeddedInMainShell] is true.
+  final VoidCallback? onShellExit;
+
+  /// Settings / other routes pushed above live — host keeps this widget mounted.
+  final ValueChanged<bool>? onOverlayRouteChanged;
 
   @override
   State<CreatorLiveScreen> createState() => _CreatorLiveScreenState();
 }
 
-class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
+class _CreatorLiveScreenState extends State<CreatorLiveScreen>
+    with WidgetsBindingObserver {
   // ── Agora ────────────────────────────────────────────────────────────────────
-  late RtcEngine _engine;
+  RtcEngine? _engine;
   bool _engineReady = false;
+  bool _showAgoraView = false;
+  bool _agoraTornDown = false;
+  bool _initializingAgora = false;
+  bool _teardownInProgress = false;
+  bool _appBackgrounded = false;
+  bool _overlayRouteOpen = false;
   int _localUid = 0;
   int _engineVersion =
       0; // incremented on each init — forces AgoraVideoView to rebuild
@@ -62,6 +112,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   bool _isVideoOff = false;
   bool _isCommentsOff = false;
   bool _isFrontCamera = true;
+  bool _streamInfoExpanded = true;
 
   // ── Camera source (phone ↔ Insta360 360°) ─────────────────────────────────────
   final Insta360LiveService _insta = Insta360LiveService();
@@ -103,7 +154,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   LiveStreamModel? _streamDoc;
   StreamSubscription<LiveStreamModel?>? _streamSub;
   StreamSubscription<List<LiveChatMessageModel>>? _chatSub;
+  StreamSubscription<bool>? _likeSub;
   List<LiveChatMessageModel> _chatMessages = [];
+  bool _isLiked = false;
+  bool _likeInFlight = false;
 
   // ── Settings ──────────────────────────────────────────────────────────────────
   String _streamTitle = '';
@@ -119,7 +173,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   @override
   void initState() {
     super.initState();
-    _init();
+    WidgetsBinding.instance.addObserver(this);
+    if (!widget.embeddedInMainShell || widget.isActive) {
+      unawaited(_init());
+    }
     // Probe Insta360 capability + watch for mid-stream camera drop (fallback to phone).
     _insta.start();
     _insta.state.addListener(_onInstaState);
@@ -134,7 +191,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   void _onInstaState() {
     final connected = _insta.state.value.connected;
     if (connected) _instaConnectTimer?.cancel();
-    final droppedMidSession = _cameraSource == _CameraSource.insta360 &&
+    final droppedMidSession =
+        _cameraSource == _CameraSource.insta360 &&
         _instaWasConnected &&
         !connected &&
         !_insta360Switching;
@@ -147,12 +205,245 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    switch (state) {
+      case AppLifecycleState.paused:
+      case AppLifecycleState.detached:
+      case AppLifecycleState.hidden:
+        unawaited(_handleAppBackgrounded());
+      case AppLifecycleState.resumed:
+        unawaited(_handleAppResumed());
+      case AppLifecycleState.inactive:
+        break;
+    }
+  }
+
+  @override
+  void didUpdateWidget(CreatorLiveScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.embeddedInMainShell) return;
+    if (!oldWidget.isActive &&
+        widget.isActive &&
+        (_agoraTornDown || !_engineReady)) {
+      unawaited(_init());
+      return;
+    }
+    if (oldWidget.isActive != widget.isActive) {
+      unawaited(_handleShellActiveChanged(widget.isActive));
+    }
+  }
+
+  void _exitLiveScreen() {
+    if (widget.embeddedInMainShell) {
+      widget.onShellExit?.call();
+      return;
+    }
+    Navigator.of(context).pop();
+  }
+
+  Future<void> _handleShellActiveChanged(bool active) async {
+    if (!widget.embeddedInMainShell) return;
+    if (_overlayRouteOpen) return;
+    if (!active) {
+      if (_liveState == _LiveState.countdown) {
+        _cancelCountdown();
+      }
+      await _detachAgoraPlatformView();
+      if (_liveState == _LiveState.offline && _engineReady && _engine != null) {
+        try {
+          await _engine!.stopPreview();
+        } catch (_) {}
+      }
+      return;
+    }
+    if (_agoraTornDown) {
+      await _init();
+      return;
+    }
+    if (_engineReady && !_showAgoraView && mounted) {
+      setState(() => _showAgoraView = true);
+      await _waitForPlatformViewRelease();
+    }
+    if (_liveState == _LiveState.offline && _engineReady && _engine != null) {
+      try {
+        await _engine!.startPreview();
+      } catch (_) {}
+    }
+  }
+
+  Future<void> _waitForPlatformViewRelease() async {
+    await WidgetsBinding.instance.endOfFrame;
+    if (Platform.isIOS) {
+      await Future<void>.delayed(_kIosPlatformViewSettleDelay);
+    }
+  }
+
+  Future<void> _detachAgoraPlatformView() async {
+    if (!_showAgoraView) return;
+    if (mounted) {
+      setState(() => _showAgoraView = false);
+    } else {
+      _showAgoraView = false;
+    }
+    await _waitForPlatformViewRelease();
+  }
+
+  Future<void> _handleAppBackgrounded() async {
+    if (_overlayRouteOpen || _appBackgrounded || _teardownInProgress) return;
+    _appBackgrounded = true;
+    final wasLive = _liveState == _LiveState.live;
+    _countdownTimer?.cancel();
+    _heartbeatTimer?.cancel();
+    if (wasLive && _streamId != null) {
+      await _liveService.endStream(_streamId!).catchError((_) {});
+    }
+    await _teardownAgora(endLiveStream: false);
+    if (!mounted) return;
+    setState(() {
+      _liveState = _LiveState.offline;
+      _streamId = null;
+      _streamDoc = null;
+      _chatMessages = [];
+    });
+    _streamSub?.cancel();
+    _chatSub?.cancel();
+    _likeSub?.cancel();
+    _likeSub?.cancel();
+    _streamSub = null;
+    _chatSub = null;
+    _likeSub = null;
+  }
+
+  Future<void> _handleAppResumed() async {
+    if (_overlayRouteOpen) return;
+    if (!_appBackgrounded) return;
+    _appBackgrounded = false;
+    if (!mounted) return;
+    if (widget.embeddedInMainShell && !widget.isActive) return;
+    if (Platform.isIOS) {
+      await Future<void>.delayed(_kIosPlatformViewSettleDelay);
+    }
+    if (!mounted) return;
+    if (_agoraTornDown || !_engineReady) {
+      await _init();
+    }
+  }
+
+  Future<void> _resetToOfflineAfterStream() async {
+    _heartbeatTimer?.cancel();
+    _streamSub?.cancel();
+    _chatSub?.cancel();
+    _likeSub?.cancel();
+    _likeSub?.cancel();
+    _streamSub = null;
+    _chatSub = null;
+    _likeSub = null;
+    _streamId = null;
+    _streamDoc = null;
+    _chatMessages = [];
+    _isLiked = false;
+    if (_engineReady && _engine != null) {
+      if (!_showAgoraView && mounted) {
+        setState(() => _showAgoraView = true);
+        await _waitForPlatformViewRelease();
+      }
+      try {
+        await _engine!.startPreview();
+      } catch (_) {}
+    }
+    if (!mounted) return;
+    setState(() => _liveState = _LiveState.offline);
+  }
+
+  Widget _buildBottomBar() {
+    if (widget.embeddedInMainShell) {
+      return SizedBox(height: widget.shellBottomInset);
+    }
+    return _createHubBottomBar();
+  }
+
+  double get _shellLogoBarTopInset =>
+      widget.embeddedInMainShell ? AppFeedLogoBar.layoutHeight() : 0;
+
+  Widget _buildShellTopBar() {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      child: SafeArea(
+        bottom: false,
+        child: AppFeedLogoBar(trailing: _buildShellHeaderActions()),
+      ),
+    );
+  }
+
+  Widget _buildShellHeaderActions() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppFeedHeaderIconButton.search(
+          onTap: () => MainNavWrapper.openSearchTab(),
+        ),
+        SizedBox(width: AppSpacing.xs),
+        StreamBuilder<int>(
+          stream: NotificationService().watchUnreadCount(),
+          builder: (context, snapshot) {
+            final count = snapshot.data ?? 0;
+            final showBadge = count > 0;
+            final label = count > 99 ? '99+' : '$count';
+            return AppFeedNotificationButton(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => const NotificationScreen(),
+                  ),
+                );
+              },
+              badge: showBadge
+                  ? Container(
+                      constraints: const BoxConstraints(
+                        minWidth: 16,
+                        minHeight: 16,
+                      ),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 4,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF2D55),
+                        borderRadius: BorderRadius.circular(9),
+                        border: Border.all(
+                          color: const Color(0xFF14001F),
+                          width: 1,
+                        ),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        label,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    )
+                  : null,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _countdownTimer?.cancel();
     _heartbeatTimer?.cancel();
     _toastTimer?.cancel();
     _streamSub?.cancel();
     _chatSub?.cancel();
+    _likeSub?.cancel();
     _chatCtrl.dispose();
     _chatScrollCtrl.dispose();
     _instaConnectTimer?.cancel();
@@ -165,25 +456,57 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       _insta.disconnect().catchError((_) {});
     }
     _insta.dispose();
-    _disposeEngine();
+    _showAgoraView = false;
+    _engineReady = false;
+    unawaited(_teardownAgora(endLiveStream: true));
     super.dispose();
   }
 
-  Future<void> _disposeEngine() async {
-    // Auto-end stream if host closes the screen without pressing End Stream
-    if (_streamId != null && _liveState == _LiveState.live) {
-      await _liveService.endStream(_streamId!).catchError((_) {});
-    }
-    if (_engineReady) {
-      await _engine.stopPreview();
-      await _engine.leaveChannel();
-      await _engine.release();
+  Future<void> _teardownAgora({required bool endLiveStream}) async {
+    if (_teardownInProgress) return;
+    _teardownInProgress = true;
+    try {
+      if (endLiveStream && _streamId != null && _liveState == _LiveState.live) {
+        await _liveService.endStream(_streamId!).catchError((_) {});
+      }
+
+      final engine = _engine;
+      final hadEngine = _engineReady && engine != null;
+      await _detachAgoraPlatformView();
+      _engineReady = false;
+
+      if (hadEngine) {
+        try {
+          await engine.stopPreview();
+        } catch (_) {}
+        try {
+          await engine.leaveChannel();
+        } catch (_) {}
+        try {
+          await engine.release();
+        } catch (_) {}
+      }
+      _engine = null;
+      _agoraTornDown = true;
+      _engineVersion++;
+      if (Platform.isIOS) {
+        await Future<void>.delayed(_kIosPlatformViewSettleDelay);
+      }
+    } finally {
+      _teardownInProgress = false;
     }
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────────
 
   Future<void> _init() async {
+    if (_initializingAgora) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await _liveService.endStaleLiveStreamsForHost(uid);
+    }
+    if (!mounted) return;
+
     final granted = await _requestPermissions();
     if (!mounted) return;
     if (!granted) {
@@ -200,81 +523,119 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   }
 
   Future<void> _initAgora() async {
-    _engine = createAgoraRtcEngine();
-    await _engine.initialize(
-      RtcEngineContext(
-        appId: AgoraConfig.appId,
-        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-      ),
-    );
+    if (_initializingAgora) return;
+    _initializingAgora = true;
+    try {
+      if (_engine != null) {
+        await _teardownAgora(endLiveStream: false);
+      }
+      final engine = createAgoraRtcEngine();
+      _engine = engine;
+      await engine.initialize(
+        RtcEngineContext(
+          appId: AgoraConfig.appId,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
 
-    _engine.registerEventHandler(
-      RtcEngineEventHandler(
-        onJoinChannelSuccess: (connection, elapsed) {
-          if (!mounted) return;
-          setState(() => _localUid = connection.localUid ?? 0);
-          if (_streamId != null) {
-            _liveService.updateHostAgoraUid(_streamId!, _localUid);
-          }
-        },
-        onUserJoined: (connection, remoteUid, elapsed) {
-          if (_streamId == null) return;
-          _liveService
-              .sendMessage(
-                streamId: _streamId!,
-                userId: 'system',
-                username: 'system',
-                message: 'Someone joined the stream 👋',
-                type: ChatMessageType.join,
-              )
-              .catchError((_) {});
-        },
-        onUserOffline: (connection, remoteUid, reason) {
-          if (_streamId == null) return;
-          _liveService
-              .sendMessage(
-                streamId: _streamId!,
-                userId: 'system',
-                username: 'system',
-                message: 'A viewer left the stream',
-                type: ChatMessageType.system,
-              )
-              .catchError((_) {});
-        },
-        onTokenPrivilegeWillExpire: (connection, token) async {
-          if (_streamId == null) return;
-          try {
-            final newToken = await _tokenService.renewToken(
-              channelName: _streamId!,
-              uid: _localUid,
-              isHost: true,
-            );
-            await _engine.renewToken(newToken);
-          } catch (_) {
-            _showToast('Token renewal failed — stream may disconnect');
-          }
-        },
-        onError: (err, msg) {
-          if (!mounted) return;
-          _showToast('Stream error: $msg');
-        },
-      ),
-    );
+      engine.registerEventHandler(
+        RtcEngineEventHandler(
+          onJoinChannelSuccess: (connection, elapsed) {
+            if (!mounted) return;
+            setState(() => _localUid = connection.localUid ?? 0);
+            if (_streamId != null) {
+              _liveService.updateHostAgoraUid(_streamId!, _localUid);
+            }
+          },
+          onUserJoined: (connection, remoteUid, elapsed) {
+            if (_streamId == null) return;
+            _liveService
+                .sendMessage(
+                  streamId: _streamId!,
+                  userId: 'system',
+                  username: 'system',
+                  message: 'Someone joined the stream 👋',
+                  type: ChatMessageType.join,
+                )
+                .catchError((_) {});
+          },
+          onUserOffline: (connection, remoteUid, reason) {
+            if (_streamId == null) return;
+            _liveService
+                .sendMessage(
+                  streamId: _streamId!,
+                  userId: 'system',
+                  username: 'system',
+                  message: 'A viewer left the stream',
+                  type: ChatMessageType.system,
+                )
+                .catchError((_) {});
+          },
+          onTokenPrivilegeWillExpire: (connection, token) async {
+            if (_streamId == null) return;
+            try {
+              final newToken = await _tokenService.renewToken(
+                channelName: _streamId!,
+                uid: _localUid,
+                isHost: true,
+              );
+              await engine.renewToken(newToken);
+            } catch (_) {
+              _showToast('Token renewal failed — stream may disconnect');
+            }
+          },
+          onError: (err, msg) {
+            if (!mounted) return;
+            _showToast('Stream error: $msg');
+          },
+        ),
+      );
 
-    await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    await _engine.enableVideo();
-    await _engine.enableAudio();
-    await _engine.startPreview();
+      await engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await engine.enableVideo();
+      await engine.enableAudio();
+      await engine.startPreview();
 
-    if (!mounted) return;
-    setState(() {
-      _engineReady = true;
-      _engineVersion++;
-      _liveState = _LiveState.offline;
-    });
+      if (!mounted) return;
+      if (Platform.isIOS) {
+        await Future<void>.delayed(_kIosPlatformViewSettleDelay);
+      }
+      if (!mounted) return;
+      setState(() {
+        _engineReady = true;
+        _showAgoraView = true;
+        _agoraTornDown = false;
+        _engineVersion++;
+        _liveState = _LiveState.offline;
+      });
+      if (widget.autoStartLive) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _onLiveStartTap();
+        });
+      }
+    } finally {
+      _initializingAgora = false;
+    }
   }
 
   // ── Actions ───────────────────────────────────────────────────────────────────
+
+  /// Shared entry for **Start Live** and the bottom-bar **Live** segment.
+  Future<void> _onLiveStartTap() async {
+    if (_liveState != _LiveState.offline) return;
+
+    final start = await showDialog<bool>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.78),
+      builder: (_) => const _ConfirmDialog(
+        message: 'Do you want to start your live stream?',
+        confirmLabel: 'Yes, Go Live',
+      ),
+    );
+    if (start != true || !mounted) return;
+
+    _startCountdown();
+  }
 
   void _startCountdown() {
     setState(() {
@@ -346,7 +707,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       );
 
       // Join Agora channel as broadcaster
-      await _engine.joinChannel(
+      await _engine!.joinChannel(
         token: token,
         channelId: streamId,
         uid: 0,
@@ -364,8 +725,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       // is gated off, so this is a no-op until CDN ingest is provisioned. No stream
       // is pushed live in this pass.) When enabled, it starts Media Push and stores
       // the resulting HLS URL on the stream doc for the 360 viewer to play.
-      if (MediaPushService.enabled &&
-          _cameraSource == _CameraSource.insta360) {
+      if (MediaPushService.enabled && _cameraSource == _CameraSource.insta360) {
         await _maybeStartMediaPush(streamId);
       }
 
@@ -385,6 +745,14 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             );
           }
         });
+      });
+
+      _likeSub?.cancel();
+      _likeSub = _liveService.userLikedStream(streamId, user.uid).listen((
+        liked,
+      ) {
+        if (!mounted) return;
+        setState(() => _isLiked = liked);
       });
 
       // Send join system message
@@ -414,14 +782,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   }
 
   Future<void> _toggleMute() async {
+    if (_engine == null) return;
     setState(() => _isMuted = !_isMuted);
-    await _engine.muteLocalAudioStream(_isMuted);
+    await _engine!.muteLocalAudioStream(_isMuted);
     _showToast(_isMuted ? 'Live stream Muted' : 'Microphone on');
   }
 
   Future<void> _toggleVideo() async {
+    if (_engine == null) return;
     setState(() => _isVideoOff = !_isVideoOff);
-    await _engine.muteLocalVideoStream(_isVideoOff);
+    await _engine!.muteLocalVideoStream(_isVideoOff);
     if (_isVideoOff) _showToast('Video turned off');
   }
 
@@ -431,7 +801,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   }
 
   Future<void> _flipCamera() async {
-    await _engine.switchCamera();
+    if (_engine == null) return;
+    await _engine!.switchCamera();
     setState(() => _isFrontCamera = !_isFrontCamera);
   }
 
@@ -463,6 +834,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
 
   Future<void> _enableInsta360(Insta360ConnectType type) async {
     if (_insta360Switching) return;
+    final engine = _engine;
+    if (engine == null) return;
     setState(() => _insta360Switching = true);
     try {
       // BLE discovery + connect permissions (Wi-Fi/USB control both rely on these on 12+).
@@ -472,22 +845,24 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       final ok = await _insta.connect(type);
       if (!ok) {
         // Surfaces the native reason, e.g. "Join the camera's Wi-Fi … in Settings, then try again."
-        _showToast(_insta.state.value.lastError ?? 'Could not connect to the 360 camera');
+        _showToast(
+          _insta.state.value.lastError ?? 'Could not connect to the 360 camera',
+        );
         return;
       }
 
       // Route the Insta360 ERP frames into Agora as the video source instead of the phone camera.
-      await _engine.stopPreview();
-      await _engine.getMediaEngine().setExternalVideoSource(
-            enabled: true,
-            useTexture: false,
-            sourceType: ExternalVideoSourceType.videoFrame,
-          );
+      await engine.stopPreview();
+      await engine.getMediaEngine().setExternalVideoSource(
+        enabled: true,
+        useTexture: false,
+        sourceType: ExternalVideoSourceType.videoFrame,
+      );
       // Encode the pushed 360 frames at their true 2:1 equirectangular resolution/aspect.
       // Without this, Agora defaults to ~960x540 (16:9), down-scaling and cropping the ERP —
       // which ruins the 360 for viewers. maintainResolution keeps the resolution under load
       // (per-pixel detail matters more than fps for a sphere the viewer zooms into).
-      await _engine.setVideoEncoderConfiguration(
+      await engine.setVideoEncoderConfiguration(
         const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 1920, height: 960),
           frameRate: 15,
@@ -509,8 +884,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         if (mounted &&
             _cameraSource == _CameraSource.insta360 &&
             !_insta.state.value.connected) {
-          _showToast(_insta.state.value.lastError ??
-              '360 camera didn’t start — check it’s on and its Wi-Fi is joined');
+          _showToast(
+            _insta.state.value.lastError ??
+                '360 camera didn’t start — check it’s on and its Wi-Fi is joined',
+          );
           _disableInsta360();
         }
       });
@@ -527,28 +904,31 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   Future<void> _disableInsta360() async {
     _instaConnectTimer?.cancel();
     _instaWasConnected = false;
+    final engine = _engine;
     try {
       await _insta.setFrameStreaming(false);
     } catch (_) {}
     await _instaFrameSub?.cancel();
     _instaFrameSub = null;
     try {
-      await _engine.getMediaEngine().setExternalVideoSource(
-            enabled: false,
-            useTexture: false,
-            sourceType: ExternalVideoSourceType.videoFrame,
-          );
-      // Restore a portrait phone-camera encoder profile (the 360 profile is 2:1 landscape).
-      await _engine.setVideoEncoderConfiguration(
-        const VideoEncoderConfiguration(
-          dimensions: VideoDimensions(width: 720, height: 1280),
-          frameRate: 24,
-          orientationMode: OrientationMode.orientationModeAdaptive,
-          degradationPreference: DegradationPreference.maintainFramerate,
-        ),
-      );
+      if (engine != null) {
+        await engine.getMediaEngine().setExternalVideoSource(
+          enabled: false,
+          useTexture: false,
+          sourceType: ExternalVideoSourceType.videoFrame,
+        );
+        // Restore a portrait phone-camera encoder profile (the 360 profile is 2:1 landscape).
+        await engine.setVideoEncoderConfiguration(
+          const VideoEncoderConfiguration(
+            dimensions: VideoDimensions(width: 720, height: 1280),
+            frameRate: 24,
+            orientationMode: OrientationMode.orientationModeAdaptive,
+            degradationPreference: DegradationPreference.maintainFramerate,
+          ),
+        );
+        await engine.startPreview(); // resume phone camera preview
+      }
       await _insta.disconnect();
-      await _engine.startPreview(); // resume phone camera preview
     } catch (_) {}
     if (mounted) setState(() => _cameraSource = _CameraSource.phone);
   }
@@ -596,10 +976,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     // NOTE: rtmpIngestUrl + hlsPlaybackUrl come from the provisioned CDN input.
     // Left unconfigured on purpose (no live push): fill these when activating.
     const rtmpIngestUrl = ''; // e.g. rtmps://<cloudflare-live-input-ingest>
-    const hlsPlaybackUrl = ''; // e.g. https://videodelivery.net/<id>/manifest/video.m3u8
+    const hlsPlaybackUrl =
+        ''; // e.g. https://videodelivery.net/<id>/manifest/video.m3u8
     if (rtmpIngestUrl.isEmpty || hlsPlaybackUrl.isEmpty) return;
+    final engine = _engine;
+    if (engine == null) return;
     final url = await const MediaPushService().start(
-      engine: _engine,
+      engine: engine,
       rtmpIngestUrl: rtmpIngestUrl,
       hlsPlaybackUrl: hlsPlaybackUrl,
     );
@@ -633,7 +1016,9 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
 
   void _pushInstaFrame(Insta360Frame frame) {
     if (_cameraSource != _CameraSource.insta360) return;
-    _engine
+    final engine = _engine;
+    if (engine == null) return;
+    engine
         .getMediaEngine()
         .pushVideoFrame(
           frame: ExternalVideoFrame(
@@ -669,40 +1054,93 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
 
   Future<void> _sendLike() async {
     if (_streamId == null) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    if (_likeInFlight) return;
+
+    final wantLiked = !_isLiked;
+    _likeInFlight = true;
+    setState(() => _isLiked = wantLiked);
+
     try {
-      await _liveService.addLike(_streamId!);
-    } catch (_) {}
+      final actual = await _liveService.toggleLike(
+        streamId: _streamId!,
+        userId: uid,
+        wantLiked: wantLiked,
+      );
+      if (!mounted) return;
+      if (actual != wantLiked) setState(() => _isLiked = actual);
+    } catch (_) {
+      if (mounted) setState(() => _isLiked = !wantLiked);
+      _showToast('Could not update like');
+    } finally {
+      _likeInFlight = false;
+    }
+  }
+
+  Future<void> _shareStream() async {
+    if (_streamId == null) return;
+    final title = _streamTitle.isEmpty ? 'Live on VyooO' : _streamTitle;
+    final body = _streamDescription.isNotEmpty ? _streamDescription : title;
+    await SharePlus.instance.share(
+      ShareParams(text: 'Join my live stream on VyooO: $body'),
+    );
+  }
+
+  void _toggleStreamInfo() {
+    setState(() => _streamInfoExpanded = !_streamInfoExpanded);
+  }
+
+  void _setOverlayRouteOpen(bool open) {
+    if (_overlayRouteOpen == open) return;
+    _overlayRouteOpen = open;
+    widget.onOverlayRouteChanged?.call(open);
+  }
+
+  Future<void> _applySettingsResult(_LiveSettingsResult result) async {
+    if (!mounted) return;
+    setState(() {
+      _streamTitle = result.title;
+      _streamDescription = result.description;
+      _streamCategory = result.category;
+      _streamTags = result.tags;
+      _streamPrice = result.price;
+    });
+    if (_liveState == _LiveState.live && _streamId != null) {
+      await _liveService.updateStreamMetadata(
+        streamId: _streamId!,
+        title: result.title,
+        description: result.description,
+      );
+    }
   }
 
   Future<void> _openSettings() async {
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _LiveSettingsSheet(
-          initialTitle: _streamTitle,
-          initialDescription: _streamDescription,
-          initialCategory: _streamCategory,
-          initialTags: _streamTags,
-          initialPrice: _streamPrice,
-          isLive: _liveState == _LiveState.live,
-          onSave: (title, desc, category, tags, price) async {
-            setState(() {
-              _streamTitle = title;
-              _streamDescription = desc;
-              _streamCategory = category;
-              _streamTags = tags;
-              _streamPrice = price;
-            });
-            if (_liveState == _LiveState.live && _streamId != null) {
-              await _liveService.updateStreamMetadata(
-                streamId: _streamId!,
-                title: title,
-                description: desc,
-              );
-            }
-          },
+    _setOverlayRouteOpen(true);
+    try {
+      final result = await Navigator.of(context).push<_LiveSettingsResult>(
+        MaterialPageRoute(
+          fullscreenDialog: true,
+          builder: (_) => _LiveSettingsSheet(
+            initialTitle: _streamTitle,
+            initialDescription: _streamDescription,
+            initialCategory: _streamCategory,
+            initialTags: _streamTags,
+            initialPrice: _streamPrice,
+            isLive: _liveState == _LiveState.live,
+          ),
         ),
-      ),
-    );
+      );
+      if (!mounted || result == null) return;
+      await _applySettingsResult(result);
+    } finally {
+      if (mounted) {
+        _setOverlayRouteOpen(false);
+      } else {
+        _overlayRouteOpen = false;
+        widget.onOverlayRouteChanged?.call(false);
+      }
+    }
   }
 
   Future<void> _onEndStream() async {
@@ -717,8 +1155,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     if (end != true || !mounted) return;
 
     // End the stream
-    if (_streamId != null) {
-      await _engine.leaveChannel();
+    if (_streamId != null && _engine != null) {
+      await _engine!.leaveChannel();
       await _liveService.endStream(_streamId!, savedToProfile: false);
     }
 
@@ -736,17 +1174,51 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       await _liveService.endStream(_streamId!, savedToProfile: true);
     }
 
-    if (mounted) Navigator.of(context).pop();
+    if (!mounted) return;
+    if (widget.embeddedInMainShell) {
+      await _resetToOfflineAfterStream();
+    } else {
+      Navigator.of(context).pop();
+    }
   }
 
-  /// Same **Story | Post | Live** row as [UploadScreen] (+ hub); Live is selected here.
+  Widget _buildCountdownCancelButton() {
+    return GestureDetector(
+      onTap: _cancelCountdown,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.55),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.close, color: Colors.white, size: 16),
+            SizedBox(width: 8),
+            Text(
+              'Cancel',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Same **Story | Gallery | Live** row as [UploadScreen] (+ hub); Live is selected here.
   Widget _createHubBottomBar() {
     return UploadCreateBottomBar(
       selectedSegment: 2,
       onStoryTap: () {
         Navigator.of(context).pushReplacement<void, void>(
           MaterialPageRoute<void>(
-            builder: (_) => const StoryUploadScreen(),
+            builder: (_) => const StoryUploadScreen(successDismissToRoot: true),
           ),
         );
       },
@@ -757,7 +1229,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           ),
         );
       },
-      onLiveTap: () {},
+      onLiveTap: _onLiveStartTap,
     );
   }
 
@@ -782,8 +1254,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           _buildBackground(),
           _buildGradientOverlay(),
           _buildStateContent(),
-          if (_cameraSource == _CameraSource.insta360 && _insta.state.value.connected)
+          if (_cameraSource == _CameraSource.insta360 &&
+              _insta.state.value.connected)
             _build360LookControls(),
+          if (widget.embeddedInMainShell) _buildShellTopBar(),
           if (_toast != null) _buildToast(_toast!),
         ],
       ),
@@ -834,10 +1308,12 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                       activeTrackColor: Colors.white,
                       inactiveTrackColor: Colors.white24,
                       thumbColor: Colors.white,
-                      overlayShape:
-                          const RoundSliderOverlayShape(overlayRadius: 16),
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 10),
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 16,
+                      ),
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 10,
+                      ),
                     ),
                     child: Slider(
                       value: _jogYaw,
@@ -849,7 +1325,11 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     ),
                   ),
                 ),
-                const Icon(Icons.chevron_right, color: Colors.white70, size: 22),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white70,
+                  size: 22,
+                ),
               ],
             ),
           ),
@@ -889,7 +1369,9 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   }
 
   Widget _buildBackground() {
-    if (!_engineReady) return Container(color: const Color(0xFF0A000F));
+    if (!_engineReady || !_showAgoraView || _engine == null) {
+      return Container(color: const Color(0xFF0A000F));
+    }
     if (_isVideoOff && _liveState == _LiveState.live) {
       return Container(color: const Color(0xFF0A000F));
     }
@@ -924,17 +1406,19 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             children: [
               CircularProgressIndicator(color: Colors.white),
               SizedBox(height: 16),
-              Text('Connecting to 360 camera…',
-                  style: TextStyle(color: Colors.white70)),
+              Text(
+                'Connecting to 360 camera…',
+                style: TextStyle(color: Colors.white70),
+              ),
             ],
           ),
         ),
       );
     }
     return AgoraVideoView(
-      key: ValueKey(_engineVersion),
+      key: ValueKey('creator_agora_$_engineVersion'),
       controller: VideoViewController(
-        rtcEngine: _engine,
+        rtcEngine: _engine!,
         canvas: const VideoCanvas(uid: 0), // 0 = always local video
       ),
     );
@@ -1006,22 +1490,19 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                   ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: _exitLiveScreen,
                     child: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _createHubBottomBar(),
-          ),
+          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomBar()),
         ],
       ),
     );
@@ -1033,18 +1514,18 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     return SafeArea(
       child: Stack(
         children: [
-          // Close
-          Positioned(
-            top: 6,
-            left: 10,
-            child: _CircleIconButton(
-              icon: Icons.close,
-              onTap: () => Navigator.of(context).pop(),
+          if (!widget.embeddedInMainShell)
+            Positioned(
+              top: 6,
+              left: 10,
+              child: _CircleIconButton(
+                icon: Icons.close,
+                onTap: _exitLiveScreen,
+              ),
             ),
-          ),
           // OFFLINE badge
           Positioned(
-            top: 14,
+            top: _shellLogoBarTopInset + 8,
             left: 0,
             right: 0,
             child: Center(
@@ -1077,7 +1558,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           ),
           // Right tool icons
           Positioned(
-            top: 100,
+            top: _shellLogoBarTopInset + 86,
             right: 12,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
@@ -1176,11 +1657,11 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                   child: _GradientButton(
                     label: 'Start Live',
                     icon: Icons.sensors_rounded,
-                    onTap: _startCountdown,
+                    onTap: _onLiveStartTap,
                     isWhite: true,
                   ),
                 ),
-                _createHubBottomBar(),
+                _buildBottomBar(),
               ],
             ),
           ),
@@ -1200,7 +1681,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             child: Container(color: Colors.black.withValues(alpha: 0.35)),
           ),
           Positioned(
-            top: 14,
+            top: _shellLogoBarTopInset + 8,
             left: 48,
             right: 48,
             child: Text(
@@ -1256,45 +1737,19 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _createHubBottomBar(),
-                Container(
-                  height: 100,
-                  color: const Color(0xFF490038), // brandPurple/Plum bar
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Center(
-                    child: GestureDetector(
-                      onTap: _cancelCountdown,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 18,
-                          vertical: 8,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Colors.black.withValues(alpha: 0.55),
-                          borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.close, color: Colors.white, size: 16),
-                            SizedBox(width: 8),
-                            Text(
-                              'Cancel',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
+                if (widget.embeddedInMainShell)
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _buildCountdownCancelButton(),
                   ),
-                ),
+                _buildBottomBar(),
+                if (!widget.embeddedInMainShell)
+                  Container(
+                    height: 100,
+                    color: const Color(0xFF490038), // brandPurple/Plum bar
+                    padding: const EdgeInsets.only(bottom: 24),
+                    child: Center(child: _buildCountdownCancelButton()),
+                  ),
               ],
             ),
           ),
@@ -1306,15 +1761,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   // ── Live state ─────────────────────────────────────────────────────────────────
 
   Widget _buildLiveContent() {
-    final viewers = _streamDoc?.viewerCount ?? 0;
     final likes = _streamDoc?.likeCount ?? 0;
 
     return SafeArea(
       child: Stack(
         children: [
-          // Top: LIVE badge + title
           Positioned(
-            top: 12,
+            top: _shellLogoBarTopInset + 12,
             left: 16,
             right: 80,
             child: Row(
@@ -1348,7 +1801,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             ),
           ),
           Positioned(
-            top: 100,
+            top: _shellLogoBarTopInset + 88,
             right: 12,
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
@@ -1419,6 +1872,12 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                     onTap: _openSettings,
                     size: 38,
                   ),
+                  _CircleIconButton(
+                    icon: Icons.stop_rounded,
+                    onTap: _onEndStream,
+                    active: true,
+                    size: 38,
+                  ),
                 ],
               ),
             ),
@@ -1444,7 +1903,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                 ),
               ),
             ),
-          // Bottom: chat + input + end button (inset) + create hub bar (full bleed, matches + Post)
+          // Bottom: comments, interaction bar, streamer info
           Positioned(
             left: 0,
             right: 0,
@@ -1462,21 +1921,20 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                       AppSpacing.md,
                       0,
                       AppSpacing.md,
-                      AppSpacing.md,
+                      0,
                     ),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         _buildChatList(),
-                        const SizedBox(height: 8),
-                        _buildCommentRow(likes, viewers),
-                        const SizedBox(height: 10),
-                        _buildEndStreamButton(),
+                        const SizedBox(height: AppSpacing.sm),
+                        _buildLiveInteractionBar(likes),
                       ],
                     ),
                   ),
-                  _createHubBottomBar(),
+                  if (_streamInfoExpanded) _buildStreamerInfoBar(),
+                  _buildBottomBar(),
                 ],
               ),
             ),
@@ -1491,32 +1949,24 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         ? const <LiveChatMessageModel>[]
         : _chatMessages;
     if (msgs.isEmpty) return const SizedBox.shrink();
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.2)],
-        ),
-      ),
-      constraints: const BoxConstraints(maxHeight: 180),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 200),
       child: ListView.builder(
         controller: _chatScrollCtrl,
         shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(horizontal: 4),
+        padding: EdgeInsets.zero,
         itemCount: msgs.length,
         itemBuilder: (context, i) {
           final m = msgs[i];
           final isSystem = m.type == ChatMessageType.system;
           if (isSystem) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
               child: Center(
                 child: Text(
                   m.message,
-                  style: TextStyle(
+                  style: AppTypography.caption.copyWith(
                     color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
@@ -1524,49 +1974,54 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             );
           }
           return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  radius: 12,
+                  radius: 14,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
                   backgroundImage: (m.profileImage?.isNotEmpty == true)
                       ? NetworkImage(m.profileImage!)
                       : null,
                   child: (m.profileImage?.isNotEmpty != true)
                       ? Text(
-                          m.username[0].toUpperCase(),
+                          m.username.isNotEmpty
+                              ? m.username[0].toUpperCase()
+                              : '?',
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 10,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
                           ),
                         )
                       : null,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSpacing.sm),
                 Expanded(
-                  child: RichText(
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 13, height: 1.3),
-                      children: [
-                        TextSpan(
-                          text: '${m.username} ',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                          ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        m.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontWeight: FontWeight.w500,
                         ),
-                        TextSpan(
-                          text: m.message,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        m.message,
+                        maxLines: 3,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.caption.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w400,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -1577,113 +2032,120 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     );
   }
 
-  Widget _buildCommentRow(int likes, int viewers) {
+  Widget _buildLiveInteractionBar(int likes) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
         Expanded(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: TextField(
-              controller: _chatCtrl,
-              style: const TextStyle(color: Colors.white, fontSize: 13),
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendChatMessage(),
-              decoration: InputDecoration(
-                hintText: 'Reply...',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.35),
-                  fontSize: 13,
-                ),
-                border: InputBorder.none,
-                isDense: true,
-                contentPadding: EdgeInsets.zero,
-              ),
+          child: LiveCommentInputField(
+            controller: _chatCtrl,
+            enabled: !_isCommentsOff,
+            onSubmitted: (_) => _sendChatMessage(),
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        GestureDetector(
+          onTap: _toggleStreamInfo,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            child: Icon(
+              _streamInfoExpanded
+                  ? Icons.keyboard_arrow_down_rounded
+                  : Icons.keyboard_arrow_up_rounded,
+              color: Colors.white.withValues(alpha: 0.9),
+              size: 24,
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        // Views
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.remove_red_eye_outlined,
-              color: Colors.white.withValues(alpha: 0.7),
-              size: 16,
-            ),
-            const SizedBox(width: 4),
-            Text(
-              _formatCount(viewers),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(width: 12),
-        // Likes
+        const SizedBox(width: AppSpacing.xs),
         GestureDetector(
           onTap: _sendLike,
+          behavior: HitTestBehavior.opaque,
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.favorite, color: Colors.pink, size: 16),
+              Icon(
+                _isLiked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: _isLiked
+                    ? const Color(0xFFFF2D55)
+                    : Colors.white.withValues(alpha: 0.9),
+                size: 22,
+              ),
               const SizedBox(width: 4),
               Text(
                 _formatCount(likes),
-                style: const TextStyle(
+                style: AppTypography.caption.copyWith(
                   color: Colors.white,
-                  fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ],
+          ),
+        ),
+        const SizedBox(width: AppSpacing.sm),
+        GestureDetector(
+          onTap: _shareStream,
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.xs),
+            child: SvgPicture.asset(
+              LiveStreamAssets.share,
+              width: AppSizes.liveShareIconWidth,
+              height: AppSizes.liveShareIconHeight,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildEndStreamButton() {
-    return Center(
-      child: GestureDetector(
-        onTap: _onEndStream,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.75),
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+  Widget _buildStreamerInfoBar() {
+    final hostImage = _streamDoc?.hostProfileImage;
+    final description = _streamDescription.isNotEmpty
+        ? _streamDescription
+        : (_streamTitle.isNotEmpty ? _streamTitle : 'Watch live on VyooO');
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        AppSpacing.md,
+        AppSpacing.sm,
+        AppSpacing.md,
+        AppSpacing.sm,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 22,
+            backgroundColor: Colors.white.withValues(alpha: 0.2),
+            backgroundImage: hostImage != null && hostImage.isNotEmpty
+                ? NetworkImage(hostImage)
+                : null,
+            child: hostImage == null || hostImage.isEmpty
+                ? const Icon(Icons.person, color: Colors.white, size: 22)
+                : null,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: Colors.red,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(width: 8),
-              const Text(
-                'End stream',
-                style: TextStyle(
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.only(top: 2),
+              child: Text(
+                description,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: AppTypography.caption.copyWith(
                   color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                  height: 1.35,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
-            ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -2153,8 +2615,11 @@ class _CameraPickerSheet extends StatelessWidget {
                 ),
               ),
               if (selected)
-                const Icon(Icons.check_circle_rounded,
-                    color: AppColors.brandPink, size: 20)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.brandPink,
+                  size: 20,
+                )
               else
                 const SizedBox.shrink(),
             ],
@@ -2200,14 +2665,21 @@ class _CameraPickerSheet extends StatelessWidget {
 
 // ── Settings bottom sheet ──────────────────────────────────────────────────────
 
-typedef _SettingsSaveCallback =
-    void Function(
-      String title,
-      String description,
-      String category,
-      List<String> tags,
-      int pricePerMinute,
-    );
+class _LiveSettingsResult {
+  const _LiveSettingsResult({
+    required this.title,
+    required this.description,
+    required this.category,
+    required this.tags,
+    required this.price,
+  });
+
+  final String title;
+  final String description;
+  final String category;
+  final List<String> tags;
+  final int price;
+}
 
 class _LiveSettingsSheet extends StatefulWidget {
   const _LiveSettingsSheet({
@@ -2217,7 +2689,6 @@ class _LiveSettingsSheet extends StatefulWidget {
     required this.initialTags,
     required this.initialPrice,
     required this.isLive,
-    required this.onSave,
   });
 
   final String initialTitle;
@@ -2226,7 +2697,6 @@ class _LiveSettingsSheet extends StatefulWidget {
   final List<String> initialTags;
   final int initialPrice;
   final bool isLive;
-  final _SettingsSaveCallback onSave;
 
   @override
   State<_LiveSettingsSheet> createState() => _LiveSettingsSheetState();
@@ -2276,14 +2746,15 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
   }
 
   void _save() {
-    widget.onSave(
-      _titleCtrl.text.trim(),
-      _descCtrl.text.trim(),
-      _selectedCategory,
-      _tags,
-      _priceLevel.round(),
+    Navigator.of(context).pop(
+      _LiveSettingsResult(
+        title: _titleCtrl.text.trim(),
+        description: _descCtrl.text.trim(),
+        category: _selectedCategory,
+        tags: List<String>.from(_tags),
+        price: _priceLevel.round(),
+      ),
     );
-    Navigator.of(context).pop();
   }
 
   void _addTag(String raw) {

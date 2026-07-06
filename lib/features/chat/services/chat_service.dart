@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../../core/models/app_user_model.dart';
+import '../../../core/services/user_service.dart';
 import '../models/chat_model.dart';
 import '../models/chat_participant.dart';
 import '../models/chat_summary_model.dart';
@@ -75,12 +76,13 @@ class ChatService {
     Timestamp? clearedAt,
   }) {
     if (chatId.isEmpty || uid.isEmpty) return Stream.value([]);
+    // Fetch the newest page first, then reverse for chronological display.
     return _messagesCol(chatId)
-        .orderBy('createdAt', descending: false)
+        .orderBy('createdAt', descending: true)
         .limit(ChatLimits.initialMessagePageSize)
         .snapshots()
         .map((snap) {
-          return snap.docs
+          final messages = snap.docs
               .map((d) => MessageModel.fromFirestore(d, chatId))
               .where(
                 (m) => !m.deletedForEveryone && !m.deletedFor.contains(uid),
@@ -91,6 +93,7 @@ class ChatService {
                 return m.createdAt!.compareTo(clearedAt) > 0;
               })
               .toList();
+          return messages.reversed.toList();
         });
   }
 
@@ -114,6 +117,16 @@ class ChatService {
     required AppUserModel otherUser,
   }) async {
     try {
+      final canMessage = await UserService().canSendDirectMessageTo(
+        senderUid: currentUser.uid,
+        target: otherUser,
+      );
+      if (!canMessage) {
+        throw StateError(
+          'Follow this account to send a message.',
+        );
+      }
+
       final chatId = ChatHelpers.directChatId(currentUser.uid, otherUser.uid);
       final chatRef = _chatsCol().doc(chatId);
 
@@ -220,15 +233,21 @@ class ChatService {
     required String senderId,
     required List<String> participantIds,
     required String text,
+    String? replyToMessageId,
   }) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
     if (chatId.isEmpty || senderId.isEmpty) return;
     if (!participantIds.contains(senderId)) return;
 
+    await _assertCanSendDirectMessage(
+      senderId: senderId,
+      participantIds: participantIds,
+    );
+
     try {
       debugPrint(
-        '[ChatService] sendTextMessage: chatId=$chatId senderId=$senderId type=text textLen=${trimmed.length}',
+        '[ChatService] sendTextMessage: chatId=$chatId senderId=$senderId type=text textLen=${trimmed.length} replyTo=${replyToMessageId ?? ''}',
       );
       await _messagesCol(chatId).add({
         'senderId': senderId,
@@ -242,6 +261,8 @@ class ChatService {
         'reactions': <String, dynamic>{},
         'isViewOnce': false,
         'viewedBy': <String>[],
+        if (replyToMessageId != null && replyToMessageId.isNotEmpty)
+          'replyToMessageId': replyToMessageId,
       });
       debugPrint('[ChatService] sendTextMessage: OK');
     } catch (e, st) {
@@ -275,6 +296,11 @@ class ChatService {
     if (mediaUrl.isEmpty) return;
     if (type != ChatMessageTypes.gif && storagePath.isEmpty) return;
 
+    await _assertCanSendDirectMessage(
+      senderId: senderId,
+      participantIds: participantIds,
+    );
+
     try {
       debugPrint(
         '[ChatService] sendMediaMessage: chatId=$chatId senderId=$senderId type=$type hasMediaUrl=${mediaUrl.isNotEmpty} hasStoragePath=${storagePath.isNotEmpty} durationMs=$durationMs isViewOnce=false',
@@ -303,6 +329,61 @@ class ChatService {
     } catch (e, st) {
       debugPrint('[ChatService] sendMediaMessage FAILED: $e');
       dev.log('ChatService.sendMediaMessage failed', error: e, stackTrace: st);
+      rethrow;
+    }
+  }
+
+  Future<void> sendGifMessage({
+    required String chatId,
+    required String senderId,
+    required List<String> participantIds,
+    required String mediaUrl,
+    int? width,
+    int? height,
+    String? previewUrl,
+  }) async {
+    await sendMediaMessage(
+      chatId: chatId,
+      senderId: senderId,
+      participantIds: participantIds,
+      type: ChatMessageTypes.gif,
+      mediaUrl: mediaUrl,
+      storagePath: '',
+      thumbnailUrl: previewUrl,
+      width: width,
+      height: height,
+    );
+  }
+
+  Future<void> toggleReaction({
+    required String chatId,
+    required String messageId,
+    required String uid,
+    required String emoji,
+  }) async {
+    if (chatId.isEmpty || messageId.isEmpty || uid.isEmpty || emoji.isEmpty) {
+      return;
+    }
+    final ref = _messagesCol(chatId).doc(messageId);
+    try {
+      await _fs.runTransaction((tx) async {
+        final snap = await tx.get(ref);
+        if (!snap.exists) return;
+        final data = snap.data();
+        if (data == null) return;
+        final raw = data['reactions'];
+        final reactions = raw is Map
+            ? Map<String, dynamic>.from(raw)
+            : <String, dynamic>{};
+        if (reactions[uid] == emoji) {
+          reactions.remove(uid);
+        } else {
+          reactions[uid] = emoji;
+        }
+        tx.update(ref, {'reactions': reactions});
+      });
+    } catch (e, st) {
+      dev.log('ChatService.toggleReaction failed', error: e, stackTrace: st);
       rethrow;
     }
   }
@@ -608,6 +689,11 @@ class ChatService {
       return;
     if (mediaUrl.isEmpty || storagePath.isEmpty) return;
 
+    await _assertCanSendDirectMessage(
+      senderId: senderId,
+      participantIds: participantIds,
+    );
+
     try {
       await _messagesCol(chatId).add({
         'senderId': senderId,
@@ -636,6 +722,27 @@ class ChatService {
         stackTrace: st,
       );
       rethrow;
+    }
+  }
+
+  Future<void> _assertCanSendDirectMessage({
+    required String senderId,
+    required List<String> participantIds,
+  }) async {
+    if (participantIds.length != 2) return;
+    final otherUid = participantIds.firstWhere(
+      (id) => id != senderId,
+      orElse: () => '',
+    );
+    if (otherUid.isEmpty) return;
+    final otherUser = await UserService().getUser(otherUid);
+    if (otherUser == null) return;
+    final allowed = await UserService().canSendDirectMessageTo(
+      senderUid: senderId,
+      target: otherUser,
+    );
+    if (!allowed) {
+      throw StateError('Follow this account to send a message.');
     }
   }
 

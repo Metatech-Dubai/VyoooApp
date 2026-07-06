@@ -36,7 +36,10 @@ class ResolvedProfileLocation {
   final String countryOrRegion;
 
   /// Two-line address for onboarding UI (city / region).
+  /// Falls back to the location name so a GPS fix without reverse
+  /// geocoding still produces an editable, non-empty address.
   String get addressLines {
+    if (city.isEmpty && countryOrRegion.isEmpty) return location.name.trim();
     if (countryOrRegion.isEmpty) return city;
     return '$city\n$countryOrRegion';
   }
@@ -123,7 +126,9 @@ class PlacesLocationService {
       '/maps/api/place/autocomplete/json',
       params,
     );
-    final res = await http.get(uri).timeout(const Duration(seconds: 8));
+    final res = await http
+        .get(uri, headers: AppConfig.googleMapsWebServiceHeaders)
+        .timeout(const Duration(seconds: 8));
     if (res.statusCode != 200) {
       throw PlacesLocationException('Search failed. Try again.');
     }
@@ -273,7 +278,9 @@ class PlacesLocationService {
           'sessiontoken': sessionToken,
         },
       );
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      final res = await http
+          .get(uri, headers: AppConfig.googleMapsWebServiceHeaders)
+          .timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         final body = json.decode(res.body) as Map<String, dynamic>;
         final result = body['result'] as Map<String, dynamic>?;
@@ -371,7 +378,9 @@ class PlacesLocationService {
           'key': AppConfig.googlePlacesApiKey,
         },
       );
-      final res = await http.get(uri).timeout(const Duration(seconds: 8));
+      final res = await http
+          .get(uri, headers: AppConfig.googleMapsWebServiceHeaders)
+          .timeout(const Duration(seconds: 8));
       if (res.statusCode == 200) {
         final body = json.decode(res.body) as Map<String, dynamic>;
         final results = body['results'] as List? ?? [];

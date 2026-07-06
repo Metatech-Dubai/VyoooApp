@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../screens/profile/profile_figma_tokens.dart';
 import '../../utils/user_facing_errors.dart';
 import 'profile_modular_grid.dart';
 import 'profile_posts_loader.dart';
@@ -45,13 +46,17 @@ class ProfileCachedPostsGrid extends StatefulWidget {
 }
 
 class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
+  static const _cacheKeySuffix = ':posts-no-vr360';
+
   static final Map<String, Future<List<Map<String, dynamic>>>> _cache = {};
   static final Map<String, List<VoidCallback>> _reloadListeners = {};
 
+  static String _cacheKey(String uid) => '${uid.trim()}$_cacheKeySuffix';
+
   static void invalidateFor(String uid) {
-    final key = uid.trim();
+    final key = _cacheKey(uid);
     _cache.remove(key);
-    _notifyReload(key);
+    _notifyReload(uid.trim());
   }
 
   static void patchPostInCache({
@@ -61,10 +66,10 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
     String? profileGridTitle,
     String? profileGridThumbnailUrl,
   }) {
-    final key = uid.trim();
+    final key = _cacheKey(uid);
     final future = _cache[key];
     if (future == null) {
-      _notifyReload(key);
+      _notifyReload(uid.trim());
       return;
     }
     future.then((posts) {
@@ -82,7 +87,7 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
           posts[index]['profileGridThumbnailUrl'] = profileGridThumbnailUrl;
         }
       }
-      _notifyReload(key);
+      _notifyReload(uid.trim());
     });
   }
 
@@ -133,7 +138,7 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
 
   void _onReloadRequested() {
     if (!mounted) return;
-    final future = _cache[widget.userId.trim()];
+    final future = _cache[_cacheKey(widget.userId)];
     if (future != null) {
       future.then((posts) {
         if (!mounted) return;
@@ -146,8 +151,9 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
 
   void _bindFuture() {
     final uid = widget.userId.trim();
+    final cacheKey = _cacheKey(uid);
     _postsFuture = _cache.putIfAbsent(
-      uid,
+      cacheKey,
       () => ProfilePostsLoader.loadPostsForUser(uid),
     );
     _postsFuture.then((posts) {
@@ -186,7 +192,7 @@ class ProfileCachedPostsGridState extends State<ProfileCachedPostsGrid> {
 
   Widget _grid(BuildContext context, List<Map<String, dynamic>> posts) {
     return ProfileModularGrid(
-      gap: widget.gap ?? 0,
+      gap: widget.gap ?? ProfileFigmaTokens.contentGridGap,
       padding: widget.padding,
       items: profileGridItemsFromReels(
         reels: posts,

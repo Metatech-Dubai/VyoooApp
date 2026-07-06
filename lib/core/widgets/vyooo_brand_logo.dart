@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../theme/app_sizes.dart';
+import '../theme/app_theme.dart';
 import '../theme/app_typography.dart';
 
 /// Vyooo wordmark for auth and onboarding headers.
@@ -19,14 +21,16 @@ class VyoooBrandLogo extends StatelessWidget {
     this.alignment = Alignment.center,
   });
 
-  static const String assetPath =
-      'assets/BrandLogo/Logo2.png';
+  static const String assetPath = 'assets/BrandLogo/Logo2.png';
 
   /// Default layout height (auth headers).
   static const double defaultHeight = 52;
 
   /// Zoom inside the layout box to offset square-asset transparent padding.
   static const double defaultContentScale = 2.25;
+
+  /// Auth sign-in / sign-up — wide wordmark, tight crop (Figma).
+  static const double authContentScale = 2.45;
 
   /// Inner settings/account header — smaller slot, less zoom (matches title scale).
   static const double innerHeaderContentScale = 1.55;
@@ -40,6 +44,24 @@ class VyoooBrandLogo extends StatelessWidget {
         center = false,
         alignment = Alignment.centerRight;
 
+  /// Auth headers — centered burgundy (light) or white (dark) wordmark.
+  const VyoooBrandLogo.auth({super.key})
+      : width = null,
+        size = AppSizes.authLogoHeight,
+        height = null,
+        contentScale = authContentScale,
+        center = true,
+        alignment = Alignment.center;
+
+  /// Home feed overlay — left-aligned wordmark with lightbulb mark visible.
+  const VyoooBrandLogo.feed({super.key})
+      : width = null,
+        size = AppSizes.feedLogoHeight,
+        height = null,
+        contentScale = 1.95,
+        center = false,
+        alignment = Alignment.centerLeft;
+
   final double? width;
   final double? size;
   final double? height;
@@ -51,6 +73,7 @@ class VyoooBrandLogo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     final paintedHeight = _resolvedHeight * contentScale;
 
     Widget logo = SizedBox(
@@ -58,12 +81,9 @@ class VyoooBrandLogo extends StatelessWidget {
       child: ClipRect(
         child: Align(
           alignment: alignment,
-          child: Image.asset(
-            assetPath,
-            width: width,
-            height: paintedHeight,
-            fit: BoxFit.fitHeight,
-            errorBuilder: _errorFallback,
+          child: _buildWordmark(
+            paintedHeight: paintedHeight,
+            tintBurgundy: isLight,
           ),
         ),
       ),
@@ -76,17 +96,43 @@ class VyoooBrandLogo extends StatelessWidget {
     return logo;
   }
 
+  Widget _buildWordmark({
+    required double paintedHeight,
+    required bool tintBurgundy,
+  }) {
+    final image = Image.asset(
+      assetPath,
+      width: width,
+      height: paintedHeight,
+      fit: BoxFit.fitHeight,
+      errorBuilder: (context, error, stackTrace) =>
+          _errorFallback(context, tintBurgundy),
+    );
+
+    if (!tintBurgundy) return image;
+
+    return ColorFiltered(
+      colorFilter: const ColorFilter.mode(
+        AppColors.authBrandBurgundy,
+        BlendMode.srcIn,
+      ),
+      child: image,
+    );
+  }
+
   Widget _errorFallback(
     BuildContext context,
-    Object error,
-    StackTrace? stackTrace,
+    bool isLight,
   ) {
     final fallbackSize = _resolvedHeight <= AppSizes.settingsInnerLogoHeight
         ? 14.0
         : (_resolvedHeight * 0.85).clamp(22.0, 42.0);
     return Text(
       'VyooO',
-      style: AppTypography.brandFallback.copyWith(fontSize: fallbackSize),
+      style: AppTypography.brandFallback.copyWith(
+        fontSize: fallbackSize,
+        color: isLight ? AppColors.authBrandBurgundy : AppTheme.primary,
+      ),
     );
   }
 }

@@ -4,8 +4,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../core/controllers/reels_controller.dart';
+import '../../core/models/reel_media_item.dart';
+import '../../core/models/video_360_metadata.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/widgets/post_media_carousel.dart';
+import '../../core/widgets/double_tap_like_overlay.dart';
 import '../../core/widgets/post_feed_screen_background.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
@@ -13,9 +17,12 @@ import '../../features/reel/widgets/not_interested_sheet.dart';
 import '../../core/models/reel_count_privacy.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/utils/reel_engagement.dart';
+import '../../core/moderation/content_moderation.dart';
+import '../../features/moderation/widgets/report_moderation_cover.dart';
 import '../../features/reel/widgets/owner_post_options_sheet.dart';
 import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../../features/reel/widgets/report_sheet.dart';
+import '../../features/reel/widgets/report_status_bar.dart';
 import '../../features/share/widgets/share_bottom_sheet.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
@@ -55,6 +62,7 @@ class PostFeedScreen extends StatefulWidget {
 class _PostFeedScreenState extends State<PostFeedScreen> {
   final ReelsController _reelsController = ReelsController();
   final Map<String, bool> _likedReels = {};
+  final Set<String> _likeInFlight = {};
   final Map<String, bool> _favoriteReels = {};
   final Map<String, bool> _privateSavedReels = {};
   final Map<String, bool> _repostedSourceReels = {};
@@ -278,15 +286,49 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
 
   Future<void> _onLike(Map<String, dynamic> post) async {
     final engagementId = ReelEngagement.sourceReelId(post);
-    if (engagementId.isEmpty) return;
+    if (engagementId.isEmpty || _likeInFlight.contains(engagementId)) {
+      debugPrint(
+        '[Vyooo][Like][UI][PostFeed] skip engagementId=$engagementId',
+      );
+      return;
+    }
+
     final currentlyLiked = _likedReels[engagementId] ?? false;
-    final newState = await _reelsController.likeReel(
-      reelId: engagementId,
-      currentlyLiked: currentlyLiked,
+    final wantLiked = !currentlyLiked;
+    debugPrint(
+      '[Vyooo][Like][UI][PostFeed] tap engagementId=$engagementId '
+      'currentlyLiked=$currentlyLiked wantLiked=$wantLiked',
     );
+    _likeInFlight.add(engagementId);
+    setState(() => _likedReels[engagementId] = wantLiked);
+    _adjustPostStat(engagementId, 'likes', wantLiked ? 1 : -1);
+
+    final actual = await _reelsController.likeReel(
+      reelId: engagementId,
+      like: wantLiked,
+    );
+    _likeInFlight.remove(engagementId);
     if (!mounted) return;
-    setState(() => _likedReels[engagementId] = newState);
-    _adjustPostStat(engagementId, 'likes', newState ? 1 : -1);
+
+    debugPrint(
+      '[Vyooo][Like][UI][PostFeed] result engagementId=$engagementId '
+      'wantLiked=$wantLiked actual=$actual',
+    );
+
+    if (actual != wantLiked) {
+      debugPrint('[Vyooo][Like][UI][PostFeed] ROLLBACK engagementId=$engagementId');
+      setState(() => _likedReels[engagementId] = actual);
+      _adjustPostStat(engagementId, 'likes', wantLiked ? -1 : 1);
+    }
+  }
+
+  void _onDoubleTapLike(Map<String, dynamic> post) {
+    final engagementId = ReelEngagement.sourceReelId(post);
+    if (engagementId.isEmpty || _likeInFlight.contains(engagementId)) return;
+    final alreadyLiked = _likedReels[engagementId] ?? false;
+    if (!alreadyLiked) {
+      _onLike(post);
+    }
   }
 
   Future<void> _onSave(Map<String, dynamic> post) async {
@@ -329,7 +371,16 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
       onRepost: () => _onRepostToggle(post),
       onRemoveRepost: () => _onRepostToggle(post),
       onShareViaNative: () => _reelsController.shareReel(reelId: sourceId),
-      onCopyLink: () {},
+      onCopyLink: () {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Link copied to clipboard'),
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      },
     );
   }
 
@@ -371,6 +422,7 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
             : 'User',
         avatarUrl: _asString(post['avatarUrl']),
         targetUserId: authorId.isEmpty ? null : authorId,
+        reelId: reelId,
         isFollowing: false,
       ),
       onNotInterested: () => showNotInterestedSheet(context),
@@ -618,6 +670,7 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
                                 isReposted:
                                     _repostedSourceReels[engagementId] ?? false,
                                 onLike: () => _onLike(post),
+                                onDoubleTapLike: () => _onDoubleTapLike(post),
                                 onComment: () => _onComment(post),
                                 onSave: () => _onSave(post),
                                 onRepost: () => _onRepostToggle(post),
@@ -700,6 +753,7 @@ class _PostCard extends StatelessWidget {
     required this.isLiked,
     required this.isSaved,
     required this.onLike,
+    required this.onDoubleTapLike,
     required this.onComment,
     required this.onSave,
     required this.showRepost,
@@ -718,6 +772,7 @@ class _PostCard extends StatelessWidget {
   final bool isLiked;
   final bool isSaved;
   final VoidCallback onLike;
+  final VoidCallback onDoubleTapLike;
   final VoidCallback onComment;
   final VoidCallback onSave;
   final bool showRepost;
@@ -790,24 +845,20 @@ class _PostCard extends StatelessWidget {
     final oldCaption = _asString(post['caption']).trim();
 
     final buffer = StringBuffer();
-    if (title.isNotEmpty) {
-      buffer.write(title);
-    } else if (oldCaption.isNotEmpty && description.isEmpty && tagsList.isEmpty) {
-      // Fallback for old content
-      buffer.write(oldCaption);
-    }
-
     if (description.isNotEmpty) {
-      if (buffer.isNotEmpty) buffer.write('\n');
       buffer.write(description);
     }
-
     if (tagsList.isNotEmpty) {
       if (buffer.isNotEmpty) buffer.write('\n');
       buffer.write(tagsList.map((t) => '#${t.toString().trim()}').join(' '));
     }
 
-    final fullText = buffer.toString();
+    var fullText = buffer.toString();
+    if (fullText.isEmpty) {
+      // Legacy reels without structured fields — skip when caption is only the
+      // stored upload title (title is not shown on the feed).
+      fullText = title.isEmpty ? oldCaption : '';
+    }
 
     final locationMap = post['location'] as Map<String, dynamic>?;
     final locationName = (locationMap?['name'] as String?)?.trim() ?? '';
@@ -873,6 +924,7 @@ class _PostCard extends StatelessWidget {
     final isVerified = post['isVerified'] == true || fallbackIsVerified;
     final mediaUrl = _mediaUrl(post);
     final isVideoPost = _isVideoPost(post);
+    final mediaItems = ReelMediaItem.listFromPost(post);
     final privacy = ReelCountPrivacy.fromMap(post);
 
     return Padding(
@@ -967,28 +1019,75 @@ class _PostCard extends StatelessWidget {
             ),
             const SizedBox(height: AppSpacing.sm),
           ],
+          if (ReportStatusThresholds.severityFor(_asInt(post['reportCount'])) !=
+              ReportSeverity.none) ...[
+            Align(
+              alignment: Alignment.centerLeft,
+              child: ReportStatusBar.fromReel(post),
+            ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
           _buildCaption(),
           const SizedBox(height: AppSpacing.sm),
-          if (mediaUrl.isNotEmpty)
+          if (mediaItems.length > 1)
+            ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: AspectRatio(
+                aspectRatio: 800 / 900,
+                child: ValueListenableBuilder<int>(
+                  valueListenable: activeIndex,
+                  builder: (_, currentActive, _) => PostMediaCarousel(
+                    items: mediaItems,
+                    video360: Video360Metadata.fromPost(post),
+                    isVisible: currentActive == index,
+                    onDoubleTap: onDoubleTapLike,
+                  ),
+                ),
+              ),
+            )
+          else if (mediaUrl.isNotEmpty)
             ClipRRect(
               borderRadius: BorderRadius.circular(16),
               child: Stack(
                 alignment: Alignment.bottomCenter,
                 children: [
-                  AspectRatio(
-                    aspectRatio: 800 / 900,
-                    child:
-                        isVideoPost &&
-                            _asString(post['videoUrl']).trim().isNotEmpty
-                        ? ValueListenableBuilder<int>(
-                            valueListenable: activeIndex,
-                            builder: (_, currentActive, _) => ReelItemWidget(
-                              videoUrl: _asString(post['videoUrl']).trim(),
-                              isVisible: currentActive == index,
-                              thumbnailUrl: mediaUrl,
+                  ModeratedContentWrapper(
+                    contentId: _asString(post['id']),
+                    contentKind: ContentModeration.kindFromReel(post),
+                    ownerId: _asString(post['userId']),
+                    moderation: post['moderation'] is Map
+                        ? Map<String, dynamic>.from(post['moderation'] as Map)
+                        : null,
+                    borderRadius: BorderRadius.circular(16),
+                    child: AspectRatio(
+                      aspectRatio: 800 / 900,
+                      child:
+                          isVideoPost &&
+                              _asString(post['videoUrl']).trim().isNotEmpty
+                          ? ValueListenableBuilder<int>(
+                              valueListenable: activeIndex,
+                              builder: (_, currentActive, _) => ReelItemWidget(
+                                videoUrl: _asString(post['videoUrl']).trim(),
+                                video360: Video360Metadata.fromPost(post),
+                                isVisible: currentActive == index,
+                                thumbnailUrl: mediaUrl,
+                                onDoubleTap: onDoubleTapLike,
+                              ),
+                            )
+                          : DoubleTapLikeOverlay(
+                              onDoubleTap: onDoubleTapLike,
+                              child: Image.network(
+                                mediaUrl,
+                                fit: BoxFit.cover,
+                                cacheWidth:
+                                    (MediaQuery.of(context).size.width *
+                                            MediaQuery.of(
+                                              context,
+                                            ).devicePixelRatio)
+                                        .round(),
+                              ),
                             ),
-                          )
-                        : Image.network(mediaUrl, fit: BoxFit.cover),
+                    ),
                   ),
                   if (isVideoPost && _asString(post['videoUrl']).trim().isEmpty)
                     const Positioned(
@@ -998,27 +1097,6 @@ class _PostCard extends StatelessWidget {
                         Icons.play_circle_fill_rounded,
                         color: Colors.white,
                         size: 20,
-                      ),
-                    ),
-                  if (_asInt(post['mediaCount']) > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(
-                          _asInt(post['mediaCount']).clamp(2, 5),
-                          (i) => Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: 4.5,
-                            height: 4.5,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: i == 0
-                                  ? Colors.white
-                                  : Colors.white.withValues(alpha: 0.45),
-                            ),
-                          ),
-                        ),
                       ),
                     ),
                 ],

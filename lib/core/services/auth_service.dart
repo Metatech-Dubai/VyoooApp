@@ -11,9 +11,11 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import '../config/app_config.dart';
+import '../models/saved_account.dart';
 import '../utils/internet_availability.dart';
 import 'email_otp_service.dart';
 import 'push_messaging_service.dart';
+import 'saved_accounts_service.dart';
 import 'user_service.dart';
 import 'whatsapp_otp_service.dart';
 
@@ -189,7 +191,7 @@ class AuthService {
         verificationFailed: (e) {
           if (completer.isCompleted) return;
           completer.complete(
-            AuthResult(success: false, message: _mapAuthException(e.code)),
+            AuthResult(success: false, message: _mapPhoneSendException(e)),
           );
         },
         codeSent: (verificationId, resendToken) {
@@ -207,10 +209,24 @@ class AuthService {
         ),
       );
     } on FirebaseAuthException catch (e) {
-      return AuthResult(success: false, message: _mapAuthException(e.code));
+      return AuthResult(success: false, message: _mapPhoneSendException(e));
     } catch (e) {
       return AuthResult(success: false, message: _genericMessage(e));
     }
+  }
+
+  /// Firebase blocks OTP SMS to countries missing from the project's
+  /// SMS region policy allowlist. The SDK reports this as
+  /// `operation-not-allowed` ("SMS unable to be sent until this region
+  /// enabled by the app developer"), which [_mapAuthException] would turn
+  /// into a misleading "Sign-in method is not enabled.".
+  static String _mapPhoneSendException(FirebaseAuthException e) {
+    final detail = (e.message ?? '').toLowerCase();
+    if (e.code == 'operation-not-allowed' && detail.contains('region')) {
+      return 'Text codes are not available for this country yet. '
+          'Please verify with email instead.';
+    }
+    return _mapAuthException(e.code);
   }
 
   /// Verify SMS code and sign in with phone credential.
@@ -648,7 +664,90 @@ class AuthService {
     }
   }
 
-  /// Sign out the current user.
+  /// Records the active Firebase user in the on-device saved account list.
+  Future<void> registerLoggedInAccount({
+    required SavedAccountLoginType loginType,
+    String? email,
+    String? password,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null || user.isAnonymous) return;
+    await SavedAccountsService().registerAccount(
+      user: user,
+      loginType: loginType,
+      email: email,
+      password: password,
+      markAsActive: true,
+    );
+  }
+
+  /// Switches to another saved account without removing it from the device.
+  Future<AuthResult> switchToAccount(SavedAccount account) async {
+    final currentUid = _auth.currentUser?.uid;
+    if (currentUid == account.uid) {
+      return AuthResult(success: true, user: _auth.currentUser);
+    }
+    if (!account.hasStoredCredentials) {
+      return const AuthResult(
+        success: false,
+        message: 'Sign in again to use this account.',
+      );
+    }
+
+    markExpectedSignOut();
+    if (currentUid != null && currentUid.isNotEmpty) {
+      await PushMessagingService.instance.clearForSignOut(currentUid);
+    }
+    await _auth.signOut();
+
+    AuthResult result;
+    switch (account.loginType) {
+      case SavedAccountLoginType.password:
+        final creds =
+            await SavedAccountsService().getPasswordCredentials(account.uid);
+        if (creds == null) {
+          return const AuthResult(
+            success: false,
+            message: 'Sign in again to use this account.',
+          );
+        }
+        result = await signInWithEmail(
+          email: creds.email,
+          password: creds.password,
+        );
+      case SavedAccountLoginType.google:
+        result = await signInWithGoogle();
+      case SavedAccountLoginType.apple:
+        result = await signInWithApple();
+    }
+
+    if (result.success) {
+      await SavedAccountsService().markLastUsed(account.uid);
+      await SavedAccountsService().refreshAccountMetadata(account.uid);
+    }
+    return result;
+  }
+
+  /// Signs out the current account and removes it from saved accounts.
+  ///
+  /// When other saved accounts remain, switches to the most recently used one.
+  Future<AuthResult> signOutCurrentAccount() async {
+    final uid = _auth.currentUser?.uid;
+    markExpectedSignOut();
+    if (uid != null && uid.isNotEmpty) {
+      await PushMessagingService.instance.clearForSignOut(uid);
+      await SavedAccountsService().removeAccount(uid);
+    }
+    await _auth.signOut();
+
+    final next = await SavedAccountsService().getMostRecentlyUsedAccount();
+    if (next == null || !next.hasStoredCredentials) {
+      return const AuthResult(success: true);
+    }
+    return switchToAccount(next);
+  }
+
+  /// Sign out the current user without touching saved accounts (legacy callers).
   Future<void> signOut() async {
     markExpectedSignOut();
     final uid = _auth.currentUser?.uid;

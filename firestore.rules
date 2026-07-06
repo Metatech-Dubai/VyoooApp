@@ -10,6 +10,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function isStaff() {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isStaff == true;
+    }
+
     function validNotificationSettingsWrite() {
       let d = request.resource.data;
       return d.keys().hasOnly([
@@ -78,6 +83,24 @@ service cloud.firestore {
           == resource.data.get('monetizationEnabled', false);
     }
 
+    // Username format enforced here; reserved handles blocked by Cloud Function
+    // (reads reserved_usernames collection — case-insensitive).
+    function validUsernameField(username) {
+      return username is string
+        && username.size() >= 4
+        && username.size() <= 30
+        && username.matches('^[a-zA-Z0-9_.]+$')
+        && !username.matches('^\\..*')
+        && !username.matches('.*\\.$')
+        && !username.matches('.*\\.\\..*');
+    }
+
+    // Onboarding creates the user doc before a handle is chosen on CreateUsernameScreen.
+    function validUsernameFieldOrEmpty(username) {
+      return username is string
+        && (username == '' || validUsernameField(username));
+    }
+
     function validUserDoc(userId) {
       return request.resource.data.keys().hasOnly([
         'uid',
@@ -85,6 +108,7 @@ service cloud.firestore {
         'displayName',
         'username',
         'bio',
+        'profileMusic',
         'dob',
         'profileImage',
         'interests',
@@ -112,14 +136,19 @@ service cloud.firestore {
         'parentConsentAt',
         'location',
         'locationSetupComplete',
+        'profileImageSetupComplete',
+        'allowTagsFrom',
       ]) &&
       request.resource.data.uid == userId &&
       request.resource.data.email is string &&
       (!('displayName' in request.resource.data) ||
         request.resource.data.displayName is string) &&
       request.resource.data.username is string &&
+      validUsernameFieldOrEmpty(request.resource.data.username) &&
       (!('bio' in request.resource.data) ||
         request.resource.data.bio is string) &&
+      (!('profileMusic' in request.resource.data) ||
+        request.resource.data.profileMusic is string) &&
       request.resource.data.dob is string &&
       request.resource.data.profileImage is string &&
       request.resource.data.interests is list &&
@@ -165,7 +194,48 @@ service cloud.firestore {
       (!('location' in request.resource.data) ||
         request.resource.data.location is map) &&
       (!('locationSetupComplete' in request.resource.data) ||
-        request.resource.data.locationSetupComplete is bool);
+        request.resource.data.locationSetupComplete is bool) &&
+      (!('profileImageSetupComplete' in request.resource.data) ||
+        request.resource.data.profileImageSetupComplete is bool) &&
+      (!('allowTagsFrom' in request.resource.data) ||
+        request.resource.data.allowTagsFrom in [
+          'everyone', 'followers', 'nobody',
+        ]);
+    }
+
+    // Follow / unfollow / block list patches without re-validating the entire profile
+    // shape (legacy docs may carry fields outside [validUserDoc]).
+    function ownerSocialGraphPatch(userId) {
+      return isOwner(userId)
+        && followersCountUnchanged()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['following', 'blockedUsers'])
+        && request.resource.data.following is list
+        && request.resource.data.blockedUsers is list;
+    }
+
+    // Bio, music, display name, avatar URL — without [validUserDoc] (legacy extra keys).
+    function ownerProfilePresentationPatch(userId) {
+      let affected = request.resource.data.diff(resource.data).affectedKeys();
+      return isOwner(userId)
+        && followersCountUnchanged()
+        && monetizationEnabledUnchanged()
+        && emailOtpVerifiedUnchanged()
+        && parentalContactFieldsUnchanged()
+        && affected.hasOnly([
+          'bio',
+          'profileMusic',
+          'displayName',
+          'profileImage',
+        ])
+        && affected.size() > 0
+        && (!affected.hasAny(['bio']) || request.resource.data.bio is string)
+        && (!affected.hasAny(['profileMusic'])
+          || request.resource.data.profileMusic is string)
+        && (!affected.hasAny(['displayName'])
+          || request.resource.data.displayName is string)
+        && (!affected.hasAny(['profileImage'])
+          || request.resource.data.profileImage is string);
     }
 
     function parentalConsentCreateValid() {
@@ -522,6 +592,15 @@ service cloud.firestore {
                       || minorParentInviteSubmit(userId)
                       || minorParentalConsentSync(userId)
                       || minorParentalResubmitAfterDeny(userId)
+                      // Public tag policy mirror from settings/app (mention checks).
+                      || (isOwner(userId)
+                          && request.resource.data.diff(resource.data).affectedKeys()
+                            .hasOnly(['allowTagsFrom'])
+                          && request.resource.data.allowTagsFrom in [
+                            'everyone', 'followers', 'nobody',
+                          ])
+                      || ownerSocialGraphPatch(userId)
+                      || ownerProfilePresentationPatch(userId)
                     )
                     || (isSignedIn()
                         && !isOwner(userId)
@@ -589,8 +668,21 @@ service cloud.firestore {
         'likes',
         'comments',
         'segmentGroupId',
+        'viewCount',
+        'reportCount',
         'authorAccountPrivate',
+        'moderation',
       ]);
+    }
+
+    function storyModerationValidOnCreate() {
+      let m = request.resource.data.moderation;
+      return m is map
+        && m.keys().hasOnly(['status', 'provider'])
+        && m.status is string
+        && m.status == 'clear'
+        && m.provider is string
+        && m.provider == 'crowd';
     }
 
     function storyValidCreate() {
@@ -600,7 +692,8 @@ service cloud.firestore {
         && request.resource.data.avatarUrl is string
         && request.resource.data.mediaUrl is string
         && request.resource.data.caption is string
-        && request.resource.data.createdAt is timestamp
+        // Client may send FieldValue.serverTimestamp() sentinel for createdAt.
+        && 'createdAt' in request.resource.data
         && request.resource.data.expiresAt is timestamp
         && request.resource.data.viewedBy is list
         && request.resource.data.mediaType is string
@@ -611,6 +704,11 @@ service cloud.firestore {
         && request.resource.data.comments is int
         && request.resource.data.comments == 0
         && request.resource.data.segmentGroupId is string
+        && request.resource.data.viewCount is int
+        && request.resource.data.viewCount == 0
+        && request.resource.data.reportCount is int
+        && request.resource.data.reportCount == 0
+        && storyModerationValidOnCreate()
         && request.resource.data.authorAccountPrivate is bool
         && request.resource.data.authorAccountPrivate
           == accountTypeIsPrivateGate(
@@ -627,7 +725,7 @@ service cloud.firestore {
 
     function storyViewedByOnlyUpdate() {
       return storyOwnerIdUnchanged()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy']);
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['viewedBy', 'viewCount']);
     }
 
     match /stories/{storyId} {
@@ -656,6 +754,7 @@ service cloud.firestore {
                       'likeCount',
                       'createdAt',
                       'isVerified',
+                      'mentionedUserIds',
                     ])
                     && request.resource.data.username is string
                     && request.resource.data.avatarUrl is string
@@ -664,7 +763,14 @@ service cloud.firestore {
                     && request.resource.data.likeCount is int
                     && request.resource.data.likeCount == 0
                     && request.resource.data.createdAt is timestamp
-                    && request.resource.data.isVerified is bool;
+                    && request.resource.data.isVerified is bool
+                    && (
+                      !('mentionedUserIds' in request.resource.data)
+                      || (
+                        request.resource.data.mentionedUserIds is list
+                        && request.resource.data.mentionedUserIds.size() <= 30
+                      )
+                    );
       // Subtree deletes may include reply docs by other users (same as reels pattern).
       allow delete: if isSignedIn() && parentStoryReadable(storyId);
       allow update: if isSignedIn()
@@ -815,6 +921,73 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // User reports against profiles. Deterministic id `<uid>_<reportedUserId>` so a
+    // user can only report a profile once. Reporters can read only their own report.
+    match /user_reports/{id} {
+      allow create: if isSignedIn()
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.reportedUserId is string
+                    && request.resource.data.reportedUserId.size() > 0
+                    && request.resource.data.reportedUserId != request.auth.uid
+                    && request.resource.data.reason is string
+                    && request.resource.data.reason.size() > 0
+                    && id == request.auth.uid + '_' + request.resource.data.reportedUserId;
+      allow read: if isSignedIn() && resource.data.reporterId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Block reasons for profile blocks. Deterministic id `<uid>_<blockedUserId>`.
+    // Blockers can read/delete only their own record (e.g. on unblock).
+    match /user_blocks/{id} {
+      allow create, update: if isSignedIn()
+                            && request.resource.data.blockerId == request.auth.uid
+                            && request.resource.data.blockedUserId is string
+                            && request.resource.data.blockedUserId.size() > 0
+                            && request.resource.data.blockedUserId != request.auth.uid
+                            && request.resource.data.reason is string
+                            && request.resource.data.reason.size() > 0
+                            && id == request.auth.uid + '_' + request.resource.data.blockedUserId;
+      allow read, delete: if isSignedIn() && resource.data.blockerId == request.auth.uid;
+    }
+
+    // User reports against reels/posts. Deterministic id `<uid>_<reelId>` so a
+    // user can only report a reel once. Reporters can read only their own report
+    // (to detect duplicates); aggregate counts live on the reel doc, written by
+    // a trusted Cloud Function. Reports are immutable from clients.
+    match /reel_reports/{id} {
+      allow create: if isSignedIn()
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.reelId is string
+                    && request.resource.data.reelId.size() > 0
+                    && id == request.auth.uid + '_' + request.resource.data.reelId;
+      allow read: if isSignedIn() && resource.data.reporterId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // User reports against stories. Deterministic id `<uid>_<storyId>`.
+    match /story_reports/{id} {
+      allow create: if isSignedIn()
+                    && request.resource.data.reporterId == request.auth.uid
+                    && request.resource.data.storyId is string
+                    && request.resource.data.storyId.size() > 0
+                    && id == request.auth.uid + '_' + request.resource.data.storyId;
+      allow read: if isSignedIn() && resource.data.reporterId == request.auth.uid;
+      allow update, delete: if false;
+    }
+
+    // Owner disputes for crowd-report coverage; staff resolves via admin dashboard.
+    match /moderation_disputes/{id} {
+      allow create: if isSignedIn()
+                    && request.resource.data.ownerId == request.auth.uid
+                    && request.resource.data.contentId is string
+                    && request.resource.data.contentCollection is string
+                    && request.resource.data.status == 'pending';
+      allow read: if isSignedIn()
+                  && (resource.data.ownerId == request.auth.uid || isStaff());
+      allow update: if isStaff();
+      allow delete: if false;
+    }
+
     match /notifications/{id} {
       allow create: if isSignedIn()
                     && request.resource.data.senderId == request.auth.uid
@@ -956,6 +1129,22 @@ service cloud.firestore {
     function isChatParticipant(chatId) {
       return isSignedIn()
         && request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participantIds;
+    }
+
+    // reactions map: uid -> emoji; participant may only add/change/remove their own entry
+    function isValidReactionUpdate(before, after, uid) {
+      return after is map
+        && before is map
+        && after.keys().removeAll(before.keys()).hasOnly([uid])
+        && before.keys().removeAll(after.keys()).hasOnly([uid])
+        && (
+          !(uid in after)
+          || (
+            after[uid] is string
+            && after[uid].size() > 0
+            && after[uid].size() <= 8
+          )
+        );
     }
 
     match /chats/{chatId} {
@@ -1131,6 +1320,16 @@ service cloud.firestore {
                           && request.auth.uid in request.resource.data.viewedBy
                           && !(request.auth.uid in resource.data.viewedBy)
                         )
+                        ||
+                        // Reactions: participant toggles only their own uid -> emoji entry
+                        (
+                          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reactions'])
+                          && isValidReactionUpdate(
+                               resource.data.get('reactions', {}),
+                               request.resource.data.reactions,
+                               request.auth.uid
+                             )
+                        )
                       );
 
         allow delete: if false;
@@ -1195,7 +1394,14 @@ service cloud.firestore {
 
     // ── App config (version policy — public read, admin write via console/CI) ─
     match /app_config/{docId} {
-      allow read: if docId == 'version_policy';
+      allow read: if docId in ['version_policy', 'username_policy'];
+      allow write: if false;
+    }
+
+    // ── Reserved usernames (admin-managed via console / Admin SDK) ───────────
+    // Doc id = lowercase handle. Clients read to mirror server policy in UI.
+    match /reserved_usernames/{reservedId} {
+      allow read: if true;
       allow write: if false;
     }
 

@@ -1,20 +1,23 @@
 import 'package:flutter/material.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:country_picker/country_picker.dart';
 
+import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/wrappers/auth_wrapper.dart';
 import 'create_account_screen.dart';
 import 'find_account_screen.dart';
 
 class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+  const SignInScreen({super.key, this.addingAccount = false});
+
+  /// When true, user is adding another account without removing saved ones.
+  final bool addingAccount;
 
   @override
   State<SignInScreen> createState() => _SignInScreenState();
@@ -34,7 +37,7 @@ class _SignInScreenState extends State<SignInScreen> {
   bool _isGoogleLoading = false;
   bool _isAppleLoading = false;
   String? _errorMessage;
-  String _selectedLoginMethod = _loginMethodPhone;
+  String _selectedLoginMethod = _loginMethodEmail;
   String _selectedCountryDialCode = '44';
   String _selectedCountryFlag = '🇬🇧';
 
@@ -97,8 +100,13 @@ class _SignInScreenState extends State<SignInScreen> {
       } else {
         otpSession.abortEmailLoginHandshake();
       }
+      await _auth.registerLoggedInAccount(
+        loginType: SavedAccountLoginType.password,
+        email: resolvedEmail,
+        password: _passwordController.text.trim(),
+      );
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      _finishSuccessfulLogin();
       return;
     }
     otpSession.abortEmailLoginHandshake();
@@ -144,8 +152,13 @@ class _SignInScreenState extends State<SignInScreen> {
     if (result.success) {
       OtpSessionService().abortEmailLoginHandshake();
       await OtpSessionService().clearOtpRequirement();
+      await _auth.registerLoggedInAccount(
+        loginType: SavedAccountLoginType.password,
+        email: resolvedEmail,
+        password: _passwordController.text.trim(),
+      );
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      _finishSuccessfulLogin();
       return;
     }
     setState(() => _errorMessage = result.message ?? 'Login failed');
@@ -161,7 +174,11 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!mounted) return;
     setState(() => _isAppleLoading = false);
     if (result.success) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      await _auth.registerLoggedInAccount(
+        loginType: SavedAccountLoginType.apple,
+      );
+      if (!mounted) return;
+      _finishSuccessfulLogin();
     } else if (result.message != null && result.message!.isNotEmpty) {
       setState(() => _errorMessage = result.message);
     }
@@ -179,10 +196,25 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!mounted) return;
     setState(() => _isGoogleLoading = false);
     if (result.success) {
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      await _auth.registerLoggedInAccount(
+        loginType: SavedAccountLoginType.google,
+      );
+      if (!mounted) return;
+      _finishSuccessfulLogin();
     } else if (result.message != null && result.message!.isNotEmpty) {
       setState(() => _errorMessage = result.message);
     }
+  }
+
+  void _finishSuccessfulLogin() {
+    if (widget.addingAccount) {
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AuthWrapper()),
+        (route) => false,
+      );
+      return;
+    }
+    Navigator.of(context).popUntil((route) => route.isFirst);
   }
 
   void _onRegister() {
@@ -204,11 +236,11 @@ class _SignInScreenState extends State<SignInScreen> {
     if (!looksLikeEmail) return base;
     if (base == _kNoAuthAccountForEmail) {
       return 'This email is not registered on Vyooo yet. If you are a parent or '
-          'guardian responding to a consent request, tap Register Here and create '
+          'guardian responding to a consent request, tap Register and create '
           'an account using the same email your child entered, then sign in here.';
     }
     if (base.startsWith('Invalid email or password')) {
-      return '$base If you have never signed up, use Register Here first (parents: '
+      return '$base If you have never signed up, use Register first (parents: '
           'use the same email your child used).';
     }
     return base;
@@ -216,69 +248,70 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.authFlow,
-        child: AuthCenteredScrollBody(
-          children: [
-            const AuthScreenHeader(
-              centerAlign: true,
-              titleTextAlign: TextAlign.start,
-              title: 'Welcome\nBack',
-            ),
-            const SizedBox(height: AppSpacing.md),
-            AuthSegmentedToggle(
-                leftLabel: 'Phone',
-                rightLabel: 'Email',
-                isLeftSelected: !_isEmailLogin,
-                onLeftTap: () =>
-                    setState(() => _selectedLoginMethod = _loginMethodPhone),
-                onRightTap: () =>
-                    setState(() => _selectedLoginMethod = _loginMethodEmail),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              _buildForm(),
-              const SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-              AuthRememberForgotRow(
-                rememberMe: _rememberMe,
-                onRememberMeChanged: (v) => setState(() => _rememberMe = v),
-                onForgotPasswordTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => const FindAccountScreen(),
-                    ),
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.xl + AppSpacing.md),
-              if (_errorMessage != null) ...[
-                Text(
-                  _errorMessage!,
-                  style: AppTypography.caption.copyWith(color: Colors.red),
-                  textAlign: TextAlign.center,
+    return AuthLightScaffold(
+      scrollable: false,
+      body: AuthCenteredScrollBody(
+        children: [
+          AuthScreenHeader(
+            centerAlign: true,
+            titleTextAlign: TextAlign.start,
+            title: widget.addingAccount ? 'Add\nAccount' : 'Welcome\nBack',
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AuthSegmentedToggle(
+            leftLabel: 'Phone',
+            rightLabel: 'Email',
+            isLeftSelected: !_isEmailLogin,
+            onLeftTap: () =>
+                setState(() => _selectedLoginMethod = _loginMethodPhone),
+            onRightTap: () =>
+                setState(() => _selectedLoginMethod = _loginMethodEmail),
+          ),
+          const SizedBox(height: AppSpacing.md),
+          _buildForm(),
+          const SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+          AuthRememberForgotRow(
+            rememberMe: _rememberMe,
+            onRememberMeChanged: (v) => setState(() => _rememberMe = v),
+            onForgotPasswordTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const FindAccountScreen(),
                 ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-              AuthPrimaryButton(
-                label: _isEmailLogin ? 'Login' : 'Continue',
-                isLoading: _isLoading,
-                enabled: _canLogin,
-                onPressed: _onLogin,
-              ),
-              const SizedBox(height: AppSpacing.md),
-              AuthLinkPrompt(
-                prompt: "Don't have an account? ",
-                actionLabel: 'Register Here',
-                onActionTap: _onRegister,
-              ),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-              const AuthLabeledDivider(label: 'Or sign in with'),
-              const SizedBox(height: AppSpacing.authDividerBlock),
-              _buildSocialRow(),
-              const SizedBox(height: AppSpacing.authDividerBlock),
+              );
+            },
+          ),
+          if (_errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
+            Text(
+              _errorMessage!,
+              style: AppTypography.caption.copyWith(color: Colors.red),
+            ),
           ],
-        ),
+          const SizedBox(height: AppSpacing.authCtaTop),
+          AuthPrimaryButton(
+            label: 'Login',
+            isLoading: _isLoading,
+            enabled: _canLogin,
+            onPressed: _onLogin,
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AuthLinkPrompt(
+            prompt: "Don't have an account? ",
+            actionLabel: 'Register Here',
+            onActionTap: _onRegister,
+          ),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+          const AuthLabeledDivider(label: 'Or sign in with'),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+          AuthSocialSignInRow(
+            isGoogleLoading: _isGoogleLoading,
+            isAppleLoading: _isAppleLoading,
+            onGoogleTap: _onGoogleSignIn,
+            onAppleTap: _onAppleSignIn,
+          ),
+          const SizedBox(height: AppSpacing.authDividerBlock),
+        ],
       ),
     );
   }
@@ -307,43 +340,22 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildSocialRow() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        AuthSocialIconButton(
-          icon: FontAwesomeIcons.google,
-          isLoading: _isGoogleLoading,
-          onTap: _onGoogleSignIn,
-        ),
-        const SizedBox(width: AppSpacing.socialRowGap),
-        AuthSocialIconButton(
-          icon: FontAwesomeIcons.apple,
-          isLoading: _isAppleLoading,
-          onTap: _onAppleSignIn,
-        ),
-        const SizedBox(width: AppSpacing.socialRowGap),
-        AuthSocialIconButton(icon: FontAwesomeIcons.facebook),
-      ],
-    );
-  }
-
   void _pickCountry() {
     showCountryPicker(
       context: context,
       showPhoneCode: true,
       favorite: const ['GB', 'AE'],
       countryListTheme: CountryListThemeData(
-        backgroundColor: const Color(0xFF12081C),
-        textStyle: const TextStyle(color: Colors.white),
+        backgroundColor: AppTheme.lightScaffoldBackground,
+        textStyle: const TextStyle(color: AppTheme.lightOnSurface),
         inputDecoration: InputDecoration(
           labelText: 'Search country',
-          labelStyle: TextStyle(color: AppTheme.secondaryTextColor),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: White24.value),
+          labelStyle: const TextStyle(color: AppTheme.lightSecondaryText),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppTheme.lightUnfocusedUnderline),
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: AppTheme.primary),
+            borderSide: BorderSide(color: AppTheme.lightFocusedUnderline),
           ),
         ),
       ),

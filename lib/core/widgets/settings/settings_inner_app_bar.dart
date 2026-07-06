@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../constants/app_colors.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../vyooo_brand_logo.dart';
@@ -12,12 +13,16 @@ class SettingsInnerAppBar extends StatelessWidget {
     this.onBack,
     this.trailing,
     this.showLogo = true,
+    this.light = false,
   });
 
   final String title;
   final VoidCallback? onBack;
   final Widget? trailing;
   final bool showLogo;
+
+  /// White scaffold + dark chrome (notifications, light settings sub-screens).
+  final bool light;
 
   @override
   Widget build(BuildContext context) {
@@ -31,9 +36,9 @@ class SettingsInnerAppBar extends StatelessWidget {
           GestureDetector(
             onTap: onBack ?? () => Navigator.of(context).pop(),
             behavior: HitTestBehavior.opaque,
-            child: const Icon(
+            child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
+              color: light ? AppColors.chatTextPrimary : Colors.white,
               size: 18,
             ),
           ),
@@ -43,7 +48,11 @@ class SettingsInnerAppBar extends StatelessWidget {
               title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: AppTypography.settingsInnerAppBarTitle,
+              style: light
+                  ? AppTypography.settingsInnerAppBarTitle.copyWith(
+                      color: AppColors.chatTextPrimary,
+                    )
+                  : AppTypography.settingsInnerAppBarTitle,
             ),
           ),
           if (trailing != null) ...[

@@ -25,4 +25,10 @@ extension AppUserModelOnboarding on AppUserModel {
       (profileLocation?.name ?? '').trim().isNotEmpty;
 
   bool get isLocationOnboardingDone => locationSetupComplete || hasProfileLocation;
+
+  bool get hasProfileImage => (profileImage ?? '').trim().isNotEmpty;
+
+  /// Photo step is done once a photo exists or the step was explicitly skipped.
+  bool get isProfileImageOnboardingDone =>
+      profileImageSetupComplete || hasProfileImage;
 }

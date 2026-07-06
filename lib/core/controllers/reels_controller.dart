@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -7,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../config/deep_link_config.dart';
+import '../models/reel_media_item.dart';
 import '../services/auth_service.dart';
 import '../services/notification_service.dart';
 import '../services/user_service.dart';
@@ -222,9 +224,16 @@ class ReelsController {
           'userId': data['userId'] as String? ?? '',
           'videoUrl': data['videoUrl'] as String? ?? '',
           'caption': data['caption'] as String? ?? '',
+          'title': data['title'] as String? ?? '',
+          'description': data['description'] as String? ?? '',
+          'tags': data['tags'] is List
+              ? (data['tags'] as List).map((e) => e.toString()).toList()
+              : const <String>[],
           'thumbnailUrl': data['thumbnailUrl'] as String? ?? '',
           'imageUrl': data['imageUrl'] as String? ?? '',
           'mediaType': data['mediaType'] as String? ?? '',
+          'mediaItems': ReelMediaItem.sanitizedRawList(data['mediaItems']),
+          'mediaCount': (data['mediaCount'] as num?)?.toInt() ?? 1,
           'username': data['username'] as String? ?? '',
           'avatarUrl': data['profileImage'] as String? ??
               data['avatarUrl'] as String? ??
@@ -248,48 +257,112 @@ class ReelsController {
     return out;
   }
 
-  /// Like a reel. Toggles like state and updates Firestore.
+  /// Sets like state for a reel. Idempotent — repeated likes/unlikes are no-ops.
   Future<bool> likeReel({
     required String reelId,
-    required bool currentlyLiked,
+    required bool like,
   }) async {
     final uid = _currentUserId;
-    if (uid == null) return currentlyLiked;
-
-    final newLikedState = !currentlyLiked;
-    try {
-      if (newLikedState) {
-        await _firestore.collection('userLikes').doc('${uid}_$reelId').set({
-          'userId': uid,
-          'reelId': reelId,
-          'likedAt': FieldValue.serverTimestamp(),
-        });
-      } else {
-        await _firestore.collection('userLikes').doc('${uid}_$reelId').delete();
-      }
-
-      final reelRef = _firestore.collection('reels').doc(reelId);
-      final reelDoc = await reelRef.get();
-      if (reelDoc.exists) {
-        await reelRef.update({
-          'likes': newLikedState
-              ? FieldValue.increment(1)
-              : FieldValue.increment(-1),
-        });
-        if (newLikedState) {
-          final ownerId = (reelDoc.data()?['userId'] as String?) ?? '';
-          await NotificationService().create(
-            recipientId: ownerId,
-            type: AppNotificationType.like,
-            message: 'liked your post.',
-            extra: {'reelId': reelId},
-          );
-        }
-      }
-    } catch (_) {
-      return currentlyLiked;
+    if (uid == null) {
+      debugPrint('[Vyooo][Like] abort: no signed-in user wantLike=$like reelId=$reelId');
+      return !like;
     }
-    return newLikedState;
+
+    final likeRef = _firestore.collection('userLikes').doc('${uid}_$reelId');
+    final reelRef = _firestore.collection('reels').doc(reelId);
+    debugPrint(
+      '[Vyooo][Like] start uid=$uid reelId=$reelId wantLike=$like '
+      'likeDoc=${likeRef.id}',
+    );
+
+    late final bool liked;
+    late final bool changed;
+    try {
+      (liked, changed) = await _firestore.runTransaction<(bool, bool)>(
+        (tx) async {
+          final likeSnap = await tx.get(likeRef);
+          final isLiked = likeSnap.exists;
+          debugPrint(
+            '[Vyooo][Like] tx read isLiked=$isLiked wantLike=$like reelId=$reelId',
+          );
+          if (like == isLiked) {
+            return (isLiked, false);
+          }
+
+          if (like) {
+            tx.set(likeRef, {
+              'userId': uid,
+              'reelId': reelId,
+              'likedAt': FieldValue.serverTimestamp(),
+            });
+          } else {
+            tx.delete(likeRef);
+          }
+
+          // `reels/{id}.likes` is maintained by Cloud Function `syncReelLikeCount`.
+          return (like, true);
+        },
+      );
+      debugPrint(
+        '[Vyooo][Like] tx ok liked=$liked changed=$changed reelId=$reelId',
+      );
+    } catch (e, st) {
+      if (e is FirebaseException) {
+        debugPrint(
+          '[Vyooo][Like] tx FAILED reelId=$reelId code=${e.code} '
+          'message=${e.message}',
+        );
+      } else {
+        debugPrint('[Vyooo][Like] tx FAILED reelId=$reelId error=$e');
+      }
+      debugPrint('$st');
+      try {
+        final snap = await likeRef.get();
+        final exists = snap.exists;
+        debugPrint(
+          '[Vyooo][Like] tx fallback likeDoc exists=$exists reelId=$reelId',
+        );
+        return exists;
+      } catch (readErr) {
+        debugPrint(
+          '[Vyooo][Like] tx fallback read FAILED reelId=$reelId error=$readErr',
+        );
+        return !like;
+      }
+    }
+
+    if (changed && liked) {
+      unawaited(_notifyPostLike(reelRef: reelRef, reelId: reelId, uid: uid));
+    }
+
+    debugPrint('[Vyooo][Like] done return liked=$liked reelId=$reelId');
+    return liked;
+  }
+
+  Future<void> _notifyPostLike({
+    required DocumentReference<Map<String, dynamic>> reelRef,
+    required String reelId,
+    required String uid,
+  }) async {
+    try {
+      final reelDoc = await reelRef.get();
+      if (!reelDoc.exists) return;
+      final ownerId = (reelDoc.data()?['userId'] as String?) ?? '';
+      if (ownerId.isEmpty || ownerId == uid) return;
+      final sent = await NotificationService().createOnce(
+        dedupeId: 'like_${uid}_$reelId',
+        recipientId: ownerId,
+        type: AppNotificationType.like,
+        message: 'liked your post.',
+        extra: {'reelId': reelId},
+      );
+      debugPrint(
+        '[Vyooo][Like] notify sent=$sent ownerId=$ownerId reelId=$reelId',
+      );
+    } catch (e, st) {
+      debugPrint('[Vyooo][Like] notify FAILED reelId=$reelId error=$e');
+      debugPrint('$st');
+    }
   }
 
   /// Public favorite (profile star tab, visible to others per account privacy rules).
@@ -452,6 +525,9 @@ class ReelsController {
         'videoUrl': source['videoUrl'] ?? '',
         'imageUrl': source['imageUrl'] ?? '',
         'thumbnailUrl': source['thumbnailUrl'] ?? source['imageUrl'] ?? '',
+        if (source['mediaItems'] is List)
+          'mediaItems': source['mediaItems'],
+        if (source['mediaCount'] is num) 'mediaCount': source['mediaCount'],
         'caption': source['caption'] ?? '',
         'description': source['description'] ?? '',
         'title': source['title'] ?? '',
@@ -540,6 +616,9 @@ class ReelsController {
     try {
       await _firestore.collection('reels').doc(reelId).update({
         'views': FieldValue.increment(1),
+        // Keep viewsCount in sync so Trending (orderBy viewsCount) and the
+        // report-threshold moderation use a consistent live view total.
+        'viewsCount': FieldValue.increment(1),
       });
     } catch (_) {}
   }
@@ -547,18 +626,23 @@ class ReelsController {
   /// Share a reel using native share sheet.
   Future<void> shareReel({
     required String reelId,
-    String? reelUrl,
+    String? caption,
   }) async {
     try {
-      final url = reelUrl ?? DeepLinkConfig.reelWebUri(reelId).toString();
+      final reelDoc = await _firestore.collection('reels').doc(reelId).get();
+      final data = reelDoc.data();
+      final resolvedCaption = (caption ?? data?['caption'] as String?)?.trim();
+      final message = DeepLinkConfig.reelShareMessage(
+        reelId: reelId,
+        caption: resolvedCaption,
+      );
       await SharePlus.instance.share(
         ShareParams(
-          text: url,
-          subject: 'Check out this reel on Vyooo!',
+          text: message,
+          subject: 'Check out this post on Vyooo',
         ),
       );
-      final reelDoc = await _firestore.collection('reels').doc(reelId).get();
-      final ownerId = (reelDoc.data()?['userId'] as String?) ?? '';
+      final ownerId = (data?['userId'] as String?) ?? '';
       await NotificationService().create(
         recipientId: ownerId,
         type: AppNotificationType.share,

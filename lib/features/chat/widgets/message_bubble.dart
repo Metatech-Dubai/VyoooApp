@@ -1,6 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_radius.dart';
+import '../../../core/theme/app_sizes.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
+import 'chat_bubble_avatar.dart';
+import 'message_reply_quote.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({
@@ -11,6 +17,9 @@ class MessageBubble extends StatelessWidget {
     this.isDeleted = false,
     this.senderName,
     this.seenText,
+    this.replyToSenderName,
+    this.replyToPreview,
+    this.senderAvatarUrl,
   });
 
   final String text;
@@ -19,91 +28,109 @@ class MessageBubble extends StatelessWidget {
   final bool isDeleted;
   final String? senderName;
   final String? seenText;
+  final String? replyToSenderName;
+  final String? replyToPreview;
+  final String? senderAvatarUrl;
 
   @override
   Widget build(BuildContext context) {
-    return Align(
-      alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.72,
-        ),
-        margin: EdgeInsets.only(
-          left: isSent ? 60 : 10,
-          right: isSent ? 10 : 60,
-          top: 2,
-          bottom: 2,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          gradient: isSent
-              ? const LinearGradient(
-                  colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                )
-              : null,
-          color: isSent ? null : const Color(0xFF1E0E2E),
-          borderRadius: BorderRadius.only(
-            topLeft: const Radius.circular(18),
-            topRight: const Radius.circular(18),
-            bottomLeft: Radius.circular(isSent ? 18 : 4),
-            bottomRight: Radius.circular(isSent ? 4 : 18),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (senderName != null && !isSent)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  senderName!,
-                  style: const TextStyle(
-                    color: AppColors.brandMagenta,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+    final bubble = Container(
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.72,
+        minHeight: isSent
+            ? AppSizes.chatOutgoingBubbleMinHeight
+            : AppSizes.chatIncomingBubbleMinHeight,
+      ),
+      padding: EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm + AppSpacing.xs - 2,
+      ),
+      decoration: BoxDecoration(
+        color: isSent
+            ? AppColors.chatOutgoingBubble
+            : AppColors.chatIncomingBubble,
+        borderRadius: isSent
+            ? AppRadius.chatOutgoingBubbleRadius
+            : AppRadius.pillRadius,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (senderName != null && !isSent)
+            Padding(
+              padding: EdgeInsets.only(bottom: AppSpacing.xs - 2),
+              child: Text(
+                senderName!,
+                style: AppTypography.chatTilePreview.copyWith(
+                  color: AppColors.brandDeepMagenta,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
                 ),
               ),
-            Text(
-              isDeleted ? 'This message was deleted' : text,
-              style: TextStyle(
-                color: isDeleted
-                    ? Colors.white.withValues(alpha: 0.4)
-                    : Colors.white,
-                fontSize: 14,
-                fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
-              ),
             ),
-            const SizedBox(height: 2),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (seenText != null) ...[
-                    Text(
-                      seenText!,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.45),
-                        fontSize: 10,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                  ],
-                  Text(
-                    time,
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
-                      fontSize: 10,
-                    ),
+          if (replyToSenderName != null && replyToPreview != null)
+            MessageReplyQuote(
+              senderName: replyToSenderName!,
+              preview: replyToPreview!,
+              isSentBubble: isSent,
+            ),
+          Text(
+            isDeleted ? 'This message was deleted' : text,
+            style: isSent
+                ? AppTypography.chatSentBubbleText.copyWith(
+                    fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
+                    color: isDeleted
+                        ? AppColors.chatSentBubbleText.withValues(alpha: 0.6)
+                        : AppColors.chatSentBubbleText,
+                  )
+                : AppTypography.chatIncomingBubbleText.copyWith(
+                    color: isDeleted
+                        ? AppColors.chatTextSecondary
+                        : AppColors.chatIncomingBubbleText,
+                    fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
                   ),
-                ],
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+    );
+
+    if (isSent) {
+      return Align(
+        alignment: Alignment.centerRight,
+        child: Padding(
+          padding: EdgeInsets.only(
+            left: 60,
+            right: AppSpacing.sm + AppSpacing.xs,
+            top: AppSpacing.xs - 2,
+            bottom: AppSpacing.xs - 2,
+          ),
+          child: bubble,
         ),
+      );
+    }
+
+    final hasAvatar =
+        senderAvatarUrl != null && senderAvatarUrl!.trim().isNotEmpty;
+    final avatarSlot = AppSizes.chatThreadBubbleAvatar;
+
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.sm + AppSpacing.xs,
+        right: 60,
+        top: AppSpacing.xs - 2,
+        bottom: AppSpacing.xs - 2,
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          if (hasAvatar)
+            ChatBubbleAvatar(imageUrl: senderAvatarUrl)
+          else
+            SizedBox(width: avatarSlot),
+          SizedBox(width: AppSpacing.sm - AppSpacing.xs),
+          Flexible(child: bubble),
+        ],
       ),
     );
   }

@@ -1,10 +1,13 @@
 /// Barrel import for auth UI building blocks.
 library;
 
+export 'auth_onboarding_username_field.dart';
+export 'auth_light_scaffold.dart';
 export 'auth_account_type_picker_dialog.dart';
 export 'auth_branded_dialog.dart';
 export 'auth_centered_scroll_body.dart';
 export 'auth_public_persona_dialog.dart';
+export 'auth_reserved_username_dialog.dart';
 export 'auth_floating_back_button.dart';
 export 'auth_floating_circle_button.dart';
 export 'auth_floating_nav_row.dart';
@@ -20,4 +23,5 @@ export 'auth_primary_button.dart';
 export 'auth_remember_forgot_row.dart';
 export 'auth_segmented_toggle.dart';
 export 'auth_social_icon_button.dart';
+export 'auth_social_sign_in_row.dart';
 export 'auth_underline_text_field.dart';

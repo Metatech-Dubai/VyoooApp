@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import 'app_fonts.dart';
+import 'app_sizes.dart';
 import 'app_theme.dart';
 
 // 🔴 IMPORTANT:
@@ -10,8 +11,8 @@ import 'app_theme.dart';
 
 /// Figma-aligned text styles for Vyooo (auth + shared UI). All use DM Sans.
 abstract final class AppTypography {
-  // — Auth / section titles (DM Sans) —
-  static const double authHeadlineSize = 30;
+  // — Auth / section titles —
+  static const double authHeadlineSize = 40;
   static const double authHeadlineLetterSpacingPercent = -0.03;
 
   // — Figma UI (DM Sans) —
@@ -28,9 +29,9 @@ abstract final class AppTypography {
   /// White @ 90% — Figma layer opacity on small body copy.
   static const Color smallBodyColor = Color(0xE6FFFFFF);
 
-  /// "Create an Account" — DM Sans Semi Bold / −3% tracking.
+  /// "Create an Account" / auth titles — Inter Semi Bold 40 / 100% line height / −3%.
   static const TextStyle authHeadline = TextStyle(
-    fontFamily: AppFonts.body,
+    fontFamily: AppFonts.headline,
     fontSize: authHeadlineSize,
     height: 1.0,
     fontWeight: FontWeight.w600,
@@ -50,6 +51,30 @@ abstract final class AppTypography {
     letterSpacing:
         onboardingSectionTitleSize * onboardingSectionTitleLetterSpacingPercent,
     color: AppTheme.defaultTextColor,
+  );
+
+  /// Light onboarding step title — DM Sans Medium 24 / 98% / −3% / #464646 (Figma).
+  static const Color onboardingLightSectionTitleColor = Color(0xFF464646);
+
+  static const TextStyle onboardingLightSectionTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: onboardingSectionTitleSize,
+    height: 0.98,
+    fontWeight: FontWeight.w500,
+    letterSpacing:
+        onboardingSectionTitleSize * onboardingSectionTitleLetterSpacingPercent,
+    color: onboardingLightSectionTitleColor,
+  );
+
+  /// Light onboarding step subtitle — DM Sans Regular 12 @ #808080 (Figma).
+  static const Color onboardingLightSectionSubtitleColor = Color(0xFF808080);
+
+  static const TextStyle onboardingLightSectionSubtitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 14 / smallBodySize,
+    fontWeight: FontWeight.w400,
+    color: onboardingLightSectionSubtitleColor,
   );
 
   /// DOB privacy body — DM Sans Regular 12 @ 61% white.
@@ -88,6 +113,24 @@ abstract final class AppTypography {
     color: Color(0x59FFFFFF),
   );
 
+  /// Light onboarding DOB picker — selected row (DM Sans Semi Bold 20 / black).
+  static const TextStyle onboardingDobPickerSelected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 20,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: Color(0xFF000000),
+  );
+
+  /// Light onboarding DOB picker — adjacent faded row (DM Sans Regular 16).
+  static const TextStyle onboardingDobPickerUnselected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0x85000000),
+  );
+
   /// Username pill floating label — DM Sans Semi Bold 12 @ 52% white.
   static const TextStyle usernameFieldLabel = TextStyle(
     fontFamily: AppFonts.body,
@@ -97,14 +140,29 @@ abstract final class AppTypography {
     color: usernameFieldLabelColor,
   );
 
-  /// Username pill value — DM Sans Semi Bold 16.
-  static const TextStyle usernameFieldValue = TextStyle(
+  /// Light onboarding username pill label — DM Sans Semi Bold 12 / #686868 @ 52%.
+  static const Color onboardingUsernameFieldLabelColor = Color(0x84686868);
+
+  static const TextStyle onboardingUsernameFieldLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: onboardingUsernameFieldLabelColor,
+  );
+
+  /// Light onboarding username pill value — DM Sans Medium 16 / 100% lh / black.
+  static const TextStyle onboardingUsernameFieldValue = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: inputSize,
     height: 1.0,
-    fontWeight: FontWeight.w600,
-    color: AppTheme.defaultTextColor,
+    fontWeight: FontWeight.w500,
+    letterSpacing: 0,
+    color: Color(0xFF000000),
   );
+
+  /// Username pill value — alias for light auth / onboarding surfaces.
+  static const TextStyle usernameFieldValue = onboardingUsernameFieldValue;
 
   /// Username unavailable — DM Sans Regular 10 @ brand pink.
   static const TextStyle usernameAvailabilityError = TextStyle(
@@ -151,13 +209,13 @@ abstract final class AppTypography {
     color: White70.value,
   );
 
-  /// Username suggestion row — DM Sans Semi Bold 16.
+  /// Username suggestion row — DM Sans Semi Bold 16 (light auth surfaces).
   static const TextStyle usernameSuggestion = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: inputSize,
     height: 1.0,
     fontWeight: FontWeight.w600,
-    color: AppTheme.defaultTextColor,
+    color: AppTheme.lightOnSurface,
   );
 
   /// Typed value in underline fields — DM Sans Regular 16.
@@ -169,6 +227,24 @@ abstract final class AppTypography {
     color: AppTheme.defaultTextColor,
   );
 
+  /// Light auth underline field — typed text (Figma #000 @ 100% lh).
+  static const TextStyle authInput = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppTheme.lightOnSurface,
+  );
+
+  /// Light auth underline field — empty placeholder (Figma #999999).
+  static const TextStyle authInputHint = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: inputSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF999999),
+  );
+
   /// Field placeholder — DM Sans 16 @ ~30% white.
   static const TextStyle inputHint = TextStyle(
     fontFamily: AppFonts.body,
@@ -178,12 +254,72 @@ abstract final class AppTypography {
     color: Color(0x4DFFFFFF),
   );
 
-  /// Segmented toggle — DM Sans Medium 16.
+  /// Live comment field — DM Sans Regular 12 / 15 @ #EEEEEE, −1% tracking.
+  static const TextStyle liveCommentInput = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: AppSizes.liveCommentInputFontSize,
+    height: AppSizes.liveCommentInputLineHeight /
+        AppSizes.liveCommentInputFontSize,
+    fontWeight: FontWeight.w400,
+    letterSpacing: AppSizes.liveCommentInputLetterSpacing,
+    color: AppColors.liveCommentInputText,
+  );
+
+  /// Live feed like count beside heart (Figma #FFFFFF).
+  static const TextStyle liveFeedLikeCount = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
+
+  /// Live scrub preview timestamp overlay (Figma white label on thumbnail).
+  static const TextStyle liveFeedSeekPreviewTime = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: Colors.white,
+  );
+
+  /// Live feed host caption — Figma Poppins SemiBold 16/17 @ #F0F0F0 (DM Sans 600).
+  static const TextStyle liveFeedHostCaption = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: AppSizes.liveFeedHostCaptionFontSize,
+    height: AppSizes.liveFeedHostCaptionLineHeight /
+        AppSizes.liveFeedHostCaptionFontSize,
+    fontWeight: FontWeight.w600,
+    letterSpacing: 0,
+    color: AppColors.liveFeedHostCaption,
+  );
+
+  /// Live feed chat username — DM Sans Medium 12 / 16px line (Figma card 1).
+  static const TextStyle liveChatUsername = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: AppSizes.liveChatUsernameFontSize,
+    height: AppSizes.liveChatUsernameLineHeight /
+        AppSizes.liveChatUsernameFontSize,
+    fontWeight: FontWeight.w500,
+    color: Colors.white,
+  );
+
+  /// Live feed chat message — DM Sans Regular 13 / 17px line @ 60% white.
+  static const TextStyle liveChatMessage = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: AppSizes.liveChatMessageFontSize,
+    height:
+        AppSizes.liveChatMessageLineHeight / AppSizes.liveChatMessageFontSize,
+    fontWeight: FontWeight.w400,
+    color: Color(0x99FFFFFF),
+  );
+
+  /// Segmented toggle — DM Sans Regular 16, 100% line height (Figma).
   static const TextStyle toggleLabel = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: inputSize,
-    height: 1.25,
-    fontWeight: FontWeight.w500,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
   );
 
   /// OTP digit in verify boxes — DM Sans Semi Bold 32.
@@ -220,6 +356,42 @@ abstract final class AppTypography {
     height: 1.0,
     fontWeight: FontWeight.w700,
     color: AppTheme.primary,
+  );
+
+  /// Verify-code instruction line — DM Sans Regular 14 @ #808080.
+  static const TextStyle authVerifyInstruction = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF808080),
+  );
+
+  /// "Didn't receive OTP?" — DM Sans Regular 12 @ 78% #808080.
+  static const TextStyle authVerifyMutedLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xC7808080),
+  );
+
+  /// Verify-code masked destination — DM Sans Regular 14 @ #E51147.
+  static const TextStyle authVerifyDestination = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.authVerifyDestination,
+  );
+
+  /// Verify-code secondary link — DM Sans Regular 12 @ 90% black.
+  static const TextStyle authVerifySecondaryLink = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: smallBodySize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Color(0xE6000000),
   );
 
   /// Accent link (e.g. "Can't reset your password?") — DM Sans Medium 12.
@@ -268,31 +440,49 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w400,
   );
 
-  /// Home feed tab label sizes (Figma Nav Bar).
-  static const double feedTabLabelSize = 14;
-  static const double feedTabLabelSelectedSize = 16;
+  /// Home feed tab labels — DM Sans 15px, line-height normal (~20px).
+  static const double feedTabLabelSize = 15;
+  static const double feedTabLabelLineHeight = AppSizes.feedTabLabelLineHeight;
 
-  /// Home feed tab — unselected (Figma: DM Sans Regular 14, white 60%).
+  /// Home feed tab — unselected (Figma: DM Sans Regular 15, white).
   static const TextStyle feedTabLabel = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: feedTabLabelSize,
+    height: feedTabLabelLineHeight / feedTabLabelSize,
     fontWeight: FontWeight.w400,
-    color: White60.value,
-  );
-
-  /// Home feed tab — selected (Figma: DM Sans Bold 16, white).
-  static const TextStyle feedTabLabelSelected = TextStyle(
-    fontFamily: AppFonts.body,
-    fontSize: feedTabLabelSelectedSize,
-    fontWeight: FontWeight.w700,
     color: AppTheme.primary,
   );
 
+  /// Home feed tab — selected on white pill (Figma: DM Sans Bold 15, black).
+  static const TextStyle feedTabLabelSelected = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedTabLabelSize,
+    height: feedTabLabelLineHeight / feedTabLabelSize,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.buttonTextColor,
+  );
+
   // — Reel feed overlay (Figma) —
+  static const double feedReelUsernameSize = 16;
   static const double feedReelDisplayNameSize = 20;
   static const double feedReelHandleSize = 14;
-  static const double feedReelCaptionSize = 16;
+  /// Reel caption / title ("name" layer) — DM Sans Regular 12.
+  static const double feedReelNameSize = 12;
+  static const double feedReelHashtagSize = 14;
   static const double feedReelMetricSize = 10;
+  static const double feedReelActionLabelSize = 10;
+  /// Reel music row ("note" layer) — DM Sans Regular 12.
+  static const double feedReelNoteSize = 12;
+  static const double feedReelFollowChipSize = 12;
+
+  /// @username on reel overlay — DM Sans Bold 16, white.
+  static const TextStyle feedReelUsername = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelUsernameSize,
+    height: 1.0,
+    fontWeight: FontWeight.w700,
+    color: AppTheme.primary,
+  );
 
   /// Author display name on reel — DM Sans Regular 20.
   static const TextStyle feedReelDisplayName = TextStyle(
@@ -310,25 +500,114 @@ abstract final class AppTypography {
     color: White70.value,
   );
 
-  /// Reel caption body — DM Sans Regular 16.
-  static const TextStyle feedReelCaption = TextStyle(
+  /// Reel caption / title ("name" layer) — DM Sans Regular 12, white.
+  static const TextStyle feedReelName = TextStyle(
     fontFamily: AppFonts.body,
-    fontSize: feedReelCaptionSize,
+    fontSize: feedReelNameSize,
     fontWeight: FontWeight.w400,
-    height: 1.25,
+    height: 1.0,
     color: AppTheme.primary,
   );
 
-  /// "See more" on collapsed caption — DM Sans Regular 16 @ 90% white.
+  /// Alias for caption blocks — same as [feedReelName].
+  static const TextStyle feedReelCaption = feedReelName;
+
+  /// Hashtags in reel caption — DM Sans Medium 14 @ #FFB3CC.
+  static const TextStyle feedReelHashtag = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelHashtagSize,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+    color: AppColors.feedReelHashtag,
+  );
+
+  /// "See more" on collapsed caption — DM Sans Regular 12 @ 90% white.
   static const TextStyle feedReelCaptionSeeMore = TextStyle(
     fontFamily: AppFonts.body,
-    fontSize: feedReelCaptionSize,
+    fontSize: feedReelNameSize,
     fontWeight: FontWeight.w400,
+    height: 1.0,
     color: smallBodyColor,
   );
 
   static const double profileGridTitleSize = 10;
   static const double profileGridTitleHeroSize = 11;
+  static const double profileDisplayNameSize = 20;
+
+  /// Profile header display name — DM Sans SemiBold 20 / #1B1C1C (Figma).
+  static const TextStyle profileDisplayName = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: profileDisplayNameSize,
+    fontWeight: FontWeight.w600,
+    height: 25 / profileDisplayNameSize,
+    color: AppColors.profileDisplayName,
+  );
+
+  /// Profile stat counter — DM Sans SemiBold 20 / 24 line height / #1B1C1C (Figma).
+  static const TextStyle profileStatValue = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 20,
+    fontWeight: FontWeight.w600,
+    height: 24 / 20,
+    letterSpacing: 0,
+    color: AppColors.profileDisplayName,
+  );
+
+  /// Profile stat label — DM Sans Regular 12 / #554247 (Figma).
+  static const TextStyle profileStatLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 1.0,
+    color: AppColors.profileStatLabel,
+  );
+
+  /// Highlights add chip label — DM Sans Regular 12 / #554247 (Figma).
+  static const TextStyle profileHighlightAddLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 14 / 12,
+    color: AppColors.profileStatLabel,
+  );
+
+  /// Highlight album title — DM Sans Regular 12 / #1B1C1C (Figma).
+  static const TextStyle profileHighlightAlbumLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 14 / 12,
+    color: AppColors.profileDisplayName,
+  );
+
+  /// Profile primary action pill — DM Sans Medium 16 / 16 line height / white (Figma Edit Profile).
+  static const TextStyle profileActionButtonLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    height: 1.0,
+    letterSpacing: 0,
+    color: Colors.white,
+  );
+
+  /// Profile tab — selected chip label (Figma Inter Bold 16 / 18 / 0.55px / white).
+  static const TextStyle profileTabSelectedLabel = TextStyle(
+    fontFamily: AppFonts.headline,
+    fontSize: 16,
+    fontWeight: FontWeight.w700,
+    height: 18 / 16,
+    letterSpacing: 0.55,
+    color: Colors.white,
+  );
+
+  /// Profile tab — unselected chip label (Figma Inter Bold 12 / #5D5F5F).
+  static const TextStyle profileTabUnselectedLabel = TextStyle(
+    fontFamily: AppFonts.headline,
+    fontSize: 12,
+    fontWeight: FontWeight.w700,
+    height: 1.0,
+    color: AppColors.profileTabUnselectedLabel,
+  );
 
   /// Short label on profile grid tiles — DM Sans SemiBold 10.
   static const TextStyle profileGridTitle = TextStyle(
@@ -348,12 +627,44 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
-  /// Like / comment counts — DM Sans Regular 10 (Icons/active).
+  /// Like / comment counts — DM Sans Regular 10.
   static const TextStyle feedReelMetric = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: feedReelMetricSize,
+    height: 1.0,
     fontWeight: FontWeight.w400,
+    color: AppTheme.primary,
   );
+
+  /// Save / Share labels under action icons — DM Sans SemiBold 10.
+  static const TextStyle feedReelActionLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelActionLabelSize,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: AppTheme.primary,
+  );
+
+  /// "+ Follow" chip on reel overlay — DM Sans Regular 12, white.
+  static const TextStyle feedReelFollowChip = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelFollowChipSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppTheme.primary,
+  );
+
+  /// Music row ("note" layer) — DM Sans Regular 12 @ #808080.
+  static const TextStyle feedReelNote = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: feedReelNoteSize,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.feedReelNoteText,
+  );
+
+  /// Alias for music line widgets.
+  static const TextStyle feedReelMusic = feedReelNote;
 
   /// Expanded location label on reel caption.
   static const TextStyle feedReelLocation = TextStyle(
@@ -369,5 +680,126 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.5,
     color: AppTheme.primary,
+  );
+
+  // — Chat (light inbox / thread — Figma) —
+
+  static const TextStyle chatInboxTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 17,
+    height: 1.2,
+    fontWeight: FontWeight.w700,
+    color: AppColors.chatTextPrimary,
+  );
+
+  static const TextStyle chatSectionHeader = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.2,
+    fontWeight: FontWeight.w700,
+    color: AppColors.chatTextPrimary,
+  );
+
+  static const TextStyle chatTileName = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.2,
+    fontWeight: FontWeight.w600,
+    color: AppColors.chatTextPrimary,
+  );
+
+  static const TextStyle chatTilePreview = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 13,
+    height: 1.2,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatTextSecondary,
+  );
+
+  /// Inbox tile preview when unread — Figma 14 / 700 / black.
+  static const TextStyle chatTilePreviewUnread = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w700,
+    color: AppColors.chatTextPrimary,
+  );
+
+  /// Inbox tile relative time — Figma 11 / 400 / black.
+  static const TextStyle chatTileTime = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 11,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatTextPrimary,
+  );
+
+  /// Inbox notes row bubble placeholder — Figma 14 / 400 / #B3B3B3.
+  static const TextStyle chatNoteBubbleText = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatNoteBubbleText,
+  );
+
+  /// Inbox notes row name under avatar — Figma 16 / 400 / 17lh / #333.
+  static const TextStyle chatNoteNameLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    height: 17 / 16,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatNoteNameText,
+  );
+
+  static const TextStyle chatBubbleText = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+  );
+
+  /// Incoming message bubble text — Figma DM Sans 16.938 / 500 / black / normal lh.
+  static const double chatIncomingBubbleTextSize = 16.938;
+
+  static const TextStyle chatIncomingBubbleText = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: chatIncomingBubbleTextSize,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+    color: AppColors.chatIncomingBubbleText,
+  );
+
+  /// Sent message bubble text — Figma DM Sans 16.938 / 500 / #CCC / normal lh.
+  static const TextStyle chatSentBubbleText = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: chatIncomingBubbleTextSize,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+    color: AppColors.chatSentBubbleText,
+  );
+
+  static const TextStyle chatDateSeparator = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatThreadDateLabel,
+  );
+
+  static const TextStyle chatAppBarName = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w600,
+    color: AppColors.chatThreadHeaderName,
+  );
+
+  static const TextStyle chatAppBarUsername = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatThreadHeaderUsername,
   );
 }

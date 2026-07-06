@@ -86,7 +86,13 @@ class StoryService {
       'likes': 0,
       'comments': 0,
       'segmentGroupId': segmentGroupId,
+      'viewCount': 0,
+      'reportCount': 0,
       'authorAccountPrivate': authorAccountPrivate,
+      'moderation': {
+        'status': 'clear',
+        'provider': 'crowd',
+      },
     });
   }
 
@@ -173,19 +179,42 @@ class StoryService {
   Future<List<StoryModel>> getMyStories() async {
     final uid = _uid;
     if (uid == null) return [];
+    return getActiveStoriesForUser(uid);
+  }
+
+  Future<List<StoryModel>> getActiveStoriesForUser(String userId) async {
+    if (userId.isEmpty) return [];
     try {
       final snap =
-          await _db.collection(_col).where('userId', isEqualTo: uid).get();
-      final now = DateTime.now();
-      return snap.docs
-          .map((d) => StoryModel.fromFirestore(d))
-          .where((s) => s.expiresAt.isAfter(now))
-          .toList()
-        ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
+          await _db.collection(_col).where('userId', isEqualTo: userId).get();
+      return _filterAndSortActiveStories(snap);
     } catch (e) {
-      debugPrint('StoryService.getMyStories: $e');
+      debugPrint('StoryService.getActiveStoriesForUser: $e');
       return [];
     }
+  }
+
+  /// Live updates when a user posts or a story expires.
+  Stream<List<StoryModel>> watchActiveStoriesForUser(String userId) {
+    if (userId.isEmpty) {
+      return Stream<List<StoryModel>>.value(const []);
+    }
+    return _db
+        .collection(_col)
+        .where('userId', isEqualTo: userId)
+        .snapshots()
+        .map(_filterAndSortActiveStories);
+  }
+
+  List<StoryModel> _filterAndSortActiveStories(
+    QuerySnapshot<Map<String, dynamic>> snap,
+  ) {
+    final now = DateTime.now();
+    return snap.docs
+        .map((d) => StoryModel.fromFirestore(d))
+        .where((s) => s.expiresAt.isAfter(now))
+        .toList()
+      ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
   }
 
   // ── Likes ─────────────────────────────────────────────────────────────────
@@ -233,7 +262,8 @@ class StoryService {
         final storySnap = await storyRef.get();
         final ownerId = (storySnap.data()?['userId'] as String?) ?? '';
         if (ownerId.isNotEmpty && ownerId != uid) {
-          await NotificationService().create(
+          await NotificationService().createOnce(
+            dedupeId: 'like_${uid}_$storyId',
             recipientId: ownerId,
             type: AppNotificationType.like,
             message: 'liked your story.',
@@ -376,9 +406,50 @@ class StoryService {
     final uid = _uid;
     if (uid == null) return;
     try {
-      await _db.collection(_col).doc(storyId).update({
+      final ref = _db.collection(_col).doc(storyId);
+      final snap = await ref.get();
+      if (!snap.exists) return;
+      final viewedBy =
+          List<String>.from(snap.data()?['viewedBy'] as List<dynamic>? ?? []);
+      if (viewedBy.contains(uid)) return;
+      await ref.update({
         'viewedBy': FieldValue.arrayUnion([uid]),
+        'viewCount': FieldValue.increment(1),
       });
     } catch (_) {}
   }
+
+  /// Submit a user report against a story (deduped per user).
+  Future<StoryReportResult> reportStory({
+    required String storyId,
+    required String reason,
+    String? storyOwnerId,
+  }) async {
+    final uid = _uid;
+    if (uid == null || uid.isEmpty) return StoryReportResult.notSignedIn;
+    if (storyId.isEmpty) return StoryReportResult.failed;
+    try {
+      final docRef =
+          _db.collection('story_reports').doc('${uid}_$storyId');
+      final existing = await docRef.get();
+      if (existing.exists) return StoryReportResult.alreadyReported;
+      await docRef.set({
+        'storyId': storyId,
+        'storyOwnerId': storyOwnerId ?? '',
+        'reporterId': uid,
+        'reason': reason,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return StoryReportResult.success;
+    } catch (_) {
+      return StoryReportResult.failed;
+    }
+  }
+}
+
+enum StoryReportResult {
+  success,
+  alreadyReported,
+  notSignedIn,
+  failed,
 }

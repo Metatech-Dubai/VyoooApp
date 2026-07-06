@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/live_chat_message_model.dart';
 import '../models/live_stream_model.dart';
 import '../models/video_360_metadata.dart';
+import 'auth_service.dart';
 import 'user_service.dart';
 
 /// Firestore operations for live streams.
@@ -17,6 +18,7 @@ class LiveStreamService {
 
   static const String _streamsCol = 'streams';
   static const String _messagesCol = 'messages';
+  static const String _likesCol = 'likes';
 
   // ── Stream CRUD ─────────────────────────────────────────────────────────────
 
@@ -70,8 +72,9 @@ class LiveStreamService {
     var authorAccountPrivate = false;
     try {
       final host = await UserService().getUser(hostId);
-      authorAccountPrivate =
-          UserService.accountTypeRequiresFollowApproval(host?.accountType);
+      authorAccountPrivate = UserService.accountTypeRequiresFollowApproval(
+        host?.accountType,
+      );
     } catch (_) {}
     await ref.set({
       ...model.toJson(),
@@ -82,7 +85,9 @@ class LiveStreamService {
 
   /// Updates the host's Agora UID after joining the channel.
   Future<void> updateHostAgoraUid(String streamId, int uid) async {
-    await _db.collection(_streamsCol).doc(streamId).update({'hostAgoraUid': uid});
+    await _db.collection(_streamsCol).doc(streamId).update({
+      'hostAgoraUid': uid,
+    });
   }
 
   /// Stores the live HLS URL (from Media Push) so the 360 viewer can play it.
@@ -125,6 +130,22 @@ class LiveStreamService {
     });
   }
 
+  /// Ends orphan `live` docs for [hostId] after app kill / crash (no active Agora session).
+  Future<void> endStaleLiveStreamsForHost(String hostId) async {
+    if (hostId.isEmpty) return;
+    final stale = await _db
+        .collection(_streamsCol)
+        .where('hostId', isEqualTo: hostId)
+        .where('status', isEqualTo: LiveStreamStatus.live.name)
+        .get();
+    for (final doc in stale.docs) {
+      await doc.reference.update({
+        'status': LiveStreamStatus.ended.name,
+        'endedAt': FieldValue.serverTimestamp(),
+      });
+    }
+  }
+
   /// Fetches a single stream document once.
   Future<LiveStreamModel?> getStream(String streamId) async {
     final doc = await _db.collection(_streamsCol).doc(streamId).get();
@@ -154,24 +175,26 @@ class LiveStreamService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) {
-      final now = DateTime.now();
-      final heartbeatCutoff = now.subtract(const Duration(minutes: 2));
-      final newStreamCutoff = now.subtract(const Duration(minutes: 1));
-      final seen = <String>{};
-      final result = <LiveStreamModel>[];
-      for (final d in snap.docs) {
-        final data = d.data();
-        final heartbeat = (data['lastHeartbeat'] as Timestamp?)?.toDate();
-        final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? now;
-        // Keep if heartbeat is recent, OR stream just started (no heartbeat yet)
-        final isActive = (heartbeat != null && heartbeat.isAfter(heartbeatCutoff)) ||
-            (heartbeat == null && createdAt.isAfter(newStreamCutoff));
-        if (!isActive) continue;
-        final model = LiveStreamModel.fromJson(data);
-        if (seen.add(model.hostId)) result.add(model);
-      }
-      return result;
-    });
+          final now = DateTime.now();
+          final heartbeatCutoff = now.subtract(const Duration(minutes: 2));
+          final newStreamCutoff = now.subtract(const Duration(minutes: 1));
+          final seen = <String>{};
+          final result = <LiveStreamModel>[];
+          for (final d in snap.docs) {
+            final data = d.data();
+            final heartbeat = (data['lastHeartbeat'] as Timestamp?)?.toDate();
+            final createdAt =
+                (data['createdAt'] as Timestamp?)?.toDate() ?? now;
+            // Keep if heartbeat is recent, OR stream just started (no heartbeat yet)
+            final isActive =
+                (heartbeat != null && heartbeat.isAfter(heartbeatCutoff)) ||
+                (heartbeat == null && createdAt.isAfter(newStreamCutoff));
+            if (!isActive) continue;
+            final model = LiveStreamModel.fromJson(data);
+            if (seen.add(model.hostId)) result.add(model);
+          }
+          return result;
+        });
   }
 
   /// Real-time list of past streams saved to a user's profile.
@@ -182,7 +205,10 @@ class LiveStreamService {
         .where('savedToProfile', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map((d) => LiveStreamModel.fromJson(d.data())).toList());
+        .map(
+          (snap) =>
+              snap.docs.map((d) => LiveStreamModel.fromJson(d.data())).toList(),
+        );
   }
 
   // ── Viewer count ────────────────────────────────────────────────────────────
@@ -203,13 +229,77 @@ class LiveStreamService {
 
   // ── Likes ───────────────────────────────────────────────────────────────────
 
-  Future<void> addLike(String streamId) async {
-    await _db.collection(_streamsCol).doc(streamId).update({
-      'likeCount': FieldValue.increment(1),
+  /// Whether [userId] has liked [streamId] (real-time).
+  Stream<bool> userLikedStream(String streamId, String userId) {
+    if (streamId.isEmpty || userId.isEmpty) {
+      return Stream.value(false);
+    }
+    return _db
+        .collection(_streamsCol)
+        .doc(streamId)
+        .collection(_likesCol)
+        .doc(userId)
+        .snapshots()
+        .map((snap) => snap.exists);
+  }
+
+  /// Idempotent like toggle — one like per user per stream.
+  Future<bool> toggleLike({
+    required String streamId,
+    required String userId,
+    required bool wantLiked,
+  }) async {
+    if (streamId.isEmpty || userId.isEmpty) return !wantLiked;
+
+    final likeRef = _db
+        .collection(_streamsCol)
+        .doc(streamId)
+        .collection(_likesCol)
+        .doc(userId);
+    final streamRef = _db.collection(_streamsCol).doc(streamId);
+
+    return _db.runTransaction<bool>((tx) async {
+      final likeSnap = await tx.get(likeRef);
+      final isLiked = likeSnap.exists;
+      if (wantLiked == isLiked) return isLiked;
+
+      if (wantLiked) {
+        tx.set(likeRef, {
+          'userId': userId,
+          'likedAt': FieldValue.serverTimestamp(),
+        });
+        tx.update(streamRef, {'likeCount': FieldValue.increment(1)});
+      } else {
+        tx.delete(likeRef);
+        tx.update(streamRef, {'likeCount': FieldValue.increment(-1)});
+      }
+      return wantLiked;
     });
   }
 
   // ── Chat ────────────────────────────────────────────────────────────────────
+
+  /// Username + profile image for live chat (Firestore profile, Auth fallback).
+  Future<({String username, String? profileImage})> resolveChatSenderProfile(
+    String userId,
+  ) async {
+    final auth = AuthService().currentUser;
+    var username =
+        auth?.displayName ?? auth?.email?.split('@').first ?? 'Viewer';
+    var profileImage = auth?.photoURL;
+
+    try {
+      final user = await UserService().getUser(userId);
+      if (user != null) {
+        final resolvedUsername = (user.username ?? '').trim();
+        if (resolvedUsername.isNotEmpty) username = resolvedUsername;
+        final image = (user.profileImage ?? '').trim();
+        if (image.isNotEmpty) profileImage = image;
+      }
+    } catch (_) {}
+
+    return (username: username, profileImage: profileImage);
+  }
 
   /// Sends a chat message. Capped to last 200 per stream (enforced by Security Rules).
   Future<void> sendMessage({
@@ -220,7 +310,11 @@ class LiveStreamService {
     required String message,
     ChatMessageType type = ChatMessageType.text,
   }) async {
-    final ref = _db.collection(_streamsCol).doc(streamId).collection(_messagesCol).doc();
+    final ref = _db
+        .collection(_streamsCol)
+        .doc(streamId)
+        .collection(_messagesCol)
+        .doc();
     await ref.set({
       'id': ref.id,
       'userId': userId,
@@ -241,8 +335,10 @@ class LiveStreamService {
         .orderBy('createdAt', descending: false)
         .limitToLast(50)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => LiveChatMessageModel.fromJson(d.id, d.data()))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((d) => LiveChatMessageModel.fromJson(d.id, d.data()))
+              .toList(),
+        );
   }
 }

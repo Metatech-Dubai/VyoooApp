@@ -15,6 +15,7 @@ import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../features/vr/vr_screen.dart';
 import '../account/account_screen.dart';
+import '../account/delete_account_screen.dart';
 import '../account/blocked_users_screen.dart';
 import '../account/change_password_screen.dart';
 import '../account/two_factor_screen.dart';
@@ -25,7 +26,8 @@ import 'contact_support_screen.dart';
 import 'creator_monetization_screen.dart';
 import 'downloaded_videos_screen.dart';
 import 'notifications_settings_screen.dart';
-import 'parental_approvals_screen.dart';
+// Parental consent flow temporarily disabled; restore with the tile below.
+// import 'parental_approvals_screen.dart';
 import 'revenue_coming_soon_view.dart';
 import 'privacy_policy_screen.dart';
 import 'report_problem_screen.dart';
@@ -295,12 +297,14 @@ class SettingsScreen extends StatelessWidget {
         const SizedBox(height: AppSpacing.md),
         _sectionHeader('Support & about'),
         _settingsGroup([
-          if (showFamilyApprovals)
-            _SettingsTile(
-              iconPath: 'assets/vyooO_icons/Settings/About.png',
-              label: 'Family approvals',
-              onTap: () => _push(context, const ParentalApprovalsScreen()),
-            ),
+          // Parental consent flow temporarily disabled (min sign-up age is 16);
+          // uncomment to restore the parent-side approvals entry.
+          // if (showFamilyApprovals)
+          //   _SettingsTile(
+          //     iconPath: 'assets/vyooO_icons/Settings/About.png',
+          //     label: 'Family approvals',
+          //     onTap: () => _push(context, const ParentalApprovalsScreen()),
+          //   ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Customer Support.png',
             label: 'Help center',
@@ -335,6 +339,12 @@ class SettingsScreen extends StatelessWidget {
             label: 'Log out',
             isLogout: true,
             onTap: () => _logout(context),
+          ),
+          _SettingsTile(
+            icon: Icons.delete_forever_outlined,
+            label: 'Delete account',
+            isLogout: true,
+            onTap: () => _push(context, const DeleteAccountScreen()),
           ),
         ]),
       ],
@@ -455,7 +465,7 @@ class SettingsScreen extends StatelessWidget {
 
     if (shouldLogout != true) return;
 
-    await AuthService().signOut();
+    await AuthService().signOutCurrentAccount();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthWrapper()),

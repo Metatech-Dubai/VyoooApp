@@ -1,29 +1,12 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
+import 'reserved_usernames.dart';
 import 'username_service.dart';
 import 'username_validation.dart';
 
 /// Live username availability using `users` + `username` field (case-sensitive).
 class FirestoreUsernameService implements UsernameService {
-  static const Set<String> _reserved = {
-    'admin',
-    'vyooo',
-    'test',
-    'user',
-    'support',
-    'official',
-    'help',
-    'metatech',
-    'api',
-    'www',
-    'mail',
-    'root',
-    'null',
-    'vyoooapp',
-    'system',
-  };
-
   static List<String> _suggestionsFor(String base) {
     if (base.isEmpty) return [];
     return [
@@ -37,7 +20,8 @@ class FirestoreUsernameService implements UsernameService {
   static UsernameCheckResult _reservedResult(String normalized) {
     return UsernameCheckResult(
       available: false,
-      suggestions: _suggestionsFor(normalized),
+      isReserved: true,
+      suggestions: const [],
     );
   }
 
@@ -53,13 +37,31 @@ class FirestoreUsernameService implements UsernameService {
     return false;
   }
 
+  static Future<bool> _isReserved(String normalized) async {
+    final key = normalized.toLowerCase();
+    try {
+      final snap = await FirebaseFirestore.instance
+          .collection('reserved_usernames')
+          .doc(key)
+          .get();
+      if (snap.exists) {
+        final active = snap.data()?['active'];
+        if (active is bool) return active;
+        return true;
+      }
+    } catch (_) {
+      // Fall back to bundled policy when Firestore is unreachable.
+    }
+    return ReservedUsernames.isReserved(normalized);
+  }
+
   @override
   Future<UsernameCheckResult> checkAvailability(String username) async {
     final normalized = UsernameValidation.normalize(username);
     if (!UsernameValidation.shouldCheckAvailability(normalized)) {
       return const UsernameCheckResult(available: true);
     }
-    if (_reserved.contains(normalized.toLowerCase())) {
+    if (await _isReserved(normalized)) {
       return _reservedResult(normalized);
     }
     final excludeUid = FirebaseAuth.instance.currentUser?.uid ?? '';
@@ -84,20 +86,23 @@ class FirestoreUsernameService implements UsernameService {
     if (!UsernameValidation.shouldCheckAvailability(normalized)) {
       return Stream.value(const UsernameCheckResult(available: true));
     }
-    if (_reserved.contains(normalized.toLowerCase())) {
-      return Stream.value(_reservedResult(normalized));
-    }
-    return FirebaseFirestore.instance
-        .collection('users')
-        .where('username', isEqualTo: normalized)
-        .limit(25)
-        .snapshots()
-        .map((snap) {
-          final taken = _takenByOther(snap, excludeUid);
-          return UsernameCheckResult(
-            available: !taken,
-            suggestions: taken ? _suggestionsFor(normalized) : const [],
-          );
-        });
+
+    return Stream.fromFuture(_isReserved(normalized)).asyncExpand((reserved) {
+      if (reserved) {
+        return Stream.value(_reservedResult(normalized));
+      }
+      return FirebaseFirestore.instance
+          .collection('users')
+          .where('username', isEqualTo: normalized)
+          .limit(25)
+          .snapshots()
+          .map((snap) {
+            final taken = _takenByOther(snap, excludeUid);
+            return UsernameCheckResult(
+              available: !taken,
+              suggestions: taken ? _suggestionsFor(normalized) : const [],
+            );
+          });
+    });
   }
 }

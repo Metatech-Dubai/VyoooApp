@@ -5,16 +5,17 @@ import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_background_assets.dart';
-import '../../core/theme/app_radius.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
-import '../../core/widgets/app_gradient_background.dart';
+import '../../core/onboarding/username_submit_handoff.dart';
+import '../../core/platform/app_system_ui.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/widgets/onboarding_profile_avatar.dart';
+import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../services/firestore_username_service.dart';
+import '../../services/temporary_username_generator.dart';
 import '../../services/username_service.dart';
 import '../../services/username_validation.dart';
 
@@ -40,6 +41,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   bool _isChecking = false;
   bool _isSubmitting = false;
   bool? _available;
+  bool _isReserved = false;
+  bool _reservedContinueConfirmed = false;
+  String? _lastReservedDialogFor;
   List<String> _suggestions = [];
   /// After Firestore save, [AuthWrapper] + user stream advance onboarding; do not push routes here.
   bool _awaitingGateHandoff = false;
@@ -102,6 +106,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       _availabilitySub = null;
       setState(() {
         _available = null;
+        _isReserved = false;
+        _reservedContinueConfirmed = false;
+        _lastReservedDialogFor = null;
         _suggestions = [];
         _isChecking = false;
       });
@@ -118,6 +125,8 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     setState(() {
       _isChecking = true;
       _available = null;
+      _isReserved = false;
+      _reservedContinueConfirmed = false;
       _suggestions = [];
     });
     _availabilitySub = _usernameService
@@ -131,9 +140,16 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
             if (current != normalized) return;
             setState(() {
               _isChecking = false;
+              _isReserved = result.isReserved;
               _available = result.available;
-              _suggestions = result.suggestions;
+              _suggestions = result.isReserved ? const [] : result.suggestions;
+              if (!result.isReserved) {
+                _reservedContinueConfirmed = false;
+              }
             });
+            if (result.isReserved) {
+              _maybeShowReservedDialog(normalized);
+            }
           },
           onError: (_) {
             if (!mounted) return;
@@ -144,6 +160,8 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
             setState(() {
               _isChecking = false;
               _available = null;
+              _isReserved = false;
+              _reservedContinueConfirmed = false;
               _suggestions = [];
             });
           },
@@ -159,12 +177,33 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     _restartAvailabilityWatch(UsernameValidation.normalize(suggestion));
   }
 
-  /// Valid format, finished checking, and available (realtime Firestore).
+  Future<void> _maybeShowReservedDialog(String normalized) async {
+    if (_lastReservedDialogFor == normalized) return;
+    _lastReservedDialogFor = normalized;
+    if (!mounted) return;
+    final proceed = await AuthReservedUsernameDialog.show(
+      context,
+      requestedUsername: normalized,
+    );
+    if (!mounted) return;
+    final current = UsernameValidation.normalize(_usernameController.text);
+    if (current != normalized) return;
+    setState(() {
+      _reservedContinueConfirmed = proceed == true;
+    });
+  }
+
+  /// Valid format, finished checking, and available (or reserved + acknowledged).
+  ///
+  /// When availability is still unknown ([_available] == null), allow Continue so
+  /// [_onNext] can run a one-shot server check (stream errors are common on slow networks).
   bool get _isUsernameValid {
     final text = _usernameController.text.trim();
     if (!UsernameValidation.isValidFormat(text)) return false;
     if (_isChecking || _isSubmitting || _awaitingGateHandoff) return false;
-    return _available == true;
+    if (_isReserved) return _reservedContinueConfirmed;
+    if (_available == false) return false;
+    return _available == true || _available == null;
   }
 
   // Future<void> _logout(BuildContext context) async {
@@ -178,111 +217,49 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
+      stackChildren: [
+        Positioned(
+          right: AppSpacing.xl,
+          bottom:
+              AppSpacing.authFloatingNavBottom +
+              AppSystemUi.bottomChromeInset(context),
+          child: AuthFloatingCircleButton.forward(
+            onPressed: _onNext,
+            enabled: _isUsernameValid,
+          ),
+        ),
+        if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            backgroundAsset: AppBackgroundAssets.otpScreen,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: _horizontalPadding,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 20),
-                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                    const SizedBox(height: 16),
-                    _buildProgressBar(),
-                    const SizedBox(height: 40),
-                    _buildAvatar(),
-                    const SizedBox(height: 30),
-                    const Text(
-                      "Let's get you started",
-                      style: AppTypography.onboardingSectionTitle,
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 30),
-                    SizedBox(
-                      width: double.infinity,
-                      child: _buildUsernameSection(),
-                    ),
-                    const SizedBox(height: 100),
-                  ],
-                ),
-              ),
-            ),
+          const SizedBox(height: 20),
+          const VyoooBrandLogo.auth(),
+          const SizedBox(height: 16),
+          const OnboardingProgressBar(progress: _progressFill),
+          const SizedBox(height: 40),
+          _buildAvatar(),
+          const SizedBox(height: 30),
+          Text(
+            "Let's get you started",
+            style: AppTypography.onboardingLightSectionTitle,
+            textAlign: TextAlign.center,
           ),
-          AuthFloatingNavRow(
-            onBack: _onBack,
-            onForward: _onNext,
-            forwardEnabled: _isUsernameValid,
+          const SizedBox(height: 30),
+          SizedBox(
+            width: double.infinity,
+            child: _buildUsernameSection(),
           ),
-          if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
-          // Temporary logout
-          // Positioned(
-          //   top: 16,
-          //   right: 16,
-          //   child: TextButton.icon(
-          //     onPressed: () => _logout(context),
-          //     icon: const Icon(Icons.logout, color: Colors.white70, size: 20),
-          //     label: const Text(
-          //       'Logout',
-          //       style: TextStyle(color: Colors.white70, fontSize: 14),
-          //     ),
-          //   ),
-          // ),
+          const SizedBox(height: 100),
         ],
       ),
     );
   }
 
-  Widget _buildProgressBar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final fullWidth = constraints.maxWidth;
-        final fillWidth = fullWidth * _progressFill;
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 3,
-            width: double.infinity,
-            child: Stack(
-              children: [
-                Container(width: fullWidth, height: 3, color: White24.value),
-                SizedBox(
-                  width: fillWidth,
-                  child: Container(
-                    height: 3,
-                    decoration: const BoxDecoration(
-                      color: AppColors.brandPink,
-                      borderRadius: BorderRadius.horizontal(
-                        left: Radius.circular(10),
-                        right: Radius.zero,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
   Widget _buildAvatar() {
-    return Center(
-      child: Image.asset(
-        'assets/vyooO_icons/Onboarding/username_profile_avatar.png',
-        width: 150,
-        height: 150,
-        fit: BoxFit.contain,
-      ),
-    );
+    return const Center(child: OnboardingProfileAvatar());
   }
 
   Widget _buildUsernameSection() {
@@ -290,14 +267,26 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildUsernameInput(),
-        if (_available == false &&
+        if (_isReserved &&
+            UsernameValidation.shouldCheckAvailability(
+              UsernameValidation.normalize(_usernameController.text),
+            )) ...[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            '${UsernameValidation.normalize(_usernameController.text)} is reserved. Reach out to claim it — we will assign a temporary username for now.',
+            style: AppTypography.usernameAvailabilityError,
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ] else if (_available == false &&
             UsernameValidation.shouldCheckAvailability(
               UsernameValidation.normalize(_usernameController.text),
             )) ...[
           const SizedBox(height: AppSpacing.sm),
           Text(
             'The Username ${UsernameValidation.normalize(_usernameController.text)} is not available',
-            style: AppTypography.usernameAvailabilityError,
+            style: AppTypography.usernameAvailabilityError.copyWith(
+              color: AppColors.onboardingProgressFill,
+            ),
           ),
           const SizedBox(height: AppSpacing.md),
         ],
@@ -307,120 +296,32 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
   }
 
   bool get _usernameShowsAvailabilityError =>
+      !_isReserved &&
       _available == false &&
       UsernameValidation.shouldCheckAvailability(
         UsernameValidation.normalize(_usernameController.text),
       );
 
-  ({Color color, double width}) _usernameFieldBorder() {
-    if (_usernameShowsAvailabilityError) {
-      return (color: AppColors.brandPink, width: 1.5);
-    }
-    if (_available == true) {
-      return (color: Colors.green, width: 1.5);
-    }
-    if (_usernameFocusNode.hasFocus) {
-      return (color: White40.value, width: 1.5);
-    }
-    return (color: White10.value, width: 1);
-  }
-
   Widget _buildUsernameInput() {
-    final hasError = _usernameShowsAvailabilityError;
-    final hasSuccess = _available == true;
-    final isFocused = _usernameFocusNode.hasFocus;
     final hasText = _usernameController.text.isNotEmpty;
-    final showInsetLabel = isFocused || hasText;
-    final border = _usernameFieldBorder();
+    final hasSuccess = _available == true;
 
-    return GestureDetector(
-      onTap: () => _usernameFocusNode.requestFocus(),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: _borderAnimationDuration,
-        curve: Curves.easeInOut,
-        height: 60,
-        decoration: BoxDecoration(
-          color: AppColors.brandPurple.withValues(alpha: 0.25),
-          borderRadius: AppRadius.pillRadius,
-          border: Border.all(color: border.color, width: border.width),
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  AnimatedSize(
-                    duration: _borderAnimationDuration,
-                    curve: Curves.easeInOut,
-                    alignment: Alignment.topLeft,
-                    child: showInsetLabel
-                        ? const Padding(
-                            padding: EdgeInsets.only(bottom: 2),
-                            child: Text(
-                              'Username',
-                              style: AppTypography.usernameFieldLabel,
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
-                  TextField(
-                    controller: _usernameController,
-                    focusNode: _usernameFocusNode,
-                    style: AppTypography.usernameFieldValue,
-                    decoration: InputDecoration(
-                      hintText: showInsetLabel ? null : 'Username',
-                      hintStyle: AppTypography.usernameFieldLabel,
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: EdgeInsets.zero,
-                      isDense: true,
-                      isCollapsed: showInsetLabel,
-                    ),
-                    inputFormatters: [
-                      FilteringTextInputFormatter.allow(
-                        RegExp(r'[a-zA-Z0-9_.]'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          if (_isChecking)
-            const SizedBox(
-              width: 24,
-              height: 24,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
-              ),
-            )
-          else if (hasError)
-            GestureDetector(
-              onTap: () {
-                _usernameController.clear();
-                _availabilityFromLength(0);
-              },
-              child: Icon(
-                Icons.close,
-                color: AppTheme.secondaryTextColor.withValues(alpha: 0.8),
-                size: AppSizes.fieldIcon,
-              ),
-            )
-          else if (hasSuccess)
-            const Icon(
-              Icons.check,
-              color: Colors.green,
-              size: AppSizes.fieldIcon,
-            ),
-          ],
-        ),
-      ),
+    return AuthOnboardingUsernameField(
+      controller: _usernameController,
+      focusNode: _usernameFocusNode,
+      isChecking: _isChecking,
+      showErrorBorder: _usernameShowsAvailabilityError,
+      showSuccessBorder: hasSuccess,
+      showClearButton: hasText && !_isChecking && !hasSuccess,
+      showSuccessIcon: hasSuccess && !_isChecking,
+      onClear: () {
+        _usernameController.clear();
+        _availabilityFromLength(0);
+      },
+      inputFormatters: [
+        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
+      ],
+      borderAnimationDuration: _borderAnimationDuration,
     );
   }
 
@@ -431,16 +332,35 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Enter at least 3 characters (letters, numbers, underscore, dot).'),
+          content: Text('Enter at least 4 characters (letters, numbers, underscore, dot).'),
         ),
       );
       return;
     }
     if (_isChecking) return;
 
+    var usernameToSave = username;
+    if (_isReserved) {
+      if (!_reservedContinueConfirmed) {
+        await _maybeShowReservedDialog(username);
+        if (!mounted || !_reservedContinueConfirmed) return;
+      }
+      final uid = AuthService().currentUser?.uid ?? '';
+      if (uid.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Session expired. Please sign in again.')),
+        );
+        return;
+      }
+      usernameToSave = await TemporaryUsernameGenerator.generate(
+        uid: uid,
+        usernameService: _usernameService,
+      );
+    }
+
     // Final one-shot check on tap so users can proceed even if realtime stream
     // hasn't emitted yet (common right after typing).
-    if (_available != true) {
+    if (!_isReserved && _available != true) {
       try {
         final check = await _usernameService.checkAvailability(username);
         if (!mounted) return;
@@ -449,10 +369,22 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           _suggestions = check.suggestions;
         });
         if (!check.available) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Username is not available.')),
-          );
-          return;
+          if (check.isReserved) {
+            setState(() => _isReserved = true);
+            await _maybeShowReservedDialog(username);
+            if (!mounted || !_reservedContinueConfirmed) return;
+            final uid = AuthService().currentUser?.uid ?? '';
+            if (uid.isEmpty) return;
+            usernameToSave = await TemporaryUsernameGenerator.generate(
+              uid: uid,
+              usernameService: _usernameService,
+            );
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Username is not available.')),
+            );
+            return;
+          }
         }
       } catch (_) {
         if (!mounted) return;
@@ -500,7 +432,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       // saves and the user loops here. Persona is persisted in a follow-up write.
       await UserService().updateUserProfile(
         uid: uid,
-        username: username,
+        username: usernameToSave,
         accountType: selectedType.name,
       );
 
@@ -523,7 +455,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
       final serverUsername = UsernameValidation.normalize(
         (verified?.username ?? '').trim(),
       );
-      if (serverUsername.isEmpty || serverUsername != username) {
+      if (serverUsername.isEmpty || serverUsername != usernameToSave) {
         setState(() {
           _isSubmitting = false;
           _awaitingGateHandoff = false;
@@ -554,11 +486,18 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         }
       }
 
+      UsernameSubmitHandoff.instance.arm(
+        uid: uid,
+        username: usernameToSave,
+        accountType: selectedType.name,
+      );
+
       _gateHandoffTimeout?.cancel();
       _gateHandoffTimeout = Timer(const Duration(seconds: 12), () {
         if (!mounted) return;
         if (!_awaitingGateHandoff) return;
         setState(() => _awaitingGateHandoff = false);
+        UsernameSubmitHandoff.instance.disarm(uid: uid);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text(
@@ -577,6 +516,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     } catch (_) {
       if (!mounted) return;
       _gateHandoffTimeout?.cancel();
+      UsernameSubmitHandoff.instance.disarm(
+        uid: AuthService().currentUser?.uid,
+      );
       setState(() {
         _isSubmitting = false;
         _awaitingGateHandoff = false;
@@ -599,7 +541,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 CircularProgressIndicator(
-                  valueColor: AlwaysStoppedAnimation<Color>(AppTheme.primary),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    AppColors.authBrandBurgundy,
+                  ),
                 ),
                 SizedBox(height: 20),
                 Padding(
@@ -635,9 +579,11 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     return Container(
       margin: const EdgeInsets.only(top: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: .06),
+        color: AppTheme.lightOtpBoxFill,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: .08)),
+        border: Border.all(
+          color: AppTheme.lightUnfocusedUnderline,
+        ),
       ),
       child: Column(
         children: List.generate(_suggestions.length, (index) {
@@ -646,7 +592,10 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
           return Column(
             children: [
               if (index != 0)
-                Divider(height: 1, color: Colors.white.withValues(alpha: 0.1)),
+                Divider(
+                  height: 1,
+                  color: AppTheme.lightUnfocusedUnderline,
+                ),
               InkWell(
                 onTap: () => _applySuggestion(suggestion),
                 borderRadius: BorderRadius.circular(20),
@@ -658,7 +607,9 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
                       Expanded(
                         child: Text(
                           suggestion,
-                          style: AppTypography.usernameSuggestion,
+                          style: AppTypography.usernameSuggestion.copyWith(
+                            color: AppTheme.lightOnSurface,
+                          ),
                         ),
                       ),
                       Container(
@@ -683,15 +634,6 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         }),
       ),
     );
-  }
-
-  Future<void> _onBack() async {
-    final nav = Navigator.of(context);
-    if (nav.canPop()) {
-      nav.pop();
-      return;
-    }
-    await AuthService().signOut();
   }
 }
 

@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
+
+import '../../core/constants/app_colors.dart';
+import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
 import '../../core/services/signup_draft_service.dart';
-import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/wrappers/auth_wrapper.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 
@@ -85,140 +87,138 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      scrollable: false,
+      stackChildren: [
+        AuthFloatingBackButton(
+          onPressed: _onBack,
+          alwaysShowBack: true,
+          backgroundColor: AppColors.authVerifyCta,
+        ),
+      ],
+      body: Column(
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            child: SingleChildScrollView(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 28),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    const SizedBox(height: 8),
-                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                  const SizedBox(height: 60),
-                  const Text(
-                    'Verify Code',
-                    style: TextStyle(
-                      color: AppTheme.defaultTextColor,
-                      fontSize: 36,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _usePhone
-                        ? "Please enter the code we've just sent to your number"
-                        : "Please enter the code we've just sent to email",
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: AppTheme.secondaryTextColor,
-                      fontWeight: FontWeight.w400,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _usePhone
-                        ? (widget.maskedPhone.isEmpty
-                              ? 'your phone number'
-                              : widget.maskedPhone)
-                        : (widget.maskedEmail.isEmpty
-                              ? 'your email'
-                              : widget.maskedEmail),
-                    style: const TextStyle(
-                      fontSize: 14,
-                      color: Color(0xFFD10057),
-                      fontWeight: FontWeight.w500,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 16),
-                  if (_errorMessage != null)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 8),
-                      child: Text(
-                        _errorMessage!,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.redAccent,
-                          fontWeight: FontWeight.w400,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: List.generate(_otpLength, (i) => _buildOtpBox(i)),
-                  ),
-                  const SizedBox(height: 40),
-                  Center(
-                    child: Column(
-                      children: [
-                        const Text(
-                          "Didn't receive OTP?",
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.secondaryTextColor,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: _onResendCode,
-                          child: const Text(
-                            'Resend Code',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: AppTheme.primary,
-                              fontWeight: FontWeight.w500,
-                              decoration: TextDecoration.underline,
-                              decorationColor: AppTheme.primary,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  if (!widget.forPhoneLogin && _usePhone)
-                    Center(
-                      child: GestureDetector(
-                        onTap: _onSwitchVerificationMethod,
-                        child: const Text(
-                          'Try Another Way',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: AppTheme.secondaryTextColor,
-                            fontWeight: FontWeight.w400,
-                          ),
-                        ),
-                      ),
-                    ),
-                  SizedBox(
-                    height: AppSpacing.authFloatingNavBottom +
-                        AppSizes.buttonHeight +
-                        AppSpacing.md,
-                  ),
-                ],
-              ),
+          Padding(
+            padding: AppPadding.authFormHorizontal,
+            child: Column(
+              children: const [
+                SizedBox(height: AppSpacing.authLogoTop),
+                Center(child: VyoooBrandLogo.auth()),
+              ],
             ),
           ),
-        ),
-          AuthFloatingNavRow(
-            onBack: _onBack,
-            onForward: _onVerify,
-            forwardEnabled: _isOtpComplete,
-            forwardLoading: _verifyInFlight,
-            alwaysShowBack: true,
+          Expanded(
+            child: AuthCenteredScrollBody(
+              children: [
+                const AuthScreenHeader(
+                  showLogo: false,
+                  centerAlign: true,
+                  titleTextAlign: TextAlign.center,
+                  title: 'Verify Code',
+                ),
+                const SizedBox(height: AppSpacing.md),
+                Text(
+                  _usePhone
+                      ? "Please enter the code we've just sent to your number"
+                      : "Please enter the code we've just sent to email",
+                  style: AppTypography.authVerifyInstruction,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  _destinationLabel(),
+                  style: AppTypography.authVerifyDestination,
+                  textAlign: TextAlign.center,
+                ),
+                if (_errorMessage != null) ...[
+                  const SizedBox(height: AppSpacing.sm),
+                  Text(
+                    _errorMessage!,
+                    style: AppTypography.caption.copyWith(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.xl),
+                AuthOtpInputRow(
+                  length: _otpLength,
+                  controllers: _controllers,
+                  focusNodes: _focusNodes,
+                  onChanged: () => setState(() {}),
+                ),
+                const SizedBox(height: AppSpacing.xl),
+                Text(
+                  "Didn't receive OTP?",
+                  style: AppTypography.authVerifyMutedLabel,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: AppSpacing.sm),
+                GestureDetector(
+                  onTap: _onResendCode,
+                  child: Text(
+                    _sendInFlight ? 'Sending…' : 'Resend Code',
+                    style: AppTypography.authSmallBodyBold.copyWith(
+                      color: AppTheme.lightOnSurface,
+                      decoration: TextDecoration.underline,
+                      decorationColor: AppTheme.lightOnSurface,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.authCtaTop),
+                AuthPrimaryButton(
+                  label: 'Verify',
+                  isLoading: _verifyInFlight,
+                  enabled: _isOtpComplete,
+                  backgroundColor: AppColors.authVerifyCta,
+                  onPressed: _onVerify,
+                ),
+              ],
+            ),
           ),
+          if (!widget.forPhoneLogin && _usePhone) ...[
+            Padding(
+              padding: AppPadding.authFormHorizontal,
+              child: GestureDetector(
+                onTap: _onSwitchVerificationMethod,
+                child: Text(
+                  'Try another way',
+                  style: AppTypography.authVerifySecondaryLink,
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
+          SizedBox(height: AuthFloatingNavRow.scrollBottomClearance(context)),
         ],
       ),
     );
+  }
+
+  String _maskEmailForDisplay(String value) {
+    final t = value.trim();
+    final at = t.indexOf('@');
+    if (at <= 0 || at >= t.length - 1) return t;
+    final local = t.substring(0, at);
+    final domain = t.substring(at + 1);
+    if (local.length <= 1) return '***@$domain';
+    return '${local[0]}${'*' * (local.length - 1)}@$domain';
+  }
+
+  String _destinationLabel() {
+    if (_usePhone) {
+      if (widget.maskedPhone.isNotEmpty) return widget.maskedPhone;
+      final phone = _activePhoneNumber;
+      if (phone.isNotEmpty) {
+        if (phone.length <= 4) return phone;
+        return '${'*' * (phone.length - 4)}${phone.substring(phone.length - 4)}';
+      }
+      return 'your phone number';
+    }
+    if (widget.maskedEmail.isNotEmpty) return widget.maskedEmail;
+    final email = _activeEmailForOtp();
+    if (email.isNotEmpty) return _maskEmailForDisplay(email);
+    return 'your email';
   }
 
   bool get _isOtpComplete {
@@ -226,70 +226,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       if (c.text.isEmpty) return false;
     }
     return true;
-  }
-
-  Widget _buildOtpBox(int index) {
-    return ListenableBuilder(
-      listenable: _focusNodes[index],
-      builder: (_, _) {
-        final hasFocus = _focusNodes[index].hasFocus;
-        return Container(
-          width: _usePhone ? 48 : 70,
-          height: 70,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
-            borderRadius: BorderRadius.circular(16),
-            border: hasFocus
-                ? Border.all(color: Colors.white.withValues(alpha: 0.4), width: 1.5)
-                : null,
-          ),
-          alignment: Alignment.center,
-          child: TextField(
-            controller: _controllers[index],
-            focusNode: _focusNodes[index],
-            maxLength: 1,
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            onTap: () {
-              // Makes replacing a wrong digit one tap on mobile keyboards.
-              _controllers[index].selection = TextSelection(
-                baseOffset: 0,
-                extentOffset: _controllers[index].text.length,
-              );
-            },
-            onChanged: (value) {
-              if (value.isNotEmpty && index < _otpLength - 1) {
-                _focusNodes[index + 1].requestFocus();
-              } else if (value.isNotEmpty && index == _otpLength - 1) {
-                FocusScope.of(context).unfocus();
-              }
-              if (mounted) setState(() {});
-            },
-            style: const TextStyle(
-              color: AppTheme.primary,
-              fontSize: 32,
-              fontWeight: FontWeight.w600,
-            ),
-            decoration: InputDecoration(
-              hintText: '-',
-              hintStyle: TextStyle(
-                color: AppTheme.primary.withValues(alpha: 0.5),
-                fontSize: 32,
-                fontWeight: FontWeight.w600,
-              ),
-              counterText: '',
-              border: InputBorder.none,
-              enabledBorder: InputBorder.none,
-              focusedBorder: InputBorder.none,
-              errorBorder: InputBorder.none,
-              focusedErrorBorder: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _sendOtp() async {
@@ -329,8 +265,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
     setState(() {
       _sendInFlight = false;
       if (!result.success) {
-        _errorMessage =
-            result.message ??
+        _errorMessage = result.message ??
             (_usePhone
                 ? 'Could not send phone code.'
                 : 'Could not send code.');
@@ -378,7 +313,11 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   Future<void> _finishAfterSuccessfulVerification() async {
     try {
       final draft = SignupDraftService().current;
+      String? signupEmail;
+      String? signupPassword;
       if (draft != null) {
+        signupEmail = draft.email.trim();
+        signupPassword = draft.password;
         final complete = await _auth.completeSignupAfterOtp(
           name: draft.name,
           email: draft.email,
@@ -402,6 +341,16 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       final currentUid = _auth.currentUser?.uid ?? '';
       if (currentUid.isNotEmpty) {
         await OtpSessionService().markTrustedDeviceForUid(currentUid);
+      }
+      if (signupEmail != null &&
+          signupEmail.isNotEmpty &&
+          signupPassword != null &&
+          signupPassword.isNotEmpty) {
+        await _auth.registerLoggedInAccount(
+          loginType: SavedAccountLoginType.password,
+          email: signupEmail,
+          password: signupPassword,
+        );
       }
       await OtpSessionService().clearOtpRequirement();
       await OtpSessionService().clearSignupOtpPreference();
@@ -449,9 +398,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
       nav.pop();
       return;
     }
-    // [CreateAccountScreen] opens this screen with [pushReplacement], so there is
-    // no route to pop and [AuthWrapper] is no longer in the tree. [signOut] alone
-    // would not rebuild the UI; reset the root back to [AuthWrapper].
     final embeddedInAuthWrapper =
         context.findAncestorWidgetOfExactType<AuthWrapper>() != null;
     SignupDraftService().clear();

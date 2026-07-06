@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'auth_field_icon.dart';
 import 'auth_password_visibility_button.dart';
 import 'auth_underline_text_field.dart';
 
@@ -39,7 +40,7 @@ class _AuthPasswordFieldState extends State<AuthPasswordField> {
       controller: widget.controller,
       focusNode: widget.focusNode,
       onChanged: widget.onChanged,
-      icon: Icons.lock_outline,
+      prefix: const AuthFieldIcon.password(),
       hint: widget.hint,
       obscureText: _obscured,
       suffixIcon: AuthPasswordVisibilityButton(

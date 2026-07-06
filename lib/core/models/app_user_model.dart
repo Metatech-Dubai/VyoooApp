@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import 'parent_consent_constants.dart';
 import 'post_location_model.dart';
+import 'user_app_preferences.dart';
 
 String _readFirestoreString(dynamic value, {String fallback = ''}) {
   if (value == null) return fallback;
@@ -46,6 +47,7 @@ class AppUserModel {
     this.displayName,
     this.username,
     this.bio,
+    this.profileMusic,
     this.dob,
     this.profileImage,
     this.phoneNumber,
@@ -72,6 +74,8 @@ class AppUserModel {
     this.parentConsentAt,
     this.profileLocation,
     this.locationSetupComplete = false,
+    this.profileImageSetupComplete = false,
+    this.allowTagsFrom = AudienceOption.everyone,
   });
 
   final String uid;
@@ -79,6 +83,8 @@ class AppUserModel {
   final String? displayName;
   final String? username;
   final String? bio;
+  /// Profile music line (e.g. "Title • Artist"). Empty when unset.
+  final String? profileMusic;
   final String? dob;
   final String? profileImage;
   final String? phoneNumber;
@@ -124,6 +130,13 @@ class AppUserModel {
   /// True after onboarding location step is saved or skipped.
   final bool locationSetupComplete;
 
+  /// True after the onboarding profile-photo step is completed or skipped.
+  /// A non-empty [profileImage] also counts as done (legacy users).
+  final bool profileImageSetupComplete;
+
+  /// Mirrored from `settings/app` so other users can enforce tag privacy.
+  final String allowTagsFrom;
+
   Map<String, dynamic> toJson() {
     return {
       'uid': uid,
@@ -131,6 +144,7 @@ class AppUserModel {
       'displayName': displayName ?? '',
       'username': username ?? '',
       'bio': bio ?? '',
+      'profileMusic': profileMusic ?? '',
       'dob': dob ?? '',
       'profileImage': profileImage ?? '',
       'phoneNumber': phoneNumber ?? '',
@@ -157,6 +171,7 @@ class AppUserModel {
       if (parentConsentAt != null) 'parentConsentAt': parentConsentAt,
       if (profileLocation != null) 'location': profileLocation!.toMap(),
       'locationSetupComplete': locationSetupComplete,
+      'profileImageSetupComplete': profileImageSetupComplete,
     };
   }
 
@@ -216,6 +231,7 @@ class AppUserModel {
       displayName: _readFirestoreStringNullable(json['displayName']),
       username: _readFirestoreStringNullable(json['username']),
       bio: _readFirestoreStringNullable(json['bio']),
+      profileMusic: _readFirestoreStringNullable(json['profileMusic']),
       dob: _readFirestoreStringNullable(json['dob']),
       profileImage: _readFirestoreStringNullable(json['profileImage']),
       phoneNumber: _readFirestoreStringNullable(json['phoneNumber']),
@@ -264,6 +280,11 @@ class AppUserModel {
         json['locationSetupComplete'],
         fallback: false,
       ),
+      profileImageSetupComplete: _readFirestoreBool(
+        json['profileImageSetupComplete'],
+        fallback: false,
+      ),
+      allowTagsFrom: AudienceOption.sanitize(json['allowTagsFrom']),
     );
   }
 
@@ -273,6 +294,7 @@ class AppUserModel {
     String? displayName,
     String? username,
     String? bio,
+    String? profileMusic,
     String? dob,
     String? profileImage,
     String? phoneNumber,
@@ -299,6 +321,8 @@ class AppUserModel {
     Timestamp? parentConsentAt,
     PostLocation? profileLocation,
     bool? locationSetupComplete,
+    bool? profileImageSetupComplete,
+    String? allowTagsFrom,
   }) {
     return AppUserModel(
       uid: uid ?? this.uid,
@@ -306,6 +330,7 @@ class AppUserModel {
       displayName: displayName ?? this.displayName,
       username: username ?? this.username,
       bio: bio ?? this.bio,
+      profileMusic: profileMusic ?? this.profileMusic,
       dob: dob ?? this.dob,
       profileImage: profileImage ?? this.profileImage,
       phoneNumber: phoneNumber ?? this.phoneNumber,
@@ -333,6 +358,9 @@ class AppUserModel {
       profileLocation: profileLocation ?? this.profileLocation,
       locationSetupComplete:
           locationSetupComplete ?? this.locationSetupComplete,
+      profileImageSetupComplete:
+          profileImageSetupComplete ?? this.profileImageSetupComplete,
+      allowTagsFrom: allowTagsFrom ?? this.allowTagsFrom,
     );
   }
 }

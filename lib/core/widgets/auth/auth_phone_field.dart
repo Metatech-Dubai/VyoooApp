@@ -4,6 +4,7 @@ import '../../theme/app_sizes.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
+import 'auth_field_icon.dart';
 import 'auth_underline_text_field.dart';
 
 /// Phone number field with country flag / dial-code picker prefix.
@@ -29,6 +30,8 @@ class AuthPhoneField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final iconColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
     return AuthUnderlineTextField(
       controller: controller,
       focusNode: focusNode,
@@ -39,19 +42,28 @@ class AuthPhoneField extends StatelessWidget {
       prefix: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const SizedBox(width: AppSpacing.storyItem),
-          const Icon(
-            Icons.phone_outlined,
-            color: AppTheme.primary,
-            size: AppSizes.fieldIcon,
-          ),
+          isLight
+              ? const AuthFieldIcon.phone()
+              : SizedBox(
+                  width: AppSizes.authFieldPrefixWidth,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Icon(
+                      Icons.phone_outlined,
+                      color: iconColor,
+                      size: AppSizes.authPhoneIconWidth,
+                    ),
+                  ),
+                ),
           const SizedBox(width: AppSpacing.sm),
           GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTap: onCountryTap,
             child: Text(
               '$countryFlag +$countryDialCode',
-              style: AppTypography.authSmallBodyBold,
+              style: AppTypography.authSmallBodyBold.copyWith(
+                color: isLight ? AppTheme.lightOnSurface : AppTheme.primary,
+              ),
             ),
           ),
           const SizedBox(width: AppSpacing.xs),

@@ -1,13 +1,12 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/config/deep_link_config.dart';
-import '../data/mock_share_data.dart';
-import '../models/share_contact.dart';
-import '../models/share_action.dart';
+import '../../../core/theme/app_spacing.dart';
 
-/// Opens the share sheet with a translucent "light black" glassmorphism effect.
+/// Opens a share sheet with repost (optional), native share, and copy link.
 Future<void> showShareBottomSheet(
   BuildContext context, {
   required String reelId,
@@ -29,6 +28,7 @@ Future<void> showShareBottomSheet(
     builder: (context) => _ShareSheet(
       thumbnailUrl: thumbnailUrl,
       authorName: authorName ?? 'Vyooo',
+      shareUrl: shareUrl,
       onShareViaNative: onShareViaNative,
       onCopyLink: () {
         Clipboard.setData(ClipboardData(text: shareUrl));
@@ -46,6 +46,7 @@ class _ShareSheet extends StatelessWidget {
   const _ShareSheet({
     this.thumbnailUrl,
     required this.authorName,
+    required this.shareUrl,
     required this.onShareViaNative,
     required this.onCopyLink,
     this.showRepost = false,
@@ -56,6 +57,7 @@ class _ShareSheet extends StatelessWidget {
 
   final String? thumbnailUrl;
   final String authorName;
+  final String shareUrl;
   final VoidCallback onShareViaNative;
   final VoidCallback onCopyLink;
   final bool showRepost;
@@ -63,119 +65,114 @@ class _ShareSheet extends StatelessWidget {
   final Future<void> Function()? onRepost;
   final Future<void> Function()? onRemoveRepost;
 
-  void _handleContact(BuildContext context, ShareContact contact) {
+  void _openNativeShare(BuildContext context) {
     Navigator.of(context).pop();
     onShareViaNative();
   }
 
-  void _handleNativeTarget(BuildContext context) {
+  void _copyLink(BuildContext context) {
+    onCopyLink();
     Navigator.of(context).pop();
-    onShareViaNative();
-  }
-
-  void _handleSystemAction(BuildContext context, ShareSystemAction action) {
-    if (action.id == 'copy') {
-      onCopyLink();
-      Navigator.of(context).pop();
-    } else {
-      Navigator.of(context).pop();
-      onShareViaNative();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final contacts = getMockShareContacts();
-    final nativeTargets = getMockNativeShareTargets();
-    final systemActions = getMockShareSystemActions();
-    return DraggableScrollableSheet(
-      initialChildSize: 0.65,
-      minChildSize: 0.4,
-      maxChildSize: 0.95,
-      builder: (context, scrollController) {
-        return ClipRRect(
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.75),
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08), width: 0.5),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  _DragHandle(),
-                  _TopBar(onClose: () => Navigator.of(context).pop()),
-                  if (thumbnailUrl != null)
-                    _ContentHeader(
-                      thumbnailUrl: thumbnailUrl,
-                      authorName: authorName,
-                    ),
-                  if (showRepost) ...[
-                    const SizedBox(height: 8),
-                    _RepostTile(
-                      isReposted: isReposted,
-                      onRepost: onRepost,
-                      onRemoveRepost: onRemoveRepost,
-                    ),
-                  ],
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 110,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: contacts.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 16),
-                      itemBuilder: (context, index) {
-                        final c = contacts[index];
-                        return _ContactChip(
-                          contact: c,
-                          onTap: () => _handleContact(context, c),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 100,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 24),
-                      itemCount: nativeTargets.length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 16),
-                      itemBuilder: (context, index) {
-                        final a = nativeTargets[index];
-                        return _NativeTargetChip(
-                          action: a,
-                          onTap: () => _handleNativeTarget(context),
-                        );
-                      },
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView.builder(
-                      controller: scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      itemCount: systemActions.length,
-                      itemBuilder: (context, index) {
-                        final a = systemActions[index];
-                        return _SystemActionTile(
-                          action: a,
-                          onTap: () => _handleSystemAction(context, a),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
+    return ClipRRect(
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.75),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 0.5,
             ),
           ),
-        );
-      },
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _DragHandle(),
+                _TopBar(onClose: () => Navigator.of(context).pop()),
+                if (thumbnailUrl != null)
+                  _ContentHeader(
+                    thumbnailUrl: thumbnailUrl,
+                    authorName: authorName,
+                  ),
+                if (showRepost) ...[
+                  const SizedBox(height: AppSpacing.xs),
+                  _RepostTile(
+                    isReposted: isReposted,
+                    onRepost: onRepost,
+                    onRemoveRepost: onRemoveRepost,
+                  ),
+                ],
+                const SizedBox(height: AppSpacing.sm),
+                _ShareActionTile(
+                  icon: Icons.ios_share_rounded,
+                  label: 'Share link',
+                  onTap: () => _openNativeShare(context),
+                ),
+                _ShareActionTile(
+                  icon: Icons.link_rounded,
+                  label: 'Copy link',
+                  onTap: () => _copyLink(context),
+                ),
+                const SizedBox(height: AppSpacing.md),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ShareActionTile extends StatelessWidget {
+  const _ShareActionTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 24),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withValues(alpha: 0.4),
+                size: 22,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -269,17 +266,17 @@ class _TopBar extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Icon(Icons.search, color: Colors.white70, size: 28),
+          const Spacer(),
           const Text(
-            'Share With',
+            'Share',
             style: TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
           ),
+          const Spacer(),
           GestureDetector(
             onTap: onClose,
             child: Container(
@@ -328,7 +325,10 @@ class _ContentHeader extends StatelessWidget {
               color: Colors.grey[900],
               borderRadius: BorderRadius.circular(12),
               image: hasValidThumb
-                  ? DecorationImage(image: NetworkImage(thumb), fit: BoxFit.cover)
+                  ? DecorationImage(
+                      image: NetworkImage(thumb),
+                      fit: BoxFit.cover,
+                    )
                   : null,
             ),
             child: !hasValidThumb
@@ -360,162 +360,6 @@ class _ContentHeader extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-class _ContactChip extends StatelessWidget {
-  const _ContactChip({required this.contact, required this.onTap});
-
-  final ShareContact contact;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          children: [
-            Stack(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
-                  ),
-                  child: CircleAvatar(
-                    radius: 28,
-                    backgroundColor: Colors.grey[900],
-                    backgroundImage: NetworkImage(contact.avatarUrl),
-                  ),
-                ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(2),
-                    decoration: const BoxDecoration(
-                      color: Colors.black,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Container(
-                      width: 18,
-                      height: 18,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF25D366),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(Icons.message, size: 10, color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              contact.name,
-              maxLines: 2,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NativeTargetChip extends StatelessWidget {
-  const _NativeTargetChip({required this.action, required this.onTap});
-
-  final ShareActionItem action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 72,
-        child: Column(
-          children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: action.backgroundColor,
-                shape: BoxShape.circle,
-                gradient: action.id == 'instagram' 
-                  ? const RadialGradient(
-                      center: Alignment.bottomLeft,
-                      radius: 1.5,
-                      colors: [Color(0xFFFEDA75), Color(0xFFD62976), Color(0xFF4F5BD5)],
-                    ) : null,
-              ),
-              child: Icon(
-                action.icon,
-                size: 28,
-                color: action.backgroundColor == Colors.white ? Colors.blue : Colors.white,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              action.label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SystemActionTile extends StatelessWidget {
-  const _SystemActionTile({required this.action, required this.onTap});
-
-  final ShareSystemAction action;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        InkWell(
-          onTap: onTap,
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 18),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.08), width: 0.8)),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    action.label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                    ),
-                  ),
-                ),
-                Icon(action.icon, size: 22, color: Colors.white70),
-              ],
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

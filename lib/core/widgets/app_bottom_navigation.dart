@@ -1,22 +1,36 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
-import '../theme/app_background_assets.dart';
+import '../platform/app_system_ui.dart';
+import '../theme/app_fonts.dart';
+import '../theme/app_gradients.dart';
+import '../theme/app_radius.dart';
+import '../theme/app_sizes.dart';
+import '../theme/app_spacing.dart';
+import 'feed_reel_progress_bar.dart';
+import 'live_feed_scrub_preview.dart';
+import 'live_feed_stream_progress_bar.dart';
+import '../../screens/profile/profile_figma_tokens.dart';
 
 class _NavAssets {
-  static const _base = 'assets/vyooO_icons/Home/nav_bar_icons';
-  static const homeSelected = '$_base/home.png';
-  static const homeUnselected = 'assets/BottomNavBar/HomeUnSlected.png';
-  static const searchSelected = '$_base/search_filled.png';
-  static const searchUnselected = '$_base/search.png';
-  static const addSelected = '$_base/create.png';
-  static const addUnselected = '$_base/create.png';
-  static const settingsSelected = '$_base/notification_filled.png';
-  static const settingsUnselected = '$_base/notifications.png';
+  static const _base = 'assets/BottomNavBar';
+  static const homeSelected = '$_base/home_selected.svg';
+  static const homeUnselected = '$_base/home_unselected.svg';
+  static const broadcastSelected = '$_base/broadcast_selected.svg';
+  static const broadcastUnselected = '$_base/broadcast_unselected.svg';
+  static const addSelected = '$_base/add_selected.svg';
+  static const addUnselected = '$_base/add_unselected.svg';
+  static const chatSelected = '$_base/chat_selected.svg';
+  static const chatUnselected = '$_base/chat_unselected.svg';
+  static const profileSelected = '$_base/profile_selected.png';
+  static const profileUnselected = '$_base/profile_unselected.png';
   static const profileDefault = 'assets/vyooO_icons/Home/profile_icon.png';
 }
 
 /// Custom bottom nav wrapper matching the VyooO design language.
-/// Index: 0 Home, 1 Search, 2 Create (+), 3 Settings (as Notifications), 4 Profile.
+/// Index: 0 Home, 1 Go Live (broadcast), 2 Create (+), 3 Messages, 4 Profile.
+/// Search is opened from the home feed header / hashtag links, not this tab.
 class AppBottomNavigation extends StatelessWidget {
   const AppBottomNavigation({
     super.key,
@@ -25,6 +39,18 @@ class AppBottomNavigation extends StatelessWidget {
     this.profileImageUrl,
     this.unreadNotificationCount = 0,
     this.unreadChatCount = 0,
+    this.useFeedChrome = false,
+    this.feedReelProgress,
+    this.feedLiveProgress,
+    this.onFeedReelSeekUpdate,
+    this.onFeedLiveSeekUpdate,
+    this.onFeedLiveSeekStart,
+    this.onFeedLiveSeekEnd,
+    this.feedLiveScrubbing,
+    this.feedLiveSeekPreviewBytes,
+    this.feedLiveSeekPreviewTimeLabel,
+    this.feedLiveSeekPreviewFallbackUrl,
+    this.squareChromeBottomCorners = false,
   });
 
   final int currentIndex;
@@ -33,139 +59,129 @@ class AppBottomNavigation extends StatelessWidget {
   final int unreadNotificationCount;
   final int unreadChatCount;
 
-  static const double _iconSize = 21.25; // 25 × 0.85 (−15%)
-  /// Profile tab avatar is 50% larger than other nav icons.
-  static double get _profileIconSize => _iconSize * 1.5;
-  static const double _profileBorderWidth = 1.53; // 1.8 × 0.85
-  static const Color _activeIconColor = Colors.white;
-  static const Color _inactiveIconColor = Color(0xFF8C8C96);
-  static const Color _splashColor = Color(0x44DE106B);
+  /// Dark chrome + gradient scrim companion — home feed tab only.
+  final bool useFeedChrome;
 
-  Widget _buildIcon(
-    String asset,
-    IconData fallback,
-    bool isSelected, {
-    double size = _iconSize,
-  }) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: Image.asset(
-        asset,
-        fit: BoxFit.contain,
-        color: isSelected ? _activeIconColor : _inactiveIconColor,
-        errorBuilder: (ctx, err, stack) => Icon(
-          fallback,
-          size: size,
-          color: isSelected ? _activeIconColor : _inactiveIconColor,
-        ),
-      ),
-    );
-  }
+  /// Home reel progress (0–1). When non-null, renders full-bleed bar atop chrome.
+  final ValueListenable<double?>? feedReelProgress;
+
+  /// Broadcast live progress (0–1 live edge). When non-null, live stream bar atop chrome.
+  final ValueListenable<double?>? feedLiveProgress;
+
+  /// Scrub updates from the home reel chrome progress bar.
+  final ValueChanged<double>? onFeedReelSeekUpdate;
+
+  /// Scrub updates from the broadcast live chrome progress bar.
+  final ValueChanged<double>? onFeedLiveSeekUpdate;
+
+  /// Called when the user starts scrubbing the live progress bar.
+  final VoidCallback? onFeedLiveSeekStart;
+
+  /// Called when the user stops scrubbing the live progress bar.
+  final VoidCallback? onFeedLiveSeekEnd;
+
+  /// Live scrub state for preview thumbnail overlay.
+  final ValueListenable<bool>? feedLiveScrubbing;
+  final ValueListenable<Uint8List?>? feedLiveSeekPreviewBytes;
+  final ValueListenable<String?>? feedLiveSeekPreviewTimeLabel;
+  final ValueListenable<String?>? feedLiveSeekPreviewFallbackUrl;
+
+  /// When true, bottom chrome uses square corners (broadcast tab).
+  final bool squareChromeBottomCorners;
+
+  static const Color _iconColor = ProfileFigmaTokens.primaryText;
+  static const Color _selectedPillFill = ProfileFigmaTokens.cardBackground;
+  static const Color _navBarFill = ProfileFigmaTokens.screenBackground;
+  static const Color _splashColor = Color(0x33750047);
+
+  static const double _tapTargetSize = AppSizes.bottomNavTapTarget;
+  static const double _selectedPillSize = AppSizes.bottomNavTapTarget;
+
+  Widget _navSvgIcon(String assetPath) => _NavSvgIcon(assetPath: assetPath);
 
   Widget _buildProfileIcon(bool isSelected) {
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl!.trim().isNotEmpty;
+    if (!hasProfileImage) {
+      return _NavIconImage(
+        assetPath: isSelected
+            ? _NavAssets.profileSelected
+            : _NavAssets.profileUnselected,
+        size: AppSizes.bottomNavProfileIcon,
+      );
+    }
+
+    final avatar = ClipOval(
+      child: Image.network(
+        profileImageUrl!,
+        fit: BoxFit.cover,
+        width: AppSizes.bottomNavProfileIcon,
+        height: AppSizes.bottomNavProfileIcon,
+        errorBuilder: (_, error, stackTrace) => Image.asset(
+          _NavAssets.profileDefault,
+          fit: BoxFit.cover,
+          width: AppSizes.bottomNavProfileIcon,
+          height: AppSizes.bottomNavProfileIcon,
+          errorBuilder: (_, error1, stack1) => Icon(
+            Icons.person_rounded,
+            size: AppSizes.bottomNavProfileIcon * 0.7,
+            color: _iconColor,
+          ),
+        ),
+      ),
+    );
+
+    if (!isSelected) return avatar;
+
     return Container(
-      width: _profileIconSize,
-      height: _profileIconSize,
-      decoration: BoxDecoration(
+      width: AppSizes.bottomNavProfileIcon,
+      height: AppSizes.bottomNavProfileIcon,
+      decoration: const BoxDecoration(
+        color: _selectedPillFill,
         shape: BoxShape.circle,
-        border: isSelected
-            ? Border.all(color: Colors.white, width: _profileBorderWidth)
-            : null,
       ),
-      child: ClipOval(
-        child: hasProfileImage
-            ? Image.network(
-                profileImageUrl!,
-                fit: BoxFit.cover,
-                errorBuilder: (_, error, stackTrace) => Image.asset(
-                  _NavAssets.profileDefault,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, error1, stack1) => _buildIcon(
-                    _NavAssets.homeUnselected,
-                    Icons.person_rounded,
-                    isSelected,
-                    size: _profileIconSize,
-                  ),
-                ),
-              )
-            : Image.asset(
-                _NavAssets.profileDefault,
-                fit: BoxFit.cover,
-                errorBuilder: (_, error2, stack2) => _buildIcon(
-                  _NavAssets.homeUnselected,
-                  Icons.person_rounded,
-                  isSelected,
-                  size: _profileIconSize,
-                ),
-              ),
-      ),
+      alignment: Alignment.center,
+      child: avatar,
     );
   }
 
   Widget _buildNavTap({
     required VoidCallback onPressed,
     required Widget child,
+    required bool isSelected,
+    double? tapTargetSize,
+    double? selectedPillSize,
   }) {
+    final targetSize = tapTargetSize ?? _tapTargetSize;
+    final pillSize = selectedPillSize ?? _selectedPillSize;
     return SizedBox(
-      width: 62,
-      height: 62,
+      width: targetSize,
+      height: targetSize,
       child: Material(
         color: Colors.transparent,
         child: InkResponse(
           onTap: onPressed,
           containedInkWell: true,
           highlightShape: BoxShape.circle,
-          radius: 26,
+          radius: targetSize / 2,
           splashColor: _splashColor,
-          highlightColor: _splashColor.withValues(alpha: 0.6),
-          child: Center(child: child),
+          highlightColor: _splashColor.withValues(alpha: 0.5),
+          child: Center(
+            child: isSelected
+                ? Container(
+                    width: pillSize,
+                    height: pillSize,
+                    decoration: const BoxDecoration(
+                      color: _selectedPillFill,
+                      shape: BoxShape.circle,
+                    ),
+                    alignment: Alignment.center,
+                    child: child,
+                  )
+                : child,
+          ),
         ),
       ),
-    );
-  }
-
-  Widget _buildNotificationIcon(bool isSelected) {
-    final count = unreadNotificationCount < 0 ? 0 : unreadNotificationCount;
-    final showBadge = count > 0;
-    final label = count > 99 ? '99+' : '$count';
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        Image.asset(
-          isSelected
-              ? _NavAssets.settingsSelected
-              : _NavAssets.settingsUnselected,
-          width: _iconSize,
-          height: _iconSize,
-          color: isSelected ? _activeIconColor : _inactiveIconColor,
-        ),
-        if (showBadge)
-          Positioned(
-            right: -10,
-            top: -6,
-            child: Container(
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFF2D55),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF14001F), width: 1),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                label,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ),
-          ),
-      ],
     );
   }
 
@@ -176,10 +192,8 @@ class AppBottomNavigation extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Icon(
-          isSelected ? Icons.chat_bubble : Icons.chat_bubble_outline,
-          size: _iconSize,
-          color: isSelected ? _activeIconColor : _inactiveIconColor,
+        _navSvgIcon(
+          isSelected ? _NavAssets.chatSelected : _NavAssets.chatUnselected,
         ),
         if (showBadge)
           Positioned(
@@ -191,12 +205,13 @@ class AppBottomNavigation extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFFFF2D55),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF14001F), width: 1),
+                border: Border.all(color: _navBarFill, width: 1),
               ),
               alignment: Alignment.center,
               child: Text(
                 label,
                 style: const TextStyle(
+                  fontFamily: AppFonts.body,
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.w700,
@@ -209,99 +224,343 @@ class AppBottomNavigation extends StatelessWidget {
   }
 
   /// Nav icons + artwork height (excludes Android/iOS system nav inset).
-  static const double barHeight = 79;
+  static const double barHeight = AppSizes.bottomNavBarHeight;
 
-  /// Matches [_fallbackBarGradient] end — fills area under gesture/3-button bar.
-  static const Color systemNavExtensionColor = Color(0xFF6D0D45);
+  /// Horizontal margin for the floating pill bar inside the chrome.
+  static const double _horizontalMargin = 20;
 
-  /// Total bottom chrome: [barHeight] + system navigation inset (gesture bar, etc.).
-  static double totalHeightFor(BuildContext context) {
-    return barHeight + MediaQuery.viewPaddingOf(context).bottom;
+  /// Space above the white pill inside the dark chrome strip (matches progress top gap).
+  static const double _chromeTopPadding = AppSpacing.feedPostNavGap;
+
+  /// iOS-only: fraction of the home-indicator inset below the bar (0.5 = floating pill look).
+  static const double _iosSafeAreaBottomFactor = 0.5;
+
+  /// Home reel progress band inside feed chrome (gap → 3px bar → gap).
+  static double feedReelProgressBandHeight() =>
+      AppSpacing.feedReelProgressTopGap +
+      AppSizes.liveFeedStreamProgressHeight +
+      AppSizes.liveFeedProgressToBottomNavGap;
+
+  /// Broadcast live progress band — top gap → 3px bar → gap → nav.
+  static double feedLiveProgressBandHeight() =>
+      AppSpacing.feedReelProgressTopGap +
+      AppSizes.liveFeedStreamProgressHeight +
+      AppSizes.liveFeedProgressToBottomNavGap;
+
+  /// Bottom nav height for overlay positioning.
+  static double totalHeightFor(
+    BuildContext context, {
+    bool feedChrome = false,
+    bool includeReelProgressBand = false,
+    bool liveProgressBand = false,
+  }) {
+    final bottomInset = AppSystemUi.bottomChromeInset(
+      context,
+      iosInsetFactor: _iosSafeAreaBottomFactor,
+    );
+    final progressBand = feedChrome && includeReelProgressBand
+        ? (liveProgressBand
+            ? feedLiveProgressBandHeight()
+            : feedReelProgressBandHeight())
+        : 0.0;
+    final chromeTop =
+        feedChrome && !includeReelProgressBand ? _chromeTopPadding : 0.0;
+    return progressBand + chromeTop + barHeight + bottomInset;
   }
 
-  static const LinearGradient _fallbackBarGradient = LinearGradient(
-    begin: Alignment.topCenter,
-    end: Alignment.bottomCenter,
-    colors: [Color(0xFF1A061E), Color(0xFF77105D), Color(0xFF6D0D45)],
-    stops: [0.1, 0.62, 1.0],
-  );
+  BoxDecoration get _pillDecoration => BoxDecoration(
+        color: _navBarFill,
+        borderRadius: BorderRadius.circular(32),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.08),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      );
 
-  Widget _buildBarBackground() {
-    return Image.asset(
-      AppBackgroundAssets.mainNavBar,
-      fit: BoxFit.fill,
-      width: double.infinity,
+  Widget _buildNavRow() {
+    return SizedBox(
       height: barHeight,
-      errorBuilder: (_, error, stackTrace) => const DecoratedBox(
-        decoration: BoxDecoration(gradient: _fallbackBarGradient),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _NavItem(
+            unselectedAsset: _NavAssets.homeUnselected,
+            selectedAsset: _NavAssets.homeSelected,
+            isSelected: currentIndex == 0,
+            onTap: () => onTap(0),
+            buildTap: _buildNavTap,
+          ),
+          _NavItem(
+            unselectedAsset: _NavAssets.broadcastUnselected,
+            selectedAsset: _NavAssets.broadcastSelected,
+            isSelected: currentIndex == 1,
+            onTap: () => onTap(1),
+            buildTap: _buildNavTap,
+          ),
+          _NavItem(
+            unselectedAsset: _NavAssets.addUnselected,
+            selectedAsset: _NavAssets.addSelected,
+            isSelected: currentIndex == 2,
+            onTap: () => onTap(2),
+            buildTap: _buildNavTap,
+          ),
+          _NavItem(
+            isSelected: currentIndex == 3,
+            onTap: () => onTap(3),
+            buildTap: _buildNavTap,
+            customChild: _buildChatIcon(currentIndex == 3),
+          ),
+          _buildNavTap(
+            onPressed: () => onTap(4),
+            isSelected: currentIndex == 4,
+            tapTargetSize: AppSizes.bottomNavProfileIcon,
+            selectedPillSize: AppSizes.bottomNavProfileIcon,
+            child: _buildProfileIcon(currentIndex == 4),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFloatingPill(double bottomInset) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        _horizontalMargin,
+        0,
+        _horizontalMargin,
+        bottomInset,
+      ),
+      child: DecoratedBox(
+        decoration: _pillDecoration,
+        child: _buildNavRow(),
+      ),
+    );
+  }
+
+  Widget _buildChromeProgressBar({
+    required double progress,
+    required bool isLive,
+    bool showLiveScrubThumb = false,
+  }) {
+    if (isLive) {
+      return LiveFeedStreamProgressBar(
+        progress: progress,
+        showScrubThumb: showLiveScrubThumb,
+      );
+    }
+    return FeedReelProgressBar(progress: progress);
+  }
+
+  Widget _buildProgressScrubBand({
+    required Widget progressBar,
+    ValueChanged<double>? onSeekUpdate,
+    VoidCallback? onSeekStart,
+    VoidCallback? onSeekEnd,
+    bool isLive = false,
+    double progress = 0,
+    bool showLivePreview = false,
+    Uint8List? previewBytes,
+    String? previewTimeLabel,
+    String? previewFallbackUrl,
+  }) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final width = constraints.maxWidth;
+        final clamped = progress.clamp(0.0, 1.0);
+        final previewWidth = AppSizes.liveFeedScaleW(
+          context,
+          AppSizes.liveFeedSeekPreviewWidth,
+        );
+        final previewGap = AppSizes.liveFeedScaleH(
+          context,
+          AppSizes.liveFeedSeekPreviewToBarGap,
+        );
+        final thumbCenterX = width > 0
+            ? (width * clamped).clamp(previewWidth / 2, width - previewWidth / 2)
+            : previewWidth / 2;
+        final previewLeft = thumbCenterX - previewWidth / 2;
+
+        void handleSeek(double localX) {
+          if (width <= 0) return;
+          onSeekUpdate?.call((localX / width).clamp(0.0, 1.0));
+        }
+
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onHorizontalDragStart: (_) => onSeekStart?.call(),
+          onHorizontalDragUpdate: (details) {
+            handleSeek(details.localPosition.dx);
+          },
+          onHorizontalDragEnd: (_) => onSeekEnd?.call(),
+          onHorizontalDragCancel: () => onSeekEnd?.call(),
+          onTapDown: (details) {
+            onSeekStart?.call();
+            handleSeek(details.localPosition.dx);
+            onSeekEnd?.call();
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            alignment: Alignment.bottomCenter,
+            children: [
+              if (isLive && showLivePreview && previewTimeLabel != null)
+                Positioned(
+                  left: previewLeft,
+                  bottom: AppSpacing.feedReelProgressTopGap +
+                      AppSizes.liveFeedStreamProgressHeight +
+                      AppSizes.liveFeedProgressToBottomNavGap +
+                      previewGap,
+                  child: LiveFeedScrubPreview(
+                    timeLabel: previewTimeLabel,
+                    imageBytes: previewBytes,
+                    fallbackImageUrl: previewFallbackUrl,
+                  ),
+                ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const SizedBox(height: AppSpacing.feedReelProgressTopGap),
+                  progressBar,
+                  const SizedBox(height: AppSizes.liveFeedProgressToBottomNavGap),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildFeedChromePill(double bottomInset) {
+    final reelProgressListenable = feedReelProgress;
+    final liveProgressListenable = feedLiveProgress;
+    final hasChromeProgress =
+        reelProgressListenable != null || liveProgressListenable != null;
+    final chromeBottomRadius = squareChromeBottomCorners
+        ? BorderRadius.zero
+        : AppRadius.feedBottomChromeRadius;
+
+    return ClipRRect(
+      borderRadius: chromeBottomRadius,
+      clipBehavior: Clip.none,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: AppGradients.feedBottomNavChrome,
+          borderRadius: chromeBottomRadius,
+          border: const Border(
+            top: BorderSide(
+              color: Color(0x1AFFFFFF),
+              width: 0.5,
+            ),
+          ),
+        ),
+        child: !hasChromeProgress
+            ? Padding(
+                padding: EdgeInsets.fromLTRB(
+                  _horizontalMargin,
+                  _chromeTopPadding,
+                  _horizontalMargin,
+                  bottomInset,
+                ),
+                child: DecoratedBox(
+                  decoration: _pillDecoration,
+                  child: _buildNavRow(),
+                ),
+              )
+            : Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (reelProgressListenable != null)
+                    ValueListenableBuilder<double?>(
+                      valueListenable: reelProgressListenable,
+                      builder: (context, progress, _) {
+                        return _buildProgressScrubBand(
+                          onSeekUpdate: onFeedReelSeekUpdate,
+                          progressBar: _buildChromeProgressBar(
+                            progress: progress ?? 0,
+                            isLive: false,
+                          ),
+                        );
+                      },
+                    )
+                  else if (liveProgressListenable != null)
+                    ListenableBuilder(
+                      listenable: Listenable.merge([
+                        liveProgressListenable,
+                        ?feedLiveScrubbing,
+                        ?feedLiveSeekPreviewBytes,
+                        ?feedLiveSeekPreviewTimeLabel,
+                        ?feedLiveSeekPreviewFallbackUrl,
+                      ]),
+                      builder: (context, _) {
+                        final progress = liveProgressListenable.value ?? 1;
+                        final isScrubbing = feedLiveScrubbing?.value ?? false;
+                        return _buildProgressScrubBand(
+                          isLive: true,
+                          progress: progress,
+                          showLivePreview: isScrubbing,
+                          previewBytes: feedLiveSeekPreviewBytes?.value,
+                          previewTimeLabel:
+                              feedLiveSeekPreviewTimeLabel?.value,
+                          previewFallbackUrl:
+                              feedLiveSeekPreviewFallbackUrl?.value,
+                          onSeekStart: onFeedLiveSeekStart,
+                          onSeekEnd: onFeedLiveSeekEnd,
+                          onSeekUpdate: onFeedLiveSeekUpdate,
+                          progressBar: _buildChromeProgressBar(
+                            progress: progress,
+                            isLive: true,
+                            showLiveScrubThumb: isScrubbing,
+                          ),
+                        );
+                      },
+                    ),
+                  Padding(
+                    padding: EdgeInsets.fromLTRB(
+                      _horizontalMargin,
+                      0,
+                      _horizontalMargin,
+                      bottomInset,
+                    ),
+                    child: DecoratedBox(
+                      decoration: _pillDecoration,
+                      child: _buildNavRow(),
+                    ),
+                  ),
+                ],
+              ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    // viewPadding is not cleared by Scaffold's removePadding — use for gesture/3-button bar.
-    final systemBottom = MediaQuery.viewPaddingOf(context).bottom;
-
-    return SizedBox(
-      height: barHeight + systemBottom,
-      child: Column(
-        children: [
-          SizedBox(
-            height: barHeight,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                _buildBarBackground(),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _NavItem(
-                      unselectedAsset: _NavAssets.homeUnselected,
-                      selectedAsset: _NavAssets.homeSelected,
-                      isSelected: currentIndex == 0,
-                      onTap: () => onTap(0),
-                      splashColor: _splashColor,
-                    ),
-                    _NavItem(
-                      unselectedAsset: _NavAssets.searchUnselected,
-                      selectedAsset: _NavAssets.searchSelected,
-                      isSelected: currentIndex == 1,
-                      onTap: () => onTap(1),
-                      splashColor: _splashColor,
-                    ),
-                    _NavItem(
-                      unselectedAsset: _NavAssets.addUnselected,
-                      selectedAsset: _NavAssets.addSelected,
-                      isSelected: currentIndex == 2,
-                      onTap: () => onTap(2),
-                      splashColor: _splashColor,
-                    ),
-                    _NavItem(
-                      isSelected: currentIndex == 3,
-                      onTap: () => onTap(3),
-                      splashColor: _splashColor,
-                      customChild: _buildChatIcon(currentIndex == 3),
-                    ),
-                    _buildNavTap(
-                      onPressed: () => onTap(4),
-                      child: _buildProfileIcon(currentIndex == 4),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          if (systemBottom > 0)
-            ColoredBox(
-              color: systemNavExtensionColor,
-              child: SizedBox(height: systemBottom),
-            ),
-        ],
-      ),
+    final bottomInset = AppSystemUi.bottomChromeInset(
+      context,
+      iosInsetFactor: _iosSafeAreaBottomFactor,
     );
+
+    if (useFeedChrome) {
+      return _buildFeedChromePill(bottomInset);
+    }
+    return _buildFloatingPill(bottomInset);
   }
 }
+
+typedef _NavTapBuilder = Widget Function({
+  required VoidCallback onPressed,
+  required Widget child,
+  required bool isSelected,
+});
 
 class _NavItem extends StatelessWidget {
   const _NavItem({
@@ -309,7 +568,7 @@ class _NavItem extends StatelessWidget {
     this.selectedAsset,
     required this.isSelected,
     required this.onTap,
-    required this.splashColor,
+    required this.buildTap,
     this.customChild,
   });
 
@@ -317,36 +576,67 @@ class _NavItem extends StatelessWidget {
   final String? selectedAsset;
   final bool isSelected;
   final VoidCallback onTap;
-  final Color splashColor;
+  final _NavTapBuilder buildTap;
   final Widget? customChild;
 
   @override
   Widget build(BuildContext context) {
+    final icon = customChild ??
+        _NavSvgIcon(
+          assetPath: isSelected ? selectedAsset! : unselectedAsset!,
+        );
+
+    return buildTap(
+      onPressed: onTap,
+      isSelected: isSelected,
+      child: icon,
+    );
+  }
+}
+
+class _NavIconImage extends StatelessWidget {
+  const _NavIconImage({
+    required this.assetPath,
+    this.size = AppSizes.bottomNavIconSlot,
+  });
+
+  final String assetPath;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
     return SizedBox(
-      width: 62,
-      height: 62,
-      child: Material(
-        color: Colors.transparent,
-        child: InkResponse(
-          onTap: onTap,
-          containedInkWell: true,
-          highlightShape: BoxShape.circle,
-          radius: 26,
-          splashColor: splashColor,
-          highlightColor: splashColor.withValues(alpha: 0.6),
-          child: Center(
-            child:
-                customChild ??
-                Image.asset(
-                  isSelected ? selectedAsset! : unselectedAsset!,
-                  width: AppBottomNavigation._iconSize,
-                  height: AppBottomNavigation._iconSize,
-                  color: isSelected
-                      ? AppBottomNavigation._activeIconColor
-                      : AppBottomNavigation._inactiveIconColor,
-                ),
-          ),
+      width: AppSizes.bottomNavIconSlot,
+      height: AppSizes.bottomNavIconSlot,
+      child: Center(
+        child: Image.asset(
+          assetPath,
+          width: size,
+          height: size,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.high,
         ),
+      ),
+    );
+  }
+}
+
+class _NavSvgIcon extends StatelessWidget {
+  const _NavSvgIcon({required this.assetPath});
+
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: AppSizes.bottomNavIconSlot,
+      height: AppSizes.bottomNavIconSlot,
+      child: SvgPicture.asset(
+        assetPath,
+        width: AppSizes.bottomNavIconSlot,
+        height: AppSizes.bottomNavIconSlot,
+        fit: BoxFit.contain,
+        alignment: Alignment.center,
       ),
     );
   }

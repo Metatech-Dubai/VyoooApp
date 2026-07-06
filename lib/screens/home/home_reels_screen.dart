@@ -13,12 +13,22 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/feed_interaction_assets.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/reel_count_privacy.dart';
+import '../../core/models/reel_media_item.dart';
+import '../../core/models/video_360_metadata.dart';
+import '../../core/utils/engagement_counts.dart';
 import '../../core/utils/reel_engagement.dart';
+import '../../core/widgets/post_media_carousel.dart';
+import '../../core/widgets/double_tap_like_overlay.dart';
 import '../../core/models/story_model.dart';
+import '../../core/navigation/home_feed_chrome_controller.dart';
 import '../../core/navigation/app_route_observer.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/services/feed_offline_video_cache.dart';
 import '../../core/services/feed_reels_cache_service.dart';
+import '../../core/services/feed_warmup_service.dart';
+import '../../core/services/reel_preload_service.dart';
 import '../../core/services/reels_service.dart';
+import '../../core/services/vr_video_cache_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/services/notification_service.dart';
@@ -26,18 +36,24 @@ import '../../core/services/reel_download_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/utils/internet_availability.dart';
 import '../../core/utils/user_facing_errors.dart';
-import '../../core/theme/app_background_assets.dart';
+import '../../core/utils/verification_badge.dart';
+import '../../core/theme/app_padding.dart';
+import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
+import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../core/widgets/app_feed_header.dart';
+import '../../core/widgets/app_feed_header_icon_button.dart';
 import '../../core/widgets/app_feed_notification_button.dart';
 import '../../screens/notifications/notification_screen.dart';
 import '../../core/widgets/app_interaction_button.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
 import '../../features/home/widgets/feed_reels_loading_skeleton.dart';
 import '../../features/home/widgets/following_header_stories.dart';
+import '../../features/home/widgets/following_stories_toggle.dart';
 import '../../features/home/widgets/for_you_ai_verified_badge.dart';
 import '../../features/story/story_upload_screen.dart';
 import '../../features/story/story_viewer_screen.dart';
@@ -45,12 +61,14 @@ import '../../features/reel/widgets/download_subscription_sheet.dart';
 import '../../features/reel/widgets/manage_content_preferences_sheet.dart';
 import '../../features/reel/widgets/not_interested_sheet.dart';
 import '../../features/reel/widgets/playback_speed_sheet.dart';
+import '../../core/moderation/content_moderation.dart';
+import '../../features/moderation/widgets/report_moderation_cover.dart';
 import '../../features/reel/widgets/report_sheet.dart';
+import '../../features/reel/widgets/report_status_bar.dart';
 import '../../features/reel/widgets/reel_more_options_sheet.dart';
 import '../../features/reel/widgets/video_quality_sheet.dart';
 import '../../features/reel/widgets/why_seeing_this_sheet.dart';
 import '../../features/share/widgets/share_bottom_sheet.dart';
-import '../../features/vr/vr_screen.dart';
 import '../profile/user_profile_screen.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
@@ -64,8 +82,22 @@ class _ReelTarget {
   final int index;
 }
 
+class _ReelAuthorFeedMeta {
+  const _ReelAuthorFeedMeta({
+    this.avatarUrl = '',
+    this.isVerified = false,
+    this.accountType = 'private',
+    this.vipVerified = false,
+  });
+
+  final String avatarUrl;
+  final bool isVerified;
+  final String accountType;
+  final bool vipVerified;
+}
+
 /// Main home screen: vertical reels feed with interactions.
-/// Default tab: For You. Tab switch is internal state only (no new route).
+/// Default tab: Trending. Tab switch is internal state only (no new route).
 class HomeReelsScreen extends StatefulWidget {
   const HomeReelsScreen({
     super.key,
@@ -73,6 +105,7 @@ class HomeReelsScreen extends StatefulWidget {
     this.refreshToken = 0,
     this.deepLinkReelId,
     this.deepLinkNonce = 0,
+    this.chromeController,
   });
 
   /// Whether the Home tab is the currently visible bottom-nav tab.
@@ -84,6 +117,9 @@ class HomeReelsScreen extends StatefulWidget {
   final String? deepLinkReelId;
   final int deepLinkNonce;
 
+  /// Drives the reel progress bar rendered in [AppBottomNavigation] chrome.
+  final HomeFeedChromeController? chromeController;
+
   @override
   State<HomeReelsScreen> createState() => _HomeReelsScreenState();
 }
@@ -94,6 +130,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         RouteAware,
         WidgetsBindingObserver,
         SingleTickerProviderStateMixin {
+  static const HomeTab _defaultHomeTab = HomeTab.trending;
+
   @override
   bool get wantKeepAlive => true;
   final PageController _pageController = PageController();
@@ -102,7 +140,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   final ReelsService _reelsService = ReelsService();
 
   int _currentIndex = 0;
-  HomeTab currentTab = HomeTab.forYou;
+  HomeTab currentTab = _defaultHomeTab;
   List<Map<String, dynamic>> _reelsForYou = [];
   List<Map<String, dynamic>> _reelsFollowing = [];
   List<Map<String, dynamic>> _reelsTrending = [];
@@ -129,19 +167,25 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   List<Map<String, dynamic>> get _followingFeedReels {
-    // Product requirement: if user follows nobody, show Trending in Following tab.
-    if (_followingIds.isEmpty) return _reelsTrending;
+    if (_reelsFollowing.isNotEmpty) return _reelsFollowing;
+    // No reels from followed accounts — surface discovery content instead of blank.
+    if (_reelsTrending.isNotEmpty) return _reelsTrending;
+    if (_reelsForYou.isNotEmpty) return _reelsForYou;
     return _reelsFollowing;
   }
 
   // State for likes / public favorites / private saves (optimistic UI)
   final Map<String, bool> _likedReels = {};
+  final Set<String> _likeInFlight = {};
   final Map<String, bool> _favoriteReels = {};
   final Map<String, bool> _privateSavedReels = {};
   final Map<String, bool> _repostedSourceReels = {};
 
   /// Cached for report / unfollow sheet (refreshed in [_loadReels]).
   List<String> _followingIds = [];
+
+  /// Author UID while a follow / unfollow request is in flight.
+  String? _followBusyAuthorId;
 
   // Playback and quality (from three-dots menu)
   String _playbackSpeedId = '1';
@@ -168,12 +212,77 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   bool _isBottomSheetOpen = false;
   bool _showForYouAiVerifiedTooltip = false;
   bool _videoCompletedForCurrentItem = false;
+  bool _videoStartedForCurrentItem = false;
   Timer? _autoScrollTimer;
+
+  /// How long a video reel may sit without ever starting playback (slow
+  /// network, Cloudflare still processing, load failure) before auto-scroll
+  /// skips past it instead of stalling the feed forever.
+  static const Duration _videoStuckSkipTimeout = Duration(seconds: 20);
   int _activePointerCount = 0;
+
+  HomeFeedChromeController? get _chrome => widget.chromeController;
+
+  double _feedNavHeight(
+    BuildContext context, {
+    required bool includeReelProgressBand,
+  }) =>
+      AppBottomNavigation.totalHeightFor(
+        context,
+        feedChrome: true,
+        includeReelProgressBand: includeReelProgressBand,
+      );
+
+  double _feedShellBottomInset(BuildContext context) =>
+      _feedNavHeight(
+        context,
+        includeReelProgressBand: _showHomeReelProgressBar(),
+      );
+
+  /// Figma [bottom-content] — sits just above feed nav chrome.
+  double _feedOverlayBottom(BuildContext context) {
+    return AppBottomNavigation.totalHeightFor(
+          context,
+          feedChrome: true,
+          includeReelProgressBand: _showHomeReelProgressBar(),
+        ) +
+        AppSpacing.feedReelBottomContentNavGap;
+  }
+
+  /// Right action column — anchored to feed chrome, independent of caption overlay.
+  double _feedInteractionBottom(BuildContext context) =>
+      _feedShellBottomInset(context) +
+      AppSpacing.sm +
+      AppSpacing.reelActionColumnNavGap;
+
+  bool _showHomeReelProgressBar() {
+    if (!widget.isActive) return false;
+    final reel = _currentFeedReel();
+    if (reel == null) return false;
+    if (ReelMediaItem.listFromPost(reel).length > 1) return false;
+    return _currentItemMediaType() == 'video';
+  }
+
+  void _syncChromeProgressVisibility({double resetProgress = 0}) {
+    final chrome = _chrome;
+    if (chrome == null) return;
+    if (_showHomeReelProgressBar()) {
+      chrome.progress.value = resetProgress;
+      return;
+    }
+    chrome.progress.value = null;
+    chrome.seekFraction.value = null;
+  }
 
   @override
   void initState() {
     super.initState();
+    final hasReelDeepLink =
+        widget.deepLinkReelId != null && widget.deepLinkReelId!.isNotEmpty;
+    if (!hasReelDeepLink) {
+      currentTab = _defaultHomeTab;
+      _currentIndex = 0;
+    }
     WidgetsBinding.instance.addObserver(this);
     _followingStoriesCollapse = AnimationController(
       vsync: this,
@@ -184,19 +293,48 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     });
     _loadAutoScrollPref();
     unawaited(_bootstrapFeed());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _syncChromeProgressVisibility();
+    });
   }
 
   Future<void> _bootstrapFeed() async {
-    final cached = await FeedReelsCacheService.instance.loadForYou();
+    final reelsService = ReelsService();
+    final cachedTrending = await FeedReelsCacheService.instance.loadTrending();
     if (!mounted) return;
-    if (cached.isNotEmpty) {
+    if (cachedTrending.isNotEmpty) {
+      final filteredTrending =
+          await reelsService.filterDiscoveryAudience(cachedTrending);
+      if (!mounted) return;
       setState(() {
-        _reelsForYou = cached;
+        _reelsTrending = filteredTrending;
         _feedRefreshInProgress = false;
         _reelsLoadError = null;
       });
+      _preloadUpcomingReel();
+      _scheduleAutoScroll();
     }
+
+    final cachedForYou = await FeedReelsCacheService.instance.loadForYou();
+    if (!mounted) return;
+    if (cachedForYou.isNotEmpty) {
+      final filteredForYou =
+          await reelsService.filterDiscoveryAudience(cachedForYou);
+      if (!mounted) return;
+      setState(() => _reelsForYou = filteredForYou);
+    }
+
     await _loadReels();
+  }
+
+  void _applyTrendingFeedReady(List<Map<String, dynamic>> hydratedTrending) {
+    if (hydratedTrending.isEmpty) return;
+    unawaited(FeedReelsCacheService.instance.saveTrending(hydratedTrending));
+    unawaited(FeedOfflineVideoCache.instance.syncForFeed(hydratedTrending));
+    _preloadUpcomingReel();
+    if (_autoScrollTimer == null) {
+      _scheduleAutoScroll();
+    }
   }
 
   Future<void> _loadAutoScrollPref() async {
@@ -233,9 +371,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     if (widget.refreshToken != old.refreshToken) {
       _cancelAutoScrollTimer();
       _videoCompletedForCurrentItem = false;
+      _videoStartedForCurrentItem = false;
       _jumpPageControllerToStart();
       setState(() {
-        currentTab = HomeTab.forYou;
+        currentTab = _defaultHomeTab;
         _currentIndex = 0;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -248,6 +387,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     }
     if (widget.deepLinkNonce != old.deepLinkNonce) {
       _handleIncomingDeepLink();
+    }
+    if (widget.isActive != old.isActive) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncChromeProgressVisibility();
+      });
     }
   }
 
@@ -262,7 +406,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     if (!await hasInternetAccess()) {
       if (!mounted || generation != _loadGeneration) return;
-      if (_reelsForYou.isNotEmpty) {
+      if (_currentReels.isNotEmpty) {
         setState(() => _feedRefreshInProgress = false);
         return;
       }
@@ -275,14 +419,37 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     try {
       final uid = AuthService().currentUser?.uid ?? '';
-      List<String> blockedIds = const [];
-      if (uid.isNotEmpty) {
+      // Use the Trending feed warmed up during the splash video when available
+      // so the default tab paints without another round-trip.
+      final warm = await FeedWarmupService.instance.consume();
+      List<String> blockedIds = warm?.blockedIds ?? const [];
+      if (warm == null && uid.isNotEmpty) {
         blockedIds = await UserService().getBlockedUserIds(uid);
       }
       if (!mounted || generation != _loadGeneration) return;
 
       bool allowedByBlock(Map<String, dynamic> r) =>
           _isReelAllowedByBlock(r, blockedIds);
+
+      List<Map<String, dynamic>> hydratedTrending;
+      if (warm != null) {
+        hydratedTrending = warm.trending;
+      } else {
+        final trendingRaw = await _reelsService.getReelsTrending();
+        if (!mounted || generation != _loadGeneration) return;
+
+        final filteredTrending = trendingRaw.where(allowedByBlock).toList();
+        hydratedTrending =
+            await _reelsService.hydrateRepostEngagementStats(filteredTrending);
+        if (!mounted || generation != _loadGeneration) return;
+      }
+
+      setState(() {
+        _reelsLoadError = null;
+        _reelsTrending = hydratedTrending;
+        _tabCycleOrders.clear();
+      });
+      _applyTrendingFeedReady(hydratedTrending);
 
       final forYouRaw = await _reelsService.getReelsForYou();
       if (!mounted || generation != _loadGeneration) return;
@@ -293,9 +460,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       if (!mounted || generation != _loadGeneration) return;
 
       setState(() {
-        _reelsLoadError = null;
         _reelsForYou = hydratedForYou;
-        _tabCycleOrders.clear();
       });
       if (hydratedForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(hydratedForYou));
@@ -310,7 +475,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       );
     } catch (e) {
       if (!mounted || generation != _loadGeneration) return;
-      if (_reelsForYou.isNotEmpty) {
+      if (_currentReels.isNotEmpty) {
         setState(() => _feedRefreshInProgress = false);
         return;
       }
@@ -380,7 +545,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         ...filteredTrending.map((r) => (r['userId'] as String?) ?? ''),
         ...filteredVr.map((r) => (r['userId'] as String?) ?? ''),
       }..removeWhere((id) => id.isEmpty);
-      final latestAvatarByUid = await _fetchLatestProfileImages(reelUserIds);
+      final authorMetaByUid = await _fetchLatestAuthorFeedMeta(reelUserIds);
       if (!mounted || generation != _loadGeneration) return;
 
       final followingSet = followingIds.toSet();
@@ -421,24 +586,46 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
       if (!mounted || generation != _loadGeneration) return;
 
+      final inFlightLikes = Set<String>.from(_likeInFlight);
+      final optimisticLiked = Map<String, bool>.from(_likedReels);
+      debugPrint(
+        '[Vyooo][Like][UI] supplement reload liked=${likedIds.length} '
+        'inFlight=${inFlightLikes.length}',
+      );
+
       setState(() {
         _reelsLoadError = null;
         _feedRefreshInProgress = false;
-        _reelsForYou = _withLatestAvatars(hydratedForYou, latestAvatarByUid);
-        _reelsFollowing = _withLatestAvatars(hydratedFollowing, latestAvatarByUid);
+        _reelsForYou = _withLatestAuthorMeta(hydratedForYou, authorMetaByUid);
+        _reelsFollowing =
+            _withLatestAuthorMeta(hydratedFollowing, authorMetaByUid);
         if (hydratedTrending.isNotEmpty) {
-          _reelsTrending = _withLatestAvatars(hydratedTrending, latestAvatarByUid);
+          _reelsTrending =
+              _withLatestAuthorMeta(hydratedTrending, authorMetaByUid);
         }
         if (hydratedVr.isNotEmpty) {
-          _reelsVR = _withLatestAvatars(hydratedVr, latestAvatarByUid);
+          _reelsVR = _withLatestAuthorMeta(hydratedVr, authorMetaByUid);
+          unawaited(VrVideoCacheService.instance.syncForFeed(_reelsVR));
         }
         _storyGroups = filteredStories;
         _myStories = myStories;
         _myAvatarUrl = avatarUrl;
         _followingIds = followingIds;
-        _likedReels
-          ..clear()
-          ..addEntries(likedIds.map((id) => MapEntry(id, true)));
+        _mergeLikedStateFromServer(likedIds);
+        for (final id in inFlightLikes) {
+          final want = optimisticLiked[id];
+          if (want == true && !likedIds.contains(id)) {
+            _adjustReelStat(id, 'likes', 1);
+            debugPrint(
+              '[Vyooo][Like][UI] supplement re-apply +1 likes id=$id',
+            );
+          } else if (want == false && likedIds.contains(id)) {
+            _adjustReelStat(id, 'likes', -1);
+            debugPrint(
+              '[Vyooo][Like][UI] supplement re-apply -1 likes id=$id',
+            );
+          }
+        }
         _favoriteReels
           ..clear()
           ..addEntries(favoriteIds.map((id) => MapEntry(id, true)));
@@ -449,6 +636,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           ..clear()
           ..addEntries(repostedIds.map((id) => MapEntry(id, true)));
       });
+      if (_reelsTrending.isNotEmpty) {
+        unawaited(FeedReelsCacheService.instance.saveTrending(_reelsTrending));
+        unawaited(FeedOfflineVideoCache.instance.syncForFeed(_reelsTrending));
+      }
       if (_reelsForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(_reelsForYou));
       }
@@ -460,29 +651,31 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     }
   }
 
-  List<Map<String, dynamic>> _withLatestAvatars(
+  List<Map<String, dynamic>> _withLatestAuthorMeta(
     List<Map<String, dynamic>> src,
-    Map<String, String> latestAvatarByUid,
+    Map<String, _ReelAuthorFeedMeta> metaByUid,
   ) {
     return src.map((r) {
-      final id = _asString(r['id']);
-      if (id.isEmpty) return r;
       final cloned = Map<String, dynamic>.from(r);
       final reelUid = (cloned['userId'] as String?) ?? '';
-      final latestAvatar = latestAvatarByUid[reelUid];
-      if (latestAvatar != null && latestAvatar.isNotEmpty) {
-        cloned['avatarUrl'] = latestAvatar;
-        cloned['profileImage'] = latestAvatar;
+      final meta = metaByUid[reelUid];
+      if (meta == null) return cloned;
+      if (meta.avatarUrl.isNotEmpty) {
+        cloned['avatarUrl'] = meta.avatarUrl;
+        cloned['profileImage'] = meta.avatarUrl;
       }
+      cloned['isVerified'] = meta.isVerified;
+      cloned['accountType'] = meta.accountType;
+      cloned['vipVerified'] = meta.vipVerified;
       return cloned;
     }).toList();
   }
 
-  Future<Map<String, String>> _fetchLatestProfileImages(
+  Future<Map<String, _ReelAuthorFeedMeta>> _fetchLatestAuthorFeedMeta(
     Set<String> userIds,
   ) async {
-    if (userIds.isEmpty) return const <String, String>{};
-    final out = <String, String>{};
+    if (userIds.isEmpty) return const <String, _ReelAuthorFeedMeta>{};
+    final out = <String, _ReelAuthorFeedMeta>{};
     final ids = userIds.toList(growable: false);
     for (var i = 0; i < ids.length; i += 10) {
       final chunk = ids.sublist(
@@ -495,10 +688,13 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             .where(FieldPath.documentId, whereIn: chunk)
             .get();
         for (final d in q.docs) {
-          final image = (d.data()['profileImage'] as String?)?.trim() ?? '';
-          if (image.isNotEmpty) {
-            out[d.id] = image;
-          }
+          final data = d.data();
+          out[d.id] = _ReelAuthorFeedMeta(
+            avatarUrl: (data['profileImage'] as String?)?.trim() ?? '',
+            isVerified: data['isVerified'] == true,
+            accountType: (data['accountType'] as String?) ?? 'private',
+            vipVerified: data['vipVerified'] == true,
+          );
         }
       } catch (_) {
         // Ignore lookup failures and keep feed fallback avatars.
@@ -541,14 +737,14 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   _ReelTarget? _findReelTarget(String reelId) {
-    int idx = _reelsForYou.indexWhere((r) => _asString(r['id']) == reelId);
+    int idx = _reelsTrending.indexWhere((r) => _asString(r['id']) == reelId);
+    if (idx >= 0) return _ReelTarget(HomeTab.trending, idx);
+
+    idx = _reelsForYou.indexWhere((r) => _asString(r['id']) == reelId);
     if (idx >= 0) return _ReelTarget(HomeTab.forYou, idx);
 
     idx = _reelsFollowing.indexWhere((r) => _asString(r['id']) == reelId);
     if (idx >= 0) return _ReelTarget(HomeTab.following, idx);
-
-    idx = _reelsTrending.indexWhere((r) => _asString(r['id']) == reelId);
-    if (idx >= 0) return _ReelTarget(HomeTab.trending, idx);
 
     idx = _reelsVR.indexWhere((r) => _asString(r['id']) == reelId);
     if (idx >= 0) return _ReelTarget(HomeTab.vr, idx);
@@ -643,6 +839,15 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     return reels[_feedIndexForPage(_currentIndex, reels.length)];
   }
 
+  void _toggleFollowingStories() {
+    if (currentTab != HomeTab.following) return;
+    if (_followingStoriesCollapse.value > 0.5) {
+      _followingStoriesCollapse.reverse();
+    } else {
+      _followingStoriesCollapse.forward();
+    }
+  }
+
   void _onPageChanged(int index) {
     final previous = _currentIndex;
     setState(() {
@@ -662,9 +867,36 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       if (viewId.isEmpty) return;
       _reelsController.incrementView(reelId: viewId);
     }
+    _syncChromeProgressVisibility();
     _cancelAutoScrollTimer();
     _videoCompletedForCurrentItem = false;
+    _videoStartedForCurrentItem = false;
     _scheduleAutoScroll();
+    _preloadUpcomingReel();
+  }
+
+  /// Pre-initializes the next reel's video controller so the upcoming swipe
+  /// plays instantly instead of showing the loading spinner.
+  void _preloadUpcomingReel() {
+    final reels = _currentReels;
+    if (reels.isEmpty) return;
+    final nextPage = (_currentIndex + 1) % reels.length;
+    if (nextPage == _currentIndex) return;
+    final reel = reels[nextPage];
+    final mediaType = ((reel['mediaType'] as String?) ?? 'video').toLowerCase();
+    if (mediaType != 'video') return;
+    final videoUrl = ((reel['videoUrl'] as String?) ?? '').trim();
+    if (videoUrl.isEmpty) return;
+    if (currentTab == HomeTab.vr) {
+      VrVideoCacheService.instance.prefetch(videoUrl);
+      final current = reels[_currentIndex];
+      final currentUrl = ((current['videoUrl'] as String?) ?? '').trim();
+      if (currentUrl.isNotEmpty) {
+        VrVideoCacheService.instance.prefetch(currentUrl);
+      }
+      return;
+    }
+    ReelPreloadService.instance.preload(videoUrl);
   }
 
   void _cancelAutoScrollTimer() {
@@ -694,7 +926,18 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final mediaType = _currentItemMediaType();
     if (mediaType == 'image') {
       _autoScrollTimer = Timer(const Duration(seconds: 5), _performAutoScroll);
+      return;
     }
+    if (_videoCompletedForCurrentItem) {
+      // Video already finished (e.g. while a sheet was open or the user was
+      // holding): resume the normal post-completion advance.
+      _autoScrollTimer = Timer(const Duration(seconds: 2), _performAutoScroll);
+      return;
+    }
+    // Fallback: a video that never starts never reports completion, which
+    // would stall auto-scroll forever. Skip ahead if playback hasn't begun
+    // within the timeout.
+    _autoScrollTimer = Timer(_videoStuckSkipTimeout, _performAutoScrollIfVideoStuck);
   }
 
   void _onVideoCompletedForAutoScroll() {
@@ -705,18 +948,33 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     _autoScrollTimer = Timer(const Duration(seconds: 2), _performAutoScroll);
   }
 
+  void _onVideoPlaybackStartedForAutoScroll() {
+    _videoStartedForCurrentItem = true;
+  }
+
+  void _performAutoScrollIfVideoStuck() {
+    if (_videoStartedForCurrentItem || _videoCompletedForCurrentItem) return;
+    _performAutoScroll();
+  }
+
   void _performAutoScroll() {
     if (!_canAutoScroll) return;
     final reels = _currentReels;
     if (reels.isEmpty) return;
-    final nextPage = _currentIndex + 1;
-    if (nextPage >= reels.length) return;
     if (!_pageController.hasClients) return;
-    _pageController.animateToPage(
-      nextPage,
-      duration: const Duration(milliseconds: 400),
-      curve: Curves.easeInOut,
-    );
+    final nextPage = _currentIndex + 1;
+    if (nextPage < reels.length) {
+      _pageController.animateToPage(
+        nextPage,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+      return;
+    }
+    // Last reel finished: loop the feed back to the first one. Jump instead
+    // of animating so we don't fly backwards through every page in between.
+    if (reels.length <= 1) return;
+    _pageController.jumpToPage(0);
   }
 
   void _onAutoScrollToggled(bool value) {
@@ -731,29 +989,64 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 
   Future<void> _onLike(String reelId, bool currentlyLiked) async {
-    final newState = await _reelsController.likeReel(
-      reelId: reelId,
-      currentlyLiked: currentlyLiked,
+    if (reelId.isEmpty) return;
+
+    final uid = AuthService().currentUser?.uid ?? '';
+    if (uid.isEmpty) {
+      _showSnackBar('Sign in to like posts');
+      return;
+    }
+
+    if (_likeInFlight.contains(reelId)) {
+      debugPrint('[Vyooo][Like][UI] skip — already in flight reelId=$reelId');
+      return;
+    }
+
+    final wantLiked = !currentlyLiked;
+    debugPrint(
+      '[Vyooo][Like][UI] tap reelId=$reelId currentlyLiked=$currentlyLiked '
+      'wantLiked=$wantLiked',
     );
-    if (!mounted) return;
-    final delta = newState == currentlyLiked ? 0 : (newState ? 1 : -1);
+    _likeInFlight.add(reelId);
     setState(() {
-      _likedReels[reelId] = newState;
-      if (delta != 0) {
-        _adjustReelStat(reelId, 'likes', delta);
-      }
+      _likedReels[reelId] = wantLiked;
+      _adjustReelStat(reelId, 'likes', wantLiked ? 1 : -1);
     });
+
+    final actual = await _reelsController.likeReel(
+      reelId: reelId,
+      like: wantLiked,
+    );
+    _likeInFlight.remove(reelId);
+    if (!mounted) return;
+
+    debugPrint(
+      '[Vyooo][Like][UI] result reelId=$reelId wantLiked=$wantLiked actual=$actual',
+    );
+
+    if (actual != wantLiked) {
+      debugPrint('[Vyooo][Like][UI] ROLLBACK reelId=$reelId');
+      setState(() {
+        _likedReels[reelId] = actual;
+        _adjustReelStat(reelId, 'likes', wantLiked ? -1 : 1);
+      });
+      return;
+    }
+
+    await _syncReelEngagementFromServer(reelId);
   }
 
   void _onDoubleTapLike(int feedIndex) {
     final reels = _currentReels;
     if (reels.isEmpty) return;
     final reel = reels[_feedIndexForPage(feedIndex, reels.length)];
-    final reelId = _asString(reel['id']);
-    if (reelId.isEmpty) return;
-    final alreadyLiked = _likedReels[reelId] ?? false;
-    if (alreadyLiked) return;
-    _onLike(reelId, false);
+    final engagementId = ReelEngagement.sourceReelId(reel);
+    if (engagementId.isEmpty) return;
+    if (_likeInFlight.contains(engagementId)) return;
+    final alreadyLiked = _likedReels[engagementId] ?? false;
+    if (!alreadyLiked) {
+      _onLike(engagementId, false);
+    }
   }
 
   Future<void> _onFavorite(String reelId, bool currentlyFavorite) async {
@@ -941,6 +1234,109 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     bump(_reelsVR);
   }
 
+  /// Keeps optimistic/in-flight likes when the feed supplement reloads from Firestore.
+  void _mergeLikedStateFromServer(Set<String> serverLikedIds) {
+    final inFlight = Set<String>.from(_likeInFlight);
+    final optimisticLiked = Map<String, bool>.from(_likedReels);
+
+    debugPrint(
+      '[Vyooo][Like][UI] mergeLiked server=${serverLikedIds.length} '
+      'inFlight=${inFlight.length} local=${optimisticLiked.length}',
+    );
+
+    _likedReels
+      ..clear()
+      ..addEntries(serverLikedIds.map((id) => MapEntry(id, true)));
+
+    for (final id in inFlight) {
+      final want = optimisticLiked[id];
+      if (want != null) {
+        _likedReels[id] = want;
+        debugPrint(
+          '[Vyooo][Like][UI] mergeLiked preserve in-flight id=$id want=$want',
+        );
+      }
+    }
+  }
+
+  /// After a successful like/unlike, patch feed maps from the reel document so a
+  /// concurrent feed refresh cannot overwrite counts with stale data.
+  Future<void> _syncReelEngagementFromServer(String reelId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('reels')
+          .doc(reelId)
+          .get();
+      if (!mounted || !doc.exists) {
+        debugPrint(
+          '[Vyooo][Like][UI] sync skip — reel doc missing reelId=$reelId',
+        );
+        return;
+      }
+      final data = doc.data() ?? {};
+      final likes = (data['likes'] as num?)?.toInt() ?? 0;
+      if (likes < 0) {
+        ReelsService().repairCorruptedLikeCount(
+          reelId,
+          currentLikes: likes,
+        );
+      }
+      debugPrint(
+        '[Vyooo][Like][UI] sync patch reelId=$reelId likes=$likes',
+      );
+      if (!mounted) return;
+      setState(
+        () => _applyEngagementPatch(
+          reelId,
+          {
+            'likes': EngagementCounts.sanitize(likes),
+            'comments': (data['comments'] as num?)?.toInt() ?? 0,
+            'saves': (data['saves'] as num?)?.toInt() ?? 0,
+            'views':
+                (data['views'] as num?)?.toInt() ??
+                (data['viewsCount'] as num?)?.toInt() ??
+                0,
+            'reposts': (data['reposts'] as num?)?.toInt() ??
+                (data['shares'] as num?)?.toInt() ??
+                0,
+            'shares': (data['shares'] as num?)?.toInt() ?? 0,
+          },
+        ),
+      );
+    } catch (e) {
+      debugPrint(
+        '[Vyooo][Like][UI] sync FAILED reelId=$reelId error=$e',
+      );
+    }
+  }
+
+  void _applyEngagementPatch(String reelId, Map<String, dynamic> fresh) {
+    void patch(List<Map<String, dynamic>> list) {
+      for (var i = 0; i < list.length; i++) {
+        final matchesDoc = _asString(list[i]['id']) == reelId;
+        final matchesSource = ReelEngagement.sourceReelId(list[i]) == reelId;
+        if (!matchesDoc && !matchesSource) continue;
+        list[i] = Map<String, dynamic>.from(list[i])
+          ..['likes'] = (fresh['likes'] as num?)?.toInt() ?? 0
+          ..['comments'] = (fresh['comments'] as num?)?.toInt() ?? 0
+          ..['saves'] = (fresh['saves'] as num?)?.toInt() ?? 0
+          ..['views'] =
+              (fresh['views'] as num?)?.toInt() ??
+              (fresh['viewsCount'] as num?)?.toInt() ??
+              0
+          ..['reposts'] = (fresh['reposts'] as num?)?.toInt() ??
+              (fresh['shares'] as num?)?.toInt() ??
+              0
+          ..['shares'] = (fresh['shares'] as num?)?.toInt() ?? 0;
+      }
+    }
+
+    patch(_reelsForYou);
+    patch(_reelsFollowing);
+    patch(_reelsTrending);
+    patch(_reelsVR);
+  }
+
   /// While the *previous* tab's [PageView] is still mounted, force page 0 so the
   /// controller index is never out of range on the next tab's [itemCount] (which
   /// caused a blank/black viewport when switching e.g. For You → Following).
@@ -966,6 +1362,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     _jumpPageControllerToStart();
     _cancelAutoScrollTimer();
     _videoCompletedForCurrentItem = false;
+    _videoStartedForCurrentItem = false;
+    _syncChromeProgressVisibility();
     setState(() {
       currentTab = tab;
       _currentIndex = 0;
@@ -977,16 +1375,25 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       // Ensure "Following" tab reflects latest follows immediately.
       _loadReels();
     }
-    // Following starts expanded; first upward swipe collapses story strip.
-    _followingStoriesCollapse.value = 0;
-    if (tab != HomeTab.vr) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || currentTab != tab) return;
-        _jumpPageControllerToStart();
-        _ensurePageControllerMatchesFeed();
-        _scheduleAutoScroll();
-      });
+    if (tab == HomeTab.vr && _reelsVR.isNotEmpty) {
+      unawaited(VrVideoCacheService.instance.syncForFeed(_reelsVR));
     }
+    // Following status row starts collapsed; tap the chevron to open.
+    _followingStoriesCollapse.value = 1.0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || currentTab != tab) return;
+      _jumpPageControllerToStart();
+      _ensurePageControllerMatchesFeed();
+      _scheduleAutoScroll();
+      _preloadUpcomingReel();
+    });
+  }
+
+  Video360Metadata _video360ForReel(Map<String, dynamic> reel) {
+    if (currentTab == HomeTab.vr) {
+      return Video360Metadata.forVrPlayback(reel);
+    }
+    return Video360Metadata.fromPost(reel);
   }
 
   // void _onVideoTap() {
@@ -996,57 +1403,44 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    final isVrTab = currentTab == HomeTab.vr;
     final isFollowing = currentTab == HomeTab.following;
 
-    final headerEstimate =
-        AppSizes.feedHeaderRowHeight + AppSpacing.sm + AppSpacing.md;
+    final headerEstimate = AppFeedHeader.layoutHeight();
     final topPadding = MediaQuery.paddingOf(context).top;
+    final headerBottom = topPadding + headerEstimate;
 
-    final followingStoriesTop = topPadding + headerEstimate + 12;
-    final followingFeedTop = followingStoriesTop + 116;
+    final followingStoriesTop = headerBottom + AppSpacing.sm;
     final collapseT = isFollowing ? _followingStoriesCollapse.value : 0.0;
-    final storiesCollapsedTop = topPadding + headerEstimate - 30;
+    final storiesCollapsedTop =
+        headerBottom - AppSizes.followingStoriesCollapsedOverlap;
 
     final animatedStoriesTop =
         lerpDouble(followingStoriesTop, storiesCollapsedTop, collapseT) ??
         followingStoriesTop;
-    final animatedFeedTop =
-        lerpDouble(
-          followingFeedTop,
-          topPadding + headerEstimate + 8,
-          collapseT,
-        ) ??
-        followingFeedTop;
+
+    final feedBottomInset = _feedShellBottomInset(context);
 
     return Scaffold(
       backgroundColor: Colors.black,
-      body: Container(
-        decoration: _homeFeedBackgroundDecoration(
-          isFollowing: isFollowing,
-          isVrTab: isVrTab,
-        ),
-        child: Stack(
-          children: [
-            if (isVrTab)
-              Positioned.fill(
-                top: topPadding + headerEstimate + 8,
-                child: _buildVrContent(),
-              )
-            else
-              Positioned.fill(
-                top: isFollowing
-                    ? animatedFeedTop
-                    : 0, // Push video down only when stories row is visible.
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isFollowing ? (8 - (4 * collapseT)) : 0,
-                    vertical: isFollowing ? (8 - (4 * collapseT)) : 0,
-                  ),
-                  child: _buildFeedClipArea(isFollowing),
-                ),
+      body: Stack(
+        children: [
+          Stack(
+            children: [
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                height: feedBottomInset,
+                child: const ColoredBox(color: AppColors.feedBottomChrome),
               ),
-            _buildHeader(),
+              Positioned.fill(
+                top: 0,
+                bottom: feedBottomInset,
+                child: _buildFeedClipArea(),
+              ),
+            ],
+          ),
+          _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
             if (isFollowing)
               if (collapseT < 0.999)
                 _buildStoryRow(
@@ -1062,7 +1456,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   child: const SizedBox.expand(),
                 ),
               ),
-            if (currentTab == HomeTab.forYou && !isVrTab)
+            if (currentTab == HomeTab.forYou)
               Positioned(
                 top: topPadding + headerEstimate + AppSpacing.sm,
                 right: AppSpacing.md,
@@ -1076,18 +1470,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                   ),
                 ),
               ),
-            if (!isVrTab) ...[
-              _buildInteractionButtons(),
-              _buildBottomUserInfo(),
-            ],
+            _buildInteractionButtons(),
+            _buildBottomUserInfo(),
           ],
         ),
-      ),
     );
-  }
-
-  Widget _buildVrContent() {
-    return const VrComingSoonView();
   }
 
   void _openStoryViewer(int groupIndex) {
@@ -1173,18 +1560,27 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     );
   }
 
-  Widget _buildFeedClipArea(bool isFollowingTab) {
-    final radius = BorderRadius.circular(isFollowingTab ? 24 : 0);
-    return ClipRRect(borderRadius: radius, child: _buildReelsFeed());
+  Widget _buildFeedClipArea() {
+    final radius = AppRadius.feedPostBottomRadius;
+    return ClipRRect(
+      borderRadius: radius,
+      clipBehavior: Clip.antiAlias,
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: Colors.black,
+          borderRadius: radius,
+        ),
+        child: _buildReelsFeed(),
+      ),
+    );
   }
 
   Widget _buildReelsFeed() {
     final reels = _currentReels;
     if (_feedRefreshInProgress && reels.isEmpty && _reelsLoadError == null) {
-      final radius = currentTab == HomeTab.following
-          ? BorderRadius.circular(24)
-          : BorderRadius.zero;
-      return FeedReelsLoadingSkeleton(borderRadius: radius);
+      return FeedReelsLoadingSkeleton(
+        borderRadius: AppRadius.feedPostBottomRadius,
+      );
     }
     if (_reelsLoadError != null && reels.isEmpty) {
       return _buildFeedLoadErrorPlaceholder(_reelsLoadError!);
@@ -1228,6 +1624,30 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         itemBuilder: (context, index) {
           final feedIndex = index;
           final reel = reels[feedIndex];
+          final mediaItems = ReelMediaItem.listFromPost(reel);
+          if (mediaItems.length > 1) {
+            // Carousel post: horizontal pager inside the vertical feed.
+            return PostMediaCarousel(
+              key: ValueKey<String>(
+                'carousel_${_asString(reel['id'], fallback: '$feedIndex')}',
+              ),
+              items: mediaItems,
+              video360: _video360ForReel(reel),
+              imageFit: BoxFit.contain,
+              isVisible:
+                  widget.isActive &&
+                  _isRouteVisible &&
+                  _isAppForeground &&
+                  index == _currentIndex,
+              onDoubleTap: () => _onDoubleTapLike(feedIndex),
+              onActiveVideoCompleted: index == _currentIndex
+                  ? _onVideoCompletedForAutoScroll
+                  : null,
+              onActiveVideoPlaybackStarted: index == _currentIndex
+                  ? _onVideoPlaybackStartedForAutoScroll
+                  : null,
+            );
+          }
           final mediaType = ((reel['mediaType'] as String?) ?? 'video')
               .toLowerCase();
           if (mediaType == 'image') {
@@ -1240,7 +1660,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                 'This reel has no image URL.',
               );
             }
-            return _buildImageReelItem(displayUrl, feedIndex);
+            return _wrapModeratedReel(
+              reel,
+              _buildImageReelItem(displayUrl, feedIndex),
+            );
           }
           final videoUrl = (reel['videoUrl'] as String?)?.trim() ?? '';
           if (videoUrl.isEmpty) {
@@ -1251,28 +1674,65 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
           final loadingThumb = thumbnailUrl.isNotEmpty
               ? thumbnailUrl
               : imageUrl;
-          return ReelItemWidget(
-            key: ValueKey<String>(_asString(reel['id'], fallback: videoUrl)),
-            videoUrl: videoUrl,
-            thumbnailUrl: loadingThumb,
-            // Only play when this page is visible AND the home tab is active.
-            isVisible:
-                widget.isActive &&
-                _isRouteVisible &&
-                _isAppForeground &&
-                index == _currentIndex,
-            onVideoCompleted: index == _currentIndex
-                ? _onVideoCompletedForAutoScroll
-                : null,
-            onDoubleTap: () => _onDoubleTapLike(feedIndex),
+          return _wrapModeratedReel(
+            reel,
+            ReelItemWidget(
+              key: ValueKey<String>(_asString(reel['id'], fallback: videoUrl)),
+              videoUrl: videoUrl,
+              thumbnailUrl: loadingThumb,
+              video360: _video360ForReel(reel),
+              // Only play when this page is visible AND the home tab is active.
+              isVisible:
+                  widget.isActive &&
+                  _isRouteVisible &&
+                  _isAppForeground &&
+                  index == _currentIndex,
+              onVideoCompleted: index == _currentIndex
+                  ? _onVideoCompletedForAutoScroll
+                  : null,
+              onVideoPlaybackStarted: index == _currentIndex
+                  ? _onVideoPlaybackStartedForAutoScroll
+                  : null,
+              onDoubleTap: () => _onDoubleTapLike(feedIndex),
+              showEmbeddedProgressBar: false,
+              onPlaybackProgress: index == _currentIndex
+                  ? (progress) {
+                      final chrome = _chrome;
+                      if (chrome == null || !_showHomeReelProgressBar()) return;
+                      chrome.progress.value = progress;
+                    }
+                  : null,
+              seekFractionListenable: index == _currentIndex
+                  ? _chrome?.seekFraction
+                  : null,
+            ),
           );
         },
       ),
     );
   }
 
+  Widget _wrapModeratedReel(Map<String, dynamic> reel, Widget child) {
+    final rawModeration = reel['moderation'];
+    final moderation = rawModeration is Map
+        ? Map<String, dynamic>.from(rawModeration)
+        : null;
+    return ModeratedContentWrapper(
+      contentId: _asString(reel['id']),
+      contentKind: ContentModeration.kindFromReel(reel),
+      ownerId: _asString(reel['userId']),
+      moderation: moderation,
+      child: child,
+    );
+  }
+
   Widget _buildImageReelItem(String imageUrl, int feedIndex) {
-    return GestureDetector(
+    // Cap decode size at 2x physical screen width: keeps pinch-zoom usable
+    // while preventing full-resolution photos (tens of MB decoded each) from
+    // accumulating in memory as the user scrolls the feed.
+    final mq = MediaQuery.of(context);
+    final cacheWidth = (mq.size.width * mq.devicePixelRatio * 2).round();
+    return DoubleTapLikeOverlay(
       onDoubleTap: () => _onDoubleTapLike(feedIndex),
       child: SizedBox.expand(
         child: ColoredBox(
@@ -1285,6 +1745,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
               child: Image.network(
                 imageUrl,
                 fit: BoxFit.contain,
+                cacheWidth: cacheWidth,
                 errorBuilder: (context, error, stackTrace) {
                   return _buildMissingMediaPlaceholder(
                     'Failed to load image reel.',
@@ -1375,7 +1836,11 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         'Pull to refresh later or check your connection.',
         Icons.play_circle_outline_rounded,
       ),
-      HomeTab.vr => ('No reels', '', Icons.video_library_outlined),
+      HomeTab.vr => (
+        'No VR videos yet',
+        'Immersive 360° content will appear here when creators publish it.',
+        Icons.vrpano_outlined,
+      ),
     };
 
     return SizedBox.expand(
@@ -1429,7 +1894,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildHeader({required bool isFollowing, required double collapseT}) {
     return Positioned(
       top: 0,
       left: 0,
@@ -1438,10 +1903,31 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         child: AppFeedHeader(
           selectedIndex: currentTab.index,
           onTabSelected: (index) => _onTabChanged(HomeTab.values[index]),
-          trailing: _buildHeaderNotificationIcon(),
+          trailing: _buildHeaderActions(),
+          tabRowTrailing: isFollowing
+              ? FollowingStoriesToggle(
+                  isExpanded: collapseT < 0.5,
+                  onTap: _toggleFollowingStories,
+                )
+              : null,
         ),
       ),
     );
+  }
+
+  Widget _buildHeaderActions() {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AppFeedHeaderIconButton.search(onTap: _openSearchTab),
+        SizedBox(width: AppSpacing.xs),
+        _buildHeaderNotificationIcon(),
+      ],
+    );
+  }
+
+  void _openSearchTab() {
+    MainNavWrapper.openSearchTab();
   }
 
   Widget _buildHeaderNotificationIcon() {
@@ -1502,109 +1988,123 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final isLiked = _likedReels[engagementId] ?? false;
     final isFavorite = _favoriteReels[engagementId] ?? false;
     final privacy = ReelCountPrivacy.fromMap(reel);
-    final uid = AuthService().currentUser?.uid ?? '';
-    final canRepost =
-        engagementId.isNotEmpty && _sourceOwnerId(reel) != uid;
-    final isReposted = _repostedSourceReels[engagementId] ?? false;
-    final bottomSafeInset = MediaQuery.paddingOf(context).bottom;
-    // Keep action stack clearly above the bottom nav bar.
-    final interactionBottom = 18.0 + bottomSafeInset;
+    final interactionBottom = _feedInteractionBottom(context);
+    const feedActionStyle = AppTypography.feedReelMetric;
+    const feedActionGap = AppSpacing.feedInteractionButtonGap;
 
     return Positioned(
-      right: 16,
+      right: AppSpacing.md,
       bottom: interactionBottom,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           AppInteractionButton(
-            icon: Icons.visibility_outlined,
-            count: privacy.displayCount(
-              ReelCountMetric.views,
-              _asInt(reel['views']),
-            ),
-            iconSize: 24,
-            countTextStyle: AppTypography.feedReelMetric,
-            spacing: 3,
-          ),
-          const SizedBox(height: 12),
-          AppInteractionButton(
-            icon: isLiked ? Icons.favorite : Icons.favorite_border,
+            iconAsset: FeedInteractionAssets.interactionLike,
+            iconAssetActive: FeedInteractionAssets.interactionLikeActive,
             count: privacy.displayCount(
               ReelCountMetric.likes,
               _asInt(reel['likes']),
             ),
             isActive: isLiked,
-            activeColor: const Color(0xFFEF4444),
-            countColor: AppTheme.primary,
+            activeColor: AppColors.feedLikeActive,
+            defaultColor: Colors.white,
+            countColor: Colors.white,
+            colorizeAsset: true,
+            useFeedFrostedStyle: true,
             onTap: () => _onLike(engagementId, isLiked),
-            iconSize: 24,
-            countTextStyle: AppTypography.feedReelMetric,
-            spacing: 3,
+            countTextStyle: feedActionStyle,
+            spacing: AppSpacing.xs,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: feedActionGap),
           AppInteractionButton(
-            iconAsset: FeedInteractionAssets.comments,
+            iconAsset: FeedInteractionAssets.interactionChat,
             count: privacy.displayCount(
               ReelCountMetric.comments,
               _asInt(reel['comments']),
             ),
+            colorizeAsset: true,
+            defaultColor: Colors.white,
+            countColor: Colors.white,
+            useFeedFrostedStyle: true,
             onTap: () => _onComment(engagementId),
-            iconSize: 24,
-            countTextStyle: AppTypography.feedReelMetric,
-            spacing: 3,
+            countTextStyle: feedActionStyle,
+            spacing: AppSpacing.xs,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: feedActionGap),
           AppInteractionButton(
-            iconAsset: FeedInteractionAssets.unsavePost,
-            iconAssetActive: FeedInteractionAssets.savePost,
-            count: privacy.displayCount(
-              ReelCountMetric.saves,
-              _asInt(reel['saves']),
-            ),
-            isActive: isFavorite,
+            iconAsset: isFavorite
+                ? FeedInteractionAssets.savePost
+                : FeedInteractionAssets.save,
+            label: 'Save',
             colorizeAsset: false,
-            countColor: AppTheme.primary,
+            isActive: isFavorite,
+            activeColor: AppColors.brandPink,
+            countColor: Colors.white,
+            useFeedFrostedStyle: true,
+            iconSize: 24,
             onTap: () => _onFavorite(engagementId, isFavorite),
-            iconSize: 24,
-            countTextStyle: AppTypography.feedReelMetric,
-            spacing: 3,
+            countTextStyle: AppTypography.feedReelActionLabel,
+            spacing: AppSpacing.xs,
           ),
-          if (canRepost) ...[
-            const SizedBox(height: 12),
-            AppInteractionButton(
-              icon: Icons.repeat_rounded,
-              count: privacy.displayCount(
-                ReelCountMetric.shares,
-                ReelEngagement.repostCount(reel),
-              ),
-              isActive: isReposted,
-              activeColor: AppTheme.primary,
-              countColor: AppTheme.primary,
-              onTap: () => _onRepostToggle(reel),
-              iconSize: 24,
-              countTextStyle: AppTypography.feedReelMetric,
-              spacing: 3,
-            ),
-          ],
-          const SizedBox(height: 12),
+          SizedBox(height: feedActionGap),
           AppInteractionButton(
-            icon: Icons.ios_share_rounded,
-            count: '',
+            iconAsset: FeedInteractionAssets.interactionShare,
+            label: 'Share',
+            colorizeAsset: true,
+            defaultColor: Colors.white,
+            countColor: Colors.white,
+            useFeedFrostedStyle: true,
             onTap: () => _onShare(reelId),
-            iconSize: 24,
-            countTextStyle: AppTypography.feedReelMetric,
-            spacing: 3,
+            countTextStyle: feedActionStyle,
+            spacing: AppSpacing.xs,
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: feedActionGap),
           AppInteractionButton(
-            icon: Icons.more_horiz,
+            iconAsset: FeedInteractionAssets.interactionMore,
             count: '',
+            colorizeAsset: true,
+            defaultColor: Colors.white,
+            useFeedFrostedStyle: true,
             onTap: () => _onMoreOptions(reelId),
-            iconSize: 24,
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _onFollowAuthor(Map<String, dynamic> reel) async {
+    final me = AuthService().currentUser?.uid ?? '';
+    final target = _sourceOwnerId(reel);
+    if (me.isEmpty || target.isEmpty || me == target) return;
+    if (_followBusyAuthorId == target) return;
+
+    final isFollowing = _followingIds.contains(target);
+    setState(() => _followBusyAuthorId = target);
+    try {
+      final svc = UserService();
+      if (isFollowing) {
+        await svc.unfollowUser(currentUid: me, targetUid: target);
+        if (!mounted) return;
+        setState(() {
+          _followingIds = _followingIds.where((id) => id != target).toList();
+        });
+      } else {
+        await svc.followUser(currentUid: me, targetUid: target);
+        if (!mounted) return;
+        final nowFollowing = await svc.isFollowingUser(
+          currentUid: me,
+          targetUid: target,
+        );
+        if (!mounted) return;
+        if (nowFollowing && !_followingIds.contains(target)) {
+          setState(() => _followingIds = [..._followingIds, target]);
+        }
+      }
+    } catch (_) {
+      if (mounted) _showSnackBar('Could not update follow. Try again.');
+    } finally {
+      if (mounted) setState(() => _followBusyAuthorId = null);
+    }
   }
 
   void _onMoreOptions(String reelId) {
@@ -1625,6 +2125,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         username: _asString(reel['username'], fallback: 'User'),
         avatarUrl: _asString(reel['avatarUrl']),
         targetUserId: authorId.isEmpty ? null : authorId,
+        reelId: reelId,
         isFollowing: authorId.isNotEmpty && _followingIds.contains(authorId),
       ),
       onNotInterested: () => showNotInterestedSheet(context),
@@ -1709,25 +2210,35 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final reel = _currentFeedReel();
     if (reel == null) return const SizedBox.shrink();
 
+    final authorId = _sourceOwnerId(reel);
+    final me = AuthService().currentUser?.uid ?? '';
+    final showFollow = authorId.isNotEmpty && authorId != me;
+    final isFollowing = showFollow && _followingIds.contains(authorId);
+    final followBusy = _followBusyAuthorId == authorId;
+    final overlayBottom = _feedOverlayBottom(context);
+
     return Positioned(
-      left: 16,
-      right: 80,
-      bottom: 14,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
+      left: AppSpacing.feedReelOverlayLeft,
+      right: AppSpacing.feedReelOverlayRight,
+      bottom: overlayBottom,
+      child: Align(
+        alignment: Alignment.bottomLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               GestureDetector(
                 onTap: () => _openReelAuthorProfile(reel),
                 child: Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 2),
+                    border: Border.all(color: AppTheme.primary, width: 2),
                   ),
                   child: CircleAvatar(
-                    radius: 20,
+                    radius: AppSizes.feedReelAvatarRadius,
                     backgroundColor: Colors.grey[900],
                     backgroundImage:
                         _isValidNetworkUrl(_asString(reel['avatarUrl']))
@@ -1741,99 +2252,222 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                         ? const Icon(
                             Icons.person,
                             color: Colors.white,
-                            size: 20,
+                            size: 18,
                           )
                         : null,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+              SizedBox(width: AppSpacing.sm),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Row(
-                      children: [
-                        GestureDetector(
-                          onTap: () => _openReelAuthorProfile(reel),
-                          child: Text(
-                            _reelDisplayName(reel),
-                            style: AppTypography.feedReelDisplayName,
-                          ),
+                    Flexible(
+                      child: GestureDetector(
+                        onTap: () => _openReelAuthorProfile(reel),
+                        child: Text(
+                          _reelHandle(reel),
+                          style: AppTypography.feedReelUsername,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.all(1.5),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFEF4444),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.check,
-                            color: Colors.white,
-                            size: 10,
-                          ),
-                        ),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () => _openReelAuthorProfile(reel),
-                      child: Text(
-                        _reelHandle(reel),
-                        style: AppTypography.feedReelHandle,
                       ),
                     ),
+                    if (reel['isVerified'] == true) ...[
+                      SizedBox(width: AppSpacing.xs),
+                      Container(
+                        padding: const EdgeInsets.all(1.5),
+                        decoration: BoxDecoration(
+                          color: verificationBadgeColor(
+                            isVerified: true,
+                            accountType:
+                                (reel['accountType'] as String?) ??
+                                    'private',
+                            vipVerified: reel['vipVerified'] == true,
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 10,
+                        ),
+                      ),
+                    ],
+                    if (showFollow) ...[
+                      SizedBox(width: AppSpacing.sm),
+                      GestureDetector(
+                        onTap: followBusy ? null : () => _onFollowAuthor(reel),
+                        child: Container(
+                          height: AppSizes.feedReelFollowButtonHeight,
+                          padding: AppPadding.feedReelFollowChip,
+                          decoration: BoxDecoration(
+                            color: isFollowing
+                                ? White24.value
+                                : AppColors.feedFollowButton,
+                            borderRadius: AppRadius.feedReelFollowButtonRadius,
+                          ),
+                          child: followBusy
+                              ? const Center(
+                                  child: SizedBox(
+                                    width: 14,
+                                    height: 14,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : Center(
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      if (!isFollowing) ...[
+                                        Icon(
+                                          Icons.add,
+                                          size: AppSizes.feedReelFollowPlusIcon,
+                                          color: AppTheme.primary,
+                                        ),
+                                        SizedBox(width: AppSpacing.xs),
+                                      ],
+                                      Text(
+                                        isFollowing ? 'Following' : 'Follow',
+                                        style: AppTypography.feedReelFollowChip,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          _buildReelCaption(reel),
-          const SizedBox(height: 16),
+          if (ReportStatusThresholds.severityFor(_asInt(reel['reportCount'])) !=
+              ReportSeverity.none) ...[
+            const SizedBox(height: AppSpacing.feedReelBottomContentGap),
+            ReportStatusBar.fromReel(reel),
+          ],
+          ..._buildReelCaptionBlocks(reel),
+          if (_reelMusicLabel(reel).isNotEmpty) ...[
+            const SizedBox(height: AppSpacing.feedReelBottomContentGap),
+            _buildReelMusicLine(reel),
+          ],
         ],
+        ),
       ),
     );
   }
 
-  Widget _buildReelCaption(Map<String, dynamic> reel) {
-    final title = _asString(reel['title']);
-    final description = _asString(reel['description']);
-    final tagsList = reel['tags'] as List? ?? [];
+  Widget _buildReelMusicLine(Map<String, dynamic> reel) {
+    final music = _reelMusicLabel(reel);
+    if (music.isEmpty) return const SizedBox.shrink();
+
+    return Row(
+      children: [
+        const Icon(
+          Icons.music_note_rounded,
+          color: AppColors.feedReelNoteText,
+          size: AppTypography.feedReelNoteSize,
+        ),
+        SizedBox(width: AppSpacing.reelMusicIconGap),
+        Expanded(
+          child: Text(
+            music,
+            style: AppTypography.feedReelNote,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _reelMusicLabel(Map<String, dynamic> reel) {
+    final explicit = _asString(reel['music']).trim();
+    if (explicit.isNotEmpty) return explicit;
+    final profileMusic = _asString(reel['profileMusic']).trim();
+    if (profileMusic.isNotEmpty) return profileMusic;
+    final handle = _reelHandle(reel).replaceFirst('@', '');
+    if (handle.isEmpty) return '';
+    return 'Original Sound - $handle';
+  }
+
+  List<Widget> _buildReelCaptionBlocks(Map<String, dynamic> reel) {
+    final description = _reelDescriptionText(reel);
+    final hashtags = _reelHashtagText(reel);
     final locationMap = reel['location'] as Map<String, dynamic>?;
     final locationName = (locationMap?['name'] as String?)?.trim() ?? '';
     final locationAddress = (locationMap?['address'] as String?)?.trim() ?? '';
 
-    if (title.isEmpty && description.isEmpty && tagsList.isEmpty) {
-      // Fallback for old reels that only have the 'caption' field
-      return _CaptionWithSeeMore(
-        text: _asString(reel['caption']),
-        locationName: locationName,
-        locationAddress: locationAddress,
-      );
+    if (description.isEmpty && hashtags.isEmpty) {
+      return const [];
     }
 
-    final buffer = StringBuffer();
-    if (title.isNotEmpty) {
-      buffer.write(title);
-    }
+    final blocks = <Widget>[];
     if (description.isNotEmpty) {
-      if (buffer.isNotEmpty) buffer.write('\n');
-      buffer.write(description);
+      blocks.addAll([
+        const SizedBox(height: AppSpacing.feedReelBottomContentGap),
+        _CaptionWithSeeMore(
+          text: description,
+          locationName: locationName,
+          locationAddress: locationAddress,
+        ),
+      ]);
     }
-    if (tagsList.isNotEmpty) {
-      if (buffer.isNotEmpty) buffer.write('\n');
-      buffer.write(tagsList.map((t) => '#${t.toString().trim()}').join(' '));
+    if (hashtags.isNotEmpty) {
+      blocks.addAll([
+        const SizedBox(height: AppSpacing.feedReelBottomContentGap),
+        CaptionWithHashtags(
+          text: hashtags,
+          style: AppTypography.feedReelHashtag,
+          hashtagStyle: AppTypography.feedReelHashtag,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ]);
     }
+    return blocks;
+  }
 
-    // If description was added, we might want to distinguish the title.
-    // However, CaptionWithHashtags takes a single string.
-    // For now, let's just ensure it's all passed.
-    return _CaptionWithSeeMore(
-      text: buffer.toString(),
-      locationName: locationName,
-      locationAddress: locationAddress,
-    );
+  /// Caption line for the feed overlay — description, then title, then legacy caption.
+  String _reelDescriptionText(Map<String, dynamic> reel) {
+    final description = _asString(reel['description']);
+    if (description.isNotEmpty) return description;
+
+    final title = _asString(reel['title']);
+    if (title.isNotEmpty) return title;
+
+    final caption = _asString(reel['caption']);
+    if (caption.isEmpty) return '';
+
+    final tagsList = reel['tags'] as List? ?? [];
+    if (tagsList.isEmpty) return caption;
+
+    // Upload stores `caption` as "title\\n#tags" while `tags` is also structured.
+    final firstLine = caption.split('\n').first.trim();
+    if (firstLine.isNotEmpty && !firstLine.startsWith('#')) {
+      return firstLine;
+    }
+    return '';
+  }
+
+  String _reelHashtagText(Map<String, dynamic> reel) {
+    final tagsList = reel['tags'] as List? ?? [];
+    if (tagsList.isNotEmpty) {
+      return tagsList.map((t) => '#${t.toString().trim()}').join(' ');
+    }
+    // Legacy caption lines: "title\\n#tag1 #tag2" without structured tags[].
+    final caption = _asString(reel['caption']);
+    if (caption.isEmpty) return '';
+    for (final line in caption.split('\n').skip(1)) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith('#')) return trimmed;
+    }
+    return '';
   }
 
   // bool _isVideoPlaying() {
@@ -1841,15 +2475,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   //   return true;
   // }
 
-  String _formatCount(int count) {
-    if (count >= 1000000) {
-      return '${(count / 1000000).toStringAsFixed(1)}M';
-    }
-    if (count >= 1000) {
-      return '${(count / 1000).toStringAsFixed(1)}K';
-    }
-    return count.toString();
-  }
 
   String _asString(dynamic value, {String fallback = ''}) {
     if (value == null) return fallback;
@@ -1857,11 +2482,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     return text.isEmpty ? fallback : text;
   }
 
-  String _reelDisplayName(Map<String, dynamic> reel) {
-    final display = _asString(reel['displayName']);
-    if (display.isNotEmpty) return display;
-    return _asString(reel['username'], fallback: 'User');
-  }
 
   String _reelHandle(Map<String, dynamic> reel) {
     final handle = _asString(reel['handle']);
@@ -1924,30 +2544,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }
 }
 
-BoxDecoration? _homeFeedBackgroundDecoration({
-  required bool isFollowing,
-  required bool isVrTab,
-}) {
-  if (isFollowing) {
-    return const BoxDecoration(
-      image: DecorationImage(
-        image: AssetImage(AppBackgroundAssets.followingFeed),
-        fit: BoxFit.cover,
-      ),
-    );
-  }
-  if (isVrTab) {
-    return const BoxDecoration(
-      gradient: LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [Color(0xFF49113B), Color(0xFF000000)],
-      ),
-    );
-  }
-  return null;
-}
-
 class _CaptionWithSeeMore extends StatefulWidget {
   const _CaptionWithSeeMore({
     required this.text,
@@ -1992,7 +2588,7 @@ class _CaptionWithSeeMoreState extends State<_CaptionWithSeeMore> {
             CaptionWithHashtags(
               text: caption,
               style: _captionStyle,
-              hashtagColor: AppColors.brandPink,
+              hashtagStyle: AppTypography.feedReelHashtag,
               maxLines: _expanded ? null : 3,
               overflow: _expanded ? TextOverflow.clip : TextOverflow.ellipsis,
             ),

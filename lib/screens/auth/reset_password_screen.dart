@@ -6,7 +6,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/password_validation.dart';
-import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import 'password_updated_screen.dart';
 
@@ -82,67 +81,50 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      padding: AppPadding.authFormHorizontal,
+      stackChildren: [
+        AuthFloatingBackButton(onPressed: () => Navigator.of(context).pop()),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            child: SingleChildScrollView(
-              padding: AppPadding.authFormHorizontal,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  const AuthScreenHeader(
-                    title: 'Reset\npassword',
-                    subtitle: 'Please enter your new password',
-                  ),
-                  const SizedBox(height: AppSpacing.xxl),
-                  AuthPasswordField(controller: _passwordController),
-                  const SizedBox(height: AppSpacing.md),
-                  _buildValidationChecklist(),
-                  const SizedBox(height: AppSpacing.xl),
-                  AuthPasswordField(
-                    controller: _confirmController,
-                    hint: 'Confirm Password',
-                  ),
-                  if (_confirmController.text.isNotEmpty && !_passwordsMatch) ...[
-                    const SizedBox(height: AppSpacing.sm),
-                    Text(
-                      'Passwords do not match',
-                      style: AppTypography.caption.copyWith(color: Colors.red),
-                    ),
-                  ],
-                  if (_errorMessage != null) ...[
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      _errorMessage!,
-                      style: AppTypography.caption.copyWith(color: Colors.red),
-                    ),
-                  ],
-                  const SizedBox(height: AppSpacing.xxl),
-                  AuthPrimaryButton(
-                    label: 'Continue',
-                    isLoading: _isLoading,
-                    enabled: _isValid,
-                    onPressed: _onContinue,
-                  ),
-                  const SizedBox(height: AppSpacing.authDividerBlock),
-                ],
-              ),
-            ),
+          const SizedBox(height: AppSpacing.sm),
+          const AuthScreenHeader(
+            title: 'Reset\npassword',
+            subtitle: 'Please enter your new password',
           ),
-          Positioned(
-            right: AppSpacing.xl,
-            bottom:
-                AppSpacing.authFloatingNavBottom +
-                MediaQuery.paddingOf(context).bottom,
-            child: AuthFloatingCircleButton.forward(
-              onPressed: _onContinue,
-              enabled: _isValid && !_isLoading,
-            ),
+          const SizedBox(height: AppSpacing.md),
+          AuthPasswordField(controller: _passwordController, hint: 'New password'),
+          const SizedBox(height: AppSpacing.md),
+          _buildValidationChecklist(),
+          const SizedBox(height: AppSpacing.xl),
+          AuthPasswordField(
+            controller: _confirmController,
+            hint: 'Confirm Password',
           ),
+          if (_confirmController.text.isNotEmpty && !_passwordsMatch) ...[
+            const SizedBox(height: AppSpacing.sm),
+            Text(
+              'Passwords do not match',
+              style: AppTypography.caption.copyWith(color: Colors.red),
+            ),
+          ],
+          if (_errorMessage != null) ...[
+            const SizedBox(height: AppSpacing.md),
+            Text(
+              _errorMessage!,
+              style: AppTypography.caption.copyWith(color: Colors.red),
+            ),
+          ],
+          const SizedBox(height: AppSpacing.authCtaTop),
+          AuthPrimaryButton(
+            label: 'Continue',
+            isLoading: _isLoading,
+            enabled: _isValid,
+            onPressed: _onContinue,
+          ),
+          SizedBox(height: AuthFloatingNavRow.scrollBottomClearance(context)),
         ],
       ),
     );
@@ -169,13 +151,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         Icon(
           met ? Icons.check_circle : Icons.circle_outlined,
           size: 18,
-          color: met ? Colors.green : White40.value,
+          color: met ? Colors.green : AppTheme.lightSecondaryText,
         ),
         const SizedBox(width: AppSpacing.sm),
         Text(
           label,
           style: AppTypography.caption.copyWith(
-            color: met ? Colors.green : White50.value,
+            color: met ? Colors.green : AppTheme.lightMutedBody,
           ),
         ),
       ],

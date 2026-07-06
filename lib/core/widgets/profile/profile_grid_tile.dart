@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../models/reel_count_privacy.dart';
 import '../../theme/app_spacing.dart';
-import 'profile_grid_metric_overlay.dart';
+import '../../../screens/profile/profile_figma_tokens.dart';
 import 'profile_grid_title_overlay.dart';
 
 /// Square thumbnail for profile modular grids.
@@ -12,10 +11,6 @@ class ProfileGridTile extends StatelessWidget {
     required this.thumbnailUrl,
     this.isVideo = false,
     this.showVrBadge = false,
-    this.viewCount,
-    this.likeCount,
-    this.shareCount,
-    this.privacy = ReelCountPrivacy.visible,
     this.isHero = false,
     this.isRepost = false,
     this.gridTitle = '',
@@ -26,17 +21,11 @@ class ProfileGridTile extends StatelessWidget {
   final String thumbnailUrl;
   final bool isVideo;
   final bool showVrBadge;
-  final int? viewCount;
-  final int? likeCount;
-  final int? shareCount;
-  final ReelCountPrivacy privacy;
   final bool isHero;
   final bool isRepost;
   final String gridTitle;
   final VoidCallback? onTap;
   final VoidCallback? onLongPress;
-
-  static String formatViewCount(int n) => ReelCountPrivacy.formatCount(n);
 
   @override
   Widget build(BuildContext context) {
@@ -47,16 +36,44 @@ class ProfileGridTile extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          ColoredBox(color: Colors.grey.shade900),
+          ColoredBox(color: ProfileFigmaTokens.cardBackground),
           if (thumbnailUrl.isNotEmpty)
             Image.network(
               thumbnailUrl,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const SizedBox.shrink(),
             ),
-          if (isRepost)
+          if (showVrBadge)
             Positioned(
               top: AppSpacing.sm,
+              left: AppSpacing.sm,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.deepPurple,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'VR',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ),
+          ProfileGridTitleOverlay(
+            title: gridTitle,
+            isHero: isHero,
+            reservePlayIcon: isVideo,
+          ),
+          if (isRepost)
+            Positioned(
+              bottom: AppSpacing.sm,
               left: AppSpacing.sm,
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
@@ -85,42 +102,6 @@ class ProfileGridTile extends StatelessWidget {
                 ),
               ),
             ),
-          if (showVrBadge)
-            Positioned(
-              top: AppSpacing.sm,
-              left: isRepost ? 56 : AppSpacing.sm,
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 6,
-                  vertical: 2,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: const Text(
-                  'VR',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ),
-          if (viewCount != null)
-            ProfileGridMetricOverlay(
-              views: viewCount!,
-              likes: likeCount ?? 0,
-              shares: shareCount ?? 0,
-              privacy: privacy,
-              isHero: isHero,
-            ),
-          ProfileGridTitleOverlay(
-            title: gridTitle,
-            isHero: isHero,
-            reservePlayIcon: isVideo,
-          ),
           if (isVideo)
             const Align(
               alignment: Alignment.bottomRight,

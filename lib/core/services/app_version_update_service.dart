@@ -61,6 +61,19 @@ class AppVersionUpdateService {
     }
   }
 
+  /// Evaluates instantly against the locally cached policy (no network).
+  ///
+  /// Lets the launch gate render the app immediately instead of blank-screening
+  /// behind the Firestore fetch (up to [_fetchTimeout] when offline/slow). A
+  /// previously cached force-update policy still blocks right away.
+  Future<AppUpdateCheckResult> evaluateFromCache() async {
+    if (bypassCheck) {
+      return const AppUpdateCheckResult(requirement: AppUpdateRequirement.none);
+    }
+    final cached = await _readCachedPolicy();
+    return evaluate(policy: cached ?? AppVersionPolicy.disabled());
+  }
+
   Future<AppUpdateCheckResult> evaluate({AppVersionPolicy? policy}) async {
     if (bypassCheck) {
       return const AppUpdateCheckResult(requirement: AppUpdateRequirement.none);

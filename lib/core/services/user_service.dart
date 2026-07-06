@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../services/username_validation.dart';
+import 'auth_service.dart';
 import '../models/app_user_model.dart';
 import '../models/parent_consent_constants.dart';
 import '../models/post_location_model.dart';
@@ -36,6 +37,9 @@ class UserDiscoveryItem {
   final bool outgoingFollowRequestPending;
 }
 
+/// Outcome of submitting a report against a user profile.
+enum UserReportResult { success, alreadyReported, notSignedIn, failed }
+
 /// Firestore user document operations. No UI, no BuildContext.
 /// Call createUserDocument AFTER successful registration.
 class UserService {
@@ -62,6 +66,20 @@ class UserService {
   static bool accountTypeRequiresFollowApproval(String? accountType) {
     final t = (accountType ?? 'private').trim().toLowerCase();
     return t == 'private' || t == 'personal';
+  }
+
+  /// Private/personal accounts only accept DMs from users who follow them.
+  Future<bool> canSendDirectMessageTo({
+    required String senderUid,
+    required AppUserModel target,
+  }) async {
+    if (senderUid.isEmpty || target.uid.isEmpty || senderUid == target.uid) {
+      return false;
+    }
+    if (!accountTypeRequiresFollowApproval(target.accountType)) {
+      return true;
+    }
+    return isFollowingUser(currentUid: senderUid, targetUid: target.uid);
   }
 
   static const int publicPersonaMaxLength = 80;
@@ -122,6 +140,7 @@ class UserService {
     'parentInviteEmail': '',
     'parentInvitePhone': '',
     'locationSetupComplete': false,
+    'profileImageSetupComplete': false,
   };
 
   /// Creates the initial user document. Call after AuthService.registerWithEmail success.
@@ -179,6 +198,7 @@ class UserService {
     String? displayName,
     String? username,
     String? bio,
+    String? profileMusic,
     String? dob,
     String? profileImage,
     List<String>? interests,
@@ -196,6 +216,7 @@ class UserService {
     String? parentInvitePhone,
     PostLocation? profileLocation,
     bool? locationSetupComplete,
+    bool? profileImageSetupComplete,
   }) async {
     try {
       final data = <String, dynamic>{};
@@ -212,6 +233,7 @@ class UserService {
         data['username'] = UsernameValidation.normalize(username);
       }
       if (bio != null) data['bio'] = bio.trim();
+      if (profileMusic != null) data['profileMusic'] = profileMusic.trim();
       if (dob != null) data['dob'] = dob;
       if (profileImage != null) data['profileImage'] = profileImage;
       if (interests != null) data['interests'] = interests;
@@ -256,6 +278,9 @@ class UserService {
       }
       if (locationSetupComplete != null) {
         data['locationSetupComplete'] = locationSetupComplete;
+      }
+      if (profileImageSetupComplete != null) {
+        data['profileImageSetupComplete'] = profileImageSetupComplete;
       }
       if (data.isEmpty) return;
       await _firestore
@@ -321,7 +346,10 @@ class UserService {
       if (q.docs.isEmpty) return null;
       if (q.docs.length > 1) return null;
       return AppUserModel.fromJson(q.docs.first.data());
-    } catch (_) {
+    } catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('[UserService] getUserByUsername($key) failed: $e\n$st');
+      }
       return null;
     }
   }
@@ -826,17 +854,18 @@ class UserService {
     }
     await cancelFollowRequest(requesterUid: currentUid, targetUid: targetUid);
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
-    final edgeRef = _firestore
-        .collection(followEdgesCollection)
-        .doc(followRequestDocId(currentUid, targetUid));
-    final batch = _firestore.batch();
-    batch.set(
-      meRef,
-      {'following': FieldValue.arrayRemove([targetUid])},
-      SetOptions(merge: true),
-    );
-    batch.delete(edgeRef);
-    await batch.commit();
+    await meRef.set({
+      'following': FieldValue.arrayRemove([targetUid]),
+    }, SetOptions(merge: true));
+    // Best-effort: private follows materialize [follow_edges]; public follows do not.
+    try {
+      await _firestore
+          .collection(followEdgesCollection)
+          .doc(followRequestDocId(currentUid, targetUid))
+          .delete();
+    } catch (_) {
+      // Missing edge or already cleared — following removal above is authoritative.
+    }
   }
 
   Future<void> removeFollower({
@@ -856,20 +885,72 @@ class UserService {
     });
   }
 
+  /// Submit a user report against a profile.
+  ///
+  /// Uses a deterministic document id (`<reporterUid>_<reportedUserId>`) so a
+  /// given user can only report a given profile once.
+  Future<UserReportResult> reportUser({
+    required String reportedUserId,
+    required String reason,
+  }) async {
+    final uid = AuthService().currentUser?.uid;
+    if (uid == null || uid.isEmpty) return UserReportResult.notSignedIn;
+    final target = reportedUserId.trim();
+    if (target.isEmpty || target == uid) return UserReportResult.failed;
+    final trimmedReason = reason.trim();
+    if (trimmedReason.isEmpty) return UserReportResult.failed;
+    try {
+      final docRef =
+          _firestore.collection('user_reports').doc('${uid}_$target');
+      final existing = await docRef.get();
+      if (existing.exists) return UserReportResult.alreadyReported;
+      await docRef.set({
+        'reportedUserId': target,
+        'reporterId': uid,
+        'reason': trimmedReason,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      return UserReportResult.success;
+    } catch (_) {
+      return UserReportResult.failed;
+    }
+  }
+
   /// Blocks [targetUid]: adds to blockedUsers and removes from following (local doc only).
+  /// When [reason] is provided, also records the block reason in `user_blocks`.
   Future<void> blockUser({
     required String currentUid,
     required String targetUid,
+    String? reason,
   }) async {
     if (currentUid.isEmpty || targetUid.isEmpty || currentUid == targetUid) {
       throw ArgumentError('Invalid block');
     }
     final meRef = _firestore.collection(_usersCollection).doc(currentUid);
     await cancelFollowRequest(requesterUid: currentUid, targetUid: targetUid);
-    await meRef.set({
-      'blockedUsers': FieldValue.arrayUnion([targetUid]),
-      'following': FieldValue.arrayRemove([targetUid]),
-    }, SetOptions(merge: true));
+
+    final trimmedReason = reason?.trim() ?? '';
+    final batch = _firestore.batch();
+    batch.set(
+      meRef,
+      {
+        'blockedUsers': FieldValue.arrayUnion([targetUid]),
+        'following': FieldValue.arrayRemove([targetUid]),
+      },
+      SetOptions(merge: true),
+    );
+    if (trimmedReason.isNotEmpty) {
+      batch.set(
+        _firestore.collection('user_blocks').doc('${currentUid}_$targetUid'),
+        {
+          'blockedUserId': targetUid,
+          'blockerId': currentUid,
+          'reason': trimmedReason,
+          'createdAt': FieldValue.serverTimestamp(),
+        },
+      );
+    }
+    await batch.commit();
   }
 
   Future<void> unblockUser({
@@ -883,6 +964,10 @@ class UserService {
     await meRef.set({
       'blockedUsers': FieldValue.arrayRemove([targetUid]),
     }, SetOptions(merge: true));
+    await _firestore
+        .collection('user_blocks')
+        .doc('${currentUid}_$targetUid')
+        .delete();
   }
 
   /// Reactive follower count stream based on users who include [uid] in following.
@@ -958,8 +1043,9 @@ class UserService {
         final uid = model.uid.isNotEmpty ? model.uid : d.id;
         if (uid == currentUid || excludeIds.contains(uid)) continue;
         final name = (model.username ?? '').trim().toLowerCase();
+        final displayName = (model.displayName ?? '').trim().toLowerCase();
         final emailName = model.email.split('@').first.toLowerCase();
-        final searchable = '$name $emailName';
+        final searchable = '$name $displayName $emailName';
         if (q.isNotEmpty && !searchable.contains(q)) continue;
         out.add(model.copyWith(uid: uid));
       }
@@ -967,6 +1053,145 @@ class UserService {
     } catch (_) {
       return [];
     }
+  }
+
+  bool _userMatchesMentionQuery(AppUserModel user, String queryLower) {
+    if (queryLower.isEmpty) return true;
+    final username = (user.username ?? '').trim().toLowerCase();
+    final displayName = (user.displayName ?? '').trim().toLowerCase();
+    if (username.startsWith(queryLower) || displayName.startsWith(queryLower)) {
+      return true;
+    }
+    return username.contains(queryLower) || displayName.contains(queryLower);
+  }
+
+  UserDiscoveryItem _discoveryItemFromUser(
+    AppUserModel user, {
+    required Set<String> following,
+    bool outgoingFollowRequestPending = false,
+  }) {
+    final uid = user.uid;
+    final username = (user.username ?? '').trim().isNotEmpty
+        ? user.username!.trim()
+        : (user.email.contains('@') ? user.email.split('@').first : uid);
+    final displayName = (user.displayName ?? '').trim().isNotEmpty
+        ? user.displayName!.trim()
+        : username;
+    return UserDiscoveryItem(
+      uid: uid,
+      username: username,
+      displayName: displayName,
+      avatarUrl: (user.profileImage ?? '').trim(),
+      isFollowing: following.contains(uid),
+      followerCount: user.followersCount,
+      isVerified: user.isVerified,
+      accountType: user.accountType,
+      vipVerified: user.vipVerified,
+      monetizationEnabled: user.monetizationEnabled,
+      outgoingFollowRequestPending: outgoingFollowRequestPending,
+    );
+  }
+
+  /// Mention autocomplete: following first, then username prefix query.
+  Future<List<UserDiscoveryItem>> searchUsersForMention({
+    required String currentUid,
+    String query = '',
+    int limit = 8,
+  }) async {
+    if (currentUid.isEmpty) return const [];
+    final q = query.trim().toLowerCase();
+    final blocked = await getBlockedUserIds(currentUid);
+    final following = await getFollowing(currentUid);
+    final followingSet = following.toSet();
+
+    final models = <AppUserModel>[];
+    final seen = <String>{};
+
+    void tryAdd(AppUserModel user) {
+      final uid = user.uid.trim().isNotEmpty ? user.uid.trim() : '';
+      if (uid.isEmpty ||
+          uid == currentUid ||
+          blocked.contains(uid) ||
+          seen.contains(uid)) {
+        return;
+      }
+      if (!_userMatchesMentionQuery(user, q)) return;
+      seen.add(uid);
+      models.add(user);
+    }
+
+    if (following.isNotEmpty) {
+      final followingUsers = await getUsersByIds(following);
+      followingUsers.sort(
+        (a, b) => (a.username ?? '').toLowerCase().compareTo(
+          (b.username ?? '').toLowerCase(),
+        ),
+      );
+      for (final user in followingUsers) {
+        tryAdd(user);
+        if (models.length >= limit) break;
+      }
+    }
+
+    if (models.length < limit && q.isNotEmpty) {
+      final normalized = UsernameValidation.normalize(q);
+      if (normalized.isNotEmpty) {
+        try {
+          final snap = await _firestore
+              .collection(_usersCollection)
+              .where('username', isGreaterThanOrEqualTo: normalized)
+              .where('username', isLessThanOrEqualTo: '$normalized\uf8ff')
+              .limit(limit)
+              .get();
+          for (final doc in snap.docs) {
+            final data = doc.data();
+            final uid = (data['uid'] as String?)?.trim().isNotEmpty == true
+                ? (data['uid'] as String).trim()
+                : doc.id;
+            tryAdd(AppUserModel.fromJson(data).copyWith(uid: uid));
+            if (models.length >= limit) break;
+          }
+        } catch (e, st) {
+          if (kDebugMode) {
+            debugPrint(
+              '[UserService] mention username prefix search failed: $e\n$st',
+            );
+          }
+        }
+      }
+    }
+
+    if (models.length < limit) {
+      final extra = await discoverUsers(
+        currentUid: currentUid,
+        query: q,
+        excludeIds: blocked.toSet(),
+        limit: 80,
+      );
+      for (final user in extra) {
+        tryAdd(user);
+        if (models.length >= limit) break;
+      }
+    }
+
+    models.sort((a, b) {
+      final aFollow = followingSet.contains(a.uid);
+      final bFollow = followingSet.contains(b.uid);
+      if (aFollow != bFollow) return aFollow ? -1 : 1;
+      return (a.username ?? '').toLowerCase().compareTo(
+        (b.username ?? '').toLowerCase(),
+      );
+    });
+
+    return models
+        .take(limit)
+        .map(
+          (user) => _discoveryItemFromUser(
+            user,
+            following: followingSet,
+          ),
+        )
+        .toList();
   }
 
   /// Centralized discover/search list used by profile + global search.

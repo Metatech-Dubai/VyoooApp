@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../models/message_model.dart';
 import '../utils/view_once_helpers.dart';
+import 'message_reply_quote.dart';
 
 class ViewOnceMessageWidget extends StatelessWidget {
   const ViewOnceMessageWidget({
@@ -14,6 +15,8 @@ class ViewOnceMessageWidget extends StatelessWidget {
     required this.isGroup,
     this.senderName,
     this.onTap,
+    this.replyToSenderName,
+    this.replyToPreview,
   });
 
   final MessageModel message;
@@ -23,6 +26,8 @@ class ViewOnceMessageWidget extends StatelessWidget {
   final bool isGroup;
   final String? senderName;
   final VoidCallback? onTap;
+  final String? replyToSenderName;
+  final String? replyToPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -86,6 +91,12 @@ class ViewOnceMessageWidget extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (replyToSenderName != null && replyToPreview != null)
+              MessageReplyQuote(
+                senderName: replyToSenderName!,
+                preview: replyToPreview!,
+                isSentBubble: isSent,
+              ),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [

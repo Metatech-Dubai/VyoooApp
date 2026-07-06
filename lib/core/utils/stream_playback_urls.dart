@@ -1,22 +1,15 @@
+import 'video_upload_policy.dart';
+
 /// Resolves HLS / MP4 fallback URLs for Cloudflare Stream playback.
-///
-/// Ported from the 360 VOD feature (`feature/360-video-integration`) so the live
-/// viewer resolves the same URL candidates. Self-contained (inline URL check) to
-/// avoid pulling the feed-upload utilities.
 class StreamPlaybackUrls {
   StreamPlaybackUrls._();
 
-  static bool isPlayableUrl(String rawUrl) {
-    final trimmed = rawUrl.trim();
-    if (trimmed.isEmpty) return false;
-    final uri = Uri.tryParse(trimmed);
-    if (uri == null || !uri.hasScheme || !uri.hasAuthority) return false;
-    return uri.scheme == 'https' || uri.scheme == 'http';
-  }
+  static bool isPlayableUrl(String rawUrl) =>
+      VideoUploadPolicy.isPlayableUrl(rawUrl);
 
   static List<String> candidates(String raw) {
     final url = raw.trim();
-    if (!isPlayableUrl(url)) return const [];
+    if (!VideoUploadPolicy.isPlayableUrl(url)) return const [];
     final out = <String>[url];
     final m = RegExp(
       r'^(https?:\/\/[^/]+)\/([^/]+)\/manifest\/video\.m3u8$',
@@ -26,11 +19,13 @@ class StreamPlaybackUrls {
       final hostBase = m.group(1)!;
       final videoId = m.group(2)!;
       final mp4 = '$hostBase/$videoId/downloads/default.mp4';
-      if (isPlayableUrl(mp4)) out.add(mp4);
-      final hlsFallback = 'https://videodelivery.net/$videoId/manifest/video.m3u8';
-      final mp4Fallback = 'https://videodelivery.net/$videoId/downloads/default.mp4';
-      if (isPlayableUrl(hlsFallback)) out.add(hlsFallback);
-      if (isPlayableUrl(mp4Fallback)) out.add(mp4Fallback);
+      if (VideoUploadPolicy.isPlayableUrl(mp4)) out.add(mp4);
+      final hlsFallback =
+          'https://videodelivery.net/$videoId/manifest/video.m3u8';
+      final mp4Fallback =
+          'https://videodelivery.net/$videoId/downloads/default.mp4';
+      if (VideoUploadPolicy.isPlayableUrl(hlsFallback)) out.add(hlsFallback);
+      if (VideoUploadPolicy.isPlayableUrl(mp4Fallback)) out.add(mp4Fallback);
     }
     return out.toSet().toList();
   }
@@ -48,8 +43,26 @@ class StreamPlaybackUrls {
     return all;
   }
 
+  /// HLS / manifest URLs first — adaptive streaming starts playback faster
+  /// than buffering a full progressive MP4 (important for large 360° sources).
+  static List<String> candidatesPreferStreamingStart(String raw) {
+    final all = candidates(raw);
+    all.sort((a, b) {
+      final aStream = _isStreamingUrl(a);
+      final bStream = _isStreamingUrl(b);
+      if (aStream == bStream) return 0;
+      return aStream ? -1 : 1;
+    });
+    return all;
+  }
+
   static bool _isMp4Url(String url) {
     final lower = url.toLowerCase();
     return lower.contains('.mp4') || lower.contains('/downloads/');
+  }
+
+  static bool _isStreamingUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('.m3u8') || lower.contains('/manifest/');
   }
 }

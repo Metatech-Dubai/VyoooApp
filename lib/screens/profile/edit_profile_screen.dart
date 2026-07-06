@@ -9,6 +9,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/storage_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/services/saved_accounts_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/profile_photo_source_sheet.dart';
@@ -27,7 +28,7 @@ class EditProfileScreen extends StatefulWidget {
     this.initialName = 'Matt Rife',
     this.initialUsername = 'mattrife_x',
     this.initialBio = 'In the right place, at the right time',
-    this.initialMusic = 'Zulfein • Mehul Mahesh, DJ A...',
+    this.initialMusic = '',
     this.avatarUrl,
   });
 
@@ -41,7 +42,7 @@ class EditProfileScreen extends StatefulWidget {
   State<EditProfileScreen> createState() => _EditProfileScreenState();
 }
 
-enum _UsernameStatus { none, available, taken }
+enum _UsernameStatus { none, available, taken, reserved }
 
 class _EditProfileScreenState extends State<EditProfileScreen> {
   late TextEditingController _nameController;
@@ -133,9 +134,13 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           return;
         }
         setState(() {
-          _usernameStatus = result.available
-              ? _UsernameStatus.available
-              : _UsernameStatus.taken;
+          if (result.isReserved) {
+            _usernameStatus = _UsernameStatus.reserved;
+          } else {
+            _usernameStatus = result.available
+                ? _UsernameStatus.available
+                : _UsernameStatus.taken;
+          }
         });
       } catch (_) {
         if (mounted) setState(() => _usernameStatus = _UsernameStatus.none);
@@ -153,14 +158,23 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     if (name.isEmpty) return false;
     final un = UsernameValidation.normalize(_usernameController.text.trim());
     if (!UsernameValidation.isValidFormat(un)) return false;
-    if (_usernameStatus == _UsernameStatus.taken) return false;
+    if (_usernameStatus == _UsernameStatus.taken ||
+        _usernameStatus == _UsernameStatus.reserved) {
+      return false;
+    }
     final initialUn = UsernameValidation.normalize(widget.initialUsername);
     final initialName = widget.initialName.trim();
     final initialBio = widget.initialBio.trim();
+    final initialMusic = widget.initialMusic.trim();
     final nameChanged = name != initialName;
     final usernameChanged = un != initialUn;
     final bioChanged = _bioController.text.trim() != initialBio;
-    return _pickedImagePath != null || usernameChanged || nameChanged || bioChanged;
+    final musicChanged = _musicController.text.trim() != initialMusic;
+    return _pickedImagePath != null ||
+        usernameChanged ||
+        nameChanged ||
+        bioChanged ||
+        musicChanged;
   }
 
   Future<void> _saveProfile() async {
@@ -178,36 +192,33 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final username = UsernameValidation.normalize(_usernameController.text.trim());
     final name = _nameController.text.trim();
     final bio = _bioController.text.trim();
+    final music = _musicController.text.trim();
     final initialUn = UsernameValidation.normalize(widget.initialUsername);
     final initialName = widget.initialName.trim();
     final initialBio = widget.initialBio.trim();
+    final initialMusic = widget.initialMusic.trim();
 
     setState(() => _isSaving = true);
-    var partialWarning = false;
+    final failedFields = <String>[];
     try {
-      if (_pickedImagePath != null) {
-        try {
-          await StorageService().uploadProfileImage(
-            imageFile: File(_pickedImagePath!),
-            uid: uid,
-          );
-        } catch (e) {
-          // Non-fatal: let profile text changes still save.
-          partialWarning = true;
-          debugPrint('Profile image upload failed: $e');
-        }
-      }
-
       if (username != initialUn) {
         final avail = await FirestoreUsernameService().checkAvailability(username);
         if (!avail.available) {
           if (mounted) {
             setState(() {
               _isSaving = false;
-              _usernameStatus = _UsernameStatus.taken;
+              _usernameStatus = avail.isReserved
+                  ? _UsernameStatus.reserved
+                  : _UsernameStatus.taken;
             });
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('That username is already taken.')),
+              SnackBar(
+                content: Text(
+                  avail.isReserved
+                      ? 'That username is reserved. Reach out to our team to claim it.'
+                      : 'That username is already taken.',
+                ),
+              ),
             );
           }
           return;
@@ -215,27 +226,48 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         await UserService().updateUserProfile(uid: uid, username: username);
       }
 
-      if (name != initialName) {
-        await UserService().updateUserProfile(uid: uid, displayName: name);
-        await AuthService().currentUser?.updateDisplayName(name);
+      final bioChanged = bio != initialBio;
+      final musicChanged = music != initialMusic;
+      final nameChanged = name != initialName;
+      if (bioChanged || musicChanged || nameChanged) {
+        try {
+          await UserService().updateUserProfile(
+            uid: uid,
+            displayName: nameChanged ? name : null,
+            bio: bioChanged ? bio : null,
+            profileMusic: musicChanged ? music : null,
+          );
+          if (nameChanged) {
+            await AuthService().currentUser?.updateDisplayName(name);
+          }
+        } catch (e) {
+          if (bioChanged) failedFields.add('bio');
+          if (musicChanged) failedFields.add('music');
+          if (nameChanged) failedFields.add('name');
+          debugPrint('Profile presentation update failed: $e');
+        }
       }
 
-      if (bio != initialBio) {
+      if (_pickedImagePath != null) {
         try {
-          await UserService().updateUserProfile(uid: uid, bio: bio);
+          await StorageService().uploadProfileImage(
+            imageFile: File(_pickedImagePath!),
+            uid: uid,
+          );
         } catch (e) {
-          // Non-fatal: in case deployed Firestore rules don't yet allow `bio`.
-          partialWarning = true;
-          debugPrint('Bio update failed: $e');
+          failedFields.add('photo');
+          debugPrint('Profile image upload failed: $e');
         }
       }
 
       if (!mounted) return;
       setState(() => _isSaving = false);
+      unawaited(SavedAccountsService().refreshAccountMetadata(uid));
+      final partialWarning = failedFields.isNotEmpty;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text(
           partialWarning
-              ? 'Profile updated, but some changes could not be saved.'
+              ? 'Profile updated, but could not save: ${failedFields.join(', ')}.'
               : 'Profile updated',
         ),
       ));
@@ -443,7 +475,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             decoration: _inputDecoration(hint: 'username').copyWith(
               suffixIcon: _usernameStatus == _UsernameStatus.available
                   ? Icon(Icons.check_circle_rounded, color: Colors.green.shade400, size: 22)
-                  : _usernameStatus == _UsernameStatus.taken
+                  : _usernameStatus == _UsernameStatus.taken ||
+                          _usernameStatus == _UsernameStatus.reserved
                       ? Icon(Icons.cancel_rounded, color: AppColors.deleteRed, size: 22)
                       : null,
             ),
@@ -465,6 +498,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             padding: const EdgeInsets.only(left: 0),
             child: Text(
               'This username is already taken',
+              style: TextStyle(color: AppColors.deleteRed, fontSize: 13),
+            ),
+          ),
+        ],
+        if (_usernameStatus == _UsernameStatus.reserved) ...[
+          const SizedBox(height: 4),
+          Padding(
+            padding: const EdgeInsets.only(left: 0),
+            child: Text(
+              'This username is reserved. Reach out to our team to claim it.',
               style: TextStyle(color: AppColors.deleteRed, fontSize: 13),
             ),
           ),

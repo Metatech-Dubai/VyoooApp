@@ -4,14 +4,16 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import '../../core/controllers/reels_controller.dart';
-import '../../core/models/reel_count_privacy.dart';
-import '../../core/utils/reel_engagement.dart';
+import '../../core/models/reel_media_item.dart';
+import '../../core/models/video_360_metadata.dart';
+import '../../core/widgets/post_media_carousel.dart';
 import '../../features/reel/widgets/owner_post_options_sheet.dart';
 import '../../core/config/deep_link_config.dart';
 import '../../core/theme/app_gradients.dart';
 import '../../core/widgets/profile/profile_screen_background.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
+import '../../core/constants/profile_assets.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/models/story_highlight_model.dart';
@@ -25,7 +27,9 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/utils/verification_badge.dart';
+import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
+import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/story/highlight_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
@@ -45,11 +49,12 @@ import '../settings/settings_screen.dart';
 import '../../core/widgets/profile/profile_grid.dart';
 import '../../features/reel/widgets/profile_grid_span_sheet.dart';
 import '../settings/revenue_coming_soon_view.dart';
+import '../settings/switch_accounts_screen.dart';
 import '../settings/wallet/wallet_coming_soon_view.dart';
 import '../../core/widgets/profile/profile_menu_bottom_sheet.dart';
 import '../../features/vr/vr_screen.dart';
 
-/// Own profile tab: header, stats, Edit Profile/Share, Posts/VR/Streams, empty or Become Member.
+/// Own profile tab: header, stats, Edit Profile/Share, Posts/VR/Clips/Tags, empty or Become Member.
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -62,8 +67,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   bool get wantKeepAlive => true;
 
-  static const List<String> _tabs = ['Posts', 'VR', 'Streams'];
-  static const int _savedTabIndex = 3;
+  static const List<String> _tabs = ['Posts', 'VR', 'Clips', 'Tags'];
+  static const int _savedTabIndex = 4;
   static const Map<String, String> _accountTypeLabels = <String, String>{
     'personal': 'Personal',
     'business': 'Business',
@@ -76,9 +81,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     'restricted': 'Restricted',
   };
   int _selectedTabIndex = 0;
+  bool _highlightsExpanded = false;
   final LiveStreamService _liveStreamService = LiveStreamService();
   String? _highlightsStreamUid;
   Stream<List<StoryHighlightModel>>? _highlightsStream;
+  String? _activeStoriesStreamUid;
+  Stream<List<StoryModel>>? _activeStoriesStream;
   Future<List<Map<String, dynamic>>>? _savedReelsFuture;
   String? _savedReelsFutureUid;
   Future<List<Map<String, dynamic>>>? _vrReelsFuture;
@@ -89,6 +97,14 @@ class _ProfileScreenState extends State<ProfileScreen>
       _highlightsStream = StoryService().watchHighlightsForUser(uid);
     }
     return _highlightsStream!;
+  }
+
+  Stream<List<StoryModel>> _activeStoriesStreamFor(String uid) {
+    if (_activeStoriesStreamUid != uid || _activeStoriesStream == null) {
+      _activeStoriesStreamUid = uid;
+      _activeStoriesStream = StoryService().watchActiveStoriesForUser(uid);
+    }
+    return _activeStoriesStream!;
   }
 
   static String _accountTypeLabel(String? raw) {
@@ -208,7 +224,7 @@ class _ProfileScreenState extends State<ProfileScreen>
       ),
     );
     if (shouldLogout != true) return;
-    await AuthService().signOut();
+    await AuthService().signOutCurrentAccount();
     if (!context.mounted) return;
     Navigator.of(context).pushAndRemoveUntil(
       MaterialPageRoute(builder: (_) => const AuthWrapper()),
@@ -326,55 +342,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Future<void> _requestAccountDeletion(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0020),
-        title: const Text(
-          'Delete account',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'This will permanently delete your account and all associated data. This cannot be undone. Are you sure?',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(false),
-            child: Text(
-              'Cancel',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text(
-              'Delete account',
-              style: TextStyle(
-                color: Color(0xFFD10057),
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed != true || !context.mounted) return;
-    await AuthService().signOut();
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Account deletion requested. Sign out complete.'),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const AuthWrapper()),
-      (route) => false,
-    );
-  }
-
   Future<void> _openMyStoryComposerOrViewer(
     BuildContext context, {
     required String userId,
@@ -412,6 +379,32 @@ class _ProfileScreenState extends State<ProfileScreen>
         transitionDuration: const Duration(milliseconds: 200),
       ),
     );
+  }
+
+  void _openWalletFromRail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(
+          backgroundColor: Colors.black,
+          body: WalletComingSoonView(),
+        ),
+      ),
+    );
+  }
+
+  void _openRevenueFromRail(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => const Scaffold(
+          backgroundColor: Colors.black,
+          body: RevenueComingSoonView(),
+        ),
+      ),
+    );
+  }
+
+  void _openChatFromRail() {
+    MainNavWrapper.tabNotifier.value = 3;
   }
 
   void _showProfileMenu(BuildContext context) {
@@ -458,8 +451,14 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
       },
       onUploadStreamVideos: () => _showUploadStreamDialog(context),
+      onSwitchAccounts: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const SwitchAccountsScreen(),
+          ),
+        );
+      },
       onLogout: () => _logout(context),
-      onDeleteAccount: () => _requestAccountDeletion(context),
     );
   }
 
@@ -471,11 +470,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     final canUploadContent = subscriptionController.canUploadContent;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       body: Stack(
         children: [
           const Positioned.fill(child: ProfileScreenBackground()),
           SafeArea(
+            bottom: false,
             child: uid == null
                 ? _buildFallbackProfile(context)
                 : StreamBuilder<AppUserModel?>(
@@ -487,7 +487,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         return const Center(
                           child: CircularProgressIndicator(
                             valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.white70,
+                              ProfileFigmaTokens.accentMagenta,
                             ),
                           ),
                         );
@@ -559,50 +559,45 @@ class _ProfileScreenState extends State<ProfileScreen>
       vipVerified: user?.vipVerified ?? false,
     );
     final bio = (user?.bio ?? '').trim();
-    final handle = ProfileFigmaTokens.displayUsername(username);
+    final profileMusic = (user?.profileMusic ?? '').trim();
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        Expanded(
-          child: CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: AppSpacing.sm),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              handle,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize:
-                                    ProfileFigmaTokens.headerUsernameFontSize,
-                                fontWeight: FontWeight.w500,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          IconButton(
-                            onPressed: () => _showProfileMenu(context),
-                            icon: const Icon(
-                              Icons.menu_rounded,
-                              color: Colors.white,
-                              size: 28,
-                            ),
-                            padding: EdgeInsets.zero,
-                            alignment: Alignment.centerRight,
-                          ),
-                        ],
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: ProfileFigmaTokens.profileHeaderHorizontalPad,
                       ),
-                      const SizedBox(height: 12),
-                      ProfileFigmaAvatar(imageUrl: avatarUrl),
+                      child: Column(
+                        children: [
+                          const SizedBox(height: AppSpacing.md),
+                          StreamBuilder<List<StoryModel>>(
+                        stream: profileUid.isEmpty
+                            ? null
+                            : _activeStoriesStreamFor(profileUid),
+                        builder: (context, snap) {
+                          final activeStories = snap.data ?? const <StoryModel>[];
+                          return ProfileFigmaAvatar(
+                            imageUrl: avatarUrl,
+                            hasStory: activeStories.isNotEmpty,
+                            onTap: profileUid.isEmpty
+                                ? null
+                                : () => _openMyStoryComposerOrViewer(
+                                      context,
+                                      userId: profileUid,
+                                      username: username,
+                                      avatarUrl: avatarUrl ?? '',
+                                    ),
+                          );
+                        },
+                      ),
                       const SizedBox(height: 16),
                       ProfileFigmaDisplayNameRow(
                         displayName: displayName,
@@ -617,7 +612,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                             label: 'Posts',
                             value: _formatStatCount(postCount),
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.statChipGap,
+                          ),
                           ProfileFigmaStatChip(
                             label: 'Followers',
                             value: _formatStatCount(followerCount),
@@ -633,7 +630,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                               );
                             },
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.statChipGap,
+                          ),
                           ProfileFigmaStatChip(
                             label: 'Following',
                             value: _formatStatCount(followingCount),
@@ -655,29 +654,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                         const SizedBox(height: 16),
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: Text(
-                            bio,
-                            textAlign: TextAlign.center,
-                            maxLines: 3,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: ProfileFigmaTokens.bioFontSize,
-                              height: 1.35,
-                              fontWeight: FontWeight.w400,
-                            ),
-                          ),
+                          child: ProfileBioText(bio: bio),
                         ),
                       ],
-                      const ProfileFigmaMusicLine(
-                        label: 'Zulfein • Mehul Mahesh, DJ A...',
-                      ),
+                      ProfileFigmaMusicLine(label: profileMusic),
                       const SizedBox(height: 20),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
+                        mainAxisSize: MainAxisSize.max,
                         children: [
                           ProfileFigmaActionButton(
-                            label: 'Edit Profile',
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -687,8 +673,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                                         '',
                                     initialUsername: user?.username ?? '',
                                     initialBio: user?.bio ?? '',
-                                    initialMusic:
-                                        'Zulfein • Mehul Mahesh, DJ A...',
+                                    initialMusic: user?.profileMusic ?? '',
                                     avatarUrl: user?.profileImage,
                                   ),
                                 ),
@@ -698,194 +683,262 @@ class _ProfileScreenState extends State<ProfileScreen>
                           const SizedBox(
                             width: ProfileFigmaTokens.actionButtonGap,
                           ),
-                          ProfileFigmaActionButton(
-                            label: 'Share',
-                            iconAssetPath:
-                                'assets/vyooO_icons/Profile/share.png',
+                          ProfileFigmaIconActionButton(
+                            svgAssetPath: ProfileAssets.profileActionShare,
                             onPressed: () => _shareProfile(
                               uid: profileUid,
                               username: user?.username,
                             ),
                           ),
+                          const SizedBox(
+                            width: ProfileFigmaTokens.actionButtonGap,
+                          ),
+                          ProfileFigmaIconActionButton(
+                            svgAssetPath: ProfileAssets.profileActionPlus,
+                            onPressed: profileUid.isEmpty
+                                ? () {}
+                                : () => _openMyStoryComposerOrViewer(
+                                      context,
+                                      userId: profileUid,
+                                      username: username,
+                                      avatarUrl: avatarUrl ?? '',
+                                    ),
+                          ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(
+                        height: ProfileFigmaTokens.contentSectionTopGap,
+                      ),
                     ],
                   ),
                 ),
               ),
-              SliverFillRemaining(
-                hasScrollBody: true,
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: ProfileFigmaTokens.contentSurface,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(ProfileFigmaTokens.contentTopRadius),
+              DecoratedSliver(
+                decoration: const BoxDecoration(
+                  color: ProfileFigmaTokens.contentSurface,
+                  borderRadius: BorderRadius.vertical(
+                    top: Radius.circular(
+                      ProfileFigmaTokens.contentTopRadius,
                     ),
                   ),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final h = constraints.maxHeight;
-                      final compactTabs = h < 140;
-                      final topPad = compactTabs ? 8.0 : 24.0;
-                      final tabGap = compactTabs ? 8.0 : 16.0;
-                      return Column(
-                        children: [
-                          SizedBox(height: topPad),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: AppSpacing.md,
-                            ),
-                            child: ProfileFigmaTabBar(
-                              tabs: _tabs,
-                              selectedIndex: _selectedTabIndex,
-                              onTabSelected: (i) =>
-                                  setState(() => _selectedTabIndex = i),
-                              savedTabIndex: _savedTabIndex,
-                              onSavedTap: () => setState(
-                                () => _selectedTabIndex = _savedTabIndex,
-                              ),
-                              compact: compactTabs,
-                            ),
+                ),
+                sliver: SliverMainAxisGroup(
+                    slivers: [
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(
+                            ProfileFigmaTokens.profileHeaderHorizontalPad,
+                            ProfileFigmaTokens.contentTopPadding,
+                            ProfileFigmaTokens.profileHeaderHorizontalPad,
+                            0,
                           ),
-                          SizedBox(height: tabGap),
-                          Expanded(
-                            child: CustomScrollView(
-                              physics: const NeverScrollableScrollPhysics(),
-                              slivers: _buildProfileContentSlivers(
-                                context,
-                                canUploadContent,
-                                uid: profileUid,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              ProfileFigmaTabBar(
+                                tabs: _tabs,
+                                selectedIndex: _selectedTabIndex,
+                                onTabSelected: (i) =>
+                                    setState(() => _selectedTabIndex = i),
+                                savedTabIndex: _savedTabIndex,
+                                onSavedTap: () => setState(
+                                  () => _selectedTabIndex = _savedTabIndex,
+                                ),
+                                onBookmarkTap: () => setState(
+                                  () => _selectedTabIndex = _savedTabIndex,
+                                ),
                               ),
-                            ),
+                              if (profileUid.isNotEmpty) ...[
+                                if (!_highlightsExpanded) ...[
+                                  const SizedBox(
+                                    height: ProfileFigmaTokens
+                                        .highlightsToggleTopGap,
+                                  ),
+                                  ProfileTabUnderFirstTab(
+                                    tabCount: _tabs.length,
+                                    showBookmarkAccessory: true,
+                                    showStarAccessory: true,
+                                    child: ProfileHighlightsToggleHandle(
+                                      expanded: false,
+                                      onTap: () => setState(
+                                        () => _highlightsExpanded = true,
+                                      ),
+                                    ),
+                                  ),
+                                ] else ...[
+                                  const SizedBox(
+                                    height: ProfileFigmaTokens
+                                        .highlightsSectionTopGap,
+                                  ),
+                                  AnimatedSize(
+                                    duration:
+                                        const Duration(milliseconds: 240),
+                                    curve: Curves.easeInOut,
+                                    alignment: Alignment.topCenter,
+                                    child: _buildHighlightsSection(
+                                      context,
+                                      profileUid,
+                                      user,
+                                    ),
+                                  ),
+                                  const SizedBox(
+                                    height: ProfileFigmaTokens
+                                        .highlightsToggleTopGap,
+                                  ),
+                                  ProfileTabUnderFirstTab(
+                                    tabCount: _tabs.length,
+                                    showBookmarkAccessory: true,
+                                    showStarAccessory: true,
+                                    child: ProfileHighlightsToggleHandle(
+                                      expanded: true,
+                                      onTap: () => setState(
+                                        () => _highlightsExpanded = false,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ] else
+                                const SizedBox(height: 8),
+                            ],
                           ),
-                        ],
-                      );
-                    },
+                        ),
+                      ),
+                      if (profileUid.isEmpty)
+                        const SliverToBoxAdapter(child: SizedBox(height: 4)),
+                      ..._buildProfileContentSlivers(
+                        context,
+                        canUploadContent,
+                        uid: profileUid,
+                      ),
+                    ],
                   ),
+                ),
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: AppBottomNavigation.totalHeightFor(context),
+                ),
+                sliver: const SliverToBoxAdapter(
+                  child: SizedBox.shrink(),
                 ),
               ),
             ],
           ),
         ),
-        _buildHighlightsAboveNavBar(context, profileUid, user),
+          ],
+        ),
+        Positioned(
+          left: 0,
+          top: ProfileFigmaTokens.profileSideRailTop,
+          child: ProfileSideDrawer(
+            onMenuTap: () => _showProfileMenu(context),
+            onWalletTap: () => _openWalletFromRail(context),
+            onChatTap: _openChatFromRail,
+            onRevenueTap: () => _openRevenueFromRail(context),
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildHighlightsAboveNavBar(
+  Widget _buildHighlightsSection(
     BuildContext context,
     String profileUid,
     AppUserModel? user,
   ) {
     if (profileUid.isEmpty) return const SizedBox.shrink();
-    return Material(
-      color: ProfileFigmaTokens.contentSurface,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(
-          AppSpacing.md,
-          10,
-          AppSpacing.md,
-          10,
-        ),
-        child: StreamBuilder<List<StoryHighlightModel>>(
-            stream: _highlightsStreamFor(profileUid),
-            builder: (context, snap) {
-              if (snap.hasError) {
-                debugPrint('Profile highlights stream: ${snap.error}');
-              }
-              final highlights = snap.data ?? const <StoryHighlightModel>[];
-              final loading =
-                  snap.connectionState == ConnectionState.waiting &&
-                  !snap.hasData;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Highlights',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      if (loading) ...[
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          width: 14,
-                          height: 14,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 2,
-                            color: Colors.white.withValues(alpha: 0.5),
-                          ),
-                        ),
-                      ],
-                    ],
+
+    return StreamBuilder<List<StoryHighlightModel>>(
+      stream: _highlightsStreamFor(profileUid),
+      builder: (context, snap) {
+        if (snap.hasError) {
+          debugPrint('Profile highlights stream: ${snap.error}');
+        }
+        final highlights = snap.data ?? const <StoryHighlightModel>[];
+        final loading =
+            snap.connectionState == ConnectionState.waiting &&
+            !snap.hasData;
+
+        if (snap.hasError) {
+          return ProfileTabTrackRow(
+            showBookmarkAccessory: true,
+            showStarAccessory: true,
+            alignWithPostsStart: true,
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+              child: Text(
+                'Could not load highlights. Pull to refresh or try again.',
+                style: TextStyle(
+                  fontFamily: 'DM Sans',
+                  color: ProfileFigmaTokens.secondaryText,
+                  fontSize: 12,
+                  height: 1.3,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ProfileTabTrackRow(
+          showBookmarkAccessory: true,
+          showStarAccessory: true,
+          alignWithPostsStart: true,
+          child: SizedBox(
+            height: ProfileFigmaTokens.highlightRowHeight,
+            child: Stack(
+              alignment: Alignment.centerLeft,
+              children: [
+                ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: highlights.length + 1,
+                  separatorBuilder: (_, _) => const SizedBox(
+                    width: ProfileFigmaTokens.highlightTileGap,
                   ),
-                  const SizedBox(height: 8),
-                  if (snap.hasError)
-                    Text(
-                      'Could not load highlights. Pull to refresh or try again.',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 12,
-                        height: 1.3,
-                      ),
-                    )
-                  else if (highlights.isEmpty)
-                    GestureDetector(
-                      onTap: () => _openMyStoryComposerOrViewer(
-                        context,
-                        userId: profileUid,
-                        username: user?.username ?? 'you',
-                        avatarUrl: user?.profileImage ?? '',
-                      ),
-                      child: Text(
-                        'Open your story, tap ···, then "Add to highlight" to save one here.',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
-                          fontSize: 12,
-                          height: 1.35,
-                          decoration: TextDecoration.underline,
-                          decorationColor:
-                              Colors.white.withValues(alpha: 0.35),
+                  itemBuilder: (_, i) {
+                    if (i == 0) {
+                      return ProfileHighlightAddChip(
+                        onTap: () => _openMyStoryComposerOrViewer(
+                          context,
+                          userId: profileUid,
+                          username: user?.username ?? 'you',
+                          avatarUrl: user?.profileImage ?? '',
                         ),
-                      ),
-                    )
-                  else
-                    SizedBox(
-                      height: 48,
-                      child: ListView.separated(
-                        scrollDirection: Axis.horizontal,
-                        itemCount: highlights.length,
-                        separatorBuilder: (_, _) => const SizedBox(width: 8),
-                        itemBuilder: (_, i) {
-                          final h = highlights[i];
-                          return ProfileHighlightAlbumTile(
-                            title: h.title,
-                            onTap: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => HighlightViewerScreen(
-                                    userId: profileUid,
-                                    highlightId: h.id,
-                                    title: h.title,
-                                  ),
-                                ),
-                              );
-                            },
-                          );
-                        },
+                      );
+                    }
+                    final h = highlights[i - 1];
+                    return ProfileHighlightAlbumTile(
+                      title: h.title,
+                      coverMediaUrl: h.coverMediaUrl,
+                      onTap: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder: (_) => HighlightViewerScreen(
+                              userId: profileUid,
+                              highlightId: h.id,
+                              title: h.title,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+                if (loading)
+                  const Positioned(
+                    right: 0,
+                    child: SizedBox(
+                      width: 14,
+                      height: 14,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: ProfileFigmaTokens.tabSelectedFill,
                       ),
                     ),
-                ],
-              );
-            },
+                  ),
+              ],
+            ),
           ),
-        ),
+        );
+      },
     );
   }
 
@@ -904,12 +957,16 @@ class _ProfileScreenState extends State<ProfileScreen>
       case 1:
         return _buildVRGridSlivers();
       case 2:
-        return _buildStreamsListSlivers();
+        return _buildClipsListSlivers();
+      case 3:
+        return _buildTagsGridSlivers(uid: uid);
       default:
         return [
-          SliverFillRemaining(
-            hasScrollBody: false,
-            child: _buildEmptyPostsPrompt(context),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: 280,
+              child: _buildEmptyPostsPrompt(context),
+            ),
           ),
         ];
     }
@@ -926,16 +983,19 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<List<Map<String, dynamic>>> _vrReelsFutureOnce() {
-    return _vrReelsFuture ??= ReelsService().getReelsVR(limit: 120);
+    final uid = AuthService().currentUser?.uid ?? '';
+    return _vrReelsFuture ??= ProfilePostsLoader.loadVrForUser(uid);
   }
 
   List<Widget> _buildSavedGridSlivers() {
     final uid = AuthService().currentUser?.uid;
     if (uid == null || uid.isEmpty) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildEmptySavedPlaceholder(),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildEmptySavedPlaceholder(),
+          ),
         ),
       ];
     }
@@ -949,7 +1009,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                 height: 200,
                 child: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white54),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      ProfileFigmaTokens.accentMagenta,
+                    ),
                   ),
                 ),
               );
@@ -965,7 +1027,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                       messageForFirestore(snapshot.error),
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                        fontFamily: 'DM Sans',
+                        color: ProfileFigmaTokens.secondaryText,
                         fontSize: 14,
                         height: 1.35,
                       ),
@@ -979,10 +1042,7 @@ class _ProfileScreenState extends State<ProfileScreen>
               return _buildEmptySavedPlaceholder();
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: savedReels,
                 thumbnailFor: _thumbnailFromSavedReel,
@@ -1033,9 +1093,11 @@ class _ProfileScreenState extends State<ProfileScreen>
   List<Widget> _buildPostsGridSlivers({required String uid}) {
     if (uid.isEmpty) {
       return [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: _buildEmptyPostsPrompt(context),
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildEmptyPostsPrompt(context),
+          ),
         ),
       ];
     }
@@ -1044,6 +1106,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         child: ProfileCachedPostsGrid(
           key: ValueKey('profile-posts-$uid'),
           userId: uid,
+          padding: ProfileFigmaTokens.profileGridPadding,
           thumbnailFor: _thumbnailFromReel,
           onItemTap: _openPostFeedFromReels,
           onItemLongPress: (context, posts, index) {
@@ -1114,6 +1177,11 @@ class _ProfileScreenState extends State<ProfileScreen>
     final handle = (item['handle']?.toString() ?? '').trim();
     final avatar = (item['avatarUrl']?.toString() ?? '').trim();
     final thumb = _thumbnailFromReel(item);
+    final videoUrl = (item['videoUrl'] as String? ?? '').trim();
+    final description = (item['description'] as String? ??
+            item['caption'] as String? ??
+            '')
+        .trim();
     Navigator.of(context).push(
       MaterialPageRoute<void>(
         builder: (_) => VRDetailScreen(
@@ -1122,7 +1190,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             creatorHandle: handle.isNotEmpty ? handle : 'creator',
             avatarUrl: avatar,
             thumbnailUrl: thumb,
+            videoUrl: videoUrl.isNotEmpty ? videoUrl : null,
+            description: description,
             likeCount: (item['likes'] as num?)?.toInt() ?? 0,
+            commentCount: (item['comments'] as num?)?.toInt() ?? 0,
+            viewCount: (item['views'] as num?)?.toInt() ?? 0,
+            shareCount: (item['shares'] as num?)?.toInt() ?? 0,
+            saveCount: (item['saves'] as num?)?.toInt() ?? 0,
+            video360: Video360Metadata.forVrPlayback(item),
           ),
         ),
       ),
@@ -1140,7 +1215,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(
-                  child: CircularProgressIndicator(color: Colors.white54),
+                  child: CircularProgressIndicator(
+                    color: ProfileFigmaTokens.accentMagenta,
+                  ),
                 ),
               );
             }
@@ -1154,18 +1231,16 @@ class _ProfileScreenState extends State<ProfileScreen>
                 child: Center(
                   child: Text(
                     'No VR posts yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                    style: const TextStyle(
+                      fontFamily: 'DM Sans',
+                      color: ProfileFigmaTokens.secondaryText,
                     ),
                   ),
                 ),
               );
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: reels,
                 thumbnailFor: _thumbnailFromReel,
@@ -1179,7 +1254,75 @@ class _ProfileScreenState extends State<ProfileScreen>
     ];
   }
 
-  List<Widget> _buildStreamsListSlivers() {
+  List<Widget> _buildTagsGridSlivers({required String uid}) {
+    if (uid.isEmpty) {
+      return [
+        SliverToBoxAdapter(
+          child: SizedBox(
+            height: 280,
+            child: _buildEmptyTagsPlaceholder(),
+          ),
+        ),
+      ];
+    }
+    return [
+      SliverToBoxAdapter(
+        child: FutureBuilder<List<Map<String, dynamic>>>(
+          future: ProfilePostsLoader.loadPostsForUser(uid),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const SizedBox(
+                height: 200,
+                child: Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      ProfileFigmaTokens.accentMagenta,
+                    ),
+                  ),
+                ),
+              );
+            }
+            final tagged = (snapshot.data ?? const [])
+                .where((post) {
+                  final tags = post['tags'];
+                  return tags is List && tags.isNotEmpty;
+                })
+                .toList(growable: false);
+            if (tagged.isEmpty) {
+              return SizedBox(
+                height: 280,
+                child: _buildEmptyTagsPlaceholder(),
+              );
+            }
+            return ProfileModularGrid(
+              padding: ProfileFigmaTokens.profileGridPadding,
+              items: profileGridItemsFromReels(
+                reels: tagged,
+                thumbnailFor: _thumbnailFromReel,
+              ),
+              onItemTap: (index) =>
+                  _openPostFeedFromReels(context, tagged, index),
+            );
+          },
+        ),
+      ),
+    ];
+  }
+
+  Widget _buildEmptyTagsPlaceholder() {
+    return Center(
+      child: Text(
+        'No tagged posts yet',
+        style: const TextStyle(
+          fontFamily: 'DM Sans',
+          color: ProfileFigmaTokens.secondaryText,
+          fontSize: 16,
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _buildClipsListSlivers() {
     final uid = AuthService().currentUser?.uid ?? '';
     return [
       SliverToBoxAdapter(
@@ -1190,7 +1333,9 @@ class _ProfileScreenState extends State<ProfileScreen>
               return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 40),
                 child: Center(
-                  child: CircularProgressIndicator(color: Colors.white54),
+                  child: CircularProgressIndicator(
+                    color: ProfileFigmaTokens.accentMagenta,
+                  ),
                 ),
               );
             }
@@ -1200,9 +1345,10 @@ class _ProfileScreenState extends State<ProfileScreen>
                 padding: const EdgeInsets.symmetric(vertical: 24),
                 child: Center(
                   child: Text(
-                    'No saved streams yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                    'No clips yet',
+                    style: const TextStyle(
+                      fontFamily: 'DM Sans',
+                      color: ProfileFigmaTokens.secondaryText,
                     ),
                   ),
                 ),
@@ -1258,13 +1404,14 @@ class _ProfileScreenState extends State<ProfileScreen>
             Icon(
               Icons.add_photo_alternate_outlined,
               size: 40,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.6),
             ),
             const SizedBox(height: AppSpacing.md),
             Text(
               'Tap the "+" button below to post!',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                fontFamily: 'DM Sans',
+                color: ProfileFigmaTokens.secondaryText,
                 fontSize: 14,
               ),
               textAlign: TextAlign.center,
@@ -1428,13 +1575,14 @@ class _ProfileScreenState extends State<ProfileScreen>
           Icon(
             Icons.bookmark_border_rounded,
             size: 48,
-            color: Colors.white.withValues(alpha: 0.5),
+            color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.6),
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             'No favorite posts yet',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
+              fontFamily: 'DM Sans',
+              color: ProfileFigmaTokens.secondaryText,
               fontSize: 16,
             ),
           ),
@@ -1806,7 +1954,6 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
     final handle = ((currentReel?['handle'] as String?) ?? '').trim();
     final caption = ((currentReel?['caption'] as String?) ?? '').trim();
     final normalizedHandle = ProfileFigmaTokens.displayUsername(handle);
-    final privacy = ReelCountPrivacy.fromMap(currentReel);
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -1827,6 +1974,16 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
             itemCount: _loopedReels.length,
             itemBuilder: (context, index) {
               final reel = _loopedReels[index];
+              final mediaItems = ReelMediaItem.listFromPost(reel);
+              if (mediaItems.length > 1) {
+                return PostMediaCarousel(
+                  key: ValueKey<String>('carousel_${reel['id'] ?? index}'),
+                  items: mediaItems,
+                  video360: Video360Metadata.fromPost(reel),
+                  imageFit: BoxFit.contain,
+                  isVisible: index == _currentIndex,
+                );
+              }
               final mediaType = ((reel['mediaType'] as String?) ?? '')
                   .toLowerCase();
               if (mediaType == 'image') {
@@ -1857,6 +2014,7 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
               }
               return ReelItemWidget(
                 videoUrl: videoUrl,
+                video360: Video360Metadata.fromPost(reel),
                 isVisible: index == _currentIndex,
               );
             },
@@ -1908,64 +2066,6 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
               ],
             ),
           ),
-          if (currentReel != null)
-            Positioned(
-              right: 16,
-              bottom: 120,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (privacy.showViews())
-                    _OverlayMetric(
-                      icon: Icons.remove_red_eye_outlined,
-                      value: privacy.displayCount(
-                        ReelCountMetric.views,
-                        (currentReel['views'] as int?) ?? 0,
-                      ),
-                    ),
-                  if (privacy.showViews() && privacy.showLikes())
-                    const SizedBox(height: 14),
-                  if (privacy.showLikes())
-                    _OverlayMetric(
-                      icon: Icons.favorite_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.likes,
-                        (currentReel['likes'] as int?) ?? 0,
-                      ),
-                    ),
-                  if (privacy.showLikes() && privacy.showComments())
-                    const SizedBox(height: 14),
-                  if (privacy.showComments())
-                    _OverlayMetric(
-                      icon: Icons.chat_bubble_outline_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.comments,
-                        (currentReel['comments'] as int?) ?? 0,
-                      ),
-                    ),
-                  if (privacy.showComments() && privacy.showShares())
-                    const SizedBox(height: 14),
-                  if (privacy.showShares())
-                    _OverlayMetric(
-                      icon: Icons.reply_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.shares,
-                        ReelEngagement.repostCount(currentReel),
-                      ),
-                    ),
-                  if (privacy.showShares() && privacy.showSaves())
-                    const SizedBox(height: 14),
-                  if (privacy.showSaves())
-                    _OverlayMetric(
-                      icon: Icons.star_outline_rounded,
-                      value: privacy.displayCount(
-                        ReelCountMetric.saves,
-                        (currentReel['saves'] as int?) ?? 0,
-                      ),
-                    ),
-                ],
-              ),
-            ),
           if (currentReel != null)
             Positioned(
               left: 16,
@@ -2046,39 +2146,6 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
             ),
         ],
       ),
-    );
-  }
-}
-
-class _OverlayMetric extends StatelessWidget {
-  const _OverlayMetric({required this.icon, required this.value});
-
-  final IconData icon;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          width: 36,
-          height: 36,
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.2),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: Colors.white, size: 22),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
     );
   }
 }

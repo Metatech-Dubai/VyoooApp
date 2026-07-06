@@ -1,0 +1,30 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "headers": [
+    {
+      "source": "/.well-known/apple-app-site-association",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    },
+    {
+      "source": "/.well-known/assetlinks.json",
+      "headers": [
+        { "key": "Content-Type", "value": "application/json" },
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/u/:username",
+      "destination": "https://us-central1-vyooov1.cloudfunctions.net/shareLink/u/:username"
+    },
+    {
+      "source": "/r/:id",
+      "destination": "https://us-central1-vyooov1.cloudfunctions.net/shareLink/r/:id"
+    },
+    { "source": "/open", "destination": "/open/index.html" }
+  ]
+}

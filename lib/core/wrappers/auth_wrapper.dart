@@ -8,10 +8,13 @@ import 'package:provider/provider.dart';
 import '../config/app_config.dart';
 import '../models/app_user_model.dart';
 import '../onboarding/parental_submit_handoff.dart';
+import '../onboarding/username_submit_handoff.dart';
 import '../services/auth_service.dart';
+import '../services/global_incoming_call_service.dart';
 import '../services/in_app_notification_alert_service.dart';
 import '../services/otp_session_service.dart';
 import '../services/push_messaging_service.dart';
+import '../services/saved_accounts_service.dart';
 import '../services/signup_draft_service.dart';
 import '../services/user_service.dart';
 import '../utils/account_message.dart';
@@ -20,6 +23,7 @@ import '../../screens/auth/sign_in_screen.dart';
 import '../../screens/auth/verify_code_screen.dart';
 import '../../screens/debug/tier_picker_screen.dart';
 import '../../screens/onboarding/organization_details_screen.dart';
+import '../../services/username_validation.dart';
 import '../onboarding/onboarding_gate.dart';
 import '../subscription/subscription_controller.dart';
 import 'main_nav_wrapper.dart';
@@ -35,8 +39,10 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   String? _purchasesBoundUid;
-  String? _fcmBoundUid;
+  String? _messagingUid;
+  String? _incomingCallUid;
   String? _lastSeenUid;
+  String? _savedAccountsSyncedUid;
 
   @override
   Widget build(BuildContext context) {
@@ -65,20 +71,33 @@ class _AuthWrapperState extends State<AuthWrapper> {
         }
         final shouldBindMessaging =
             uid != null && uid.isNotEmpty && !(user?.isAnonymous ?? true);
-        if (shouldBindMessaging && _fcmBoundUid != uid) {
-          _fcmBoundUid = uid;
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            unawaited(PushMessagingService.instance.syncTokenForUser(uid));
-            unawaited(PushMessagingService.instance.handleInitialMessage());
-            InAppNotificationAlertService.instance.startForUser(uid);
-          });
-        }
         if (shouldBindMessaging) {
-          // Keep listener alive even after hot-restart/rebuild edge cases.
+          if (_messagingUid != uid) {
+            _messagingUid = uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              PushMessagingService.instance.bindForUser(uid);
+            });
+          }
+          if (_incomingCallUid != uid) {
+            _incomingCallUid = uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              GlobalIncomingCallService.instance.startForUser(uid);
+            });
+          }
           InAppNotificationAlertService.instance.startForUser(uid);
+          if (_savedAccountsSyncedUid != uid) {
+            _savedAccountsSyncedUid = uid;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              unawaited(SavedAccountsService().syncCurrentAccountMetadata());
+            });
+          }
         }
         if (uid == null || (user?.isAnonymous ?? true)) {
-          _fcmBoundUid = null;
+          _messagingUid = null;
+          _incomingCallUid = null;
+          _savedAccountsSyncedUid = null;
+          PushMessagingService.instance.unbindForUser();
+          GlobalIncomingCallService.instance.stop();
           InAppNotificationAlertService.instance.stop();
         }
         // Do not use `hasData`: for a signed-out user Firebase emits `null`, and
@@ -151,6 +170,43 @@ class _AuthDeterminingScaffold extends StatelessWidget {
   }
 }
 
+class _ProfileLoadErrorScaffold extends StatelessWidget {
+  const _ProfileLoadErrorScaffold({required this.onRetry});
+
+  final VoidCallback onRetry;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0D0015),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Could not set up your profile on the server. Check your connection and try again.',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  height: 1.35,
+                ),
+              ),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: onRetry,
+                child: const Text('Retry'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 String _maskEmailForDisplay(String email) {
   final t = email.trim();
   final at = t.indexOf('@');
@@ -200,10 +256,15 @@ class _UserDocGateState extends State<_UserDocGate> {
     if (mounted) setState(() {});
   }
 
+  void _onUsernameHandoffChanged() {
+    if (mounted) setState(() {});
+  }
+
   @override
   void initState() {
     super.initState();
     ParentalSubmitHandoff.instance.addListener(_onParentalHandoffChanged);
+    UsernameSubmitHandoff.instance.addListener(_onUsernameHandoffChanged);
     _readyFuture = _bootstrapUserDoc();
     _otpRequiredFuture = _isPasswordOtpRequired();
   }
@@ -211,9 +272,11 @@ class _UserDocGateState extends State<_UserDocGate> {
   @override
   void dispose() {
     ParentalSubmitHandoff.instance.removeListener(_onParentalHandoffChanged);
+    UsernameSubmitHandoff.instance.removeListener(_onUsernameHandoffChanged);
     // Only clear a handoff owned by this gate (avoids wiping state if another
     // [AuthWrapper] instance was stacked and disposed first).
     ParentalSubmitHandoff.instance.disarm(minorUid: widget.uid);
+    UsernameSubmitHandoff.instance.disarm(uid: widget.uid);
     super.dispose();
   }
 
@@ -222,6 +285,7 @@ class _UserDocGateState extends State<_UserDocGate> {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.uid != widget.uid) {
       ParentalSubmitHandoff.instance.disarm();
+      UsernameSubmitHandoff.instance.disarm();
       _readyFuture = _bootstrapUserDoc();
       _otpRequiredFuture = _isPasswordOtpRequired();
       _selectedLoginOtpChannel = null;
@@ -246,20 +310,23 @@ class _UserDocGateState extends State<_UserDocGate> {
     }
   }
 
+  void _retryBootstrapUserDoc() {
+    setState(() {
+      _readyFuture = _bootstrapUserDoc();
+      _userDocStreamGeneration++;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<void>(
       future: _readyFuture,
       builder: (context, readySnapshot) {
         if (readySnapshot.connectionState != ConnectionState.done) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF0D0015),
-            body: Center(
-              child: CircularProgressIndicator(
-                valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-              ),
-            ),
-          );
+          return const _AuthDeterminingScaffold();
+        }
+        if (readySnapshot.hasError) {
+          return _ProfileLoadErrorScaffold(onRetry: _retryBootstrapUserDoc);
         }
         return StreamBuilder<AppUserModel?>(
           key: ValueKey<String>('userDoc_${widget.uid}_$_userDocStreamGeneration'),
@@ -309,7 +376,10 @@ class _UserDocGateState extends State<_UserDocGate> {
             }
             final appUser = userSnapshot.data;
             if (appUser == null) {
-              return const CreateUsernameScreen();
+              if (userSnapshot.connectionState == ConnectionState.waiting) {
+                return const _AuthDeterminingScaffold();
+              }
+              return _ProfileLoadErrorScaffold(onRetry: _retryBootstrapUserDoc);
             }
             return ListenableBuilder(
               listenable: Listenable.merge([
@@ -518,22 +588,60 @@ class _UserDocGateState extends State<_UserDocGate> {
         ParentalSubmitHandoff.instance.activeConsentIdForMinor(appUser.uid) !=
             null;
 
+    final handoffUsername =
+        UsernameSubmitHandoff.instance.savedUsernameFor(appUser.uid);
+    final handoffAccountType =
+        UsernameSubmitHandoff.instance.savedAccountTypeFor(appUser.uid);
+
+    final streamUsername =
+        UsernameValidation.normalize((appUser.username ?? '').trim());
+    if (handoffUsername != null &&
+        streamUsername.isNotEmpty &&
+        streamUsername == UsernameValidation.normalize(handoffUsername)) {
+      UsernameSubmitHandoff.instance.disarm(uid: appUser.uid);
+    }
+
+    final effectiveUser = _effectiveUserForOnboarding(
+      appUser,
+      handoffUsername: handoffUsername,
+      handoffAccountType: handoffAccountType,
+    );
+
     // Stale Firestore snapshots can miss username/org while a parent invite
     // handoff is active; always run [OnboardingGate] so the waiting screen wins.
     if (!hasParentalHandoff) {
-      final hasUsername = (appUser.username ?? '').trim().isNotEmpty;
+      final hasUsername =
+          (effectiveUser.username ?? '').trim().isNotEmpty;
       if (!hasUsername) {
         return const CreateUsernameScreen();
       }
 
-      final accountType = appUser.accountType.trim().toLowerCase();
+      final accountType = effectiveUser.accountType.trim().toLowerCase();
       if (accountType == 'business' || accountType == 'government') {
-        if (!appUser.orgProfileCompleted) {
+        if (!effectiveUser.orgProfileCompleted) {
           return OrganizationDetailsScreen(accountType: accountType);
         }
       }
     }
 
-    return OnboardingGate.nextScreen(appUser);
+    return OnboardingGate.nextScreen(effectiveUser);
+  }
+
+  AppUserModel _effectiveUserForOnboarding(
+    AppUserModel appUser, {
+    String? handoffUsername,
+    String? handoffAccountType,
+  }) {
+    var user = appUser;
+    final handoffActive = handoffUsername != null && handoffUsername.trim().isNotEmpty;
+    if (handoffActive && (user.username ?? '').trim().isEmpty) {
+      user = user.copyWith(username: handoffUsername.trim());
+    }
+    if (handoffActive &&
+        handoffAccountType != null &&
+        handoffAccountType.trim().isNotEmpty) {
+      user = user.copyWith(accountType: handoffAccountType.trim().toLowerCase());
+    }
+    return user;
   }
 }

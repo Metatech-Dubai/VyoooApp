@@ -109,7 +109,7 @@ class AppVersionPolicy {
     if (storeId != null && storeId.isNotEmpty) {
       return 'https://apps.apple.com/app/id$storeId';
     }
-    return AppLinks.iosTestFlightJoin;
+    return AppLinks.iosAppStore;
   }
 }
 

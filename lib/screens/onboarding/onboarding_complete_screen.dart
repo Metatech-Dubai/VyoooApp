@@ -5,11 +5,9 @@ import '../../core/config/app_links.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_padding.dart';
-import '../../core/theme/app_radius.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
-import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
@@ -18,8 +16,6 @@ import '../../core/wrappers/main_nav_wrapper.dart';
 
 class OnboardingCompleteScreen extends StatelessWidget {
   const OnboardingCompleteScreen({super.key});
-
-  static const Color _linkColor = Color(0xFFD10057);
 
   Future<void> _openUrl(String url) async {
     final uri = Uri.parse(url);
@@ -59,23 +55,35 @@ class OnboardingCompleteScreen extends StatelessWidget {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF2A0030),
-        title: const Text(
+        backgroundColor: AppTheme.lightScaffoldBackground,
+        title: Text(
           'Exit onboarding?',
-          style: TextStyle(color: Colors.white),
+          style: AppTypography.authDialogTitle.copyWith(
+            color: AppTheme.lightOnSurface,
+          ),
         ),
-        content: const Text(
+        content: Text(
           'Are you sure you want to exit onboarding?',
-          style: TextStyle(color: White70.value),
+          style: AppTypography.authSmallBody.copyWith(
+            color: AppTheme.lightMutedBody,
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel', style: TextStyle(color: White70.value)),
+            child: Text(
+              'Cancel',
+              style: AppTypography.authSmallBody.copyWith(
+                color: AppTheme.lightMutedBody,
+              ),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Exit', style: TextStyle(color: _linkColor)),
+            child: Text(
+              'Exit',
+              style: AppTypography.authAccentLink,
+            ),
           ),
         ],
       ),
@@ -87,43 +95,36 @@ class OnboardingCompleteScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Stack(
+    return AuthLightScaffold(
+      scrollable: false,
+      padding: AppPadding.authFormHorizontal,
+      stackChildren: [
+        AuthFloatingBackButton(onPressed: () => _onBack(context)),
+      ],
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          AppGradientBackground(
-            type: GradientType.authFlow,
-            child: Padding(
-              padding: AppPadding.authFormHorizontal,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                  const VyoooBrandLogo(size: AppSizes.authLogoHeight),
-                AppPadding.itemGap,
-                const OnboardingProgressBar(progress: 1.0),
-                SizedBox(height: AppSpacing.xl + AppSpacing.md),
-                const Text(
-                  "You're all set!",
-                  style: TextStyle(
-                    fontSize: 36,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.defaultTextColor,
-                  ),
-                ),
-                SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-                _buildDescription(context),
-                SizedBox(height: AppSpacing.xl + AppSpacing.md),
-                const Spacer(),
-                _buildAcceptButton(context),
-                AppPadding.itemGap,
-                _buildDeclineButton(context),
-                SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-              ],
+          SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+          const VyoooBrandLogo.auth(),
+          AppPadding.itemGap,
+          const OnboardingProgressBar(progress: 1.0),
+          SizedBox(height: AppSpacing.xl + AppSpacing.md),
+          Text(
+            "You're all set!",
+            style: AppTypography.authHeadline.copyWith(
+              color: AppTheme.lightOnSurface,
             ),
           ),
-        ),
-          AuthFloatingBackButton(onPressed: () => _onBack(context)),
+          SizedBox(height: AppSpacing.xl - AppSpacing.xs),
+          _buildDescription(context),
+          const Spacer(),
+          AuthPrimaryButton(
+            label: 'I Accept',
+            onPressed: () => _onAccept(context),
+          ),
+          AppPadding.itemGap,
+          _buildDeclineButton(context),
+          SizedBox(height: AppSpacing.xl - AppSpacing.xs),
         ],
       ),
     );
@@ -132,13 +133,13 @@ class OnboardingCompleteScreen extends StatelessWidget {
   Widget _buildDescription(BuildContext context) {
     const baseStyle = TextStyle(
       fontSize: 14,
-      color: AppTheme.secondaryTextColor,
+      color: AppTheme.lightMutedBody,
       height: 1.5,
       fontWeight: FontWeight.w400,
     );
     const linkStyle = TextStyle(
       fontSize: 14,
-      color: _linkColor,
+      color: AppTypography.authAccentLinkColor,
       decoration: TextDecoration.underline,
       fontWeight: FontWeight.w400,
       height: 1.5,
@@ -172,40 +173,14 @@ class OnboardingCompleteScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAcceptButton(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 56,
-      child: ElevatedButton(
-        onPressed: () => _onAccept(context),
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.buttonBackground,
-          foregroundColor: AppTheme.buttonTextColor,
-          shape: RoundedRectangleBorder(
-            borderRadius: AppRadius.buttonRadius,
-          ),
-        ),
-        child: const Text(
-          'I Accept',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildDeclineButton(BuildContext context) {
     return Center(
       child: TextButton(
         onPressed: () => _onDecline(context),
-        child: const Text(
+        child: Text(
           'Decline',
-          style: TextStyle(
-            fontSize: 14,
-            color: AppTheme.secondaryTextColor,
-            fontWeight: FontWeight.w400,
+          style: AppTypography.authSmallBody.copyWith(
+            color: AppTheme.lightMutedBody,
           ),
         ),
       ),

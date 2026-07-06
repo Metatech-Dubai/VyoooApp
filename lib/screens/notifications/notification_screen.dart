@@ -1,15 +1,19 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
-import 'package:vyooo/core/widgets/app_gradient_background.dart';
 
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/services/notification_service.dart';
+import '../../core/services/reels_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/utils/user_facing_errors.dart';
+import '../../core/widgets/app_network_avatar.dart';
+import '../../core/widgets/profile/profile_reel_grid_navigation.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
+import '../profile/profile_figma_tokens.dart';
+import '../profile/user_profile_screen.dart';
 
 /// Notifications tab: grouped by Today / Yesterday / Last 7 days.
 class NotificationScreen extends StatefulWidget {
@@ -23,6 +27,7 @@ class _NotificationScreenState extends State<NotificationScreen>
     with AutomaticKeepAliveClientMixin {
   bool _isMarkingVisibleAsRead = false;
   final Set<String> _followBackInFlight = <String>{};
+  final Set<String> _pendingFollowBackTargets = <String>{};
 
   @override
   bool get wantKeepAlive => true;
@@ -31,17 +36,14 @@ class _NotificationScreenState extends State<NotificationScreen>
   Widget build(BuildContext context) {
     super.build(context);
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: AppGradientBackground(
-        type: GradientType.premiumDark,
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _buildAppBar(context),
-              Expanded(child: _buildList()),
-            ],
-          ),
+      backgroundColor: AppColors.chatBackground,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildAppBar(context),
+            Expanded(child: _buildList()),
+          ],
         ),
       ),
     );
@@ -51,6 +53,7 @@ class _NotificationScreenState extends State<NotificationScreen>
     return const SettingsInnerAppBar(
       title: 'Notifications',
       showLogo: false,
+      light: true,
     );
   }
 
@@ -66,7 +69,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                 messageForFirestore(snapshot.error),
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: AppColors.chatTextSecondary,
                   fontSize: 14,
                   height: 1.4,
                 ),
@@ -81,16 +84,16 @@ class _NotificationScreenState extends State<NotificationScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(
+                Icon(
                   Icons.notifications_none_rounded,
-                  color: Colors.white,
+                  color: AppColors.chatTextSecondary,
                   size: 28,
                 ),
                 const SizedBox(height: 16),
-                const Text(
+                Text(
                   'No new notifications',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppColors.chatTextPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -99,7 +102,7 @@ class _NotificationScreenState extends State<NotificationScreen>
                 Text(
                   "You're all caught up!",
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppColors.chatTextSecondary,
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                   ),
@@ -121,6 +124,8 @@ class _NotificationScreenState extends State<NotificationScreen>
           builder: (context, meSnapshot) {
             final following = meSnapshot.data?.following ?? const <String>[];
             final followedUserIds = following.toSet();
+            _pendingFollowBackTargets.removeWhere(followedUserIds.contains);
+            _syncPendingFollowBackState(list, followedUserIds);
             final sections = <String, List<AppNotification>>{};
             for (final n in list) {
               final key = _sectionFor(n.createdAt);
@@ -134,6 +139,8 @@ class _NotificationScreenState extends State<NotificationScreen>
               rows.add(const SizedBox(height: 12));
               for (final item in items) {
                 final targetUid = item.senderId.trim();
+                final isFollowRequested = targetUid.isNotEmpty &&
+                    _pendingFollowBackTargets.contains(targetUid);
                 final isFollowed = targetUid.isNotEmpty &&
                     (followedUserIds.contains(targetUid) ||
                         _followBackInFlight.contains(targetUid));
@@ -146,9 +153,11 @@ class _NotificationScreenState extends State<NotificationScreen>
                       _NotifTile(
                         item: item,
                         isFollowed: isFollowed,
+                        isFollowRequested: isFollowRequested,
                         isFollowingInProgress: isFollowingInProgress,
                         showFollowRequestActions: false,
-                        onTap: () => _handleOpen(item),
+                        onOpenProfile: () => _openActorProfile(item),
+                        onOpenPost: () => _openLinkedPost(item),
                         onFollowBack: () => _handleFollowBack(item),
                         onReply: () => _handleReply(item),
                         onAcceptFollowRequest: () =>
@@ -170,9 +179,11 @@ class _NotificationScreenState extends State<NotificationScreen>
                           return _NotifTile(
                             item: item,
                             isFollowed: isFollowed,
+                            isFollowRequested: isFollowRequested,
                             isFollowingInProgress: isFollowingInProgress,
                             showFollowRequestActions: showActions,
-                            onTap: () => _handleOpen(item),
+                            onOpenProfile: () => _openActorProfile(item),
+                            onOpenPost: () => _openLinkedPost(item),
                             onFollowBack: () => _handleFollowBack(item),
                             onReply: () => _handleReply(item),
                             onAcceptFollowRequest: () =>
@@ -189,8 +200,10 @@ class _NotificationScreenState extends State<NotificationScreen>
                     _NotifTile(
                       item: item,
                       isFollowed: isFollowed,
+                      isFollowRequested: isFollowRequested,
                       isFollowingInProgress: isFollowingInProgress,
-                      onTap: () => _handleOpen(item),
+                      onOpenProfile: () => _openActorProfile(item),
+                      onOpenPost: () => _openLinkedPost(item),
                       onFollowBack: () => _handleFollowBack(item),
                       onReply: () => _handleReply(item),
                       onAcceptFollowRequest: () =>
@@ -214,8 +227,107 @@ class _NotificationScreenState extends State<NotificationScreen>
     );
   }
 
-  Future<void> _handleOpen(AppNotification item) async {
+  Future<void> _openLinkedPost(AppNotification item) async {
     await NotificationService().markAsRead(item.id);
+    final reelId = item.reelId.trim();
+    if (reelId.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Post not available for this notification.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    final reel = await ReelsService().getReelById(reelId);
+    if (!mounted) return;
+    if (reel == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This post is no longer available.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    if (reel['isVR'] == true) {
+      ProfileReelGridNavigation.openVRDetail(context: context, item: reel);
+      return;
+    }
+
+    final username = (reel['username'] as String? ?? '').trim();
+    final avatarUrl = (reel['avatarUrl'] as String? ?? '').trim();
+    final handle = username.isNotEmpty
+        ? ProfileFigmaTokens.displayUsername(username)
+        : ProfileFigmaTokens.displayUsername(item.actorUsername);
+    ProfileReelGridNavigation.openPostFeed(
+      context: context,
+      posts: [reel],
+      index: 0,
+      fallbackDisplayName: item.actorUsername.isNotEmpty
+          ? item.actorUsername
+          : 'Creator',
+      fallbackUsername: handle,
+      fallbackAvatarUrl: avatarUrl.isNotEmpty ? avatarUrl : item.actorAvatarUrl,
+      fallbackIsVerified: false,
+      liveIsVerified: reel['isVerified'] == true,
+    );
+  }
+
+  Future<void> _openActorProfile(AppNotification item) async {
+    await NotificationService().markAsRead(item.id);
+    final actorUid = item.senderId.trim().isNotEmpty
+        ? item.senderId.trim()
+        : item.targetUserId.trim();
+    if (actorUid.isEmpty) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This profile is no longer available.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final me = AuthService().currentUser?.uid ?? '';
+    if (me == actorUid) {
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      return;
+    }
+    final svc = UserService();
+    final appUser = await svc.getUser(actorUid);
+    if (!mounted) return;
+    if (appUser == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This profile is no longer available.'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+    final followerCount = await svc.getFollowerCount(appUser.uid);
+    final postCount = await svc.getReelCountForUser(appUser.uid);
+    final isFollowing = me.isNotEmpty &&
+        await svc.isFollowingUser(currentUid: me, targetUid: appUser.uid);
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UserProfileScreen(
+          payload: UserProfilePayload.fromAppUser(
+            appUser,
+            postCount: postCount,
+            followerCount: followerCount,
+            followingCount: appUser.following.length,
+            isFollowing: isFollowing,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleAcceptFollowRequest(AppNotification item) async {
@@ -280,6 +392,7 @@ class _NotificationScreenState extends State<NotificationScreen>
     final targetUid = item.senderId.trim();
     if (me.isEmpty || targetUid.isEmpty || me == targetUid) return;
     if (_followBackInFlight.contains(targetUid)) return;
+    if (_pendingFollowBackTargets.contains(targetUid)) return;
     final alreadyFollowing = await UserService().isFollowingUser(
       currentUid: me,
       targetUid: targetUid,
@@ -289,9 +402,35 @@ class _NotificationScreenState extends State<NotificationScreen>
     try {
       await UserService().followUser(currentUid: me, targetUid: targetUid);
       if (!mounted) return;
+      final svc = UserService();
+      final nowFollowing = await svc.isFollowingUser(
+        currentUid: me,
+        targetUid: targetUid,
+        server: true,
+      );
+      final pending = !nowFollowing &&
+          await svc.outgoingFollowRequestPending(
+            requesterUid: me,
+            targetUid: targetUid,
+            server: true,
+          );
+      if (!mounted) return;
+      setState(() {
+        if (pending) {
+          _pendingFollowBackTargets.add(targetUid);
+        } else {
+          _pendingFollowBackTargets.remove(targetUid);
+        }
+      });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Followed back.'),
+        SnackBar(
+          content: Text(
+            nowFollowing
+                ? 'Followed back.'
+                : pending
+                    ? 'Follow request sent.'
+                    : 'Could not follow back right now.',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -350,7 +489,7 @@ class _NotificationScreenState extends State<NotificationScreen>
       style: TextStyle(
         fontSize: 14,
         fontWeight: FontWeight.w500,
-        color: Colors.white.withValues(alpha: 0.55),
+        color: AppColors.chatTextSecondary,
       ),
     );
   }
@@ -366,6 +505,37 @@ class _NotificationScreenState extends State<NotificationScreen>
     if (!doc.exists) return false;
     final st = (doc.data()?['status'] as String?)?.trim() ?? '';
     return st == 'pending';
+  }
+
+  void _syncPendingFollowBackState(
+    List<AppNotification> list,
+    Set<String> followedUserIds,
+  ) {
+    final me = AuthService().currentUser?.uid ?? '';
+    if (me.isEmpty) return;
+    final targets = list
+        .where((n) => n.type == AppNotificationType.follow)
+        .map((n) => n.senderId.trim())
+        .where((id) => id.isNotEmpty)
+        .where((id) => !followedUserIds.contains(id))
+        .where((id) => !_pendingFollowBackTargets.contains(id))
+        .toSet();
+    if (targets.isEmpty) return;
+    Future.microtask(() async {
+      final svc = UserService();
+      final found = <String>{};
+      for (final id in targets) {
+        if (await svc.outgoingFollowRequestPending(
+          requesterUid: me,
+          targetUid: id,
+        )) {
+          found.add(id);
+        }
+      }
+      if (found.isNotEmpty && mounted) {
+        setState(() => _pendingFollowBackTargets.addAll(found));
+      }
+    });
   }
 
   void _autoMarkVisibleAsRead(List<AppNotification> list) {
@@ -391,8 +561,10 @@ class _NotifTile extends StatelessWidget {
   const _NotifTile({
     required this.item,
     required this.isFollowed,
+    required this.isFollowRequested,
     required this.isFollowingInProgress,
-    required this.onTap,
+    required this.onOpenProfile,
+    required this.onOpenPost,
     this.showFollowRequestActions = true,
     this.onFollowBack,
     this.onReply,
@@ -402,99 +574,155 @@ class _NotifTile extends StatelessWidget {
 
   final AppNotification item;
   final bool isFollowed;
+  final bool isFollowRequested;
   final bool isFollowingInProgress;
   /// When false, hide Accept/Decline for [AppNotificationType.followRequest] rows.
   final bool showFollowRequestActions;
-  final VoidCallback onTap;
+  final VoidCallback onOpenProfile;
+  final VoidCallback onOpenPost;
   final VoidCallback? onFollowBack;
   final VoidCallback? onReply;
   final VoidCallback? onAcceptFollowRequest;
   final VoidCallback? onDeclineFollowRequest;
 
+  bool get _showsLinkedPostPreview =>
+      item.type == AppNotificationType.like && item.reelId.trim().isNotEmpty;
+
+  String _actorLabel(AppUserModel? user) {
+    final fromUser = (user?.username ?? '').trim().isNotEmpty
+        ? user!.username!.trim()
+        : (user?.displayName ?? '').trim();
+    if (fromUser.isNotEmpty) return fromUser;
+    return item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone';
+  }
+
+  String _actorAvatar(AppUserModel? user) {
+    final fromUser = (user?.profileImage ?? '').trim();
+    if (fromUser.isNotEmpty) return fromUser;
+    return item.actorAvatarUrl.trim();
+  }
+
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          _buildAvatar(),
-          const SizedBox(width: 12),
-          Expanded(
+    final senderId = item.senderId.trim();
+    if (senderId.isEmpty) {
+      return _buildTile(
+        actorLabel: item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone',
+        actorAvatarUrl: item.actorAvatarUrl,
+      );
+    }
+
+    return StreamBuilder<AppUserModel?>(
+      stream: UserService().userStream(senderId),
+      builder: (context, snap) {
+        final user = snap.data;
+        return _buildTile(
+          actorLabel: _actorLabel(user),
+          actorAvatarUrl: _actorAvatar(user),
+        );
+      },
+    );
+  }
+
+  Widget _buildTile({
+    required String actorLabel,
+    required String actorAvatarUrl,
+  }) {
+    final contentTap = _showsLinkedPostPreview ? onOpenPost : onOpenProfile;
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: onOpenProfile,
+          child: _buildAvatar(actorAvatarUrl),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: contentTap,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  '${item.actorUsername.isNotEmpty ? item.actorUsername : 'Someone'} ${item.message}',
+                  '$actorLabel ${item.message}',
                   style: const TextStyle(
                     fontSize: 14,
-                    color: Colors.white,
+                    color: AppColors.chatTextPrimary,
                     height: 1.35,
                   ),
                 ),
                 const SizedBox(height: 3),
                 Text(
                   _timeAgo(item.createdAt),
-                  style: TextStyle(
+                  style: const TextStyle(
                     fontSize: 12,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: AppColors.chatTextSecondary,
                   ),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 10),
-          _buildActionButton(),
-        ],
+        ),
+        const SizedBox(width: 10),
+        _showsLinkedPostPreview
+            ? _NotifPostPreview(
+                reelId: item.reelId.trim(),
+                onTap: onOpenPost,
+              )
+            : _buildActionButton(),
+      ],
+    );
+  }
+
+  Widget _buildAvatar(String actorAvatarUrl) {
+    const size = 46.0;
+    final senderId = item.senderId.trim();
+    if (actorAvatarUrl.isEmpty && senderId.isEmpty) {
+      return _buildBrandAvatarFallback(size);
+    }
+
+    return AppNetworkAvatar(
+      imageUrl: actorAvatarUrl,
+      userId: senderId.isEmpty ? null : senderId,
+      size: size,
+      fallback: Center(
+        child: Icon(
+          Icons.person_rounded,
+          color: AppColors.chatTextSecondary,
+          size: 24,
+        ),
       ),
     );
   }
 
-  Widget _buildAvatar() {
-    if (item.actorAvatarUrl.isEmpty) {
-      return Container(
-        width: 46,
-        height: 46,
-        decoration: const BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF490038), Color(0xFFDE106B)],
-          ),
+  Widget _buildBrandAvatarFallback(double size) {
+    return Container(
+      width: size,
+      height: size,
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF490038), Color(0xFFDE106B)],
         ),
-        child: Center(
-          child: Image.asset(
-            'assets/BrandLogo/Vyooo logo (2).png',
-            width: 26,
-            height: 26,
-            fit: BoxFit.contain,
-            errorBuilder: (context0, err, stack) => const Text(
-              'V',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 18,
-              ),
+      ),
+      child: Center(
+        child: Image.asset(
+          'assets/BrandLogo/Vyooo logo (2).png',
+          width: 26,
+          height: 26,
+          fit: BoxFit.contain,
+          errorBuilder: (context0, err, stack) => const Text(
+            'V',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
             ),
-          ),
-        ),
-      );
-    }
-
-    return ClipOval(
-      child: Container(
-        width: 46,
-        height: 46,
-        color: Colors.white.withValues(alpha: 0.15),
-        child: Image.network(
-          item.actorAvatarUrl,
-          fit: BoxFit.cover,
-          errorBuilder: (context, error, stackTrace) => Icon(
-            Icons.person_rounded,
-            color: Colors.white.withValues(alpha: 0.6),
-            size: 24,
           ),
         ),
       ),
@@ -510,7 +738,16 @@ class _NotifTile extends StatelessWidget {
             onTap: null,
           );
         }
-        return _PinkPillButton(label: 'Follow back', onTap: onFollowBack ?? onTap);
+        if (isFollowRequested) {
+          return const _OutlinePillButton(
+            label: 'Requested',
+            onTap: null,
+          );
+        }
+        return _PinkPillButton(
+          label: 'Follow back',
+          onTap: onFollowBack ?? onOpenProfile,
+        );
       case 'followRequest':
         if (!showFollowRequestActions) {
           return const SizedBox.shrink();
@@ -520,21 +757,22 @@ class _NotifTile extends StatelessWidget {
           children: [
             _OutlinePillButton(
               label: 'Decline',
-              onTap: onDeclineFollowRequest ?? onTap,
+              onTap: onDeclineFollowRequest,
             ),
             const SizedBox(width: 8),
             _PinkPillButton(
               label: 'Accept',
-              onTap: onAcceptFollowRequest ?? onTap,
+              onTap: onAcceptFollowRequest ?? onOpenProfile,
             ),
           ],
         );
       case 'followRequestAccepted':
         return const SizedBox.shrink();
       case 'comment':
+      case 'mention':
         return _OutlinePillButton(
           label: 'Reply',
-          onTap: onReply ?? onTap,
+          onTap: onReply,
         );
       default:
         return const SizedBox.shrink();
@@ -550,14 +788,77 @@ class _NotifTile extends StatelessWidget {
   }
 }
 
+class _NotifPostPreview extends StatefulWidget {
+  const _NotifPostPreview({
+    required this.reelId,
+    required this.onTap,
+  });
+
+  final String reelId;
+  final VoidCallback onTap;
+
+  @override
+  State<_NotifPostPreview> createState() => _NotifPostPreviewState();
+}
+
+class _NotifPostPreviewState extends State<_NotifPostPreview> {
+  static const double _size = 46;
+
+  late final Future<Map<String, dynamic>?> _reelFuture =
+      ReelsService().getReelById(widget.reelId);
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _reelFuture,
+      builder: (context, snapshot) {
+        final reel = snapshot.data;
+        final thumb = reel == null
+            ? ''
+            : ProfileReelGridNavigation.defaultThumbnailFromReel(reel);
+        return GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: SizedBox(
+              width: _size,
+              height: _size,
+              child: thumb.isNotEmpty
+                  ? Image.network(
+                      thumb,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => _placeholder(),
+                    )
+                  : _placeholder(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _placeholder() {
+    return ColoredBox(
+      color: AppColors.chatSearchFill,
+      child: Icon(
+        Icons.image_outlined,
+        color: AppColors.chatTextSecondary,
+        size: 22,
+      ),
+    );
+  }
+}
+
 class _PinkPillButton extends StatelessWidget {
   const _PinkPillButton({required this.label, required this.onTap});
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
@@ -586,19 +887,22 @@ class _OutlinePillButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.35)),
+          border: Border.all(color: AppColors.chatDivider),
         ),
         child: Text(
           label,
           style: TextStyle(
             fontSize: 13,
             fontWeight: FontWeight.w500,
-            color: Colors.white.withValues(alpha: 0.85),
+            color: onTap == null
+                ? AppColors.chatTextSecondary
+                : AppColors.chatTextPrimary,
           ),
         ),
       ),

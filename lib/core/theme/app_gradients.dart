@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
+
 /// 🔴 Do NOT define gradients inside screens.
 /// Always use AppGradients.
 /// This ensures brand consistency across the entire app.
@@ -177,11 +179,43 @@ class AppGradients {
     colors: [Color(0xE614001F), Color(0xF021002B), Color(0xF0490038)],
   );
 
-  /// Story avatar ring (pink gradient border).
+  /// Home / live feed video fade above bottom nav (Figma 402×392 gradient-scrim).
+  /// Black: 0% @ top → 80% @ 60% → 100% @ bottom.
+  static const LinearGradient feedBottomNavScrim = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0x00000000),
+      Color(0xCC000000),
+      Color(0xFF000000),
+    ],
+    stops: [0.0, 0.6, 1.0],
+  );
+
+  /// Compact bottom nav chrome — subtle dark top edge into solid black.
+  static const LinearGradient feedBottomNavChrome = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFF141414),
+      Color(0xFF000000),
+      Color(0xFF000000),
+    ],
+    stops: [0.0, 0.4, 1.0],
+  );
+
+  /// Story avatar ring (Figma #E51147).
   static const LinearGradient storyRingGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFFD10057), Color(0xFFFF6B9D)],
+    colors: [AppColors.storyRing, AppColors.storyRing],
+  );
+
+  /// Live feed stream progress fill (Figma #99004D → #FF6699).
+  static const LinearGradient liveFeedStreamProgressFill = LinearGradient(
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+    colors: [Color(0xFF99004D), Color(0xFFFF6699)],
   );
 
   /// Live broadcast ring (warmer red — distinct from story ring).
@@ -223,6 +257,19 @@ class AppGradients {
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [Color(0xB3200226), Color(0xB35A1531)],
+  );
+
+  /// Chat inbox / thread — white with soft pink glow at bottom (Figma).
+  static const LinearGradient chatBackgroundGradient = LinearGradient(
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    colors: [
+      Color(0xFFFFFFFF),
+      Color(0xFFFFFFFF),
+      Color(0xFFFFF5F9),
+      Color(0xFFFFE8F0),
+    ],
+    stops: [0.0, 0.55, 0.82, 1.0],
   );
 
   /// Subtle white sheen on top of [commentsSheetGlassGradient].

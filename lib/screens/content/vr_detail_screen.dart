@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../core/models/video_360_metadata.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/utils/video_upload_policy.dart';
+import '../../core/widgets/vyooo_360_video_player.dart';
 
 /// Payload for opening VR full-screen view (from profile VR grid or search).
 class VRDetailPayload {
@@ -17,6 +20,7 @@ class VRDetailPayload {
     this.viewCount = 0,
     this.shareCount = 0,
     this.saveCount = 0,
+    this.video360 = Video360Metadata.flat,
   });
 
   final String title;
@@ -31,9 +35,13 @@ class VRDetailPayload {
   final int viewCount;
   final int shareCount;
   final int saveCount;
+  final Video360Metadata video360;
+
+  bool get hasPlayableVideo =>
+      VideoUploadPolicy.isPlayableUrl((videoUrl ?? '').trim());
 }
 
-/// Full-screen VR view: back + "VR", full-height media, VR badge, vertical actions (eye, heart, comment, share, save), creator overlay, description "See more".
+/// Full-screen VR view with immersive 360 playback when available.
 class VRDetailScreen extends StatefulWidget {
   const VRDetailScreen({super.key, this.payload});
 
@@ -43,17 +51,32 @@ class VRDetailScreen extends StatefulWidget {
   State<VRDetailScreen> createState() => _VRDetailScreenState();
 }
 
-class _VRDetailScreenState extends State<VRDetailScreen> {
+class _VRDetailScreenState extends State<VRDetailScreen>
+    with WidgetsBindingObserver {
   bool _showOverlay = false;
   bool _showInstruction = true;
+  bool _isAppForeground = true;
 
   @override
   void initState() {
     super.initState();
-    // Auto-hide instruction after delay
+    WidgetsBinding.instance.addObserver(this);
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) setState(() => _showInstruction = false);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (foreground == _isAppForeground) return;
+    setState(() => _isAppForeground = foreground);
   }
 
   static String _formatCount(int n) {
@@ -68,10 +91,11 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.black.withValues(alpha: 0.6),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 1),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
       ),
       child: const Text(
-        'Move device to explore video',
+        'Drag to look around • Move device to explore',
+        textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
           fontSize: 15,
@@ -96,6 +120,28 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
     );
   }
 
+  Widget _buildBackgroundMedia(VRDetailPayload p) {
+    final url = (p.videoUrl ?? '').trim();
+    if (p.hasPlayableVideo) {
+      return Vyooo360VideoPlayer(
+        videoUrl: url,
+        isVisible: _isAppForeground,
+        video360: p.video360,
+        thumbnailUrl: p.thumbnailUrl,
+        enableGyro: true,
+        enableTouch: true,
+      );
+    }
+    if (p.thumbnailUrl.trim().isNotEmpty) {
+      return Image.network(
+        p.thumbnailUrl,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _buildMediaFallback(),
+      );
+    }
+    return _buildMediaFallback();
+  }
+
   @override
   Widget build(BuildContext context) {
     final p = widget.payload ?? const VRDetailPayload();
@@ -104,26 +150,22 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // Background Media
-          GestureDetector(
-            onTap: () {
-              setState(() => _showOverlay = !_showOverlay);
-              if (_showOverlay) {
-                Future.delayed(const Duration(seconds: 3), () {
-                  if (mounted) setState(() => _showOverlay = false);
-                });
-              }
-            },
-            child: p.thumbnailUrl.trim().isNotEmpty
-                ? Image.network(
-                    p.thumbnailUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) =>
-                        _buildMediaFallback(),
-                  )
-                : _buildMediaFallback(),
+          _buildBackgroundMedia(p),
+          IgnorePointer(
+            ignoring: !_showOverlay,
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTap: () {
+                setState(() => _showOverlay = !_showOverlay);
+                if (_showOverlay) {
+                  Future.delayed(const Duration(seconds: 3), () {
+                    if (mounted) setState(() => _showOverlay = false);
+                  });
+                }
+              },
+              child: const SizedBox.expand(),
+            ),
           ),
-          // Gradient
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -139,30 +181,43 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
               ),
             ),
           ),
-          // Sidebar Actions (Always visible or toggleable?) - Matching Design 1
           Positioned(
             right: 12,
-            bottom: 120, // Above user info/nav
+            bottom: 120,
             child: SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _buildActionIcon(Icons.visibility_outlined, _formatCount(p.viewCount)),
+                  _buildActionIcon(
+                    Icons.visibility_outlined,
+                    _formatCount(p.viewCount),
+                  ),
                   const SizedBox(height: 20),
-                  _buildActionIcon(Icons.favorite_border, _formatCount(p.likeCount)),
+                  _buildActionIcon(
+                    Icons.favorite_border,
+                    _formatCount(p.likeCount),
+                  ),
                   const SizedBox(height: 20),
-                  _buildActionIcon(Icons.chat_bubble_outline, _formatCount(p.commentCount)),
+                  _buildActionIcon(
+                    Icons.chat_bubble_outline,
+                    _formatCount(p.commentCount),
+                  ),
                   const SizedBox(height: 20),
-                  _buildActionIcon(Icons.star_border, _formatCount(p.saveCount)),
+                  _buildActionIcon(
+                    Icons.star_border,
+                    _formatCount(p.saveCount),
+                  ),
                   const SizedBox(height: 20),
-                  _buildActionIcon(Icons.reply, _formatCount(p.shareCount)), // Share icon
+                  _buildActionIcon(
+                    Icons.reply,
+                    _formatCount(p.shareCount),
+                  ),
                   const SizedBox(height: 20),
                   _buildActionIcon(Icons.more_horiz, null),
                 ],
               ),
             ),
           ),
-          // Bottom Visibility Toggle Icon (Right Corner)
           Positioned(
             right: 20,
             bottom: 40,
@@ -172,16 +227,12 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
               color: Colors.white.withValues(alpha: 0.9),
             ),
           ),
-          // Bottom Info Row
           Positioned(
             left: 0,
             right: 80,
             bottom: 20,
-            child: SafeArea(
-              child: _buildBottomOverlay(p),
-            ),
+            child: SafeArea(child: _buildBottomOverlay(p)),
           ),
-          // Top VR Badge
           Positioned(
             top: MediaQuery.of(context).padding.top + 64,
             right: 20,
@@ -190,7 +241,7 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(6),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
               ),
               child: const Text(
                 'VR',
@@ -203,36 +254,13 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
               ),
             ),
           ),
-          // Instructional Overlay
-          if (_showInstruction)
-            Center(
-              child: _buildInstructionOverlay(),
-            ),
-          // AppBar
+          if (_showInstruction && p.hasPlayableVideo)
+            Center(child: _buildInstructionOverlay()),
           Positioned(
             top: 0,
             left: 0,
             right: 0,
             child: SafeArea(child: _buildAppBar(context)),
-          ),
-          // Bottom Progress Bar
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: Container(
-              height: 3,
-              width: double.infinity,
-              color: Colors.black.withValues(alpha: 0.3),
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  height: 3,
-                  width: MediaQuery.sizeOf(context).width * 0.4, // Mock 40% progress
-                  color: const Color(0xFFEF4444),
-                ),
-              ),
-            ),
           ),
         ],
       ),
@@ -306,7 +334,12 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
                 child: CircleAvatar(
                   radius: 20,
                   backgroundColor: Colors.grey[900],
-                  backgroundImage: NetworkImage(p.avatarUrl),
+                  backgroundImage: p.avatarUrl.trim().isNotEmpty
+                      ? NetworkImage(p.avatarUrl)
+                      : null,
+                  child: p.avatarUrl.trim().isEmpty
+                      ? const Icon(Icons.person, color: Colors.white54)
+                      : null,
                 ),
               ),
               const SizedBox(width: 12),
@@ -316,14 +349,16 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
                   children: [
                     Row(
                       children: [
-                        Text(
-                          p.creatorName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w700,
+                        Flexible(
+                          child: Text(
+                            p.creatorName,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                         const SizedBox(width: 6),
                         Container(
@@ -332,7 +367,11 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
                             color: Color(0xFFEF4444),
                             shape: BoxShape.circle,
                           ),
-                          child: const Icon(Icons.check, color: Colors.white, size: 10),
+                          child: const Icon(
+                            Icons.check,
+                            color: Colors.white,
+                            size: 10,
+                          ),
                         ),
                       ],
                     ),
@@ -341,7 +380,6 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.7),
                         fontSize: 13,
-                        fontWeight: FontWeight.w400,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -350,30 +388,31 @@ class _VRDetailScreenState extends State<VRDetailScreen> {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          Text(
-            p.description,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 15,
-              fontWeight: FontWeight.w400,
-              height: 1.4,
+          if (p.description.trim().isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Text(
+              p.description,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 4),
-          GestureDetector(
-            onTap: () {},
-            child: Text(
-              'See More',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
+            const SizedBox(height: 4),
+            GestureDetector(
+              onTap: () {},
+              child: Text(
+                'See More',
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.9),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );

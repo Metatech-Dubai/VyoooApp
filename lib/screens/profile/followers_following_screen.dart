@@ -166,9 +166,23 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
             vipVerified: i.vipVerified,
             monetizationEnabled: i.monetizationEnabled,
             isFollowing: i.isFollowing,
+            pendingFollowRequest: i.outgoingFollowRequestPending,
           ),
         )
         .toList();
+
+    var followers = followerModels
+        .where((m) => !blockedSet.contains(m.uid))
+        .map((m) => _connectionFromAppUser(m, myFollowing))
+        .toList();
+    var following = followingModels
+        .where((m) => !blockedSet.contains(m.uid))
+        .map((m) => _connectionFromAppUser(m, myFollowing))
+        .toList();
+    if (me != null && me.isNotEmpty) {
+      followers = await _enrichPendingFollowRequests(followers, me, svc);
+      following = await _enrichPendingFollowRequests(following, me, svc);
+    }
 
     if (!mounted) return;
     setState(() {
@@ -176,16 +190,127 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
       _privateConnectionsGate = null;
       _followerCount = fc;
       _followingCount = followingModels.length;
-      _followers = followerModels
-          .where((m) => !blockedSet.contains(m.uid))
-          .map((m) => _connectionFromAppUser(m, myFollowing))
-          .toList();
-      _following = followingModels
-          .where((m) => !blockedSet.contains(m.uid))
-          .map((m) => _connectionFromAppUser(m, myFollowing))
-          .toList();
+      _followers = followers;
+      _following = following;
       _discoverUsers = discover;
     });
+  }
+
+  Future<List<_ConnectionUser>> _enrichPendingFollowRequests(
+    List<_ConnectionUser> connections,
+    String me,
+    UserService svc,
+  ) async {
+    final pendingChecks = <Future<void>>[];
+    final pendingByUid = <String, bool>{};
+    for (final c in connections) {
+      final id = c.targetUserId;
+      if (id == null || id.isEmpty || c.isFollowing) continue;
+      if (!UserService.accountTypeRequiresFollowApproval(c.accountType)) {
+        continue;
+      }
+      pendingChecks.add(
+        svc
+            .outgoingFollowRequestPending(requesterUid: me, targetUid: id)
+            .then((p) => pendingByUid[id] = p),
+      );
+    }
+    if (pendingChecks.isEmpty) return connections;
+    await Future.wait(pendingChecks);
+    return connections
+        .map((c) {
+          final id = c.targetUserId;
+          if (id == null || c.isFollowing) return c;
+          final pending = pendingByUid[id] ?? false;
+          if (!pending) return c;
+          return c.copyWith(pendingFollowRequest: true);
+        })
+        .toList();
+  }
+
+  void _patchConnectionUser(
+    String targetUserId, {
+    required bool isFollowing,
+    required bool pendingFollowRequest,
+  }) {
+    if (!mounted) return;
+    setState(() {
+      _followers = _followers
+          .map(
+            (u) => u.targetUserId == targetUserId
+                ? u.copyWith(
+                    isFollowing: isFollowing,
+                    pendingFollowRequest: pendingFollowRequest,
+                  )
+                : u,
+          )
+          .toList();
+      _following = _following
+          .map(
+            (u) => u.targetUserId == targetUserId
+                ? u.copyWith(
+                    isFollowing: isFollowing,
+                    pendingFollowRequest: pendingFollowRequest,
+                  )
+                : u,
+          )
+          .toList();
+      _discoverUsers = _discoverUsers
+          .map(
+            (u) => u.targetUserId == targetUserId
+                ? u.copyWith(
+                    isFollowing: isFollowing,
+                    pendingFollowRequest: pendingFollowRequest,
+                  )
+                : u,
+          )
+          .toList();
+    });
+  }
+
+  Future<void> _onConnectionFollowButtonTap(_ConnectionUser user) async {
+    final me = AuthService().currentUser?.uid;
+    final id = user.targetUserId;
+    if (me == null || me.isEmpty || id == null || id.isEmpty || me == id) {
+      return;
+    }
+
+    if (user.isFollowing) {
+      _showRemoveFollowingModal(context, user);
+      return;
+    }
+
+    final svc = UserService();
+    try {
+      if (user.pendingFollowRequest) {
+        await svc.cancelFollowRequest(requesterUid: me, targetUid: id);
+      } else {
+        await svc.followUser(currentUid: me, targetUid: id);
+      }
+      final nowFollowing = await svc.isFollowingUser(
+        currentUid: me,
+        targetUid: id,
+        server: true,
+      );
+      final nextPending = nowFollowing
+          ? false
+          : await svc.outgoingFollowRequestPending(
+              requesterUid: me,
+              targetUid: id,
+              server: true,
+            );
+      _patchConnectionUser(
+        id,
+        isFollowing: nowFollowing,
+        pendingFollowRequest: nextPending,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(messageForFirestore(e))),
+        );
+      }
+    }
   }
 
   static _ConnectionUser _connectionFromAppUser(
@@ -386,7 +511,11 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                           targetUid: id,
                         );
                         if (context.mounted) {
-                          await _loadConnections();
+                          _patchConnectionUser(
+                            id,
+                            isFollowing: false,
+                            pendingFollowRequest: false,
+                          );
                         }
                       } catch (e) {
                         if (context.mounted) {
@@ -1030,14 +1159,9 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
         return _ConnectionRow(
           user: user,
           isFollowing: user.isFollowing,
-          onUnfollowSheet: (query.isNotEmpty || _selectedTabIndex == 1)
-              ? () => _showRemoveFollowingModal(context, user)
-              : () => _showRemoveFollowerModal(context, user),
-          onFollow: (me != null && id != null && id.isNotEmpty && me != id)
-              ? () async {
-                  await UserService().followUser(currentUid: me, targetUid: id);
-                  await _loadConnections();
-                }
+          pendingFollowRequest: user.pendingFollowRequest,
+          onFollowTap: (me != null && id != null && id.isNotEmpty && me != id)
+              ? () => _onConnectionFollowButtonTap(user)
               : null,
           onTap: id == null || id.isEmpty
               ? null
@@ -1065,6 +1189,12 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     ),
                   );
                 },
+          onLongPress: () {
+            final subject = widget.profileUserId ?? me;
+            if (_selectedTabIndex != 0 || me == null || subject != me) return;
+            if (id == null || id.isEmpty || id == me) return;
+            _showRemoveFollowerModal(context, user);
+          },
         );
       },
     );
@@ -1082,6 +1212,7 @@ class _ConnectionUser {
     this.vipVerified = false,
     this.monetizationEnabled = false,
     this.isFollowing = false,
+    this.pendingFollowRequest = false,
   });
   final String? targetUserId;
   final String name;
@@ -1094,22 +1225,45 @@ class _ConnectionUser {
 
   /// Whether the signed-in user follows this row (for button state).
   final bool isFollowing;
+
+  /// Pending follow request to a private/personal account.
+  final bool pendingFollowRequest;
+
+  _ConnectionUser copyWith({
+    bool? isFollowing,
+    bool? pendingFollowRequest,
+  }) {
+    return _ConnectionUser(
+      targetUserId: targetUserId,
+      name: name,
+      username: username,
+      avatarUrl: avatarUrl,
+      isVerified: isVerified,
+      accountType: accountType,
+      vipVerified: vipVerified,
+      monetizationEnabled: monetizationEnabled,
+      isFollowing: isFollowing ?? this.isFollowing,
+      pendingFollowRequest: pendingFollowRequest ?? this.pendingFollowRequest,
+    );
+  }
 }
 
 class _ConnectionRow extends StatefulWidget {
   const _ConnectionRow({
     required this.user,
     required this.isFollowing,
-    required this.onUnfollowSheet,
-    this.onFollow,
+    this.pendingFollowRequest = false,
+    this.onFollowTap,
     this.onTap,
+    this.onLongPress,
   });
 
   final _ConnectionUser user;
   final bool isFollowing;
-  final VoidCallback onUnfollowSheet;
-  final Future<void> Function()? onFollow;
+  final bool pendingFollowRequest;
+  final Future<void> Function()? onFollowTap;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   State<_ConnectionRow> createState() => _ConnectionRowState();
@@ -1117,12 +1271,14 @@ class _ConnectionRow extends StatefulWidget {
 
 class _ConnectionRowState extends State<_ConnectionRow> {
   late bool _isFollowing;
+  late bool _pendingFollowRequest;
   bool _followBusy = false;
 
   @override
   void initState() {
     super.initState();
     _isFollowing = widget.isFollowing;
+    _pendingFollowRequest = widget.pendingFollowRequest;
   }
 
   @override
@@ -1131,25 +1287,23 @@ class _ConnectionRowState extends State<_ConnectionRow> {
     if (oldWidget.isFollowing != widget.isFollowing) {
       _isFollowing = widget.isFollowing;
     }
+    if (oldWidget.pendingFollowRequest != widget.pendingFollowRequest) {
+      _pendingFollowRequest = widget.pendingFollowRequest;
+    }
   }
 
   Future<void> _onFollowTap() async {
     if (_followBusy) return;
-    if (_isFollowing) {
-      widget.onUnfollowSheet();
-      return;
-    }
-    final fn = widget.onFollow;
+    final fn = widget.onFollowTap;
     if (fn == null) return;
     setState(() => _followBusy = true);
     try {
       await fn();
-      if (mounted) setState(() => _isFollowing = true);
-    } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(messageForFirestore(e))));
+        setState(() {
+          _isFollowing = widget.isFollowing;
+          _pendingFollowRequest = widget.pendingFollowRequest;
+        });
       }
     } finally {
       if (mounted) setState(() => _followBusy = false);
@@ -1163,6 +1317,7 @@ class _ConnectionRowState extends State<_ConnectionRow> {
       borderRadius: BorderRadius.circular(AppRadius.input),
       child: InkWell(
         onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
         borderRadius: BorderRadius.circular(AppRadius.input),
         child: Padding(
           padding: const EdgeInsets.symmetric(
@@ -1211,10 +1366,16 @@ class _ConnectionRowState extends State<_ConnectionRow> {
                   ],
                 ),
               ),
-              _FollowingButton(
-                isFollowing: _isFollowing,
-                busy: _followBusy,
-                onTap: _onFollowTap,
+              GestureDetector(
+                onTap: () {},
+                behavior: HitTestBehavior.opaque,
+                child: _FollowingButton(
+                  isFollowing: _isFollowing,
+                  pendingFollowRequest: _pendingFollowRequest,
+                  accountType: widget.user.accountType,
+                  busy: _followBusy,
+                  onTap: _onFollowTap,
+                ),
               ),
             ],
           ),
@@ -1375,56 +1536,52 @@ class _RemoveModalButton extends StatelessWidget {
 class _FollowingButton extends StatelessWidget {
   const _FollowingButton({
     required this.isFollowing,
+    required this.pendingFollowRequest,
+    required this.accountType,
     required this.busy,
     required this.onTap,
   });
 
   final bool isFollowing;
+  final bool pendingFollowRequest;
+  final String accountType;
   final bool busy;
   final VoidCallback onTap;
 
+  bool get _isRequested =>
+      !isFollowing &&
+      UserService.accountTypeRequiresFollowApproval(accountType) &&
+      pendingFollowRequest;
+
+  String get _label {
+    if (isFollowing) return 'Following';
+    if (_isRequested) return 'Requested';
+    return 'Follow';
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (isFollowing) {
-      return Material(
-        color: Colors.white.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: InkWell(
-          onTap: busy ? () {} : onTap,
-          borderRadius: BorderRadius.circular(AppRadius.pill),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Following',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.95),
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Icon(
-                  Icons.close,
-                  size: 14,
-                  color: Colors.white.withValues(alpha: 0.9),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
+    final background = isFollowing || _isRequested
+        ? Colors.white.withValues(alpha: 0.12)
+        : AppColors.brandPink;
+
     return Material(
-      color: AppColors.brandPink,
-      borderRadius: BorderRadius.circular(AppRadius.pill),
+      color: Colors.transparent,
       child: InkWell(
         onTap: busy ? () {} : onTap,
         borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Ink(
+          padding: EdgeInsets.symmetric(
+            horizontal: isFollowing ? 12 : 16,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: background,
+            borderRadius: BorderRadius.circular(AppRadius.pill),
+            border: _isRequested
+                ? Border.all(color: Colors.white.withValues(alpha: 0.35))
+                : null,
+          ),
           child: busy
               ? const SizedBox(
                   width: 18,
@@ -1434,9 +1591,29 @@ class _FollowingButton extends StatelessWidget {
                     color: Colors.white,
                   ),
                 )
-              : const Text(
-                  'Follow',
-                  style: TextStyle(
+              : isFollowing
+              ? Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      _label,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.95),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      Icons.close,
+                      size: 14,
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                  ],
+                )
+              : Text(
+                  _label,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,

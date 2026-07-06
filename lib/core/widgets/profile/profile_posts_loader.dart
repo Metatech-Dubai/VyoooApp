@@ -9,6 +9,21 @@ abstract final class ProfilePostsLoader {
   ProfilePostsLoader._();
 
   static Future<List<Map<String, dynamic>>> loadPostsForUser(String uid) async {
+    final all = await _loadAllReelsForUser(uid);
+    return ProfileGridPosts.filterForPostsTab(all);
+  }
+
+  /// VR tab on profile: [isVR] and/or [is360Video] reels for this user.
+  static Future<List<Map<String, dynamic>>> loadVrForUser(String uid) async {
+    final all = await _loadAllReelsForUser(uid);
+    return all
+        .where(ProfileGridPosts.belongsInVrTab)
+        .toList(growable: false);
+  }
+
+  static Future<List<Map<String, dynamic>>> _loadAllReelsForUser(
+    String uid,
+  ) async {
     if (uid.isEmpty) return const [];
     final q = await FirebaseFirestore.instance
         .collection('reels')
@@ -24,8 +39,7 @@ abstract final class ProfilePostsLoader {
         )
         .toList();
     docs.sort(profilePostsSortNewestFirst);
-    final hydrated = await ReelsService().hydrateRepostEngagementStats(docs);
-    return ProfileGridPosts.filterImageAndVideo(hydrated);
+    return ReelsService().hydrateRepostEngagementStats(docs);
   }
 }
 

@@ -12,26 +12,36 @@ class AuthPrimaryButton extends StatelessWidget {
     required this.onPressed,
     this.isLoading = false,
     this.enabled = true,
+    this.backgroundColor,
   });
 
   final String label;
   final VoidCallback? onPressed;
   final bool isLoading;
   final bool enabled;
+  final Color? backgroundColor;
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isLight = AppTheme.isLight(context);
     final canPress = enabled && !isLoading && onPressed != null;
+    final fillColor = backgroundColor ??
+        (isLight ? AppTheme.lightButtonBackground : AppTheme.buttonBackground);
     return SizedBox(
       width: double.infinity,
       height: AppSizes.buttonHeight,
       child: ElevatedButton(
         onPressed: canPress ? onPressed : null,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppTheme.buttonBackground,
-          foregroundColor: AppTheme.buttonTextColor,
-          disabledBackgroundColor: Colors.white.withValues(alpha: 0.4),
-          disabledForegroundColor: AppTheme.secondaryTextColor,
+          backgroundColor: fillColor,
+          foregroundColor: isLight
+              ? AppTheme.lightButtonText
+              : AppTheme.buttonTextColor,
+          disabledBackgroundColor: fillColor.withValues(alpha: 0.4),
+          disabledForegroundColor: isLight
+              ? AppTheme.lightButtonText.withValues(alpha: 0.7)
+              : AppTheme.secondaryTextColor,
           shape: RoundedRectangleBorder(borderRadius: AppRadius.buttonRadius),
         ),
         child: isLoading
@@ -41,11 +51,22 @@ class AuthPrimaryButton extends StatelessWidget {
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
                   valueColor: AlwaysStoppedAnimation<Color>(
-                    AppTheme.buttonTextColor,
+                    isLight
+                        ? AppTheme.lightButtonText
+                        : AppTheme.buttonTextColor,
                   ),
                 ),
               )
-            : Text(label, style: AppTypography.primaryButton),
+            : Text(
+                label,
+                style: AppTypography.primaryButton.copyWith(
+                  color: isLight
+                      ? AppTheme.lightButtonText
+                      : theme.elevatedButtonTheme.style?.foregroundColor
+                              ?.resolve({}) ??
+                          AppTheme.buttonTextColor,
+                ),
+              ),
       ),
     );
   }

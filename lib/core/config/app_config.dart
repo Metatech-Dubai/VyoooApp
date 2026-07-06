@@ -43,8 +43,27 @@ abstract final class AppConfig {
   /// Jamendo API client ID. Get a free key at https://devportal.jamendo.com
   static const String jamendoClientId = '78456e30';
 
+  /// Giphy GIF search for chat (platform keys from GIPHY Developer Dashboard).
+  /// Override for local testing: `--dart-define=GIPHY_API_KEY=your_key`
+  static const String _giphyApiKeyIos = 'byLjtos8YOn17G4TWdKmjFFG1quAZOXp';
+  static const String _giphyApiKeyAndroid = 'byLjtos8YOn17G4TWdKmjFFG1quAZOXp';
+
+  static String get giphyApiKey {
+    const override = String.fromEnvironment('GIPHY_API_KEY');
+    if (override.isNotEmpty) return override;
+    return Platform.isIOS ? _giphyApiKeyIos : _giphyApiKeyAndroid;
+  }
+
+  static bool get isGiphyGifSearchAvailable => giphyApiKey.isNotEmpty;
+
   static const String _googlePlacesApiKeyAndroid = 'AIzaSyA4IYOJ0MQWYs_IJcifxxbhAjInEYgzC8M';
   static const String _googlePlacesApiKeyIos = 'AIzaSyCa_TszTmgHk4gQ9SE08dQSHBf6IlsXdvc';
   static String get googlePlacesApiKey =>
       Platform.isIOS ? _googlePlacesApiKeyIos : _googlePlacesApiKeyAndroid;
+
+  /// The iOS Places key is app-restricted in Google Cloud; Maps web-service
+  /// requests must carry the bundle identifier or they fail with
+  /// REQUEST_DENIED ("not authorized to use this API key").
+  static Map<String, String> get googleMapsWebServiceHeaders =>
+      Platform.isIOS ? const {'X-Ios-Bundle-Identifier': 'com.vyooo'} : const {};
 }

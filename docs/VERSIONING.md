@@ -21,14 +21,21 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 
 | Field | Value |
 |-------|--------|
-| Marketing version | **1.2.0** |
-| Build number | **41** |
-| `pubspec.yaml` | `1.2.0+41` |
+| Marketing version | **1.2.4** |
+| Build number | **50** |
+| `pubspec.yaml` | `1.2.4+50` |
 
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |
 |-----------|-------|------|----------|--------|
+| 1.2.4 | 50 | 2026-07-02 | App Store, Play Store | iOS 1.2.3 train closed; marketing bump + build |
+| 1.2.3 | 49 | 2026-07-02 | App Store, Play Store | Live stream scrub preview with frame-based replay |
+| 1.2.3 | 48 | 2026-06-24 | Play Store | Profile share icon sharpness fix (vector icon) |
+| 1.2.3 | 47 | 2026-06-23 | Play Store, TestFlight | Profile grid gap, square tiles, repost badge bottom-left, bottom nav restore |
+| 1.2.2 | 44 | 2026-06-16 | TestFlight, Play Store | iOS 1.2.1 train closed; marketing bump + build |
+| 1.2.1 | 43 | 2026-06-08 | TestFlight, Play Store | Profile share = Universal/App Links (www.vyooo.com/u/<username>); apex host dropped |
+| 1.2.1 | 42 | 2026-06-07 | TestFlight, Play Store | iOS 1.2.0 train closed; marketing bump + build |
 | 1.2.0 | 41 | 2026-05-22 | Play Store, TestFlight | Build-only bump (40 used on Play); profile grid + coming soon |
 | 1.2.0 | 40 | 2026-05-22 | Play Store | (versionCode 40 already uploaded — use 41 for next AAB) |
 | 1.2.0 | 39 | 2026-05-21 | Play Store | AD_ID permission for RevenueCat; Play Advertising ID declaration Yes |
@@ -45,11 +52,11 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 2. Run `flutter pub get` (regenerates iOS `Generated.xcconfig`).
 3. Add a row to **Release history** above.
 4. **Android:** build app bundle (`flutter build appbundle`) — version comes from pubspec.
-5. **iOS:** Archive in Xcode — version/build come from pubspec via Flutter; confirm **Runner → General** shows **1.2.0** and build **41** (or current `+N`). Upload new TestFlight builds under **Version 1.2.0** with a higher build number only. If **App Store production** rejects *train 1.2.0 is closed* or *CFBundleShortVersionString must be higher than 1.2.0*, bump marketing to `1.2.1` for that store submission only.
+5. **iOS:** Archive in Xcode — version/build come from pubspec via Flutter; confirm **Runner → General** shows **1.2.1** and build **42** (or current `+N`). Upload new TestFlight builds under **Version 1.2.1** with a higher build number only. If a marketing train is closed (*CFBundleShortVersionString must be higher* / *train is closed*), bump marketing (e.g. `1.2.0` → `1.2.1`) for that store submission.
 
 ### iOS: Agora / FFmpeg “Upload Symbols Failed” (dSYM)
 
-Third-party binaries (Agora RTC extensions, ffmpegkit) often ship **without** dSYM files. After a successful version bump, Organizer may list many *Upload Symbols Failed* lines for those frameworks. That is **usually a warning**, not a rejection — Vyooo and Flutter still symbolicate your app code via Firebase/Crashlytics. If upload is blocked, archive again with **1.2.1+41**; do not lower `DEBUG_INFORMATION_FORMAT` on the Runner target.
+Third-party binaries (Agora RTC extensions, ffmpegkit) often ship **without** dSYM files. After a successful version bump, Organizer may list many *Upload Symbols Failed* lines for those frameworks. That is **usually a warning**, not a rejection — Vyooo and Flutter still symbolicate your app code via Firebase/Crashlytics. If upload is blocked, archive again with the current **marketing+build** from pubspec; do not lower `DEBUG_INFORMATION_FORMAT` on the Runner target.
 
 ## After the build is live (version gate)
 
@@ -61,7 +68,23 @@ Firestore document: **`app_config` / `version_policy`** (see `firestore/app_conf
 | Force update | `minVersion` → new marketing version (and/or `minBuildNumber` → new build) |
 | Turn off | `enabled: false` |
 
-**iOS update link:** `https://testflight.apple.com/join/NjQVQ2nD` (or App Store URL when on production).  
+### Automate from pubspec
+
+`./scripts/bump_build.sh` updates `firestore/app_config_version_policy.json` (`latestVersion` + `minBuildNumber`) to match the new `pubspec.yaml` build.
+
+After the store build is **live**, push a force-update gate:
+
+```bash
+./scripts/sync_version_policy.sh --force-update --push
+```
+
+Sync local file only (no Firestore):
+
+```bash
+./scripts/sync_version_policy.sh
+```
+
+**iOS update link (production):** `https://apps.apple.com/app/id6757733269` — set `iosAppStoreId: "6757733269"` in the Firestore doc; TestFlight link only for beta-only policies.  
 **Android update link:** `https://play.google.com/store/apps/details?id=com.vyooo`
 
 ## Team Flutter version (every machine)

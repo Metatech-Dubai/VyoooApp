@@ -5,9 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
+import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_gradients.dart';
+import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/user_facing_errors.dart';
 import '../../../core/models/app_user_model.dart';
+import '../../../core/services/giphy_gif_service.dart';
 import '../models/call_session_model.dart';
 import '../models/chat_model.dart';
 import '../models/message_model.dart';
@@ -18,13 +23,17 @@ import '../services/chat_service.dart';
 import '../services/presence_service.dart';
 import '../services/typing_indicator_service.dart';
 import '../utils/chat_constants.dart';
+import '../utils/chat_helpers.dart';
 import '../utils/view_once_helpers.dart';
 import '../widgets/audio_message_bubble.dart';
 import '../widgets/call_message_bubble.dart';
 import '../widgets/chat_app_bar.dart';
+import '../widgets/gif_picker_sheet.dart';
 import '../widgets/media_message_widget.dart';
 import '../widgets/message_bubble.dart';
 import '../widgets/message_input_bar.dart';
+import '../widgets/message_reactions_bar.dart';
+import '../widgets/swipe_to_reply_message.dart';
 import '../widgets/typing_indicator_widget.dart';
 import '../widgets/view_once_message_widget.dart';
 import 'chat_call_screen.dart';
@@ -68,12 +77,15 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   double _uploadProgress = 0;
   String? _uploadError;
   bool _isStartingCall = false;
+  MessageModel? _replyingTo;
 
   ChatModel? _chatModel;
   bool _isMuted = false;
   String? _presenceText;
   StreamSubscription<Map<String, dynamic>?>? _presenceSub;
   StreamSubscription<List<CallSessionModel>>? _incomingCallSub;
+  StreamSubscription<ChatModel?>? _chatSub;
+  late Stream<List<MessageModel>> _messagesStream;
 
   bool get _isGroup =>
       widget.chatType == ChatTypes.group ||
@@ -91,23 +103,47 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   @override
   void initState() {
     super.initState();
+    _bindMessagesStream();
     ChatNotificationService.instance.setActiveChatId(widget.chatId);
     _chatService.markChatRead(
       uid: widget.currentUser.uid,
       chatId: widget.chatId,
     );
-    _loadChatModel();
+    _chatSub = _chatService.watchChat(widget.chatId).listen((chat) {
+      if (!mounted) return;
+      final prevClearedAt = _chatModel?.clearedAtBy[widget.currentUser.uid];
+      final nextClearedAt = chat?.clearedAtBy[widget.currentUser.uid];
+      final clearedAtChanged = prevClearedAt != nextClearedAt;
+      setState(() {
+        _chatModel = chat;
+        _isMuted = chat?.mutedBy.contains(widget.currentUser.uid) ?? false;
+      });
+      if (clearedAtChanged) {
+        _bindMessagesStream();
+        setState(() {});
+      }
+    });
     _startPresenceWatch();
     _startIncomingCallWatch();
   }
 
-  Future<void> _loadChatModel() async {
-    final chat = await _chatService.getChat(widget.chatId);
-    if (!mounted) return;
-    setState(() {
-      _chatModel = chat;
-      _isMuted = chat?.mutedBy.contains(widget.currentUser.uid) ?? false;
-    });
+  void _bindMessagesStream() {
+    _messagesStream = _chatService.watchMessages(
+      widget.chatId,
+      widget.currentUser.uid,
+      clearedAt: _chatModel?.clearedAtBy[widget.currentUser.uid],
+    );
+  }
+
+  List<MessageModel> _visibleMessages(List<MessageModel> raw) {
+    final clearedAt = _chatModel?.clearedAtBy[widget.currentUser.uid];
+    if (clearedAt == null) return raw;
+    return raw
+        .where((m) {
+          if (m.createdAt == null) return true;
+          return m.createdAt!.compareTo(clearedAt) > 0;
+        })
+        .toList();
   }
 
   void _startPresenceWatch() {
@@ -146,6 +182,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     ChatNotificationService.instance.setActiveChatId(null);
     _presenceSub?.cancel();
     _incomingCallSub?.cancel();
+    _chatSub?.cancel();
     _typingService.clearTyping(
       chatId: widget.chatId,
       uid: widget.currentUser.uid,
@@ -155,16 +192,68 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   }
 
   void _handleSend(String text) {
+    final replyToMessageId = _replyingTo?.id;
     _chatService.sendTextMessage(
       chatId: widget.chatId,
       senderId: widget.currentUser.uid,
       participantIds: _participantIds,
       text: text,
+      replyToMessageId: replyToMessageId,
     );
+    setState(() => _replyingTo = null);
     _chatService.markChatRead(
       uid: widget.currentUser.uid,
       chatId: widget.chatId,
     );
+  }
+
+  void _startReply(MessageModel msg) {
+    if (msg.deletedForEveryone || msg.type == ChatMessageTypes.call) return;
+    setState(() => _replyingTo = msg);
+  }
+
+  void _cancelReply() {
+    setState(() => _replyingTo = null);
+  }
+
+  MessageModel? _messageById(List<MessageModel> messages, String? id) {
+    if (id == null || id.isEmpty) return null;
+    for (final m in messages) {
+      if (m.id == id) return m;
+    }
+    return null;
+  }
+
+  ({String senderName, String preview})? _replyQuoteFor(
+    MessageModel msg,
+    List<MessageModel> messages,
+  ) {
+    final replyTo = _messageById(messages, msg.replyToMessageId);
+    if (replyTo == null) return null;
+    return (
+      senderName: _displayNameForUser(replyTo.senderId),
+      preview: ChatHelpers.messageBodyPreview(replyTo),
+    );
+  }
+
+  String _displayNameForUser(String uid) {
+    if (uid == widget.currentUser.uid) return 'You';
+    if (_isGroup) {
+      final participant = _chatModel?.participantMap[uid];
+      if (participant != null) {
+        final dn = participant.displayName.trim();
+        if (dn.isNotEmpty) return dn;
+        if (participant.username.isNotEmpty) return participant.username;
+      }
+      return uid.substring(0, 6);
+    }
+    return widget.otherUser?.displayName ??
+        widget.otherUser?.username ??
+        'User';
+  }
+
+  bool _canReplyTo(MessageModel msg) {
+    return !msg.deletedForEveryone && msg.type != ChatMessageTypes.call;
   }
 
   Future<void> _handleMediaAction(MediaAction action) async {
@@ -175,10 +264,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     try {
       switch (action) {
         case MediaAction.galleryPhoto:
-          file = await _mediaService.pickImageFromGallery();
+          file = await _mediaService.pickImageFromGallery(context: context);
           type = ChatMessageTypes.image;
         case MediaAction.galleryVideo:
-          file = await _mediaService.pickVideoFromGallery();
+          file = await _mediaService.pickVideoFromGallery(context: context);
           type = ChatMessageTypes.video;
         case MediaAction.cameraPhoto:
           file = await _mediaService.captureImageFromCamera();
@@ -187,11 +276,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
           file = await _mediaService.captureVideoFromCamera();
           type = ChatMessageTypes.video;
         case MediaAction.viewOncePhoto:
-          file = await _mediaService.pickImageFromGallery();
+          file = await _mediaService.pickImageFromGallery(context: context);
           type = ChatMessageTypes.image;
           isViewOnce = true;
         case MediaAction.viewOnceVideo:
-          file = await _mediaService.pickVideoFromGallery();
+          file = await _mediaService.pickVideoFromGallery(context: context);
           type = ChatMessageTypes.video;
           isViewOnce = true;
       }
@@ -386,67 +475,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     }
   }
 
-  Future<void> _handleToggleMute() async {
-    if (_isMuted) {
-      await _chatService.unmuteChat(
-        uid: widget.currentUser.uid,
-        chatId: widget.chatId,
-      );
-    } else {
-      await _chatService.muteChat(
-        uid: widget.currentUser.uid,
-        chatId: widget.chatId,
-      );
-    }
-    setState(() => _isMuted = !_isMuted);
-  }
-
-  Future<void> _handleClearChat() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1B2E),
-        title: const Text('Clear chat', style: TextStyle(color: Colors.white)),
-        content: const Text(
-          'This will hide all messages for you. Other participants are not affected.',
-          style: TextStyle(color: Colors.white70),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text(
-              'Clear',
-              style: TextStyle(color: AppColors.deleteRed),
-            ),
-          ),
-        ],
-      ),
-    );
-    if (confirmed == true) {
-      try {
-        await _chatService.clearChat(
-          uid: widget.currentUser.uid,
-          chatId: widget.chatId,
-        );
-        await _loadChatModel();
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Chat cleared')));
-      } catch (e) {
-        debugPrint('[ChatThread] clearChat failed: $e');
-        if (!mounted) return;
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Could not clear chat')));
-      }
-    }
-  }
-
   void _openGroupInfo() {
     if (_chatModel == null) return;
     Navigator.of(context).push(
@@ -475,12 +503,145 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               if (mounted) setState(() => _isMuted = !_isMuted);
             },
             onChatCleared: () {
-              _loadChatModel();
+              if (!mounted) return;
+              _bindMessagesStream();
+              setState(() {});
             },
           ),
         ),
       );
     }
+  }
+
+  void _openGifPicker() {
+    if (!AppConfig.isGiphyGifSearchAvailable) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('GIF search is not available in this build.'),
+        ),
+      );
+      return;
+    }
+    GifPickerSheet.show(context, onGifSelected: _handleGifSelected);
+  }
+
+  Future<void> _handleGifSelected(ChatGif gif) async {
+    try {
+      await _chatService.sendGifMessage(
+        chatId: widget.chatId,
+        senderId: widget.currentUser.uid,
+        participantIds: _participantIds,
+        mediaUrl: gif.url,
+        previewUrl: gif.previewUrl,
+        width: gif.width,
+        height: gif.height,
+      );
+      _chatService.markChatRead(
+        uid: widget.currentUser.uid,
+        chatId: widget.chatId,
+      );
+    } catch (e) {
+      debugPrint('[ChatThread] send gif error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not send GIF')),
+        );
+      }
+    }
+  }
+
+  Future<void> _setReaction(MessageModel msg, String emoji) async {
+    if (msg.deletedForEveryone) return;
+    try {
+      await _chatService.toggleReaction(
+        chatId: widget.chatId,
+        messageId: msg.id,
+        uid: widget.currentUser.uid,
+        emoji: emoji,
+      );
+    } catch (e) {
+      debugPrint('[ChatThread] reaction error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not add reaction')),
+        );
+      }
+    }
+  }
+
+  void _showMessageActions(MessageModel msg) {
+    if (msg.deletedForEveryone) return;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF1A0A2E), Color(0xFF0D0518)],
+          ),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: ChatReactionEmojis.quickPick.map((emoji) {
+                    return GestureDetector(
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _setReaction(msg, emoji);
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: Text(emoji, style: const TextStyle(fontSize: 28)),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (_canReplyTo(msg))
+                ListTile(
+                  leading: const Icon(
+                    Icons.reply_rounded,
+                    color: Colors.white70,
+                  ),
+                  title: const Text(
+                    'Reply',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _startReply(msg);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(
+                  Icons.delete_outline,
+                  color: AppColors.deleteRed,
+                ),
+                title: const Text(
+                  'Delete message',
+                  style: TextStyle(color: Colors.white),
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _handleDeleteMessage(msg);
+                },
+              ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _handleDeleteMessage(MessageModel msg) async {
@@ -559,6 +720,16 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     return msg.senderId.substring(0, 6);
   }
 
+  String? _senderAvatarUrl(MessageModel msg) {
+    if (msg.senderId == widget.currentUser.uid) return null;
+    if (_isGroup) {
+      final avatar = _chatModel?.participantMap[msg.senderId]?.avatarUrl;
+      if (avatar != null && avatar.trim().isNotEmpty) return avatar;
+      return null;
+    }
+    return widget.otherUser?.profileImage;
+  }
+
   String? _seenText(MessageModel msg, bool isSent, bool isLastSentMsg) {
     if (!isSent || !isLastSentMsg) return null;
     if (msg.deletedForEveryone) return null;
@@ -581,6 +752,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     bool isSent,
     String time, {
     String? seenText,
+    String? replyToSenderName,
+    String? replyToPreview,
   }) {
     final name = _senderName(msg);
     final media = MediaMessageWidget(
@@ -588,6 +761,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       isSent: isSent,
       time: time,
       seenText: seenText,
+      replyToSenderName: replyToSenderName,
+      replyToPreview: replyToPreview,
+      senderAvatarUrl: _senderAvatarUrl(msg),
     );
     if (name == null) return media;
     return Align(
@@ -691,6 +867,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             callerName: _isGroup
                 ? (_chatModel?.groupName ?? widget.groupName)
                 : (widget.otherUser?.displayName ?? widget.otherUser?.username),
+            remoteAvatarUrl: _isGroup
+                ? (_chatModel?.groupImageUrl ?? widget.groupImageUrl)
+                : widget.otherUser?.profileImage,
+            remoteUserId: _isGroup ? null : widget.otherUser?.uid,
           ),
         ),
       );
@@ -737,7 +917,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               'them');
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
+      backgroundColor: AppColors.chatBackground,
       appBar: ChatAppBar(
         otherUser: widget.otherUser,
         chatType: _isGroup ? ChatTypes.group : ChatTypes.direct,
@@ -745,10 +925,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
         groupImageUrl: _chatModel?.groupImageUrl ?? widget.groupImageUrl,
         memberCount:
             _chatModel?.participantIds.length ?? widget.participantIds.length,
-        isMuted: _isMuted,
-        onMenuMute: _handleToggleMute,
-        onMenuClear: _handleClearChat,
-        onMenuGroupInfo: _isGroup ? _openGroupInfo : null,
         presenceText: _presenceText,
         onHeaderTap: _handleHeaderTap,
         onAudioCall: _participantIds.length >= 2 && !_isStartingCall
@@ -760,33 +936,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       ),
       body: Stack(
         children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.4, 1.0],
-                  colors: [
-                    Color(0xFF1A0826),
-                    Color(0xFF10041A),
-                    Color(0xFF07010F),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -80,
-            left: -80,
-            right: -80,
-            child: Container(
-              height: 360,
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [Color(0x55DE106B), Color(0x00000000)],
-                  radius: 0.7,
-                ),
+          const Positioned.fill(
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: AppGradients.chatBackgroundGradient,
               ),
             ),
           ),
@@ -796,19 +949,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               if (_uploadError != null && !_isUploading) _buildRetryBanner(),
               Expanded(
                 child: StreamBuilder<List<MessageModel>>(
-                  stream: _chatService.watchMessages(
-                    widget.chatId,
-                    widget.currentUser.uid,
-                    clearedAt: _chatModel?.clearedAtBy[widget.currentUser.uid],
-                  ),
+                  stream: _messagesStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
-                      return const Center(
-                        child: CircularProgressIndicator(
-                          color: Color(0xFFDE106B),
-                        ),
-                      );
+                      return const SizedBox.shrink();
                     }
 
                     if (snapshot.hasError) {
@@ -818,8 +963,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                           child: Text(
                             messageForFirestore(snapshot.error),
                             textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.65),
+                            style: AppTypography.chatTilePreview.copyWith(
                               fontSize: 15,
                               height: 1.35,
                             ),
@@ -828,7 +972,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                       );
                     }
 
-                    final messages = snapshot.data ?? [];
+                    final messages = _visibleMessages(snapshot.data ?? []);
                     if (messages.isEmpty) {
                       return Center(
                         child: Column(
@@ -836,14 +980,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                           children: [
                             Icon(
                               Icons.chat_bubble_outline,
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: AppColors.chatTextSecondary
+                                  .withValues(alpha: 0.5),
                               size: 64,
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: AppSpacing.md - AppSpacing.xs),
                             Text(
                               'Say hi to $emptyName!',
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.4),
+                              style: AppTypography.chatTilePreview.copyWith(
                                 fontSize: 15,
                               ),
                             ),
@@ -889,6 +1033,15 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                         final time = _formatMessageTime(msg.createdAt);
                         final isLastSent = index == lastSentIdx;
                         final seen = _seenText(msg, isSent, isLastSent);
+                        final replyQuote = _replyQuoteFor(msg, messages);
+
+                        final msgDate = msg.createdAt?.toDate();
+                        final showDateSeparator = msgDate != null &&
+                            (index == 0 ||
+                                !ChatHelpers.isSameCalendarDay(
+                                  msgDate,
+                                  messages[index - 1].createdAt!.toDate(),
+                                ));
 
                         Widget bubble;
                         if (msg.deletedForEveryone) {
@@ -898,6 +1051,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             time: time,
                             isDeleted: true,
                             senderName: _senderName(msg),
+                            senderAvatarUrl: _senderAvatarUrl(msg),
                           );
                         } else if (msg.isViewOnce &&
                             (msg.type == ChatMessageTypes.image ||
@@ -910,14 +1064,19 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             isGroup: _isGroup,
                             senderName: _senderName(msg),
                             onTap: () => _openViewOnceMedia(msg),
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         } else if (msg.type == ChatMessageTypes.image ||
-                            msg.type == ChatMessageTypes.video) {
+                            msg.type == ChatMessageTypes.video ||
+                            msg.type == ChatMessageTypes.gif) {
                           bubble = _buildMediaBubble(
                             msg,
                             isSent,
                             time,
                             seenText: seen,
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         } else if (msg.type == ChatMessageTypes.call) {
                           bubble = CallMessageBubble(
@@ -931,6 +1090,8 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             time: time,
                             senderName: _senderName(msg),
                             seenText: seen,
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
                           );
                         } else {
                           bubble = MessageBubble(
@@ -940,12 +1101,38 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             isDeleted: false,
                             senderName: _senderName(msg),
                             seenText: seen,
+                            replyToSenderName: replyQuote?.senderName,
+                            replyToPreview: replyQuote?.preview,
+                            senderAvatarUrl: _senderAvatarUrl(msg),
                           );
                         }
 
-                        return GestureDetector(
-                          onLongPress: () => _handleDeleteMessage(msg),
-                          child: bubble,
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (showDateSeparator)
+                              _ChatDateSeparator(
+                                label: ChatHelpers.formatThreadDateSeparator(
+                                  msgDate,
+                                ),
+                              ),
+                            SwipeToReplyMessage(
+                              enabled: _canReplyTo(msg),
+                              onReply: () => _startReply(msg),
+                              onLongPress: () => _showMessageActions(msg),
+                              onDoubleTap: () => _setReaction(
+                                msg,
+                                ChatReactionEmojis.defaultReaction,
+                              ),
+                              child: bubble,
+                            ),
+                            MessageReactionsBar(
+                              reactions: msg.reactions,
+                              isSent: isSent,
+                              currentUid: widget.currentUser.uid,
+                              onReactionTap: (emoji) => _setReaction(msg, emoji),
+                            ),
+                          ],
                         );
                       },
                     );
@@ -968,9 +1155,17 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               MessageInputBar(
                 onSend: _handleSend,
                 onMediaAction: _handleMediaAction,
+                onGifTap: _openGifPicker,
                 mediaLoading: _isUploading,
                 onTypingChanged: _handleTypingChanged,
                 onVoiceNoteSend: _handleVoiceNote,
+                replyingToSenderName: _replyingTo == null
+                    ? null
+                    : _displayNameForUser(_replyingTo!.senderId),
+                replyingToPreview: _replyingTo == null
+                    ? null
+                    : ChatHelpers.messageBodyPreview(_replyingTo!),
+                onCancelReply: _cancelReply,
               ),
             ],
           ),
@@ -1039,6 +1234,22 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             child: const Icon(Icons.close, color: Colors.white38, size: 18),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _ChatDateSeparator extends StatelessWidget {
+  const _ChatDateSeparator({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+      child: Center(
+        child: Text(label, style: AppTypography.chatDateSeparator),
       ),
     );
   }
