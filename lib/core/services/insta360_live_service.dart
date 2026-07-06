@@ -167,6 +167,12 @@ class Insta360LiveService {
   Future<void> setMaskEnabled(bool enabled) =>
       _methods.invokeMethod<void>('setMaskEnabled', {'enabled': enabled});
 
+  /// Toggle temporal redundancy reduction (1-in-N + motion gating) on the live 360 feed. Off
+  /// transmits every frame — used for A/B bitrate comparison. Metrics are read via
+  /// [getPipelineMetrics] (`keepRatio`, `motionKeeps`, `framesKept`, …).
+  Future<void> setTemporalEnabled(bool enabled) =>
+      _methods.invokeMethod<void>('setTemporalEnabled', {'enabled': enabled});
+
   /// Point the interactive 360 view at an absolute orientation, in degrees. Drives the SDK
   /// player's `setYaw`/`setPitch` so the host can drag to look around. Fire-and-forget.
   Future<void> setViewOrientation(double yaw, double pitch) {

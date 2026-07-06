@@ -1,5 +1,6 @@
 package com.vyooo.insta360
 
+import android.util.Log
 import com.arashivision.graphicpath.insmedia.common.MediaFrame
 import com.vyooo.insta360.pipeline.DownscaleStage
 import com.vyooo.insta360.pipeline.ForwardMaskStage
@@ -42,12 +43,13 @@ object Insta360FrameSink {
 
     // ── The capture-side optimisation pipeline (single source of truth) ──────────
     private val forwardMask = ForwardMaskStage()
+    private val temporalDedup = TemporalDedupStage()
 
     /** AI-fed decision hints; deterministic (all null) until an AI layer writes them. */
     val hints = MutableHints()
 
     val pipeline = FramePipeline(
-        listOf(DownscaleStage(), PanoramaDetectStage(), forwardMask, TemporalDedupStage()),
+        listOf(DownscaleStage(), PanoramaDetectStage(), forwardMask, temporalDedup),
         hints,
     )
 
@@ -56,12 +58,22 @@ object Insta360FrameSink {
         forwardMask.enabled = enabled
     }
 
+    /** Live temporal-reduction toggle (1-in-N + motion gating on/off) — for A/B / KPI capture. */
+    fun setTemporalEnabled(enabled: Boolean) {
+        temporalDedup.enabled = enabled
+    }
+
     private var count: Long = 0
     private var windowStartNs: Long = 0
     private var framesThisWindow: Int = 0
     private var lastFps: Int = 0
     private var basePtsNs: Long = 0
     private var lastTransmitNs: Long = 0
+    private var lastTemporalLogNs: Long = 0
+    private var lastLogSeen: Long = 0
+    private var lastLogKept: Long = 0
+
+    private const val TAG = "Insta360FrameSink"
 
     // Cap the transmit copy rate. The pipeline runs at the extract rate (~60 fps) to keep the host
     // display smooth, but each transmitted frame allocates a fresh ~7 MB copy (+ another ~7 MB in the
@@ -73,16 +85,48 @@ object Insta360FrameSink {
     fun reset() {
         count = 0; windowStartNs = 0; framesThisWindow = 0; lastFps = 0; basePtsNs = 0
         lastTransmitNs = 0
+        lastTemporalLogNs = 0; lastLogSeen = 0; lastLogKept = 0
         pipeline.metrics.reset()
+        temporalDedup.reset()
     }
 
-    /** Live metrics: output fps + the pipeline snapshot (per-stage latency, spatial reduction, drops). */
+    /** Live metrics: output fps + the pipeline snapshot (per-stage latency, spatial + temporal). */
     fun metrics(): Map<String, Any> {
         val m = HashMap<String, Any>()
         m["fps"] = lastFps
         m["framesOut"] = count
         m.putAll(pipeline.metrics.snapshot())
+        m.putAll(temporalDedup.stats())
         return m
+    }
+
+    /**
+     * Throttled (~1/s) logcat monitor of the temporal stage — the on-device stability readout.
+     * `capFps` (frames arriving from the camera) staying steady = real-time sustained / no backlog;
+     * `effFps` (frames kept) is the temporally-reduced output rate; the two together show frame
+     * pacing and that drops never run away (effFps holds at the heartbeat floor in a static scene).
+     */
+    private fun maybeLogTemporal(nowNs: Long) {
+        val dt = nowNs - lastTemporalLogNs
+        if (dt < 1_000_000_000L) return
+        val s = temporalDedup.stats()
+        val seen = s["framesSeen"] as Long
+        val kept = s["framesKept"] as Long
+        val secs = dt / 1_000_000_000.0
+        val capFps = (seen - lastLogSeen) / secs
+        val effFps = (kept - lastLogKept) / secs
+        lastTemporalLogNs = nowNs
+        lastLogSeen = seen
+        lastLogKept = kept
+        Log.i(
+            TAG,
+            "temporal enabled=${s["temporalEnabled"]} " +
+                "capFps=${"%.1f".format(capFps)} effFps=${"%.1f".format(effFps)} " +
+                "keepRatio=${"%.2f".format(s["keepRatio"] as Double)} " +
+                "kept=$kept/$seen motion=${s["motionKeeps"]} heartbeat=${s["heartbeatKeeps"]} " +
+                "schedDrop=${s["scheduleDrops"]} dupDrop=${s["duplicateDrops"]} " +
+                "lastMotion=${"%.3f".format(s["lastMotion"] as Float)}",
+        )
     }
 
     /**
@@ -102,7 +146,8 @@ object Insta360FrameSink {
         val ptsUs = (now - basePtsNs) / 1000
 
         val result = pipeline.process(PipelineFrame(rgba, w, h, ptsUs))
-            ?: return // dropped by a stage (e.g. temporal dedup)
+        maybeLogTemporal(now) // ~1/s monitor of the temporal stage — logs even on dropped frames
+        result ?: return // dropped by a stage (e.g. temporal dedup)
         val outW = result.width
         val outH = result.height
 
