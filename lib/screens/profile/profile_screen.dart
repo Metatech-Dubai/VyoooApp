@@ -664,7 +664,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                         mainAxisSize: MainAxisSize.max,
                         children: [
                           ProfileFigmaActionButton(
-                            label: 'Edit Profile',
                             onPressed: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -707,7 +706,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                           ),
                         ],
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(
+                        height: ProfileFigmaTokens.contentSectionTopGap,
+                      ),
                     ],
                   ),
                 ),
@@ -727,7 +728,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                         child: Padding(
                           padding: const EdgeInsets.fromLTRB(
                             ProfileFigmaTokens.profileHeaderHorizontalPad,
-                            24,
+                            ProfileFigmaTokens.contentTopPadding,
                             ProfileFigmaTokens.profileHeaderHorizontalPad,
                             0,
                           ),

@@ -16,6 +16,10 @@ abstract final class ProfileAssets {
   static const String editProfileLabelFigmaSample =
       'assets/vyooO_icons/Profile/edit_profile_label.svg';
 
+  /// Edit Profile action pill (146×40 #1C1C1C + white label).
+  static const String editProfileButton =
+      'assets/vyooO_icons/Profile/edit_profile_button.svg';
+
   /// Figma stat chip composite reference (Posts card 100×72).
   static const String statChipPostsFigmaSample =
       'assets/vyooO_icons/Profile/stat_chip_posts.svg';

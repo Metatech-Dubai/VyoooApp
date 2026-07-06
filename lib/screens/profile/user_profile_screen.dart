@@ -1110,7 +1110,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         const SizedBox(height: 16),
                       ],
                       _buildActionButtons(p),
-                      const SizedBox(height: 12),
+                      const SizedBox(
+                        height: ProfileFigmaTokens.contentSectionTopGap,
+                      ),
                     ],
                   ),
                 ),
@@ -1119,7 +1121,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                 decoration: const BoxDecoration(
                   color: _profileSurface,
                   borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(24),
+                    top: Radius.circular(ProfileFigmaTokens.contentTopRadius),
                   ),
                 ),
                 sliver: SliverMainAxisGroup(
@@ -1128,7 +1130,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(
                           ProfileFigmaTokens.profileHeaderHorizontalPad,
-                          24,
+                          ProfileFigmaTokens.contentTopPadding,
                           ProfileFigmaTokens.profileHeaderHorizontalPad,
                           0,
                         ),

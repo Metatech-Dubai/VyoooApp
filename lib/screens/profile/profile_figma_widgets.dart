@@ -139,15 +139,13 @@ class ProfileFigmaStatChip extends StatelessWidget {
   }
 }
 
-/// Edit Profile — near-black pill, white label.
+/// Edit Profile — Figma pill SVG (146×40 #1C1C1C + white label).
 class ProfileFigmaActionButton extends StatelessWidget {
   const ProfileFigmaActionButton({
     super.key,
-    required this.label,
     required this.onPressed,
   });
 
-  final String label;
   final VoidCallback onPressed;
 
   @override
@@ -159,24 +157,11 @@ class ProfileFigmaActionButton extends StatelessWidget {
       child: InkWell(
         onTap: onPressed,
         borderRadius: radius,
-        child: Ink(
+        child: SvgPicture.asset(
+          ProfileAssets.editProfileButton,
+          width: ProfileFigmaTokens.actionButtonWidth,
           height: ProfileFigmaTokens.actionButtonHeight,
-          decoration: BoxDecoration(
-            color: ProfileFigmaTokens.actionButtonFill,
-            borderRadius: radius,
-          ),
-          padding: const EdgeInsets.symmetric(
-            horizontal: ProfileFigmaTokens.actionButtonPaddingH,
-            vertical: ProfileFigmaTokens.actionButtonPaddingV,
-          ),
-          child: Center(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: AppTypography.profileActionButtonLabel,
-            ),
-          ),
+          fit: BoxFit.contain,
         ),
       ),
     );

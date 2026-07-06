@@ -543,12 +543,13 @@ abstract final class AppTypography {
     color: AppColors.profileDisplayName,
   );
 
-  /// Profile stat counter — DM Sans SemiBold 16 / #1B1C1C (Figma).
+  /// Profile stat counter — DM Sans SemiBold 20 / 24 line height / #1B1C1C (Figma).
   static const TextStyle profileStatValue = TextStyle(
     fontFamily: AppFonts.body,
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: FontWeight.w600,
-    height: 1.0,
+    height: 24 / 20,
+    letterSpacing: 0,
     color: AppColors.profileDisplayName,
   );
 

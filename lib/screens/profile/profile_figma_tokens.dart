@@ -107,7 +107,8 @@ abstract final class ProfileFigmaTokens {
   static const double statChipWidth = 100;
   static const double statChipHeight = 72;
   static const double statChipGap = 12;
-  static const double statValueFontSize = 16;
+  static const double statValueFontSize = 20;
+  static const double statValueLineHeight = 24;
   static const double statLabelFontSize = 12;
   /// Stat chip fill (#EFEDED).
   static const Color statChipBackground = AppColors.profileStatChipBackground;
@@ -116,14 +117,15 @@ abstract final class ProfileFigmaTokens {
   /// Stat chip label fill (#554247).
   static const Color statLabelColor = AppColors.profileStatLabel;
 
-  static const double actionButtonHeight = 45;
+  static const double actionButtonWidth = 146;
+  static const double actionButtonHeight = 40;
   static const double actionButtonRadius = 52;
   static const double actionButtonPaddingH = 26;
   static const double actionButtonPaddingV = 10;
   static const double actionButtonGap = 8;
   static const double actionButtonFontSize = 16;
   static const FontWeight actionButtonFontWeight = FontWeight.w500;
-  static const double actionIconButtonSize = 45;
+  static const double actionIconButtonSize = 40;
   static const double actionIconSize = 22;
 
   static const double bioFontSize = 14;
@@ -135,7 +137,13 @@ abstract final class ProfileFigmaTokens {
   /// White margin outside the grey content card (left + right). Figma: full bleed.
   static const double contentSideMargin = 0;
 
-  static const double contentTopRadius = 24;
+  static const double contentTopRadius = 32;
+
+  /// Inset above Posts / VR / Clips / Tags inside the grey content card.
+  static const double contentTopPadding = 12;
+
+  /// Gap between action buttons and the grey content card.
+  static const double contentSectionTopGap = 20;
 
   /// Gutter between profile post tiles (4pt grid).
   static const double contentGridGap = 2;
