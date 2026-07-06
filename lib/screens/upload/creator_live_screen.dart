@@ -10,9 +10,12 @@ import '../../core/config/agora_config.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
+import '../../core/models/video_360_metadata.dart';
 import '../../core/services/agora_token_service.dart';
+import '../../core/services/gyro_look_controller.dart';
 import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
+import '../../core/services/media_push_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -84,6 +87,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   // not speed, so it stays slow regardless of how far it's pushed. ~1°/sec at a 40ms tick.
   static const double _kJogStepDeg = 0.04;
 
+  // Gyro look-around: tilt the phone to pan the 360 view (composes with slider/drag).
+  final GyroLookController _gyro = GyroLookController(sensitivity: 0.03);
+  bool _gyroEnabled = false;
+
   // ── Toast ─────────────────────────────────────────────────────────────────────
   String? _toast;
   Timer? _toastTimer;
@@ -150,6 +157,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _chatScrollCtrl.dispose();
     _instaConnectTimer?.cancel();
     _jogTimer?.cancel();
+    _gyro.dispose();
     _instaFrameSub?.cancel();
     _insta.state.removeListener(_onInstaState);
     if (_cameraSource == _CameraSource.insta360) {
@@ -317,6 +325,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         category: _streamCategory,
         tags: _streamTags,
         pricePerMinute: _streamPrice,
+        // Tag the feed as 360 when broadcasting the Insta360 (equirectangular),
+        // so the viewer can detect it and route to the interactive 360 player.
+        video360: _cameraSource == _CameraSource.insta360
+            ? const Video360Metadata(
+                is360Video: true,
+                projectionType: Video360Projection.equirectangular,
+                stereoMode: Video360StereoMode.mono,
+              )
+            : Video360Metadata.flat,
+        isVR: _cameraSource == _CameraSource.insta360,
       );
       _streamId = streamId;
 
@@ -341,6 +359,15 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           autoSubscribeVideo: false,
         ),
       );
+
+      // 360 → cloud URL bridge for the interactive viewer (DORMANT: MediaPushService
+      // is gated off, so this is a no-op until CDN ingest is provisioned. No stream
+      // is pushed live in this pass.) When enabled, it starts Media Push and stores
+      // the resulting HLS URL on the stream doc for the 360 viewer to play.
+      if (MediaPushService.enabled &&
+          _cameraSource == _CameraSource.insta360) {
+        await _maybeStartMediaPush(streamId);
+      }
 
       // Subscribe to real-time updates
       _streamSub = _liveService.streamDoc(streamId).listen((doc) {
@@ -538,6 +565,43 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     setState(() => _jogYaw = 0.0);
   }
 
+  /// Start Media Push (Agora → CDN) and store the resulting HLS URL so the 360
+  /// viewer can play it. DORMANT: guarded by [MediaPushService.enabled] (false),
+  /// so this never runs a live push in this pass — the CDN ingest/playback URLs
+  /// come from provisioning that is not configured here. Out-of-scope add-on.
+  Future<void> _maybeStartMediaPush(String streamId) async {
+    if (!MediaPushService.enabled) return;
+    // NOTE: rtmpIngestUrl + hlsPlaybackUrl come from the provisioned CDN input.
+    // Left unconfigured on purpose (no live push): fill these when activating.
+    const rtmpIngestUrl = ''; // e.g. rtmps://<cloudflare-live-input-ingest>
+    const hlsPlaybackUrl = ''; // e.g. https://videodelivery.net/<id>/manifest/video.m3u8
+    if (rtmpIngestUrl.isEmpty || hlsPlaybackUrl.isEmpty) return;
+    final url = await const MediaPushService().start(
+      engine: _engine,
+      rtmpIngestUrl: rtmpIngestUrl,
+      hlsPlaybackUrl: hlsPlaybackUrl,
+    );
+    if (url != null) await _liveService.updateHlsUrl(streamId, url);
+  }
+
+  /// Toggle gyro look-around: tilt the phone to pan the 360 view. Composes with the slider/drag
+  /// (both add to the same accumulated yaw/pitch).
+  void _toggleGyro() {
+    setState(() => _gyroEnabled = !_gyroEnabled);
+    if (_gyroEnabled) {
+      _gyro.onDelta = (dYaw, dPitch) {
+        _viewYaw += dYaw;
+        _viewPitch = (_viewPitch + dPitch).clamp(-89.0, 89.0);
+        _insta.setViewOrientation(_viewYaw, _viewPitch);
+      };
+      _gyro.start();
+      _showToast('Gyro on — tilt to look around');
+    } else {
+      _gyro.stop();
+      _showToast('Gyro off');
+    }
+  }
+
   /// Toggle forward-only masking on the live 360 feed (masked ↔ full 360°).
   Future<void> _toggleMask() async {
     setState(() => _maskEnabled = !_maskEnabled);
@@ -724,6 +788,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             onPointerMove: (e) => _onPreviewDrag(e.delta),
           ),
         ),
+        // (Gyro toggle moved into the right-hand tool column, under the mask icon.)
         // Horizontal rotation jog slider — sits above the Start Live button. Hold the thumb
         // left/right to rotate the 360 view at a constant slow rate; release and it springs back
         // to centre while the view keeps its angle.
@@ -1004,6 +1069,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                       active: _maskEnabled,
                       size: 38,
                     ),
+                  // Gyro look-around toggle — under the mask icon, only for the 360 feed.
+                  if (_cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _gyroEnabled
+                          ? Icons.screen_rotation_rounded
+                          : Icons.screen_rotation_alt_outlined,
+                      onTap: _toggleGyro,
+                      active: _gyroEnabled,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.mic_none_rounded,
                     onTap: _toggleMute,
@@ -1263,6 +1338,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
                           : Icons.panorama_horizontal_rounded,
                       onTap: _toggleMask,
                       active: _maskEnabled,
+                      size: 38,
+                    ),
+                  // Gyro look-around toggle — under the mask icon, only for the 360 feed.
+                  if (_cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _gyroEnabled
+                          ? Icons.screen_rotation_rounded
+                          : Icons.screen_rotation_alt_outlined,
+                      onTap: _toggleGyro,
+                      active: _gyroEnabled,
                       size: 38,
                     ),
                   _CircleIconButton(
@@ -1877,7 +1962,7 @@ class _ConfirmDialog extends StatelessWidget {
 
 // ── Camera-source picker sheet ─────────────────────────────────────────────────
 
-/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, Wi-Fi/USB).
+/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, USB by default; Wi-Fi optional).
 class _CameraPickerSheet extends StatelessWidget {
   const _CameraPickerSheet({
     required this.current,
@@ -1951,7 +2036,8 @@ class _CameraPickerSheet extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.only(left: 4, bottom: 6),
                 child: Text(
-                  'Join the camera\'s Wi-Fi in Settings first, then connect via',
+                  'Join the camera\'s Wi-Fi in Settings first, then connect via Wi-Fi. '
+                  '(USB keeps the phone\'s internet — used for going live.)',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.5),
                     fontSize: 12,

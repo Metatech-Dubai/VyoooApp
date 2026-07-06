@@ -12,6 +12,7 @@ import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../widgets/live_360_view.dart';
 
 /// Viewer live stream screen.
 /// Pass a [LiveStreamModel] to open any live stream as a viewer.
@@ -317,6 +318,13 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   }
 
   Widget _buildVideoBackground(LiveStreamModel doc) {
+    // Interactive 360: when the stream is tagged 360 AND exposes a playable URL
+    // (via Media Push), render it on the sphere with gyro/touch. The URL is an
+    // independent source, so this doesn't wait on the Agora remote video. Any 360
+    // stream without a URL falls through to the flat Agora path below.
+    if (doc.canRenderInteractive360) {
+      return Live360View(streamUrl: doc.hlsUrl!);
+    }
     if (!_engineReady || !_hostVideoAvailable || _remoteUid == 0) {
       // No video yet — show host avatar placeholder
       return Container(

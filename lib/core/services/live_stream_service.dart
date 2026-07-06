@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/live_chat_message_model.dart';
 import '../models/live_stream_model.dart';
+import '../models/video_360_metadata.dart';
 import 'user_service.dart';
 
 /// Firestore operations for live streams.
@@ -29,6 +30,8 @@ class LiveStreamService {
     String category = '',
     List<String> tags = const [],
     int pricePerMinute = 0,
+    Video360Metadata video360 = Video360Metadata.flat,
+    bool isVR = false,
   }) async {
     // End any stale live streams for this host before creating a new one
     final stale = await _db
@@ -61,6 +64,8 @@ class LiveStreamService {
       hostAgoraUid: 0, // updated after Agora join
       createdAt: Timestamp.now(),
       savedToProfile: false,
+      video360: video360,
+      isVR: isVR,
     );
     var authorAccountPrivate = false;
     try {
@@ -78,6 +83,11 @@ class LiveStreamService {
   /// Updates the host's Agora UID after joining the channel.
   Future<void> updateHostAgoraUid(String streamId, int uid) async {
     await _db.collection(_streamsCol).doc(streamId).update({'hostAgoraUid': uid});
+  }
+
+  /// Stores the live HLS URL (from Media Push) so the 360 viewer can play it.
+  Future<void> updateHlsUrl(String streamId, String hlsUrl) async {
+    await _db.collection(_streamsCol).doc(streamId).update({'hlsUrl': hlsUrl});
   }
 
   /// Updates stream metadata (title, description, etc).
