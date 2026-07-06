@@ -25,6 +25,15 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 | Build number | **50** |
 | `pubspec.yaml` | `1.2.4+50` |
 
+## Platform requirements
+
+- **Android:** API **29** (Android 10) or newer is required starting from the release
+  containing Insta360 live-streaming support (`minSdk = 29` in
+  `android/app/build.gradle.kts`). Users on Android 9 or earlier remain on their
+  last compatible store build and do not receive future releases that require
+  API 29.
+- **iOS:** unchanged; Insta360 capture is Android-native only.
+
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |

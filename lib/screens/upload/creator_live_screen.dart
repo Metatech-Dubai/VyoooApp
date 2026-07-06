@@ -14,8 +14,12 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/live_stream_assets.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
+import '../../core/models/video_360_metadata.dart';
 import '../../core/services/agora_token_service.dart';
+import '../../core/services/gyro_look_controller.dart';
+import '../../core/services/insta360_live_service.dart';
 import '../../core/services/live_stream_service.dart';
+import '../../core/services/media_push_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
@@ -29,6 +33,7 @@ import '../../core/widgets/app_feed_notification_button.dart';
 import '../../core/widgets/live_comment_input_field.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/story/story_upload_screen.dart';
+import '../../widgets/insta360_preview_view.dart';
 import '../../screens/notifications/notification_screen.dart';
 import 'upload_screen.dart';
 import 'widgets/upload_create_bottom_bar.dart';
@@ -36,6 +41,10 @@ import 'widgets/upload_create_bottom_bar.dart';
 // ── State enum ─────────────────────────────────────────────────────────────────
 
 enum _LiveState { initializing, permissionDenied, offline, countdown, live }
+
+/// Active broadcast camera source. `phone` = Agora's built-in camera (default);
+/// `insta360` = the Insta360 360° camera pushed in as an Agora external video source.
+enum _CameraSource { phone, insta360 }
 
 /// iOS needs extra time after removing [AgoraVideoView] before creating a new one.
 const Duration _kIosPlatformViewSettleDelay = Duration(milliseconds: 400);
@@ -105,6 +114,34 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
   bool _isFrontCamera = true;
   bool _streamInfoExpanded = true;
 
+  // ── Camera source (phone ↔ Insta360 360°) ─────────────────────────────────────
+  final Insta360LiveService _insta = Insta360LiveService();
+  _CameraSource _cameraSource = _CameraSource.phone;
+  bool _insta360Supported = false;
+  bool _insta360Switching = false;
+  bool _instaWasConnected = false;
+  bool _maskEnabled = true;
+  StreamSubscription<Insta360Frame>? _instaFrameSub;
+  Timer? _instaConnectTimer;
+
+  // Interactive 360 view orientation (degrees), driven by host drag on the preview.
+  double _viewYaw = 0;
+  double _viewPitch = 0;
+  static const double _kDragDegPerPx = 0.2;
+
+  // Horizontal jog slider (spring-return): displacement from centre rotates yaw continuously in
+  // sub-degree steps; release recentres the thumb and the view holds its angle.
+  double _jogYaw = 0.0;
+  bool _jogActive = false;
+  Timer? _jogTimer;
+  // Constant rotation rate while the slider is held off-centre — the slider sets DIRECTION only,
+  // not speed, so it stays slow regardless of how far it's pushed. ~1°/sec at a 40ms tick.
+  static const double _kJogStepDeg = 0.04;
+
+  // Gyro look-around: tilt the phone to pan the 360 view (composes with slider/drag).
+  final GyroLookController _gyro = GyroLookController(sensitivity: 0.03);
+  bool _gyroEnabled = false;
+
   // ── Toast ─────────────────────────────────────────────────────────────────────
   String? _toast;
   Timer? _toastTimer;
@@ -140,6 +177,33 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     if (!widget.embeddedInMainShell || widget.isActive) {
       unawaited(_init());
     }
+    // Probe Insta360 capability + watch for mid-stream camera drop (fallback to phone).
+    if (Insta360LiveService.capturePlatformAvailable) {
+      _insta.start();
+      _insta.state.addListener(_onInstaState);
+      _insta.isSupported().then((ok) {
+        if (mounted) setState(() => _insta360Supported = ok);
+      });
+    }
+  }
+
+  /// Reflect Insta360 status changes in the UI and handle a real mid-session disconnect.
+  /// Only falls back on a genuine connected→disconnected transition (never during the initial
+  /// OPENING window, which would abort a connection that is still in progress).
+  void _onInstaState() {
+    final connected = _insta.state.value.connected;
+    if (connected) _instaConnectTimer?.cancel();
+    final droppedMidSession =
+        _cameraSource == _CameraSource.insta360 &&
+        _instaWasConnected &&
+        !connected &&
+        !_insta360Switching;
+    _instaWasConnected = connected;
+    if (mounted) setState(() {}); // gate the preview / refresh status chip
+    if (droppedMidSession) {
+      _showToast('360 camera disconnected — switched to phone');
+      _disableInsta360();
+    }
   }
 
   @override
@@ -160,7 +224,9 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
   void didUpdateWidget(CreatorLiveScreen oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!widget.embeddedInMainShell) return;
-    if (!oldWidget.isActive && widget.isActive && (_agoraTornDown || !_engineReady)) {
+    if (!oldWidget.isActive &&
+        widget.isActive &&
+        (_agoraTornDown || !_engineReady)) {
       unawaited(_init());
       return;
     }
@@ -382,6 +448,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     _likeSub?.cancel();
     _chatCtrl.dispose();
     _chatScrollCtrl.dispose();
+    _instaConnectTimer?.cancel();
+    _jogTimer?.cancel();
+    _gyro.dispose();
+    _instaFrameSub?.cancel();
+    _insta.state.removeListener(_onInstaState);
+    if (_cameraSource == _CameraSource.insta360) {
+      _insta.setFrameStreaming(false).catchError((_) {});
+      _insta.disconnect().catchError((_) {});
+    }
+    _insta.dispose();
     _showAgoraView = false;
     _engineReady = false;
     unawaited(_teardownAgora(endLiveStream: true));
@@ -392,9 +468,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     if (_teardownInProgress) return;
     _teardownInProgress = true;
     try {
-      if (endLiveStream &&
-          _streamId != null &&
-          _liveState == _LiveState.live) {
+      if (endLiveStream && _streamId != null && _liveState == _LiveState.live) {
         await _liveService.endStream(_streamId!).catchError((_) {});
       }
 
@@ -460,87 +534,87 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
       final engine = createAgoraRtcEngine();
       _engine = engine;
       await engine.initialize(
-      RtcEngineContext(
-        appId: AgoraConfig.appId,
-        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-      ),
-    );
+        RtcEngineContext(
+          appId: AgoraConfig.appId,
+          channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+        ),
+      );
 
-    engine.registerEventHandler(
-      RtcEngineEventHandler(
-        onJoinChannelSuccess: (connection, elapsed) {
-          if (!mounted) return;
-          setState(() => _localUid = connection.localUid ?? 0);
-          if (_streamId != null) {
-            _liveService.updateHostAgoraUid(_streamId!, _localUid);
-          }
-        },
-        onUserJoined: (connection, remoteUid, elapsed) {
-          if (_streamId == null) return;
-          _liveService
-              .sendMessage(
-                streamId: _streamId!,
-                userId: 'system',
-                username: 'system',
-                message: 'Someone joined the stream 👋',
-                type: ChatMessageType.join,
-              )
-              .catchError((_) {});
-        },
-        onUserOffline: (connection, remoteUid, reason) {
-          if (_streamId == null) return;
-          _liveService
-              .sendMessage(
-                streamId: _streamId!,
-                userId: 'system',
-                username: 'system',
-                message: 'A viewer left the stream',
-                type: ChatMessageType.system,
-              )
-              .catchError((_) {});
-        },
-        onTokenPrivilegeWillExpire: (connection, token) async {
-          if (_streamId == null) return;
-          try {
-            final newToken = await _tokenService.renewToken(
-              channelName: _streamId!,
-              uid: _localUid,
-              isHost: true,
-            );
-            await engine.renewToken(newToken);
-          } catch (_) {
-            _showToast('Token renewal failed — stream may disconnect');
-          }
-        },
-        onError: (err, msg) {
-          if (!mounted) return;
-          _showToast('Stream error: $msg');
-        },
-      ),
-    );
+      engine.registerEventHandler(
+        RtcEngineEventHandler(
+          onJoinChannelSuccess: (connection, elapsed) {
+            if (!mounted) return;
+            setState(() => _localUid = connection.localUid ?? 0);
+            if (_streamId != null) {
+              _liveService.updateHostAgoraUid(_streamId!, _localUid);
+            }
+          },
+          onUserJoined: (connection, remoteUid, elapsed) {
+            if (_streamId == null) return;
+            _liveService
+                .sendMessage(
+                  streamId: _streamId!,
+                  userId: 'system',
+                  username: 'system',
+                  message: 'Someone joined the stream 👋',
+                  type: ChatMessageType.join,
+                )
+                .catchError((_) {});
+          },
+          onUserOffline: (connection, remoteUid, reason) {
+            if (_streamId == null) return;
+            _liveService
+                .sendMessage(
+                  streamId: _streamId!,
+                  userId: 'system',
+                  username: 'system',
+                  message: 'A viewer left the stream',
+                  type: ChatMessageType.system,
+                )
+                .catchError((_) {});
+          },
+          onTokenPrivilegeWillExpire: (connection, token) async {
+            if (_streamId == null) return;
+            try {
+              final newToken = await _tokenService.renewToken(
+                channelName: _streamId!,
+                uid: _localUid,
+                isHost: true,
+              );
+              await engine.renewToken(newToken);
+            } catch (_) {
+              _showToast('Token renewal failed — stream may disconnect');
+            }
+          },
+          onError: (err, msg) {
+            if (!mounted) return;
+            _showToast('Stream error: $msg');
+          },
+        ),
+      );
 
-    await engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
-    await engine.enableVideo();
-    await engine.enableAudio();
-    await engine.startPreview();
+      await engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await engine.enableVideo();
+      await engine.enableAudio();
+      await engine.startPreview();
 
-    if (!mounted) return;
-    if (Platform.isIOS) {
-      await Future<void>.delayed(_kIosPlatformViewSettleDelay);
-    }
-    if (!mounted) return;
-    setState(() {
-      _engineReady = true;
-      _showAgoraView = true;
-      _agoraTornDown = false;
-      _engineVersion++;
-      _liveState = _LiveState.offline;
-    });
-    if (widget.autoStartLive) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _onLiveStartTap();
+      if (!mounted) return;
+      if (Platform.isIOS) {
+        await Future<void>.delayed(_kIosPlatformViewSettleDelay);
+      }
+      if (!mounted) return;
+      setState(() {
+        _engineReady = true;
+        _showAgoraView = true;
+        _agoraTornDown = false;
+        _engineVersion++;
+        _liveState = _LiveState.offline;
       });
-    }
+      if (widget.autoStartLive) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) _onLiveStartTap();
+        });
+      }
     } finally {
       _initializingAgora = false;
     }
@@ -614,6 +688,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
         category: _streamCategory,
         tags: _streamTags,
         pricePerMinute: _streamPrice,
+        // Tag the feed as 360 when broadcasting the Insta360 (equirectangular),
+        // so the viewer can detect it and route to the interactive 360 player.
+        video360: _cameraSource == _CameraSource.insta360
+            ? const Video360Metadata(
+                is360Video: true,
+                projectionType: Video360Projection.equirectangular,
+                stereoMode: Video360StereoMode.mono,
+              )
+            : Video360Metadata.flat,
+        isVR: _cameraSource == _CameraSource.insta360,
       );
       _streamId = streamId;
 
@@ -639,6 +723,14 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
         ),
       );
 
+      // 360 → cloud URL bridge for the interactive viewer (DORMANT: MediaPushService
+      // is gated off, so this is a no-op until CDN ingest is provisioned. No stream
+      // is pushed live in this pass.) When enabled, it starts Media Push and stores
+      // the resulting HLS URL on the stream doc for the 360 viewer to play.
+      if (MediaPushService.enabled && _cameraSource == _CameraSource.insta360) {
+        await _maybeStartMediaPush(streamId);
+      }
+
       // Subscribe to real-time updates
       _streamSub = _liveService.streamDoc(streamId).listen((doc) {
         if (mounted && doc != null) setState(() => _streamDoc = doc);
@@ -658,7 +750,9 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
       });
 
       _likeSub?.cancel();
-      _likeSub = _liveService.userLikedStream(streamId, user.uid).listen((liked) {
+      _likeSub = _liveService.userLikedStream(streamId, user.uid).listen((
+        liked,
+      ) {
         if (!mounted) return;
         setState(() => _isLiked = liked);
       });
@@ -712,6 +806,234 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     if (_engine == null) return;
     await _engine!.switchCamera();
     setState(() => _isFrontCamera = !_isFrontCamera);
+  }
+
+  // ── Camera source switching (phone ↔ Insta360 360°) ───────────────────────────
+
+  /// Opens the "Select camera" sheet.
+  Future<void> _openCameraPicker() async {
+    if (!Insta360LiveService.capturePlatformAvailable) return;
+    if (!_engineReady || _insta360Switching) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: const Color(0xFF1A0A1F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => _CameraPickerSheet(
+        current: _cameraSource,
+        insta360Supported: _insta360Supported,
+        onSelectPhone: () {
+          Navigator.of(sheetCtx).pop();
+          if (_cameraSource == _CameraSource.insta360) _disableInsta360();
+        },
+        onSelectInsta360: (type) {
+          Navigator.of(sheetCtx).pop();
+          if (_cameraSource == _CameraSource.phone) _enableInsta360(type);
+        },
+      ),
+    );
+  }
+
+  Future<void> _enableInsta360(Insta360ConnectType type) async {
+    if (_insta360Switching) return;
+    final engine = _engine;
+    if (engine == null) return;
+    setState(() => _insta360Switching = true);
+    try {
+      // BLE discovery + connect permissions (Wi-Fi/USB control both rely on these on 12+).
+      await Permission.bluetoothScan.request();
+      await Permission.bluetoothConnect.request();
+
+      final ok = await _insta.connect(type);
+      if (!ok) {
+        // Surfaces the native reason, e.g. "Join the camera's Wi-Fi … in Settings, then try again."
+        _showToast(
+          _insta.state.value.lastError ?? 'Could not connect to the 360 camera',
+        );
+        return;
+      }
+
+      // Route the Insta360 ERP frames into Agora as the video source instead of the phone camera.
+      await engine.stopPreview();
+      await engine.getMediaEngine().setExternalVideoSource(
+        enabled: true,
+        useTexture: false,
+        sourceType: ExternalVideoSourceType.videoFrame,
+      );
+      // Encode the pushed 360 frames at their true 2:1 equirectangular resolution/aspect.
+      // Without this, Agora defaults to ~960x540 (16:9), down-scaling and cropping the ERP —
+      // which ruins the 360 for viewers. maintainResolution keeps the resolution under load
+      // (per-pixel detail matters more than fps for a sphere the viewer zooms into).
+      await engine.setVideoEncoderConfiguration(
+        const VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: 1920, height: 960),
+          frameRate: 15,
+          bitrate: 6000,
+          orientationMode: OrientationMode.orientationModeFixedLandscape,
+          degradationPreference: DegradationPreference.maintainResolution,
+        ),
+      );
+      _instaFrameSub = _insta.frames().listen(_pushInstaFrame);
+      await _insta.setFrameStreaming(true);
+
+      if (!mounted) return;
+      // openCamera() is async: the ERP preview only mounts once the connection event arrives
+      // (see _onInstaState → _buildBackground). Until then show a "connecting" state, and arm a
+      // timeout so a camera that never opens falls back to the phone instead of hanging.
+      _instaWasConnected = false;
+      _instaConnectTimer?.cancel();
+      _instaConnectTimer = Timer(const Duration(seconds: 15), () {
+        if (mounted &&
+            _cameraSource == _CameraSource.insta360 &&
+            !_insta.state.value.connected) {
+          _showToast(
+            _insta.state.value.lastError ??
+                '360 camera didn’t start — check it’s on and its Wi-Fi is joined',
+          );
+          _disableInsta360();
+        }
+      });
+      setState(() => _cameraSource = _CameraSource.insta360);
+      _showToast('Connecting to 360 camera…');
+    } catch (e) {
+      _showToast('360 switch failed: $e');
+      await _disableInsta360();
+    } finally {
+      if (mounted) setState(() => _insta360Switching = false);
+    }
+  }
+
+  Future<void> _disableInsta360() async {
+    _instaConnectTimer?.cancel();
+    _instaWasConnected = false;
+    final engine = _engine;
+    try {
+      await _insta.setFrameStreaming(false);
+    } catch (_) {}
+    await _instaFrameSub?.cancel();
+    _instaFrameSub = null;
+    try {
+      if (engine != null) {
+        await engine.getMediaEngine().setExternalVideoSource(
+          enabled: false,
+          useTexture: false,
+          sourceType: ExternalVideoSourceType.videoFrame,
+        );
+        // Restore a portrait phone-camera encoder profile (the 360 profile is 2:1 landscape).
+        await engine.setVideoEncoderConfiguration(
+          const VideoEncoderConfiguration(
+            dimensions: VideoDimensions(width: 720, height: 1280),
+            frameRate: 24,
+            orientationMode: OrientationMode.orientationModeAdaptive,
+            degradationPreference: DegradationPreference.maintainFramerate,
+          ),
+        );
+        await engine.startPreview(); // resume phone camera preview
+      }
+      await _insta.disconnect();
+    } catch (_) {}
+    if (mounted) setState(() => _cameraSource = _CameraSource.phone);
+  }
+
+  /// Host drag on the 360 preview → look around. Accumulates yaw/pitch and pushes the absolute
+  /// orientation to the SDK player. (Vertical works; horizontal is reliably done via the slider,
+  /// since the OS steals horizontal touch swipes — see [_onJogStart].)
+  void _onPreviewDrag(Offset delta) {
+    _viewYaw += delta.dx * _kDragDegPerPx;
+    _viewPitch = (_viewPitch - delta.dy * _kDragDegPerPx).clamp(-89.0, 89.0);
+    _insta.setViewOrientation(_viewYaw, _viewPitch);
+  }
+
+  /// Finger down on the jog slider: start the ticker that rotates yaw while held off-centre.
+  void _onJogStart() {
+    _jogActive = true;
+    _jogTimer ??= Timer.periodic(const Duration(milliseconds: 40), (_) {
+      // Small dead zone near centre; beyond it rotate at a CONSTANT slow rate (direction only).
+      // Negative so the view follows the slider direction (slide right → view pans right).
+      if (!_jogActive || _jogYaw.abs() < 0.08) return;
+      _viewYaw -= _jogYaw.sign * _kJogStepDeg;
+      _insta.setViewOrientation(_viewYaw, _viewPitch);
+    });
+  }
+
+  /// Jog slider moved: just record the deflection (the ticker reads it).
+  void _onJogChanged(double v) {
+    setState(() => _jogYaw = v);
+  }
+
+  /// Finger off the jog slider: stop rotating and spring the thumb back to centre (view holds).
+  void _onJogEnd() {
+    _jogActive = false;
+    _jogTimer?.cancel();
+    _jogTimer = null;
+    setState(() => _jogYaw = 0.0);
+  }
+
+  /// Start Media Push (Agora → CDN) and store the resulting HLS URL so the 360
+  /// viewer can play it. DORMANT: guarded by [MediaPushService.enabled] (false),
+  /// so this never runs a live push in this pass — the CDN ingest/playback URLs
+  /// come from provisioning that is not configured here. Out-of-scope add-on.
+  Future<void> _maybeStartMediaPush(String streamId) async {
+    if (!MediaPushService.enabled) return;
+    // NOTE: rtmpIngestUrl + hlsPlaybackUrl come from the provisioned CDN input.
+    // Left unconfigured on purpose (no live push): fill these when activating.
+    const rtmpIngestUrl = ''; // e.g. rtmps://<cloudflare-live-input-ingest>
+    const hlsPlaybackUrl =
+        ''; // e.g. https://videodelivery.net/<id>/manifest/video.m3u8
+    if (rtmpIngestUrl.isEmpty || hlsPlaybackUrl.isEmpty) return;
+    final engine = _engine;
+    if (engine == null) return;
+    final url = await const MediaPushService().start(
+      engine: engine,
+      rtmpIngestUrl: rtmpIngestUrl,
+      hlsPlaybackUrl: hlsPlaybackUrl,
+    );
+    if (url != null) await _liveService.updateHlsUrl(streamId, url);
+  }
+
+  /// Toggle gyro look-around: tilt the phone to pan the 360 view. Composes with the slider/drag
+  /// (both add to the same accumulated yaw/pitch).
+  void _toggleGyro() {
+    setState(() => _gyroEnabled = !_gyroEnabled);
+    if (_gyroEnabled) {
+      _gyro.onDelta = (dYaw, dPitch) {
+        _viewYaw += dYaw;
+        _viewPitch = (_viewPitch + dPitch).clamp(-89.0, 89.0);
+        _insta.setViewOrientation(_viewYaw, _viewPitch);
+      };
+      _gyro.start();
+      _showToast('Gyro on — tilt to look around');
+    } else {
+      _gyro.stop();
+      _showToast('Gyro off');
+    }
+  }
+
+  /// Toggle forward-only masking on the live 360 feed (masked ↔ full 360°).
+  Future<void> _toggleMask() async {
+    setState(() => _maskEnabled = !_maskEnabled);
+    await _insta.setMaskEnabled(_maskEnabled);
+    _showToast(_maskEnabled ? 'Forward mask on' : 'Full 360° (unmasked)');
+  }
+
+  void _pushInstaFrame(Insta360Frame frame) {
+    if (_cameraSource != _CameraSource.insta360) return;
+    final engine = _engine;
+    if (engine == null) return;
+    engine
+        .getMediaEngine()
+        .pushVideoFrame(
+          frame: ExternalVideoFrame(
+            type: VideoBufferType.videoBufferRawData,
+            format: VideoPixelFormat.videoPixelRgba,
+            buffer: frame.bytes,
+            stride: frame.width,
+            height: frame.height,
+            timestamp: frame.ptsUs ~/ 1000,
+          ),
+        )
+        .catchError((_) {});
   }
 
   Future<void> _sendChatMessage() async {
@@ -867,16 +1189,11 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     return GestureDetector(
       onTap: _cancelCountdown,
       child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 18,
-          vertical: 8,
-        ),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
         decoration: BoxDecoration(
           color: Colors.black.withValues(alpha: 0.55),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.1),
-          ),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
         ),
         child: const Row(
           mainAxisSize: MainAxisSize.min,
@@ -940,8 +1257,116 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
           _buildBackground(),
           _buildGradientOverlay(),
           _buildStateContent(),
+          if (Insta360LiveService.capturePlatformAvailable &&
+              _cameraSource == _CameraSource.insta360 &&
+              _insta.state.value.connected)
+            _build360LookControls(),
           if (widget.embeddedInMainShell) _buildShellTopBar(),
           if (_toast != null) _buildToast(_toast!),
+        ],
+      ),
+    );
+  }
+
+  /// Top-layer look-around controls for the 360 view. Must sit above [_buildStateContent] —
+  /// widgets placed in the background layer receive no touch events on this screen.
+  Widget _build360LookControls() {
+    return Stack(
+      children: [
+        // Drag-to-look: a central catcher in this TOP layer (background-layer gestures get no
+        // touches here). Inset to leave the right-column controls and bottom bar tappable.
+        Positioned(
+          top: 220,
+          left: 0,
+          right: 150,
+          bottom: 560,
+          // Listener (raw pointer events), not GestureDetector: an ancestor horizontal-drag
+          // recognizer wins the gesture arena and eats horizontal pans, but raw pointer events
+          // still flow to every Listener in the hit path — so this captures drags in both axes.
+          child: Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerMove: (e) => _onPreviewDrag(e.delta),
+          ),
+        ),
+        // (Gyro toggle moved into the right-hand tool column, under the mask icon.)
+        // Horizontal rotation jog slider — sits above the Start Live button. Hold the thumb
+        // left/right to rotate the 360 view at a constant slow rate; release and it springs back
+        // to centre while the view keeps its angle.
+        Positioned(
+          left: 20,
+          right: 20,
+          bottom: 170,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(26),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.chevron_left, color: Colors.white70, size: 22),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(
+                      trackHeight: 3,
+                      activeTrackColor: Colors.white,
+                      inactiveTrackColor: Colors.white24,
+                      thumbColor: Colors.white,
+                      overlayShape: const RoundSliderOverlayShape(
+                        overlayRadius: 16,
+                      ),
+                      thumbShape: const RoundSliderThumbShape(
+                        enabledThumbRadius: 10,
+                      ),
+                    ),
+                    child: Slider(
+                      value: _jogYaw,
+                      min: -1.0,
+                      max: 1.0,
+                      onChangeStart: (_) => _onJogStart(),
+                      onChanged: _onJogChanged,
+                      onChangeEnd: (_) => _onJogEnd(),
+                    ),
+                  ),
+                ),
+                const Icon(
+                  Icons.chevron_right,
+                  color: Colors.white70,
+                  size: 22,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Small "360 • Wi-Fi/USB" badge shown while the Insta360 is the active source.
+  Widget _source360Chip() {
+    if (_cameraSource != _CameraSource.insta360) return const SizedBox.shrink();
+    final via = _insta.state.value.connectType == 1 ? 'USB' : 'Wi-Fi';
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.threesixty_rounded, color: Colors.white, size: 14),
+          const SizedBox(width: 6),
+          Text(
+            '360 • $via',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -953,6 +1378,46 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     }
     if (_isVideoOff && _liveState == _LiveState.live) {
       return Container(color: const Color(0xFF0A000F));
+    }
+    // 360° source: the host previews the SDK's interactive sphere directly — touch-drag to look
+    // around, pinch to zoom. Remote viewers receive the extracted ERP frames pushed via
+    // [_pushInstaFrame]. The preview is mounted only once the camera is actually connected —
+    // mounting it earlier would start the preview stream before the camera session exists.
+    if (_cameraSource == _CameraSource.insta360) {
+      if (_insta.state.value.connected) {
+        // Just the render here; the look-around controls live in the TOP layer (see
+        // _build360LookControls) because anything in this background layer receives no touches.
+        // The preview widget stays stable (rebuilding a PlatformView would remount it); only the
+        // overlay reacts to previewReady, covering the establishing render until it's corrected.
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            const Insta360PreviewView(extractWidth: 1920, extractHeight: 960),
+            ValueListenableBuilder<Insta360State>(
+              valueListenable: _insta.state,
+              builder: (context, st, _) => st.previewReady
+                  ? const SizedBox.shrink()
+                  : const _Establishing360Overlay(),
+            ),
+          ],
+        );
+      }
+      return const ColoredBox(
+        color: Color(0xFF0A000F),
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Colors.white),
+              SizedBox(height: 16),
+              Text(
+                'Connecting to 360 camera…',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ],
+          ),
+        ),
+      );
     }
     return AgoraVideoView(
       key: ValueKey('creator_agora_$_engineVersion'),
@@ -1032,19 +1497,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                     onPressed: _exitLiveScreen,
                     child: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.6),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            child: _buildBottomBar(),
-          ),
+          Positioned(left: 0, right: 0, bottom: 0, child: _buildBottomBar()),
         ],
       ),
     );
@@ -1071,24 +1533,30 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
             left: 0,
             right: 0,
             child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 5,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'OFFLINE',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Text(
+                      'OFFLINE',
+                      style: TextStyle(
+                        color: Colors.black,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
                   ),
-                ),
+                  _source360Chip(),
+                ],
               ),
             ),
           ),
@@ -1105,6 +1573,35 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (Insta360LiveService.capturePlatformAvailable)
+                    _CircleIconButton(
+                      icon: Icons.threesixty_rounded,
+                      onTap: _openCameraPicker,
+                      active: _cameraSource == _CameraSource.insta360,
+                      size: 38,
+                    ),
+                  // Masked (forward-only) ↔ full 360° toggle — only for the 360 feed.
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _maskEnabled
+                          ? Icons.vignette
+                          : Icons.panorama_horizontal_rounded,
+                      onTap: _toggleMask,
+                      active: _maskEnabled,
+                      size: 38,
+                    ),
+                  // Gyro look-around toggle — under the mask icon, only for the 360 feed.
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _gyroEnabled
+                          ? Icons.screen_rotation_rounded
+                          : Icons.screen_rotation_alt_outlined,
+                      onTap: _toggleGyro,
+                      active: _gyroEnabled,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.mic_none_rounded,
                     onTap: _toggleMute,
@@ -1115,11 +1612,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                     onTap: _toggleVideo,
                     size: 38,
                   ),
-                  _CircleIconButton(
-                    icon: Icons.refresh_rounded,
-                    onTap: _flipCamera,
-                    size: 38,
-                  ),
+                  // Flip (front/back) only applies to the phone camera.
+                  if (_cameraSource == _CameraSource.phone)
+                    _CircleIconButton(
+                      icon: Icons.refresh_rounded,
+                      onTap: _flipCamera,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.chat_bubble_outline_rounded,
                     onTap: _toggleComments,
@@ -1275,6 +1774,40 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
       child: Stack(
         children: [
           Positioned(
+            top: _shellLogoBarTopInset + 12,
+            left: 16,
+            right: 80,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
+                  backgroundImage: _streamDoc?.hostProfileImage != null
+                      ? NetworkImage(_streamDoc!.hostProfileImage!)
+                      : null,
+                  child: _streamDoc?.hostProfileImage == null
+                      ? const Icon(Icons.person, color: Colors.white, size: 20)
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    _streamTitle.isEmpty ? 'Live Stream Topic' : _streamTitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                _source360Chip(),
+              ],
+            ),
+          ),
+          Positioned(
             top: _shellLogoBarTopInset + 88,
             right: 12,
             child: Container(
@@ -1286,6 +1819,35 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  if (Insta360LiveService.capturePlatformAvailable)
+                    _CircleIconButton(
+                      icon: Icons.threesixty_rounded,
+                      onTap: _openCameraPicker,
+                      active: _cameraSource == _CameraSource.insta360,
+                      size: 38,
+                    ),
+                  // Masked (forward-only) ↔ full 360° toggle — only for the 360 feed.
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _maskEnabled
+                          ? Icons.vignette
+                          : Icons.panorama_horizontal_rounded,
+                      onTap: _toggleMask,
+                      active: _maskEnabled,
+                      size: 38,
+                    ),
+                  // Gyro look-around toggle — under the mask icon, only for the 360 feed.
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
+                    _CircleIconButton(
+                      icon: _gyroEnabled
+                          ? Icons.screen_rotation_rounded
+                          : Icons.screen_rotation_alt_outlined,
+                      onTap: _toggleGyro,
+                      active: _gyroEnabled,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: _isMuted
                         ? Icons.mic_off_outlined
@@ -1302,11 +1864,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                     active: _isVideoOff,
                     size: 38,
                   ),
-                  _CircleIconButton(
-                    icon: Icons.refresh_rounded,
-                    onTap: _flipCamera,
-                    size: 38,
-                  ),
+                  // Flip (front/back) only applies to the phone camera.
+                  if (_cameraSource == _CameraSource.phone)
+                    _CircleIconButton(
+                      icon: Icons.refresh_rounded,
+                      onTap: _flipCamera,
+                      size: 38,
+                    ),
                   _CircleIconButton(
                     icon: Icons.chat_bubble_outline_rounded,
                     onTap: _toggleComments,
@@ -1512,7 +2076,9 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(
-                _isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                _isLiked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
                 color: _isLiked
                     ? const Color(0xFFFF2D55)
                     : Colors.white.withValues(alpha: 0.9),
@@ -1550,9 +2116,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     final hostImage = _streamDoc?.hostProfileImage;
     final description = _streamDescription.isNotEmpty
         ? _streamDescription
-        : (_streamTitle.isNotEmpty
-            ? _streamTitle
-            : 'Watch live on VyooO');
+        : (_streamTitle.isNotEmpty ? _streamTitle : 'Watch live on VyooO');
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(
@@ -1895,6 +2459,214 @@ class _ConfirmDialog extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ── Camera-source picker sheet ─────────────────────────────────────────────────
+
+/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, USB by default; Wi-Fi optional).
+class _CameraPickerSheet extends StatelessWidget {
+  const _CameraPickerSheet({
+    required this.current,
+    required this.insta360Supported,
+    required this.onSelectPhone,
+    required this.onSelectInsta360,
+  });
+
+  final _CameraSource current;
+  final bool insta360Supported;
+  final VoidCallback onSelectPhone;
+  final void Function(Insta360ConnectType type) onSelectInsta360;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8, left: 4),
+              child: Text(
+                'Select camera',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            // Phone camera
+            _tile(
+              icon: Icons.smartphone_rounded,
+              title: 'Phone camera',
+              subtitle: 'Built-in front/back camera',
+              selected: current == _CameraSource.phone,
+              enabled: true,
+              onTap: onSelectPhone,
+            ),
+            const SizedBox(height: 8),
+            // Insta360 360° (Android capture platform only)
+            if (Insta360LiveService.capturePlatformAvailable) ...[
+              _tile(
+                icon: Icons.threesixty_rounded,
+                title: 'Insta360 (360°)',
+                subtitle: insta360Supported
+                    ? 'Stitched panoramic feed'
+                    : 'Requires an arm64 device (Android 10+)',
+                selected: current == _CameraSource.insta360,
+                enabled: insta360Supported,
+                onTap: insta360Supported
+                    ? () => onSelectInsta360(Insta360ConnectType.wifi)
+                    : null,
+              ),
+              if (insta360Supported) ...[
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    'Join the camera\'s Wi-Fi in Settings first, then connect via Wi-Fi. '
+                    '(USB keeps the phone\'s internet — used for going live.)',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _connectButton(
+                        icon: Icons.wifi_rounded,
+                        label: 'Wi-Fi',
+                        onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _connectButton(
+                        icon: Icons.usb_rounded,
+                        label: 'USB',
+                        onTap: () => onSelectInsta360(Insta360ConnectType.usb),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tile({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool selected,
+    required bool enabled,
+    required VoidCallback? onTap,
+  }) {
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: selected ? 0.12 : 0.05),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: selected ? AppColors.brandPink : Colors.white12,
+            ),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 24),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    Text(
+                      subtitle,
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.5),
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (selected)
+                const Icon(
+                  Icons.check_circle_rounded,
+                  color: AppColors.brandPink,
+                  size: 20,
+                )
+              else
+                const SizedBox.shrink(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _connectButton({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: Colors.white12),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: Colors.white, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ],
         ),
@@ -2358,6 +3130,32 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Cover shown over the 360 host preview until the warm-refresh completes (native `previewState` →
+/// "ready"), so the host never sees the initial overlapping render or the reload.
+class _Establishing360Overlay extends StatelessWidget {
+  const _Establishing360Overlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return const ColoredBox(
+      color: Color(0xFF0A000F),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Colors.white),
+            SizedBox(height: 16),
+            Text(
+              'Waiting for camera stream…',
+              style: TextStyle(color: Colors.white70),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

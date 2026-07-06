@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/live_chat_message_model.dart';
 import '../models/live_stream_model.dart';
+import '../models/video_360_metadata.dart';
 import 'auth_service.dart';
 import 'user_service.dart';
 
@@ -31,6 +32,8 @@ class LiveStreamService {
     String category = '',
     List<String> tags = const [],
     int pricePerMinute = 0,
+    Video360Metadata video360 = Video360Metadata.flat,
+    bool isVR = false,
   }) async {
     // End any stale live streams for this host before creating a new one
     final stale = await _db
@@ -63,12 +66,15 @@ class LiveStreamService {
       hostAgoraUid: 0, // updated after Agora join
       createdAt: Timestamp.now(),
       savedToProfile: false,
+      video360: video360,
+      isVR: isVR,
     );
     var authorAccountPrivate = false;
     try {
       final host = await UserService().getUser(hostId);
-      authorAccountPrivate =
-          UserService.accountTypeRequiresFollowApproval(host?.accountType);
+      authorAccountPrivate = UserService.accountTypeRequiresFollowApproval(
+        host?.accountType,
+      );
     } catch (_) {}
     await ref.set({
       ...model.toJson(),
@@ -79,7 +85,14 @@ class LiveStreamService {
 
   /// Updates the host's Agora UID after joining the channel.
   Future<void> updateHostAgoraUid(String streamId, int uid) async {
-    await _db.collection(_streamsCol).doc(streamId).update({'hostAgoraUid': uid});
+    await _db.collection(_streamsCol).doc(streamId).update({
+      'hostAgoraUid': uid,
+    });
+  }
+
+  /// Stores the live HLS URL (from Media Push) so the 360 viewer can play it.
+  Future<void> updateHlsUrl(String streamId, String hlsUrl) async {
+    await _db.collection(_streamsCol).doc(streamId).update({'hlsUrl': hlsUrl});
   }
 
   /// Updates stream metadata (title, description, etc).
@@ -162,24 +175,26 @@ class LiveStreamService {
         .orderBy('createdAt', descending: true)
         .snapshots()
         .map((snap) {
-      final now = DateTime.now();
-      final heartbeatCutoff = now.subtract(const Duration(minutes: 2));
-      final newStreamCutoff = now.subtract(const Duration(minutes: 1));
-      final seen = <String>{};
-      final result = <LiveStreamModel>[];
-      for (final d in snap.docs) {
-        final data = d.data();
-        final heartbeat = (data['lastHeartbeat'] as Timestamp?)?.toDate();
-        final createdAt = (data['createdAt'] as Timestamp?)?.toDate() ?? now;
-        // Keep if heartbeat is recent, OR stream just started (no heartbeat yet)
-        final isActive = (heartbeat != null && heartbeat.isAfter(heartbeatCutoff)) ||
-            (heartbeat == null && createdAt.isAfter(newStreamCutoff));
-        if (!isActive) continue;
-        final model = LiveStreamModel.fromJson(data);
-        if (seen.add(model.hostId)) result.add(model);
-      }
-      return result;
-    });
+          final now = DateTime.now();
+          final heartbeatCutoff = now.subtract(const Duration(minutes: 2));
+          final newStreamCutoff = now.subtract(const Duration(minutes: 1));
+          final seen = <String>{};
+          final result = <LiveStreamModel>[];
+          for (final d in snap.docs) {
+            final data = d.data();
+            final heartbeat = (data['lastHeartbeat'] as Timestamp?)?.toDate();
+            final createdAt =
+                (data['createdAt'] as Timestamp?)?.toDate() ?? now;
+            // Keep if heartbeat is recent, OR stream just started (no heartbeat yet)
+            final isActive =
+                (heartbeat != null && heartbeat.isAfter(heartbeatCutoff)) ||
+                (heartbeat == null && createdAt.isAfter(newStreamCutoff));
+            if (!isActive) continue;
+            final model = LiveStreamModel.fromJson(data);
+            if (seen.add(model.hostId)) result.add(model);
+          }
+          return result;
+        });
   }
 
   /// Real-time list of past streams saved to a user's profile.
@@ -190,7 +205,10 @@ class LiveStreamService {
         .where('savedToProfile', isEqualTo: true)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs.map((d) => LiveStreamModel.fromJson(d.data())).toList());
+        .map(
+          (snap) =>
+              snap.docs.map((d) => LiveStreamModel.fromJson(d.data())).toList(),
+        );
   }
 
   // ── Viewer count ────────────────────────────────────────────────────────────
@@ -292,7 +310,11 @@ class LiveStreamService {
     required String message,
     ChatMessageType type = ChatMessageType.text,
   }) async {
-    final ref = _db.collection(_streamsCol).doc(streamId).collection(_messagesCol).doc();
+    final ref = _db
+        .collection(_streamsCol)
+        .doc(streamId)
+        .collection(_messagesCol)
+        .doc();
     await ref.set({
       'id': ref.id,
       'userId': userId,
@@ -313,8 +335,10 @@ class LiveStreamService {
         .orderBy('createdAt', descending: false)
         .limitToLast(50)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => LiveChatMessageModel.fromJson(d.id, d.data()))
-            .toList());
+        .map(
+          (snap) => snap.docs
+              .map((d) => LiveChatMessageModel.fromJson(d.id, d.data()))
+              .toList(),
+        );
   }
 }

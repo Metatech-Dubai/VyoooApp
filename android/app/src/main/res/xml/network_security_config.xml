@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Insta360 cameras expose their control/HTTP API over plain HTTP at the WiFi AP gateway.
+  Cleartext is permitted ONLY for the camera's AP IPs; all other traffic stays HTTPS-only
+  (Android default). This is narrower than a global android:usesCleartextTraffic="true".
+-->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- Insta360 X-series / ONE-series AP gateways (USB RNDIS + WiFi). -->
+        <domain includeSubdomains="false">192.168.42.1</domain>
+        <domain includeSubdomains="false">192.168.43.1</domain>
+    </domain-config>
+</network-security-config>
