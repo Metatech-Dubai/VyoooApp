@@ -196,6 +196,12 @@ class Insta360Bridge(
                 result.success(null)
             }
 
+            "setTemporalEnabled" -> {
+                // Toggle temporal redundancy reduction (1-in-N + motion gating) for A/B / KPI capture.
+                Insta360FrameSink.setTemporalEnabled(call.argument<Boolean>("enabled") ?: true)
+                result.success(null)
+            }
+
             "setViewOrientation" -> {
                 // Drive the interactive 360 view from Flutter-side drag (degrees).
                 val yaw = (call.argument<Double>("yaw") ?: 0.0).toFloat()
