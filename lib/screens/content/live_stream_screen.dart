@@ -15,6 +15,7 @@ import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_sizes.dart';
+import '../../core/utils/live_stream_viewer_playback.dart';
 import '../../core/widgets/live_comment_input_field.dart';
 import '../../widgets/live_360_view.dart';
 
@@ -331,6 +332,15 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
               children: [
                 // Top bar
                 Positioned(top: 0, left: 0, right: 0, child: _buildTopBar(doc)),
+                if (LiveStreamViewerPlayback.showInteractiveUnavailableNotice(
+                  doc,
+                ))
+                  Positioned(
+                    top: 56,
+                    left: 16,
+                    right: 16,
+                    child: _buildInteractiveUnavailableBanner(),
+                  ),
                 // Bottom: chat + input
                 Positioned(
                   left: 0,
@@ -391,67 +401,113 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   }
 
   Widget _buildVideoBackground(LiveStreamModel doc) {
-    // Interactive 360: when the stream is tagged 360 AND exposes a playable URL
-    // (via Media Push), render it on the sphere with gyro/touch. The URL is an
-    // independent source, so this doesn't wait on the Agora remote video. Any 360
-    // stream without a URL falls through to the flat Agora path below.
-    if (doc.canRenderInteractive360) {
-      return Live360View(streamUrl: doc.hlsUrl!);
-    }
-    if (!_engineReady || !_hostVideoAvailable || _remoteUid == 0) {
-      // No video yet — show host avatar placeholder
-      return Container(
-        color: const Color(0xFF0A000F),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                backgroundImage: doc.hostProfileImage?.isNotEmpty == true
-                    ? NetworkImage(doc.hostProfileImage!)
-                    : null,
-                child: doc.hostProfileImage?.isNotEmpty != true
-                    ? Text(
-                        doc.hostUsername.isNotEmpty
-                            ? doc.hostUsername[0].toUpperCase()
-                            : '?',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                doc.hostUsername,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Connecting to stream...',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
-                  fontSize: 14,
-                ),
-              ),
-            ],
+    final mode = LiveStreamViewerPlayback.videoMode(
+      doc: doc,
+      engineReady: _engineReady,
+      hostVideoAvailable: _hostVideoAvailable,
+      remoteUid: _remoteUid,
+    );
+
+    switch (mode) {
+      case LiveStreamViewerVideoMode.interactive360:
+        // Guard: only enter URL player when routing says interactive AND URL is playable.
+        final url = doc.hlsUrl?.trim();
+        if (url == null || url.isEmpty || !doc.hasPlayableHlsUrl) {
+          break;
+        }
+        return Live360View(streamUrl: url);
+      case LiveStreamViewerVideoMode.waitingForHost:
+        return _buildHostConnectingPlaceholder(doc);
+      case LiveStreamViewerVideoMode.flatAgora:
+        return AgoraVideoView(
+          controller: VideoViewController.remote(
+            rtcEngine: _engine,
+            canvas: VideoCanvas(uid: _remoteUid),
+            connection: RtcConnection(
+              channelId: widget.stream.agoraChannelName,
+            ),
           ),
+        );
+    }
+
+    // Defensive fallback if interactive URL became invalid between rebuilds.
+    if (_engineReady && _hostVideoAvailable && _remoteUid != 0) {
+      return AgoraVideoView(
+        controller: VideoViewController.remote(
+          rtcEngine: _engine,
+          canvas: VideoCanvas(uid: _remoteUid),
+          connection: RtcConnection(channelId: widget.stream.agoraChannelName),
         ),
       );
     }
-    return AgoraVideoView(
-      controller: VideoViewController.remote(
-        rtcEngine: _engine,
-        canvas: VideoCanvas(uid: _remoteUid),
-        connection: RtcConnection(channelId: widget.stream.agoraChannelName),
+    return _buildHostConnectingPlaceholder(doc);
+  }
+
+  Widget _buildHostConnectingPlaceholder(LiveStreamModel doc) {
+    return Container(
+      color: const Color(0xFF0A000F),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 48,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              backgroundImage: doc.hostProfileImage?.isNotEmpty == true
+                  ? NetworkImage(doc.hostProfileImage!)
+                  : null,
+              child: doc.hostProfileImage?.isNotEmpty != true
+                  ? Text(
+                      doc.hostUsername.isNotEmpty
+                          ? doc.hostUsername[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              doc.hostUsername,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Connecting to stream...',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInteractiveUnavailableBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '360° interactive view unavailable — showing live flat video',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }

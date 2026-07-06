@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/stream_playback_urls.dart';
 import 'video_360_metadata.dart';
 
 enum LiveStreamStatus { live, ended }
@@ -69,38 +70,46 @@ class LiveStreamModel {
   /// True when this stream is tagged as interactive 360 (equirectangular).
   bool get use360Player => video360.use360Player;
 
+  /// True when [hlsUrl] resolves to at least one playable candidate URL.
+  bool get hasPlayableHlsUrl {
+    final raw = hlsUrl?.trim();
+    if (raw == null || raw.isEmpty) return false;
+    return StreamPlaybackUrls.candidates(raw).isNotEmpty;
+  }
+
   /// True when the viewer can render the interactive 360 sphere — needs both the
   /// 360 tag AND a playable URL (the URL-based renderer has nothing to show
   /// without [hlsUrl]). When false, the viewer uses the flat Agora path.
-  bool get canRenderInteractive360 =>
-      use360Player && hlsUrl != null && hlsUrl!.trim().isNotEmpty;
+  bool get canRenderInteractive360 => use360Player && hasPlayableHlsUrl;
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'hostId': hostId,
-        'hostUsername': hostUsername,
-        'hostProfileImage': hostProfileImage ?? '',
-        'title': title,
-        'description': description,
-        'category': category,
-        'tags': tags,
-        'pricePerMinute': pricePerMinute,
-        'status': status.name,
-        'viewerCount': viewerCount,
-        'likeCount': likeCount,
-        'agoraChannelName': agoraChannelName,
-        'hostAgoraUid': hostAgoraUid,
-        'createdAt': createdAt,
-        'endedAt': endedAt,
-        'savedToProfile': savedToProfile,
-        ...video360.toFirestore(),
-        'isVR': isVR,
-        if (hlsUrl != null) 'hlsUrl': hlsUrl,
-      };
+    'id': id,
+    'hostId': hostId,
+    'hostUsername': hostUsername,
+    'hostProfileImage': hostProfileImage ?? '',
+    'title': title,
+    'description': description,
+    'category': category,
+    'tags': tags,
+    'pricePerMinute': pricePerMinute,
+    'status': status.name,
+    'viewerCount': viewerCount,
+    'likeCount': likeCount,
+    'agoraChannelName': agoraChannelName,
+    'hostAgoraUid': hostAgoraUid,
+    'createdAt': createdAt,
+    'endedAt': endedAt,
+    'savedToProfile': savedToProfile,
+    ...video360.toFirestore(),
+    'isVR': isVR,
+    if (hlsUrl != null) 'hlsUrl': hlsUrl,
+  };
 
   factory LiveStreamModel.fromJson(Map<String, dynamic> json) {
     final rawTags = json['tags'];
-    final tagsList = rawTags is List ? rawTags.map((e) => e.toString()).toList() : <String>[];
+    final tagsList = rawTags is List
+        ? rawTags.map((e) => e.toString()).toList()
+        : <String>[];
     return LiveStreamModel(
       id: json['id'] as String? ?? '',
       hostId: json['hostId'] as String? ?? '',
@@ -119,8 +128,12 @@ class LiveStreamModel {
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       agoraChannelName: json['agoraChannelName'] as String? ?? '',
       hostAgoraUid: (json['hostAgoraUid'] as num?)?.toInt() ?? 0,
-      createdAt: json['createdAt'] is Timestamp ? json['createdAt'] as Timestamp : Timestamp.now(),
-      endedAt: json['endedAt'] is Timestamp ? json['endedAt'] as Timestamp : null,
+      createdAt: json['createdAt'] is Timestamp
+          ? json['createdAt'] as Timestamp
+          : Timestamp.now(),
+      endedAt: json['endedAt'] is Timestamp
+          ? json['endedAt'] as Timestamp
+          : null,
       savedToProfile: json['savedToProfile'] as bool? ?? false,
       video360: Video360Metadata.fromPost(json),
       isVR: json['isVR'] == true,

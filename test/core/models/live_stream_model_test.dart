@@ -31,7 +31,11 @@ void main() {
 
   group('serialization of 360 fields', () {
     test('toJson writes reference keys for a 360 stream', () {
-      final json = _base(video360: meta360, isVR: true, hlsUrl: 'https://x/y.m3u8').toJson();
+      final json = _base(
+        video360: meta360,
+        isVR: true,
+        hlsUrl: 'https://x/y.m3u8',
+      ).toJson();
       expect(json['is360Video'], true);
       expect(json['projectionType'], 'equirectangular');
       expect(json['stereoMode'], 'mono');
@@ -46,7 +50,11 @@ void main() {
     });
 
     test('fromJson round-trips 360 + hlsUrl', () {
-      final json = _base(video360: meta360, isVR: true, hlsUrl: 'https://x/y.m3u8').toJson();
+      final json = _base(
+        video360: meta360,
+        isVR: true,
+        hlsUrl: 'https://x/y.m3u8',
+      ).toJson();
       json['createdAt'] = Timestamp.now();
       final back = LiveStreamModel.fromJson(json);
       expect(back.use360Player, isTrue);
@@ -86,6 +94,22 @@ void main() {
     test('blank url → NOT interactive', () {
       final s = _base(video360: meta360, hlsUrl: '   ');
       expect(s.canRenderInteractive360, isFalse);
+    });
+
+    test('invalid url → NOT interactive', () {
+      final s = _base(video360: meta360, hlsUrl: 'not-a-url');
+      expect(s.hasPlayableHlsUrl, isFalse);
+      expect(s.canRenderInteractive360, isFalse);
+    });
+
+    test('valid cloudflare manifest → interactive', () {
+      final s = _base(
+        video360: meta360,
+        hlsUrl:
+            'https://customer-abc.cloudflarestream.com/vid123/manifest/video.m3u8',
+      );
+      expect(s.hasPlayableHlsUrl, isTrue);
+      expect(s.canRenderInteractive360, isTrue);
     });
   });
 }
