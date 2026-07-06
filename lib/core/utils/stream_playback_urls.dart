@@ -4,6 +4,9 @@ import 'video_upload_policy.dart';
 class StreamPlaybackUrls {
   StreamPlaybackUrls._();
 
+  static bool isPlayableUrl(String rawUrl) =>
+      VideoUploadPolicy.isPlayableUrl(rawUrl);
+
   static List<String> candidates(String raw) {
     final url = raw.trim();
     if (!VideoUploadPolicy.isPlayableUrl(url)) return const [];
