@@ -10,6 +10,7 @@ import com.arashivision.sdkcamera.camera.InstaCameraManager
 import com.arashivision.sdkcamera.camera.callback.ICameraOperateCallback
 import com.arashivision.sdkcamera.camera.callback.ICaptureSupportConfigCallback
 import com.arashivision.sdkcamera.camera.callback.IPreviewStatusListener
+import com.arashivision.insta360.basemedia.ui.player.capture.IMediaFrameCallback
 import com.arashivision.sdkmedia.player.capture.CaptureParamsBuilder
 import com.arashivision.sdkmedia.player.capture.InstaCapturePlayerView
 import com.arashivision.sdkmedia.player.listener.PlayerViewListener
@@ -38,6 +39,9 @@ class Insta360PreviewView(
 
     private val player = InstaCapturePlayerView(context)
     private var disposed = false
+    private var warmRefreshDone = false
+    private val extractWidth = (creationParams?.get("width") as? Int) ?: 1920
+    private val extractHeight = (creationParams?.get("height") as? Int) ?: 960
 
     init {
         active = this
@@ -126,6 +130,8 @@ class Insta360PreviewView(
 
     override fun onOpened() {
         if (disposed) return
+        // First open only: signal "warming" so the UI holds its overlay until the warm refresh done.
+        if (!warmRefreshDone) emitPreviewState("warming")
         // The preview stream is now open → safe to set the stream encode (the demo calls this in its
         // openPreviewStream success callback; calling it earlier NPEs on a null StartStreamingParam).
         try {
@@ -145,6 +151,8 @@ class Insta360PreviewView(
             val params = buildCaptureParams()
             if (w > 0 && h > 0) params.setScreenRatio(w, h)
             player.prepare(params)
+            // We don't override stitchType: the live preview already defaults to AI_FLOW (the SDK's
+            // best). Near-seam overlap on close objects is binocular parallax — no setting fixes it.
             player.play()
             player.keepScreenOn = true
         }
@@ -159,8 +167,57 @@ class Insta360PreviewView(
     // ── PlayerViewListener ────────────────────────────────────────────────────
     override fun onFirstFrameRender() {
         if (disposed) return
-        Log.i(TAG, "onFirstFrameRender → switch to interactive sphere + enable touch gestures")
+        Log.i(TAG, "onFirstFrameRender → switch to interactive sphere")
         enableInteractiveView()
+        // Post warm-up render → the stitch is correct, tell Flutter to drop the overlay; otherwise
+        // this is the first (overlapping) render → trigger the warm refresh.
+        if (warmRefreshDone) emitPreviewState("ready") else scheduleWarmRefresh()
+    }
+
+    private fun emitPreviewState(state: String) {
+        try {
+            onPreviewState?.invoke(state)
+        } catch (t: Throwable) {
+            Log.e(TAG, "emitPreviewState error", t)
+        }
+    }
+
+    /**
+     * The first preview after a camera (re)connect stitches from not-yet-warm calibration, so
+     * seam objects overlap; a manual "leave and return" fixes it by re-initing against the now-warm
+     * camera. We do that automatically, once per mount, via [warmRefresh].
+     */
+    private fun scheduleWarmRefresh() {
+        if (warmRefreshDone || disposed) return
+        warmRefreshDone = true
+        player.postDelayed({ warmRefresh() }, WARM_REFRESH_DELAY_MS)
+    }
+
+    private fun warmRefresh() {
+        if (disposed) return
+        Log.i(TAG, "warmRefresh → restart preview stream to rebuild stitch from warm calibration")
+        val mgr = InstaCameraManager.getInstance()
+        try {
+            player.stopExtractMediaFrame()
+        } catch (t: Throwable) {
+            Log.e(TAG, "warmRefresh stopExtract error", t)
+        }
+        try {
+            mgr.setPipeline(null)
+            mgr.closePreviewStream()
+        } catch (t: Throwable) {
+            Log.e(TAG, "warmRefresh close error", t)
+        }
+        // Reopen after a short beat so the close settles; onOpened re-fires and re-runs prepare →
+        // play → sphere → extract (warmRefreshDone stays true → no re-trigger loop).
+        player.postDelayed({
+            if (disposed) return@postDelayed
+            try {
+                mgr.startPreviewStream(InstaCameraManager.PREVIEW_TYPE_NORMAL)
+            } catch (t: Throwable) {
+                Log.e(TAG, "warmRefresh reopen error", t)
+            }
+        }, WARM_REFRESH_REOPEN_GAP_MS)
     }
 
     /**
@@ -193,14 +250,27 @@ class Insta360PreviewView(
 
     override fun onLoadingFinish() {
         if (disposed) return
-        Log.i(TAG, "onLoadingFinish → setPipeline (interactive render)")
+        Log.i(TAG, "onLoadingFinish → setPipeline + startExtractMediaFrame ${extractWidth}x$extractHeight")
         // Connect the camera stream to the player so it renders the live interactive view.
         InstaCameraManager.getInstance().setPipeline(player.pipeline)
-        // NOTE: media-frame extraction (startExtractMediaFrame → Insta360FrameSink, the transmit
-        // path) is intentionally NOT started here. The SDK's extract SequenceSource aborts when the
-        // player renders the interactive AUTO view (it only works with the flat PLANE_STITCH render).
-        // Extraction belongs to the streaming feature and needs its own offscreen path — out of
-        // scope for the interactive host preview.
+        // Extract the stitched ERP as MediaFrames for the transmit path:
+        //   startExtractMediaFrame → Insta360FrameSink.submit → frames() → _pushInstaFrame → Agora.
+        // EMPIRICAL: this tests whether extraction can coexist with the interactive sphere render.
+        // Historically it aborted under the AUTO/normal render (extract worked only in flat
+        // PLANE_STITCH). If this crashes on-device, fall back to a flat extract render for broadcast.
+        try {
+            player.startExtractMediaFrame(
+                extractWidth,
+                extractHeight,
+                EXTRACT_FPS,
+                EXTRACT_QUEUE,
+                IMediaFrameCallback { mediaFrame ->
+                    mediaFrame?.let { Insta360FrameSink.submit(it) }
+                },
+            )
+        } catch (t: Throwable) {
+            Log.e(TAG, "startExtractMediaFrame failed", t)
+        }
     }
 
     override fun onReleaseCameraPipeline() {
@@ -229,9 +299,23 @@ class Insta360PreviewView(
 
     companion object {
         private const val TAG = "Insta360PreviewView"
+        private const val EXTRACT_FPS = 60
+        private const val EXTRACT_QUEUE = 32
+
+        /** Delay after the first frame before the one-shot warm-refresh stream restart. */
+        private const val WARM_REFRESH_DELAY_MS = 1200L
+
+        /** Gap between closing and reopening the preview stream during the warm refresh. */
+        private const val WARM_REFRESH_REOPEN_GAP_MS = 350L
 
         /** The currently-mounted preview (only one exists at a time). */
         @Volatile private var active: Insta360PreviewView? = null
+
+        /**
+         * Host preview lifecycle signal for Flutter: "warming" while establishing, "ready" once the
+         * corrected view shows. Wired by [Insta360Bridge] to its event channel.
+         */
+        @Volatile var onPreviewState: ((String) -> Unit)? = null
 
         /** Point the live interactive view at an absolute (yaw, pitch) in degrees. No-op if none. */
         fun applyOrientation(yaw: Float, pitch: Float) {
