@@ -178,11 +178,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
       unawaited(_init());
     }
     // Probe Insta360 capability + watch for mid-stream camera drop (fallback to phone).
-    _insta.start();
-    _insta.state.addListener(_onInstaState);
-    _insta.isSupported().then((ok) {
-      if (mounted) setState(() => _insta360Supported = ok);
-    });
+    if (Insta360LiveService.capturePlatformAvailable) {
+      _insta.start();
+      _insta.state.addListener(_onInstaState);
+      _insta.isSupported().then((ok) {
+        if (mounted) setState(() => _insta360Supported = ok);
+      });
+    }
   }
 
   /// Reflect Insta360 status changes in the UI and handle a real mid-session disconnect.
@@ -810,6 +812,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
 
   /// Opens the "Select camera" sheet.
   Future<void> _openCameraPicker() async {
+    if (!Insta360LiveService.capturePlatformAvailable) return;
     if (!_engineReady || _insta360Switching) return;
     await showModalBottomSheet<void>(
       context: context,
@@ -1254,7 +1257,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
           _buildBackground(),
           _buildGradientOverlay(),
           _buildStateContent(),
-          if (_cameraSource == _CameraSource.insta360 &&
+          if (Insta360LiveService.capturePlatformAvailable &&
+              _cameraSource == _CameraSource.insta360 &&
               _insta.state.value.connected)
             _build360LookControls(),
           if (widget.embeddedInMainShell) _buildShellTopBar(),
@@ -1569,14 +1573,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _CircleIconButton(
-                    icon: Icons.threesixty_rounded,
-                    onTap: _openCameraPicker,
-                    active: _cameraSource == _CameraSource.insta360,
-                    size: 38,
-                  ),
+                  if (Insta360LiveService.capturePlatformAvailable)
+                    _CircleIconButton(
+                      icon: Icons.threesixty_rounded,
+                      onTap: _openCameraPicker,
+                      active: _cameraSource == _CameraSource.insta360,
+                      size: 38,
+                    ),
                   // Masked (forward-only) ↔ full 360° toggle — only for the 360 feed.
-                  if (_cameraSource == _CameraSource.insta360)
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
                     _CircleIconButton(
                       icon: _maskEnabled
                           ? Icons.vignette
@@ -1586,7 +1592,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                       size: 38,
                     ),
                   // Gyro look-around toggle — under the mask icon, only for the 360 feed.
-                  if (_cameraSource == _CameraSource.insta360)
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
                     _CircleIconButton(
                       icon: _gyroEnabled
                           ? Icons.screen_rotation_rounded
@@ -1812,14 +1819,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  _CircleIconButton(
-                    icon: Icons.threesixty_rounded,
-                    onTap: _openCameraPicker,
-                    active: _cameraSource == _CameraSource.insta360,
-                    size: 38,
-                  ),
+                  if (Insta360LiveService.capturePlatformAvailable)
+                    _CircleIconButton(
+                      icon: Icons.threesixty_rounded,
+                      onTap: _openCameraPicker,
+                      active: _cameraSource == _CameraSource.insta360,
+                      size: 38,
+                    ),
                   // Masked (forward-only) ↔ full 360° toggle — only for the 360 feed.
-                  if (_cameraSource == _CameraSource.insta360)
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
                     _CircleIconButton(
                       icon: _maskEnabled
                           ? Icons.vignette
@@ -1829,7 +1838,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                       size: 38,
                     ),
                   // Gyro look-around toggle — under the mask icon, only for the 360 feed.
-                  if (_cameraSource == _CameraSource.insta360)
+                  if (Insta360LiveService.capturePlatformAvailable &&
+                      _cameraSource == _CameraSource.insta360)
                     _CircleIconButton(
                       icon: _gyroEnabled
                           ? Icons.screen_rotation_rounded
@@ -2515,51 +2525,53 @@ class _CameraPickerSheet extends StatelessWidget {
               onTap: onSelectPhone,
             ),
             const SizedBox(height: 8),
-            // Insta360 360°
-            _tile(
-              icon: Icons.threesixty_rounded,
-              title: 'Insta360 (360°)',
-              subtitle: insta360Supported
-                  ? 'Stitched panoramic feed'
-                  : 'Requires an arm64 device (Android 10+)',
-              selected: current == _CameraSource.insta360,
-              enabled: insta360Supported,
-              onTap: insta360Supported
-                  ? () => onSelectInsta360(Insta360ConnectType.wifi)
-                  : null,
-            ),
-            if (insta360Supported) ...[
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 6),
-                child: Text(
-                  'Join the camera\'s Wi-Fi in Settings first, then connect via Wi-Fi. '
-                  '(USB keeps the phone\'s internet — used for going live.)',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
+            // Insta360 360° (Android capture platform only)
+            if (Insta360LiveService.capturePlatformAvailable) ...[
+              _tile(
+                icon: Icons.threesixty_rounded,
+                title: 'Insta360 (360°)',
+                subtitle: insta360Supported
+                    ? 'Stitched panoramic feed'
+                    : 'Requires an arm64 device (Android 10+)',
+                selected: current == _CameraSource.insta360,
+                enabled: insta360Supported,
+                onTap: insta360Supported
+                    ? () => onSelectInsta360(Insta360ConnectType.wifi)
+                    : null,
+              ),
+              if (insta360Supported) ...[
+                const SizedBox(height: 10),
+                Padding(
+                  padding: const EdgeInsets.only(left: 4, bottom: 6),
+                  child: Text(
+                    'Join the camera\'s Wi-Fi in Settings first, then connect via Wi-Fi. '
+                    '(USB keeps the phone\'s internet — used for going live.)',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
                   ),
                 ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _connectButton(
-                      icon: Icons.wifi_rounded,
-                      label: 'Wi-Fi',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _connectButton(
+                        icon: Icons.wifi_rounded,
+                        label: 'Wi-Fi',
+                        onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _connectButton(
-                      icon: Icons.usb_rounded,
-                      label: 'USB',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _connectButton(
+                        icon: Icons.usb_rounded,
+                        label: 'USB',
+                        onTap: () => onSelectInsta360(Insta360ConnectType.usb),
+                      ),
                     ),
-                  ),
-                ],
-              ),
+                  ],
+                ),
+              ],
             ],
           ],
         ),
