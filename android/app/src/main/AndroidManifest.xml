@@ -23,6 +23,18 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- Insta360 camera connectivity (BLE discovery + WiFi/USB control + foreground connection). -->
+    <uses-permission android:name="android.permission.BLUETOOTH_SCAN" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-feature android:name="android.hardware.usb.host" android:required="false" />
+
     <!-- Location tagging for uploads (requested only on user action) -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -44,10 +56,13 @@
 
     <application
         android:label="vyooo"
-        android:name="${applicationName}"
+        android:name=".VyoooApplication"
         android:icon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true"
-        android:resizeableActivity="true">
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:resizeableActivity="true"
+        tools:replace="android:label"><!-- Insta360 minicamera AAR also sets application@label -->
+
         <activity
             android:name="com.yalantis.ucrop.UCropActivity"
             android:exported="false"

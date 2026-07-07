@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../utils/stream_playback_urls.dart';
+import 'video_360_metadata.dart';
+
 enum LiveStreamStatus { live, ended }
 
 /// Firestore document model for a live stream.
@@ -23,6 +26,9 @@ class LiveStreamModel {
     required this.createdAt,
     this.endedAt,
     this.savedToProfile = false,
+    this.video360 = Video360Metadata.flat,
+    this.isVR = false,
+    this.hlsUrl,
   });
 
   final String id;
@@ -48,31 +54,62 @@ class LiveStreamModel {
   final Timestamp? endedAt;
   final bool savedToProfile;
 
+  /// 360/immersive metadata for this stream (shared shape with 360 VOD reels).
+  final Video360Metadata video360;
+
+  /// Routing flag for VR/immersive surfaces (mirrors reels' `isVR`).
+  final bool isVR;
+
+  /// HLS/CDN URL for the live stream, if exposed via Media Push. The interactive
+  /// 360 viewer plays a URL, so this is required to render the sphere; null until
+  /// the Media-Push bridge is active (viewer falls back to flat Agora otherwise).
+  final String? hlsUrl;
+
   bool get isLive => status == LiveStreamStatus.live;
 
+  /// True when this stream is tagged as interactive 360 (equirectangular).
+  bool get use360Player => video360.use360Player;
+
+  /// True when [hlsUrl] resolves to at least one playable candidate URL.
+  bool get hasPlayableHlsUrl {
+    final raw = hlsUrl?.trim();
+    if (raw == null || raw.isEmpty) return false;
+    return StreamPlaybackUrls.candidates(raw).isNotEmpty;
+  }
+
+  /// True when the viewer can render the interactive 360 sphere — needs both the
+  /// 360 tag AND a playable URL (the URL-based renderer has nothing to show
+  /// without [hlsUrl]). When false, the viewer uses the flat Agora path.
+  bool get canRenderInteractive360 => use360Player && hasPlayableHlsUrl;
+
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'hostId': hostId,
-        'hostUsername': hostUsername,
-        'hostProfileImage': hostProfileImage ?? '',
-        'title': title,
-        'description': description,
-        'category': category,
-        'tags': tags,
-        'pricePerMinute': pricePerMinute,
-        'status': status.name,
-        'viewerCount': viewerCount,
-        'likeCount': likeCount,
-        'agoraChannelName': agoraChannelName,
-        'hostAgoraUid': hostAgoraUid,
-        'createdAt': createdAt,
-        'endedAt': endedAt,
-        'savedToProfile': savedToProfile,
-      };
+    'id': id,
+    'hostId': hostId,
+    'hostUsername': hostUsername,
+    'hostProfileImage': hostProfileImage ?? '',
+    'title': title,
+    'description': description,
+    'category': category,
+    'tags': tags,
+    'pricePerMinute': pricePerMinute,
+    'status': status.name,
+    'viewerCount': viewerCount,
+    'likeCount': likeCount,
+    'agoraChannelName': agoraChannelName,
+    'hostAgoraUid': hostAgoraUid,
+    'createdAt': createdAt,
+    'endedAt': endedAt,
+    'savedToProfile': savedToProfile,
+    ...video360.toFirestore(),
+    'isVR': isVR,
+    if (hlsUrl != null) 'hlsUrl': hlsUrl,
+  };
 
   factory LiveStreamModel.fromJson(Map<String, dynamic> json) {
     final rawTags = json['tags'];
-    final tagsList = rawTags is List ? rawTags.map((e) => e.toString()).toList() : <String>[];
+    final tagsList = rawTags is List
+        ? rawTags.map((e) => e.toString()).toList()
+        : <String>[];
     return LiveStreamModel(
       id: json['id'] as String? ?? '',
       hostId: json['hostId'] as String? ?? '',
@@ -91,9 +128,18 @@ class LiveStreamModel {
       likeCount: (json['likeCount'] as num?)?.toInt() ?? 0,
       agoraChannelName: json['agoraChannelName'] as String? ?? '',
       hostAgoraUid: (json['hostAgoraUid'] as num?)?.toInt() ?? 0,
-      createdAt: json['createdAt'] is Timestamp ? json['createdAt'] as Timestamp : Timestamp.now(),
-      endedAt: json['endedAt'] is Timestamp ? json['endedAt'] as Timestamp : null,
+      createdAt: json['createdAt'] is Timestamp
+          ? json['createdAt'] as Timestamp
+          : Timestamp.now(),
+      endedAt: json['endedAt'] is Timestamp
+          ? json['endedAt'] as Timestamp
+          : null,
       savedToProfile: json['savedToProfile'] as bool? ?? false,
+      video360: Video360Metadata.fromPost(json),
+      isVR: json['isVR'] == true,
+      hlsUrl: (json['hlsUrl'] as String?)?.trim().isNotEmpty == true
+          ? (json['hlsUrl'] as String).trim()
+          : null,
     );
   }
 
@@ -104,6 +150,9 @@ class LiveStreamModel {
     LiveStreamStatus? status,
     Timestamp? endedAt,
     bool? savedToProfile,
+    Video360Metadata? video360,
+    bool? isVR,
+    String? hlsUrl,
   }) {
     return LiveStreamModel(
       id: id,
@@ -123,6 +172,9 @@ class LiveStreamModel {
       createdAt: createdAt,
       endedAt: endedAt ?? this.endedAt,
       savedToProfile: savedToProfile ?? this.savedToProfile,
+      video360: video360 ?? this.video360,
+      isVR: isVR ?? this.isVR,
+      hlsUrl: hlsUrl ?? this.hlsUrl,
     );
   }
 }
