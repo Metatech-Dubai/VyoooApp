@@ -202,6 +202,12 @@ class Insta360Bridge(
                 result.success(null)
             }
 
+            "setAiEnabled" -> {
+                // Toggle the M3 heuristic decision layer (off = deterministic fall-open) for A/B.
+                Insta360FrameSink.setAiEnabled(call.argument<Boolean>("enabled") ?: true)
+                result.success(null)
+            }
+
             "setViewOrientation" -> {
                 // Drive the interactive 360 view from Flutter-side drag (degrees).
                 val yaw = (call.argument<Double>("yaw") ?: 0.0).toFloat()

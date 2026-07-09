@@ -5,6 +5,7 @@ import com.arashivision.graphicpath.insmedia.common.MediaFrame
 import com.vyooo.insta360.pipeline.DownscaleStage
 import com.vyooo.insta360.pipeline.ForwardMaskStage
 import com.vyooo.insta360.pipeline.FramePipeline
+import com.vyooo.insta360.pipeline.HeuristicDecisionLayer
 import com.vyooo.insta360.pipeline.MutableHints
 import com.vyooo.insta360.pipeline.PanoramaDetectStage
 import com.vyooo.insta360.pipeline.PipelineFrame
@@ -45,8 +46,11 @@ object Insta360FrameSink {
     private val forwardMask = ForwardMaskStage()
     private val temporalDedup = TemporalDedupStage()
 
-    /** AI-fed decision hints; deterministic (all null) until an AI layer writes them. */
+    /** AI-fed decision hints; deterministic (all null) until the decision layer writes them. */
     val hints = MutableHints()
+
+    /** M3 bounded heuristic decision layer — writes decision signals into [hints] (metadata only). */
+    val decisionLayer = HeuristicDecisionLayer(hints)
 
     val pipeline = FramePipeline(
         listOf(DownscaleStage(), PanoramaDetectStage(), forwardMask, temporalDedup),
@@ -61,6 +65,11 @@ object Insta360FrameSink {
     /** Live temporal-reduction toggle (1-in-N + motion gating on/off) — for A/B / KPI capture. */
     fun setTemporalEnabled(enabled: Boolean) {
         temporalDedup.enabled = enabled
+    }
+
+    /** Live AI decision-layer toggle (off = deterministic fall-open) — for A/B / KPI capture. */
+    fun setAiEnabled(enabled: Boolean) {
+        decisionLayer.enabled = enabled
     }
 
     private var count: Long = 0
@@ -88,6 +97,7 @@ object Insta360FrameSink {
         lastTemporalLogNs = 0; lastLogSeen = 0; lastLogKept = 0
         pipeline.metrics.reset()
         temporalDedup.reset()
+        decisionLayer.reset()
     }
 
     /** Live metrics: output fps + the pipeline snapshot (per-stage latency, spatial + temporal). */
@@ -97,6 +107,7 @@ object Insta360FrameSink {
         m["framesOut"] = count
         m.putAll(pipeline.metrics.snapshot())
         m.putAll(temporalDedup.stats())
+        m.putAll(decisionLayer.stats())
         return m
     }
 
@@ -118,6 +129,7 @@ object Insta360FrameSink {
         lastTemporalLogNs = nowNs
         lastLogSeen = seen
         lastLogKept = kept
+        val ai = decisionLayer.stats()
         Log.i(
             TAG,
             "temporal enabled=${s["temporalEnabled"]} " +
@@ -125,7 +137,12 @@ object Insta360FrameSink {
                 "keepRatio=${"%.2f".format(s["keepRatio"] as Double)} " +
                 "kept=$kept/$seen motion=${s["motionKeeps"]} heartbeat=${s["heartbeatKeeps"]} " +
                 "schedDrop=${s["scheduleDrops"]} dupDrop=${s["duplicateDrops"]} " +
-                "lastMotion=${"%.3f".format(s["lastMotion"] as Float)}",
+                "lastMotion=${"%.3f".format(s["lastMotion"] as Float)} | " +
+                "ai=${ai["aiEnabled"]} aiMotion=${"%.3f".format(ai["aiMotion"] as Float)} " +
+                "aiDetail=${"%.3f".format(ai["aiSpatialDetail"] as Float)} " +
+                "aiRecScale=${"%.2f".format(ai["aiRecommendedScale"] as Float)} " +
+                "aiTheta=${"%.1f".format(ai["aiThetaDeg"] as Float)} " +
+                "aiMs=${"%.2f".format(ai["aiOverheadMs"] as Double)}",
         )
     }
 
@@ -144,6 +161,10 @@ object Insta360FrameSink {
         val now = System.nanoTime()
         if (basePtsNs == 0L) basePtsNs = now
         val ptsUs = (now - basePtsNs) / 1000
+
+        // M3: the heuristic decision layer observes this frame and writes decision signals (metadata)
+        // into `hints` BEFORE the pipeline runs, so the stages read fresh AI-assisted hints this frame.
+        decisionLayer.observe(rgba, w, h)
 
         val result = pipeline.process(PipelineFrame(rgba, w, h, ptsUs))
         maybeLogTemporal(now) // ~1/s monitor of the temporal stage — logs even on dropped frames
