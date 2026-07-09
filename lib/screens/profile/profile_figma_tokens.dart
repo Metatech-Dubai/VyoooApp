@@ -75,7 +75,8 @@ abstract final class ProfileFigmaTokens {
   static const double highlightTileHeight = 68;
   static const double highlightTileRadius = 10;
   static const double highlightTileGap = 16.7;
-  static const double highlightLabelGap = 5;
+  /// Space between 68px tile and label — 85 − 68 − 14 line height.
+  static const double highlightLabelGap = 3;
   static const double highlightLabelFontSize = 12;
   static const FontWeight highlightLabelFontWeight = FontWeight.w400;
   static const double highlightLabelLineHeight = 14;
@@ -101,6 +102,10 @@ abstract final class ProfileFigmaTokens {
 
   /// Tile + gap + single-line label — Figma row 85px.
   static const double highlightRowHeight = 85;
+
+  /// Remaining vertical space for the 12/14 label under each chip.
+  static double get highlightLabelAreaHeight =>
+      highlightRowHeight - highlightTileHeight - highlightLabelGap;
 
   /// Highlights opener inset from content column start (Figma ~14px).
   static const double highlightsOpenerLeftInset = 14;
@@ -241,6 +246,27 @@ abstract final class ProfileFigmaTokens {
   /// Tap target height for each drawer icon row.
   static const double profileSideRailTapHeight = 42;
   static const Duration profileSideDrawerAnimation =
+      Duration(milliseconds: 260);
+
+  // — Profile “More” end drawer (Figma 341×874 artboard, slides from right) —
+  static const double profileMoreDrawerWidth = 341;
+  static const double profileMoreDrawerDesignHeight = 874;
+  static const double profileMoreDrawerContentHorizontalInset = 15;
+  static const double profileMoreDrawerContentWidth = 310;
+  static const double profileMoreDrawerLogoutHorizontalInset = 16.5;
+  static const double profileMoreDrawerLogoutWidth = 309;
+  static const Color profileMoreDrawerSectionLabel = Color(0xFF838484);
+  static const Color profileMoreDrawerCardFill = Color(0xFFF9F9F9);
+  static const double profileMoreDrawerCardRadius = 7;
+  static const double profileMoreDrawerRowHeight = 52;
+  static const double profileMoreDrawerRowHorizontalInset = 16;
+  static const Color profileMoreDrawerRowDivider = Color(0x0F000000);
+  static const Color profileMoreDrawerChevron = Color(0xFFC4C7C7);
+  static const Color profileMoreDrawerItemText = Color(0xFF1A1C1C);
+  static const Color profileMoreDrawerLogoutText = Color(0xFFBA1A1A);
+  static const Color profileMoreDrawerLogoutBorder = Color(0xFFC4C7C7);
+  static const double profileMoreDrawerLogoutHeight = 57;
+  static const Duration profileMoreDrawerAnimation =
       Duration(milliseconds: 260);
 
   /// Compact other-user profile top bar.

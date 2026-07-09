@@ -75,6 +75,10 @@ abstract final class ProfileAssets {
   static const String profileSideDrawerCollapsed =
       'assets/vyooO_icons/Profile/profile_side_drawer_collapsed.svg';
 
+  /// Profile “More” end drawer panel (Figma 341×874).
+  static const String profileMoreDrawerPanel =
+      'assets/vyooO_icons/Profile/profile_more_drawer_panel.svg';
+
   /// Figma verified badge — green circle + white check (17×17).
   static const String profileVerifiedBadge =
       'assets/vyooO_icons/Profile/profile_verified_badge.svg';

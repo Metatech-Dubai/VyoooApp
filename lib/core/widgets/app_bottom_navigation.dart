@@ -2,31 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../constants/bottom_nav_assets.dart';
 import '../platform/app_system_ui.dart';
 import '../theme/app_fonts.dart';
 import '../theme/app_gradients.dart';
 import '../theme/app_radius.dart';
 import '../theme/app_sizes.dart';
 import '../theme/app_spacing.dart';
+import '../theme/bottom_nav_figma_tokens.dart';
+import 'bottom_nav_create_menu.dart';
 import 'feed_reel_progress_bar.dart';
 import 'live_feed_scrub_preview.dart';
 import 'live_feed_stream_progress_bar.dart';
 import '../../screens/profile/profile_figma_tokens.dart';
-
-class _NavAssets {
-  static const _base = 'assets/BottomNavBar';
-  static const homeSelected = '$_base/home_selected.svg';
-  static const homeUnselected = '$_base/home_unselected.svg';
-  static const broadcastSelected = '$_base/broadcast_selected.svg';
-  static const broadcastUnselected = '$_base/broadcast_unselected.svg';
-  static const addSelected = '$_base/add_selected.svg';
-  static const addUnselected = '$_base/add_unselected.svg';
-  static const chatSelected = '$_base/chat_selected.svg';
-  static const chatUnselected = '$_base/chat_unselected.svg';
-  static const profileSelected = '$_base/profile_selected.png';
-  static const profileUnselected = '$_base/profile_unselected.png';
-  static const profileDefault = 'assets/vyooO_icons/Home/profile_icon.png';
-}
 
 /// Custom bottom nav wrapper matching the VyooO design language.
 /// Index: 0 Home, 1 Go Live (broadcast), 2 Create (+), 3 Messages, 4 Profile.
@@ -51,6 +39,10 @@ class AppBottomNavigation extends StatelessWidget {
     this.feedLiveSeekPreviewTimeLabel,
     this.feedLiveSeekPreviewFallbackUrl,
     this.squareChromeBottomCorners = false,
+    this.isCreateMenuOpen = false,
+    this.createMenuProgress = 0,
+    this.onCreateMenuToggle,
+    this.onCreateAction,
   });
 
   final int currentIndex;
@@ -89,15 +81,23 @@ class AppBottomNavigation extends StatelessWidget {
   /// When true, bottom chrome uses square corners (broadcast tab).
   final bool squareChromeBottomCorners;
 
+  /// Plus menu expanded — shows close (X) icon and [BottomNavCreateMenu].
+  final bool isCreateMenuOpen;
+
+  /// Animated open progress (`0`–`1`) for the create menu stack.
+  final double createMenuProgress;
+
+  /// Toggles the create hub menu (plus ↔ close).
+  final VoidCallback? onCreateMenuToggle;
+
+  /// VR / Post / Reel / Story / Live picks from the create menu.
+  final ValueChanged<BottomNavCreateAction>? onCreateAction;
+
   static const Color _iconColor = ProfileFigmaTokens.primaryText;
-  static const Color _selectedPillFill = ProfileFigmaTokens.cardBackground;
-  static const Color _navBarFill = ProfileFigmaTokens.screenBackground;
+  static const Color _navBarFill = BottomNavFigmaTokens.pillFill;
   static const Color _splashColor = Color(0x33750047);
 
   static const double _tapTargetSize = AppSizes.bottomNavTapTarget;
-  static const double _selectedPillSize = AppSizes.bottomNavTapTarget;
-
-  Widget _navSvgIcon(String assetPath) => _NavSvgIcon(assetPath: assetPath);
 
   Widget _buildProfileIcon(bool isSelected) {
     final hasProfileImage =
@@ -105,8 +105,8 @@ class AppBottomNavigation extends StatelessWidget {
     if (!hasProfileImage) {
       return _NavIconImage(
         assetPath: isSelected
-            ? _NavAssets.profileSelected
-            : _NavAssets.profileUnselected,
+            ? BottomNavAssets.profileSelected
+            : BottomNavAssets.profileUnselected,
         size: AppSizes.bottomNavProfileIcon,
       );
     }
@@ -118,7 +118,7 @@ class AppBottomNavigation extends StatelessWidget {
         width: AppSizes.bottomNavProfileIcon,
         height: AppSizes.bottomNavProfileIcon,
         errorBuilder: (_, error, stackTrace) => Image.asset(
-          _NavAssets.profileDefault,
+          BottomNavAssets.profileDefault,
           fit: BoxFit.cover,
           width: AppSizes.bottomNavProfileIcon,
           height: AppSizes.bottomNavProfileIcon,
@@ -131,29 +131,15 @@ class AppBottomNavigation extends StatelessWidget {
       ),
     );
 
-    if (!isSelected) return avatar;
-
-    return Container(
-      width: AppSizes.bottomNavProfileIcon,
-      height: AppSizes.bottomNavProfileIcon,
-      decoration: const BoxDecoration(
-        color: _selectedPillFill,
-        shape: BoxShape.circle,
-      ),
-      alignment: Alignment.center,
-      child: avatar,
-    );
+    return avatar;
   }
 
   Widget _buildNavTap({
     required VoidCallback onPressed,
     required Widget child,
-    required bool isSelected,
     double? tapTargetSize,
-    double? selectedPillSize,
   }) {
     final targetSize = tapTargetSize ?? _tapTargetSize;
-    final pillSize = selectedPillSize ?? _selectedPillSize;
     return SizedBox(
       width: targetSize,
       height: targetSize,
@@ -166,20 +152,7 @@ class AppBottomNavigation extends StatelessWidget {
           radius: targetSize / 2,
           splashColor: _splashColor,
           highlightColor: _splashColor.withValues(alpha: 0.5),
-          child: Center(
-            child: isSelected
-                ? Container(
-                    width: pillSize,
-                    height: pillSize,
-                    decoration: const BoxDecoration(
-                      color: _selectedPillFill,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: child,
-                  )
-                : child,
-          ),
+          child: Center(child: child),
         ),
       ),
     );
@@ -189,17 +162,25 @@ class AppBottomNavigation extends StatelessWidget {
     final count = unreadChatCount < 0 ? 0 : unreadChatCount;
     final showBadge = count > 0;
     final label = count > 99 ? '99+' : '$count';
-    return Stack(
-      clipBehavior: Clip.none,
-      children: [
-        _navSvgIcon(
-          isSelected ? _NavAssets.chatSelected : _NavAssets.chatUnselected,
-        ),
-        if (showBadge)
-          Positioned(
-            right: -10,
-            top: -6,
-            child: Container(
+    return SizedBox(
+      width: AppSizes.bottomNavIconSlot,
+      height: AppSizes.bottomNavIconSlot,
+      child: Stack(
+        clipBehavior: Clip.none,
+        alignment: Alignment.center,
+        children: [
+          _NavSvgIcon(
+            assetPath: isSelected
+                ? BottomNavAssets.chatSelected
+                : BottomNavAssets.chatUnselected,
+            width: isSelected ? 24 : 20,
+            height: isSelected ? 24 : 20,
+          ),
+          if (showBadge)
+            Positioned(
+              right: -6,
+              top: -4,
+              child: Container(
               constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
               padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
               decoration: BoxDecoration(
@@ -219,7 +200,8 @@ class AppBottomNavigation extends StatelessWidget {
               ),
             ),
           ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -227,7 +209,7 @@ class AppBottomNavigation extends StatelessWidget {
   static const double barHeight = AppSizes.bottomNavBarHeight;
 
   /// Horizontal margin for the floating pill bar inside the chrome.
-  static const double _horizontalMargin = 20;
+  static const double _horizontalMargin = BottomNavFigmaTokens.horizontalMargin;
 
   /// Space above the white pill inside the dark chrome strip (matches progress top gap).
   static const double _chromeTopPadding = AppSpacing.feedPostNavGap;
@@ -270,47 +252,62 @@ class AppBottomNavigation extends StatelessWidget {
 
   BoxDecoration get _pillDecoration => BoxDecoration(
         color: _navBarFill,
-        borderRadius: BorderRadius.circular(32),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.08),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(BottomNavFigmaTokens.pillRadius),
+        boxShadow: BottomNavFigmaTokens.pillShadow,
       );
 
+  Widget _buildCreateMenuStack() {
+    final onAction = onCreateAction;
+    if (onAction == null || createMenuProgress <= 0) {
+      return const SizedBox.shrink();
+    }
+
+    return Padding(
+      padding: const EdgeInsets.only(
+        bottom: BottomNavFigmaTokens.createMenuToNavGap,
+      ),
+      child: BottomNavCreateMenu(
+        progress: createMenuProgress,
+        onAction: onAction,
+      ),
+    );
+  }
+
   Widget _buildNavRow() {
+    final createOpen = isCreateMenuOpen;
     return SizedBox(
       height: barHeight,
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _NavItem(
-            unselectedAsset: _NavAssets.homeUnselected,
-            selectedAsset: _NavAssets.homeSelected,
+            unselectedAsset: BottomNavAssets.homeUnselected,
+            selectedAsset: BottomNavAssets.homeSelected,
             isSelected: currentIndex == 0,
             onTap: () => onTap(0),
             buildTap: _buildNavTap,
+            iconWidth: currentIndex == 0 ? 28 : 24,
+            iconHeight: currentIndex == 0 ? 28 : 24,
           ),
           _NavItem(
-            unselectedAsset: _NavAssets.broadcastUnselected,
-            selectedAsset: _NavAssets.broadcastSelected,
+            unselectedAsset: BottomNavAssets.broadcastUnselected,
+            selectedAsset: BottomNavAssets.broadcastSelected,
             isSelected: currentIndex == 1,
             onTap: () => onTap(1),
             buildTap: _buildNavTap,
+            iconWidth: 32,
+            iconHeight: 27,
+            iconOffsetY: BottomNavFigmaTokens.broadcastIconOpticalOffsetY,
           ),
           _NavItem(
-            unselectedAsset: _NavAssets.addUnselected,
-            selectedAsset: _NavAssets.addSelected,
-            isSelected: currentIndex == 2,
-            onTap: () => onTap(2),
+            unselectedAsset: BottomNavAssets.addUnselected,
+            selectedAsset: BottomNavAssets.addSelected,
+            isSelected: createOpen,
+            onTap: onCreateMenuToggle ?? () => onTap(2),
             buildTap: _buildNavTap,
+            iconWidth: createOpen ? 30 : 20,
+            iconHeight: createOpen ? 30 : 20,
           ),
           _NavItem(
             isSelected: currentIndex == 3,
@@ -320,9 +317,7 @@ class AppBottomNavigation extends StatelessWidget {
           ),
           _buildNavTap(
             onPressed: () => onTap(4),
-            isSelected: currentIndex == 4,
             tapTargetSize: AppSizes.bottomNavProfileIcon,
-            selectedPillSize: AppSizes.bottomNavProfileIcon,
             child: _buildProfileIcon(currentIndex == 4),
           ),
         ],
@@ -330,18 +325,34 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
+  Widget _buildNavChromeBody({
+    required double bottomInset,
+    required bool includeTopPadding,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Center(child: _buildCreateMenuStack()),
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            _horizontalMargin,
+            includeTopPadding ? _chromeTopPadding : 0,
+            _horizontalMargin,
+            bottomInset,
+          ),
+          child: DecoratedBox(
+            decoration: _pillDecoration,
+            child: _buildNavRow(),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildFloatingPill(double bottomInset) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(
-        _horizontalMargin,
-        0,
-        _horizontalMargin,
-        bottomInset,
-      ),
-      child: DecoratedBox(
-        decoration: _pillDecoration,
-        child: _buildNavRow(),
-      ),
+    return _buildNavChromeBody(
+      bottomInset: bottomInset,
+      includeTopPadding: false,
     );
   }
 
@@ -463,22 +474,15 @@ class AppBottomNavigation extends StatelessWidget {
           ),
         ),
         child: !hasChromeProgress
-            ? Padding(
-                padding: EdgeInsets.fromLTRB(
-                  _horizontalMargin,
-                  _chromeTopPadding,
-                  _horizontalMargin,
-                  bottomInset,
-                ),
-                child: DecoratedBox(
-                  decoration: _pillDecoration,
-                  child: _buildNavRow(),
-                ),
+            ? _buildNavChromeBody(
+                bottomInset: bottomInset,
+                includeTopPadding: true,
               )
             : Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+                  Center(child: _buildCreateMenuStack()),
                   if (reelProgressListenable != null)
                     ValueListenableBuilder<double?>(
                       valueListenable: reelProgressListenable,
@@ -549,7 +553,10 @@ class AppBottomNavigation extends StatelessWidget {
       iosInsetFactor: _iosSafeAreaBottomFactor,
     );
 
-    if (useFeedChrome) {
+    // Home/broadcast dark chrome wraps the menu in a black strip — use the light
+    // floating pill while the create hub is open (matches profile/chat).
+    final createMenuVisible = isCreateMenuOpen || createMenuProgress > 0;
+    if (useFeedChrome && !createMenuVisible) {
       return _buildFeedChromePill(bottomInset);
     }
     return _buildFloatingPill(bottomInset);
@@ -559,7 +566,7 @@ class AppBottomNavigation extends StatelessWidget {
 typedef _NavTapBuilder = Widget Function({
   required VoidCallback onPressed,
   required Widget child,
-  required bool isSelected,
+  double? tapTargetSize,
 });
 
 class _NavItem extends StatelessWidget {
@@ -570,6 +577,9 @@ class _NavItem extends StatelessWidget {
     required this.onTap,
     required this.buildTap,
     this.customChild,
+    this.iconWidth = AppSizes.bottomNavIconSlot,
+    this.iconHeight = AppSizes.bottomNavIconSlot,
+    this.iconOffsetY = 0,
   });
 
   final String? unselectedAsset;
@@ -578,17 +588,22 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
   final _NavTapBuilder buildTap;
   final Widget? customChild;
+  final double iconWidth;
+  final double iconHeight;
+  final double iconOffsetY;
 
   @override
   Widget build(BuildContext context) {
     final icon = customChild ??
         _NavSvgIcon(
           assetPath: isSelected ? selectedAsset! : unselectedAsset!,
+          width: iconWidth,
+          height: iconHeight,
+          offsetY: iconOffsetY,
         );
 
     return buildTap(
       onPressed: onTap,
-      isSelected: isSelected,
       child: icon,
     );
   }
@@ -622,21 +637,37 @@ class _NavIconImage extends StatelessWidget {
 }
 
 class _NavSvgIcon extends StatelessWidget {
-  const _NavSvgIcon({required this.assetPath});
+  const _NavSvgIcon({
+    required this.assetPath,
+    this.width = AppSizes.bottomNavIconSlot,
+    this.height = AppSizes.bottomNavIconSlot,
+    this.offsetY = 0,
+  });
 
   final String assetPath;
+  final double width;
+  final double height;
+  final double offsetY;
 
   @override
   Widget build(BuildContext context) {
+    final slot = AppSizes.bottomNavIconSlot;
     return SizedBox(
-      width: AppSizes.bottomNavIconSlot,
-      height: AppSizes.bottomNavIconSlot,
-      child: SvgPicture.asset(
-        assetPath,
-        width: AppSizes.bottomNavIconSlot,
-        height: AppSizes.bottomNavIconSlot,
-        fit: BoxFit.contain,
-        alignment: Alignment.center,
+      width: slot,
+      height: slot,
+      child: Center(
+        child: Transform.translate(
+          offset: Offset(0, offsetY),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: SvgPicture.asset(
+              assetPath,
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+            ),
+          ),
+        ),
       ),
     );
   }

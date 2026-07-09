@@ -40,6 +40,7 @@ class UploadDetailsScreen extends StatefulWidget {
     this.additionalAssets = const <AssetEntity>[],
     this.photoFileOverride,
     this.videoFileOverride,
+    this.initialMarkAs360 = false,
   });
 
   final AssetEntity asset;
@@ -54,6 +55,9 @@ class UploadDetailsScreen extends StatefulWidget {
   /// When set for a **video** post, this file is uploaded instead of [asset.file]
   /// (e.g. after FFmpeg trim on [EditVideoScreen]).
   final File? videoFileOverride;
+
+  /// VR create menu — pre-check 360 upload on single-video posts.
+  final bool initialMarkAs360;
 
   @override
   State<UploadDetailsScreen> createState() => _UploadDetailsScreenState();
@@ -127,7 +131,9 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       description: _descController.text,
       category: _selectedCategory,
     );
-    if (_canConfigure360) {
+    if (widget.initialMarkAs360 && _canConfigure360) {
+      _is360Video = true;
+    } else if (_canConfigure360) {
       _run360Detection();
     }
   }

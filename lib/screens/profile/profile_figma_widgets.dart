@@ -823,8 +823,8 @@ class ProfileHighlightAddChip extends StatelessWidget {
 
     return SizedBox(
       width: ProfileFigmaTokens.highlightTileWidth,
+      height: ProfileFigmaTokens.highlightRowHeight,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Material(
             color: Colors.transparent,
@@ -843,13 +843,19 @@ class ProfileHighlightAddChip extends StatelessWidget {
             ),
           ),
           SizedBox(height: ProfileFigmaTokens.highlightLabelGap),
-          Text(
-            'Highlights',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppTypography.profileHighlightAddLabel.copyWith(
-              color: ProfileFigmaTokens.highlightAddLabelColor,
+          SizedBox(
+            height: ProfileFigmaTokens.highlightLabelAreaHeight,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Text(
+                'Highlights',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.profileHighlightAddLabel.copyWith(
+                  color: ProfileFigmaTokens.highlightAddLabelColor,
+                ),
+              ),
             ),
           ),
         ],

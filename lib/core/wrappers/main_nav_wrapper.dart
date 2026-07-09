@@ -6,16 +6,19 @@ import '../navigation/home_feed_chrome_controller.dart';
 import '../services/deep_link_service.dart';
 import '../services/notification_service.dart';
 import '../services/user_service.dart';
+import '../theme/bottom_nav_figma_tokens.dart';
 import '../widgets/app_bottom_navigation.dart';
 import '../../screens/home/home_reels_screen.dart';
 import '../navigation/search_tab_launcher.dart';
 import '../../screens/search/search_screen.dart';
 import '../../screens/broadcast/broadcast_tab_host.dart';
 import '../../screens/upload/upload_screen.dart';
+import '../../screens/upload/creator_live_route.dart';
 import '../../features/chat/screens/chat_inbox_screen.dart';
 import '../../features/chat/services/chat_service.dart';
 import '../../features/chat/services/chat_notification_service.dart';
 import '../../features/chat/services/presence_service.dart';
+import '../../features/story/story_upload_screen.dart';
 import '../../screens/profile/profile_figma_tokens.dart';
 import '../../screens/profile/profile_screen.dart';
 import '../../screens/profile/user_profile_screen.dart';
@@ -45,12 +48,16 @@ class MainNavWrapper extends StatefulWidget {
   State<MainNavWrapper> createState() => _MainNavWrapperState();
 }
 
-class _MainNavWrapperState extends State<MainNavWrapper> {
+class _MainNavWrapperState extends State<MainNavWrapper>
+    with SingleTickerProviderStateMixin {
   static int _lastSelectedIndex = 0;
   int _currentIndex = _lastSelectedIndex;
   int _feedRefreshToken = 0;
   int _deepLinkNonce = 0;
   String? _deepLinkedReelId;
+  bool _createMenuOpen = false;
+  late final AnimationController _createMenuController;
+  late final Animation<double> _createMenuAnimation;
   final UserService _userService = UserService();
   StreamSubscription<String>? _reelDeepLinkSub;
   StreamSubscription<String>? _profileDeepLinkSub;
@@ -73,6 +80,14 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
   @override
   void initState() {
     super.initState();
+    _createMenuController = AnimationController(
+      vsync: this,
+      duration: BottomNavFigmaTokens.createMenuAnimation,
+    );
+    _createMenuAnimation = CurvedAnimation(
+      parent: _createMenuController,
+      curve: BottomNavFigmaTokens.createMenuCurve,
+    );
     MainNavWrapper.tabNotifier.addListener(_onTabNotifierChanged);
     if (widget.initialIndex != null) {
       final safe = widget.initialIndex!.clamp(0, 4);
@@ -131,6 +146,7 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
     SearchTabLauncher.instance.unregister(_searchTabLaunchHandler);
     _reelDeepLinkSub?.cancel();
     _profileDeepLinkSub?.cancel();
+    _createMenuController.dispose();
     PresenceService.instance.stop();
     ChatNotificationService.instance.stop();
     _homeFeedChrome.dispose();
@@ -184,20 +200,77 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
     );
   }
 
-  Future<void> _onNavTap(int index) async {
-    if (index == 2) {
-      Navigator.of(context)
-          .push(MaterialPageRoute<void>(builder: (_) => const UploadScreen()))
-          .then((_) {
-            if (!mounted) return;
-            setState(() {
-              _currentIndex = 0;
-              _lastSelectedIndex = 0;
-              _feedRefreshToken++;
-            });
-          });
+  void _closeCreateMenu({bool animate = true}) {
+    if (!_createMenuOpen) return;
+    if (!animate) {
+      _createMenuController.value = 0;
+      setState(() => _createMenuOpen = false);
       return;
     }
+    _createMenuController.reverse().whenComplete(() {
+      if (mounted) setState(() => _createMenuOpen = false);
+    });
+  }
+
+  void _toggleCreateMenu() {
+    if (_createMenuOpen) {
+      _closeCreateMenu();
+      return;
+    }
+    setState(() => _createMenuOpen = true);
+    _createMenuController.forward(from: 0);
+  }
+
+  Future<void> _onCreateAction(BottomNavCreateAction action) async {
+    _closeCreateMenu();
+    switch (action) {
+      case BottomNavCreateAction.story:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => const StoryUploadScreen(successDismissToRoot: true),
+          ),
+        );
+      case BottomNavCreateAction.post:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => const UploadScreen(initialBottomSegment: 1),
+          ),
+        );
+      case BottomNavCreateAction.reel:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => const UploadScreen(
+              initialBottomSegment: 1,
+              openVideoCameraOnLaunch: true,
+            ),
+          ),
+        );
+      case BottomNavCreateAction.vr:
+        await Navigator.of(context).push<void>(
+          MaterialPageRoute<void>(
+            builder: (_) => const UploadScreen(
+              initialBottomSegment: 1,
+              preferVrUpload: true,
+            ),
+          ),
+        );
+      case BottomNavCreateAction.live:
+        await openCreatorLiveScreen(context);
+    }
+    if (!mounted) return;
+    setState(() {
+      _currentIndex = 0;
+      _lastSelectedIndex = 0;
+      _feedRefreshToken++;
+    });
+  }
+
+  Future<void> _onNavTap(int index) async {
+    if (index == 2) {
+      _toggleCreateMenu();
+      return;
+    }
+    _closeCreateMenu();
     if (index == 1) {
       setState(() {
         _currentIndex = 1;
@@ -242,7 +315,10 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
             left: 0,
             right: 0,
             bottom: 0,
-            child: StreamBuilder<int>(
+            child: AnimatedBuilder(
+              animation: _createMenuAnimation,
+              builder: (context, _) {
+                return StreamBuilder<int>(
               stream: NotificationService().watchUnreadCount(),
               builder: (context, unreadSnapshot) {
                 final unreadCount = unreadSnapshot.data ?? 0;
@@ -274,6 +350,10 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
                                   profileImageUrl: profileImageUrl,
                                   unreadNotificationCount: unreadCount,
                                   unreadChatCount: chatUnread,
+                                  isCreateMenuOpen: _createMenuOpen,
+                                  createMenuProgress: _createMenuAnimation.value,
+                                  onCreateMenuToggle: _toggleCreateMenu,
+                                  onCreateAction: _onCreateAction,
                                   useFeedChrome:
                                       _currentIndex == 0 || _currentIndex == 1,
                                   feedReelProgress: showReelProgress
@@ -321,6 +401,8 @@ class _MainNavWrapperState extends State<MainNavWrapper> {
                     );
                   },
                 );
+              },
+            );
               },
             ),
           ),

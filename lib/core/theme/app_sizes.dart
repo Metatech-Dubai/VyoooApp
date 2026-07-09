@@ -218,8 +218,8 @@ abstract final class AppSizes {
       designPx * liveFeedHeightScale(context);
 
   // — Bottom nav —
-  /// Figma tab icon slot — BottomNavBar SVGs use a 24×24 viewBox.
-  static const double bottomNavIconSlot = 25;
+  /// Shared optical slot for tab icons (fits broadcast 32×27; others center inside).
+  static const double bottomNavIconSlot = 32;
 
   /// Tab icon render size inside the tap target / selected pill.
   static const double bottomNavIcon = bottomNavIconSlot;

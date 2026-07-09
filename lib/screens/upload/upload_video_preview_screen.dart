@@ -9,9 +9,14 @@ import 'upload_details_screen.dart';
 
 /// Preview selected video before upload: play/pause, seek bar, duration, mute, Edit Video, Next.
 class UploadVideoPreviewScreen extends StatefulWidget {
-  const UploadVideoPreviewScreen({super.key, required this.asset});
+  const UploadVideoPreviewScreen({
+    super.key,
+    required this.asset,
+    this.preferVrUpload = false,
+  });
 
   final AssetEntity asset;
+  final bool preferVrUpload;
 
   @override
   State<UploadVideoPreviewScreen> createState() =>
@@ -266,7 +271,10 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
                 _controller?.pause();
                 Navigator.of(context).push(
                   MaterialPageRoute<void>(
-                    builder: (_) => UploadDetailsScreen(asset: widget.asset),
+                    builder: (_) => UploadDetailsScreen(
+                      asset: widget.asset,
+                      initialMarkAs360: widget.preferVrUpload,
+                    ),
                   ),
                 );
               },
