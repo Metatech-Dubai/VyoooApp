@@ -82,18 +82,18 @@ Future<void> showProfileGridSpanSheet({
                       ),
                     ),
                     _SpanOption(
-                      label: 'Large tile (2×2)',
+                      label: 'Large Tile (2×2)',
                       selected:
                           selected == ProfileGridSpanOverride.double,
                       onTap: () => apply(ProfileGridSpanOverride.double),
                     ),
                     _SpanOption(
-                      label: 'Normal tile (1×1)',
+                      label: 'Normal Tile (1×1)',
                       selected: selected == ProfileGridSpanOverride.unit,
                       onTap: () => apply(ProfileGridSpanOverride.unit),
                     ),
                     _SpanOption(
-                      label: 'Automatic (views)',
+                      label: 'Automatic (Views)',
                       selected: selected == ProfileGridSpanOverride.auto,
                       onTap: () => apply(ProfileGridSpanOverride.auto),
                     ),

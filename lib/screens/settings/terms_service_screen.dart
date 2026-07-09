@@ -69,7 +69,7 @@ class TermsServiceScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Terms of Service');
+    return const SettingsInnerAppBar(title: 'Terms Of Service');
   }
 }
 

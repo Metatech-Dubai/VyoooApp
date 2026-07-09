@@ -907,7 +907,7 @@ class SearchScreenState extends State<SearchScreen>
           if (recommended.isNotEmpty) ...[
             const SizedBox(height: AppSpacing.xl),
             _buildSection(
-              'Recommended For you',
+              'Recommended For You',
               recommended,
               chrome: chrome,
               showViewAll: recommended.length >= _liveSectionViewAllMinItems,
@@ -1009,7 +1009,7 @@ class SearchScreenState extends State<SearchScreen>
             ),
             onPressed: () => _selectSearchTab(1),
             child: const Text(
-              'Browse posts',
+              'Browse Posts',
               style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
             ),
           ),
@@ -1029,7 +1029,7 @@ class SearchScreenState extends State<SearchScreen>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Discover creators',
+                'Discover Creators',
                 style: TextStyle(
                   color: chrome.primaryText,
                   fontSize: 18,
@@ -1039,7 +1039,7 @@ class SearchScreenState extends State<SearchScreen>
               GestureDetector(
                 onTap: () => _selectSearchTab(3),
                 child: Text(
-                  'See all',
+                  'See All',
                   style: TextStyle(
                     color: chrome.mutedText,
                     fontSize: 12,
@@ -1131,7 +1131,7 @@ class SearchScreenState extends State<SearchScreen>
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
-            'Suggested for you',
+            'Suggested For You',
             style: TextStyle(
               color: chrome.primaryText,
               fontSize: 18,

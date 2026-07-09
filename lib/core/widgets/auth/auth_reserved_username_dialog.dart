@@ -39,7 +39,7 @@ class AuthReservedUsernameDialog extends StatelessWidget {
         AuthBrandedDialogActionRow(
           actions: [
             AuthBrandedDialogAction(
-              label: 'Choose another',
+              label: 'Choose Another',
               style: AppTypography.authDialogCancel,
               onTap: () => Navigator.of(context).pop(false),
             ),

@@ -32,14 +32,14 @@ class _ArchiveSettingsScreenState extends State<ArchiveSettingsScreen>
         SettingsGroupCard(
           children: [
             SettingsSwitchTile(
-              title: 'Auto-archive stories',
+              title: 'Auto-Archive Stories',
               subtitle: 'Remove stories from your profile after 24 hours',
               value: prefs.autoArchiveStories,
               enabled: !prefsSaving,
               onChanged: (v) => patchUserPreferences((p) => p.copyWith(autoArchiveStories: v)),
             ),
             SettingsSwitchTile(
-              title: 'Save story to archive',
+              title: 'Save Story To Archive',
               subtitle: 'Keep a copy in archive when a story expires',
               value: prefs.saveStoryToArchive,
               enabled: !prefsSaving,
@@ -51,7 +51,7 @@ class _ArchiveSettingsScreenState extends State<ArchiveSettingsScreen>
         SettingsGroupCard(
           children: [
             SettingsNavTile(
-              title: 'Saved posts',
+              title: 'Saved Posts',
               subtitle: 'View posts you saved privately',
               onTap: () => Navigator.of(context).push(
                 MaterialPageRoute<void>(builder: (_) => const SavedPostsScreen()),

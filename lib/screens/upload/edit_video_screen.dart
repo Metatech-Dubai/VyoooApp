@@ -774,7 +774,7 @@ class _ExitSheet extends StatelessWidget {
           const SizedBox(height: 16),
           _sheetBtn(
             icon: Icons.logout_rounded,
-            label: 'Exit editing',
+            label: 'Exit Editing',
             isExit: true,
             onTap: onExit,
           ),

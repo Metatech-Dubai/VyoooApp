@@ -28,21 +28,24 @@ abstract final class ProfileAssets {
   static const String profileTabBarFigmaSample =
       'assets/vyooO_icons/Profile/profile_tab_bar.svg';
 
-  /// Figma bookmark accessory (35×39 white tile + icon).
+  /// Figma bookmark accessory (40×40 white tile + icon).
   static const String profileTabBookmark =
       'assets/vyooO_icons/Profile/profile_tab_bookmark.svg';
 
-  /// Figma star / saved accessory (35×39 white tile + icon).
+  /// Figma heart / saved accessory (40×40 white tile + icon).
   static const String profileTabStar =
       'assets/vyooO_icons/Profile/profile_tab_star.svg';
 
-  /// Bookmark glyph only — tinted in [ProfileFigmaTabBar].
+  /// Bookmark glyph only — tinted in [ProfileFigmaTabBar] (Figma 16×16).
   static const String profileTabBookmarkIcon =
       'assets/vyooO_icons/Profile/profile_tab_bookmark_icon.svg';
 
-  /// Star glyph only — tinted in [ProfileFigmaTabBar].
-  static const String profileTabStarIcon =
-      'assets/vyooO_icons/Profile/profile_tab_star_icon.svg';
+  /// Heart glyph only — tinted in [ProfileFigmaTabBar] (Figma 15×14).
+  static const String profileTabHeartIcon =
+      'assets/vyooO_icons/Profile/profile_tab_heart_icon.svg';
+
+  /// Legacy alias — prefer [profileTabHeartIcon].
+  static const String profileTabStarIcon = profileTabHeartIcon;
 
   /// Share action next to Edit Profile (40×40 circle + glyph).
   static const String profileActionShare =
@@ -52,7 +55,27 @@ abstract final class ProfileAssets {
   static const String profileActionPlus =
       'assets/vyooO_icons/Profile/profile_action_plus.svg';
 
-  /// Highlights add tile (64×64 #660033 + white plus).
+  /// Highlights add tile (68×68 #1A1A1A + white plus).
   static const String profileHighlightAddTile =
       'assets/vyooO_icons/Profile/profile_highlight_add_tile.svg';
+
+  /// Highlights row opener — collapsed (Figma 68×19 #1A1A1A + white chevron).
+  static const String profileHighlightsOpener =
+      'assets/vyooO_icons/Profile/profile_highlights_opener.svg';
+
+  /// Highlights opener chevron glyph — rotates when expanded.
+  static const String profileHighlightsOpenerChevron =
+      'assets/vyooO_icons/Profile/profile_highlights_opener_chevron.svg';
+
+  /// Profile side drawer rail — expanded (Figma 43×150).
+  static const String profileSideDrawer =
+      'assets/vyooO_icons/Profile/profile_side_drawer.svg';
+
+  /// Profile side drawer rail — collapsed peek tab (Figma 12×150).
+  static const String profileSideDrawerCollapsed =
+      'assets/vyooO_icons/Profile/profile_side_drawer_collapsed.svg';
+
+  /// Figma verified badge — green circle + white check (17×17).
+  static const String profileVerifiedBadge =
+      'assets/vyooO_icons/Profile/profile_verified_badge.svg';
 }

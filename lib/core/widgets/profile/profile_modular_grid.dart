@@ -10,16 +10,17 @@ import 'profile_grid_tile.dart';
 import 'profile_grid_title.dart';
 import 'profile_span_grid_layout.dart';
 
-/// Modular square grid (1×1 and 2×2) for profile Posts / VR / Saved tabs.
+/// Modular portrait grid (1×1 and optional 2×2) for profile Feed / VR / Saved tabs.
 class ProfileModularGrid extends StatelessWidget {
   const ProfileModularGrid({
     super.key,
     required this.items,
     required this.onItemTap,
     this.onItemLongPress,
-    this.layoutMode = ProfileGridLayoutMode.artistModern,
+    this.layoutMode = ProfileGridLayoutMode.uniform,
     this.crossAxisCount = ProfileFigmaTokens.contentGridCrossAxisCount,
     this.gap = ProfileFigmaTokens.contentGridGap,
+    this.tileAspectRatio = ProfileFigmaTokens.contentGridTileAspectRatio,
     this.minViewsForDouble = 0,
     this.padding = EdgeInsets.zero,
   });
@@ -30,6 +31,8 @@ class ProfileModularGrid extends StatelessWidget {
   final ProfileGridLayoutMode layoutMode;
   final int crossAxisCount;
   final double gap;
+  /// Width divided by height (Figma ~132.49 / 165.61).
+  final double tileAspectRatio;
   final int minViewsForDouble;
   final EdgeInsetsGeometry padding;
 
@@ -76,10 +79,12 @@ class ProfileModularGrid extends StatelessWidget {
             return const SizedBox.shrink();
           }
 
-          final cellSize =
+          final cellWidth =
               (width - gap * (crossAxisCount - 1)) / crossAxisCount;
+          final cellHeight = cellWidth / tileAspectRatio;
           final rowCount = ProfileSpanGridLayout.rowCount(slots);
-          final height = rowCount * cellSize + (rowCount - 1) * gap;
+          final height =
+              rowCount * cellHeight + (rowCount - 1) * gap;
 
           return SizedBox(
             height: height,
@@ -95,7 +100,8 @@ class ProfileModularGrid extends StatelessWidget {
                 for (final slot in slots)
                   _positionedTile(
                     slot: slot,
-                    cellSize: cellSize,
+                    cellWidth: cellWidth,
+                    cellHeight: cellHeight,
                     gap: gap,
                     gridWidth: width,
                     gridHeight: height,
@@ -113,7 +119,8 @@ class ProfileModularGrid extends StatelessWidget {
 
   Widget _positionedTile({
     required ProfileSpanGridSlot slot,
-    required double cellSize,
+    required double cellWidth,
+    required double cellHeight,
     required double gap,
     required double gridWidth,
     required double gridHeight,
@@ -123,16 +130,16 @@ class ProfileModularGrid extends StatelessWidget {
   }) {
     if (gridItem == null) return const SizedBox.shrink();
 
-    final left = slot.column * (cellSize + gap);
-    final top = slot.row * (cellSize + gap);
+    final left = slot.column * (cellWidth + gap);
+    final top = slot.row * (cellHeight + gap);
     final spansLastColumn = slot.column + slot.columnSpan == crossAxisCount;
     final spansLastRow = slot.row + slot.rowSpan == rowCount;
     final tileWidth = spansLastColumn
         ? gridWidth - left
-        : slot.columnSpan * cellSize + (slot.columnSpan - 1) * gap;
+        : slot.columnSpan * cellWidth + (slot.columnSpan - 1) * gap;
     final tileHeight = spansLastRow
         ? gridHeight - top
-        : slot.rowSpan * cellSize + (slot.rowSpan - 1) * gap;
+        : slot.rowSpan * cellHeight + (slot.rowSpan - 1) * gap;
     final isHero = slot.placement.span == ProfileGridSpan.double;
 
     return Positioned(

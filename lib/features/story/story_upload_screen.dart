@@ -833,7 +833,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF171717),
         title: Text(
-          hasText ? 'Edit text' : 'Add text',
+          hasText ? 'Edit Text' : 'Add Text',
           style: const TextStyle(color: Colors.white),
         ),
         content: TextField(
@@ -852,7 +852,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(''),
               child: const Text(
-                'Remove text',
+                'Remove Text',
                 style: TextStyle(color: Color(0xFFFF2D55)),
               ),
             ),
@@ -1232,7 +1232,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF171717),
-        title: const Text('Resume draft?', style: TextStyle(color: Colors.white)),
+        title: const Text('Resume Draft?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'You have an unfinished story draft.',
           style: TextStyle(color: Colors.white70),
@@ -1240,7 +1240,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Start fresh'),
+            child: const Text('Start Fresh'),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -1319,7 +1319,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF171717),
-        title: const Text('Leave story?', style: TextStyle(color: Colors.white)),
+        title: const Text('Leave Story?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Save a draft to finish later, or discard.',
           style: TextStyle(color: Colors.white70),
@@ -1335,7 +1335,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'save'),
-            child: const Text('Save draft'),
+            child: const Text('Save Draft'),
           ),
         ],
       ),
@@ -1444,7 +1444,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: const Color(0xFF171717),
-        title: const Text('Discard video?', style: TextStyle(color: Colors.white)),
+        title: const Text('Discard Video?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Your clips will be removed.',
           style: TextStyle(color: Colors.white70),
@@ -1540,7 +1540,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                   ),
                   const Expanded(
                     child: Text(
-                      'Video story',
+                      'Video Story',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.white,
@@ -1730,7 +1730,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                             borderRadius: BorderRadius.circular(24),
                           ),
                           child: const Text(
-                            'Choose from library',
+                            'Choose From Library',
                             style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
                           ),
                         ),
@@ -2312,7 +2312,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                             const SizedBox(width: 8),
                             _editActionButton(
                               icon: Icons.delete_outline_rounded,
-                              label: 'Remove text',
+                              label: 'Remove Text',
                               onTap: _removeOverlayText,
                             ),
                           ],
@@ -2355,7 +2355,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                           const SizedBox(width: 8),
                           _editActionButton(
                             icon: Icons.layers_clear_rounded,
-                            label: 'Clear ink',
+                            label: 'Clear Ink',
                             onTap: _imageEdits[_previewIdx].strokes.isEmpty
                                 ? () {}
                                 : () {

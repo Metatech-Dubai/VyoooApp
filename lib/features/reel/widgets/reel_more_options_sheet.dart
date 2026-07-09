@@ -178,7 +178,7 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                     if (widget.onSavePrivately != null)
                       _SettingTile(
                         icon: Icons.bookmark_add_outlined,
-                        label: 'Save privately',
+                        label: 'Save Privately',
                         onTap: () {
                           Navigator.of(context).pop();
                           widget.onSavePrivately?.call();
@@ -193,7 +193,7 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                         ),
                         _SettingTile(
                           icon: Icons.closed_caption_outlined,
-                          label: 'Captions and translations',
+                          label: 'Captions And Translations',
                           onTap: () {
                             Navigator.of(context).pop();
                             widget.onCaptions?.call();
@@ -201,7 +201,7 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                         ),
                         _SettingTile(
                           icon: Icons.speed_rounded,
-                          label: 'Playback speed',
+                          label: 'Playback Speed',
                           trailing: widget.playbackSpeed,
                           onTap: () {
                             Navigator.of(context).pop();
@@ -227,7 +227,7 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                       children: [
                         _SettingTile(
                           icon: Icons.shuffle_rounded,
-                          label: 'Manage content preferences',
+                          label: 'Manage Content Preferences',
                           onTap: () {
                             Navigator.of(context).pop();
                             widget.onManagePreferences?.call();
@@ -235,7 +235,7 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                         ),
                         _SettingTile(
                           icon: Icons.info_outline_rounded,
-                          label: "Why you're seeing this post",
+                          label: "Why You're Seeing This Post",
                           onTap: () {
                             Navigator.of(context).pop();
                             widget.onWhyThisPost?.call();

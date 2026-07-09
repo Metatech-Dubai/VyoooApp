@@ -15,18 +15,18 @@ class _StoryReelsPrivacyScreenState extends State<StoryReelsPrivacyScreen>
   @override
   Widget build(BuildContext context) {
     if (prefsLoading) {
-      return SettingsPageShell(title: 'Story & reels', children: [buildPrefsLoading()]);
+      return SettingsPageShell(title: 'Story & Reels', children: [buildPrefsLoading()]);
     }
 
     return SettingsPageShell(
-      title: 'Story & reels',
+      title: 'Story & Reels',
       subtitle: 'Sharing and remix controls for stories and reels.',
       children: [
         if (buildPrefsErrorBanner() != null) buildPrefsErrorBanner()!,
         SettingsGroupCard(
           children: [
             SettingsSwitchTile(
-              title: 'Allow story resharing',
+              title: 'Allow Story Resharing',
               subtitle: 'Let others share your story to their story',
               value: prefs.allowStoryReshare,
               enabled: !prefsSaving,
@@ -34,7 +34,7 @@ class _StoryReelsPrivacyScreenState extends State<StoryReelsPrivacyScreen>
                   patchUserPreferences((p) => p.copyWith(allowStoryReshare: v)),
             ),
             SettingsSwitchTile(
-              title: 'Allow reels remix',
+              title: 'Allow Reels Remix',
               subtitle: 'Let others use your audio in their reels',
               value: prefs.allowReelsRemix,
               enabled: !prefsSaving,
@@ -42,7 +42,7 @@ class _StoryReelsPrivacyScreenState extends State<StoryReelsPrivacyScreen>
                   patchUserPreferences((p) => p.copyWith(allowReelsRemix: v)),
             ),
             SettingsSwitchTile(
-              title: 'Hide story from close friends list',
+              title: 'Hide Story From Close Friends List',
               subtitle: 'Use close friends for exclusive story audience',
               value: false,
               enabled: false,

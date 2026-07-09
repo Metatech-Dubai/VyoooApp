@@ -26,31 +26,56 @@ abstract final class ProfileFigmaTokens {
   /// Tab track fill — white pill behind Posts / VR / Clips / Tags labels.
   static const Color tabTrack = screenBackground;
 
-  /// Bookmark / star accessory buttons beside the tab pill (Figma 35×39).
-  static const double tabAccessoryWidth = 35;
-  static const double tabAccessoryHeight = 39;
+  /// Bookmark / star accessory buttons beside the tab pill (Figma 40×40).
+  static const double tabAccessoryWidth = 40;
+  static const double tabAccessoryHeight = 40;
   static const double tabAccessoryRadius = 12;
   static const Color tabAccessoryIconColor = AppColors.profileTabAccessoryIcon;
+  /// Bookmark / heart tile fill (Figma white — not grey).
+  static const Color tabAccessoryFill = screenBackground;
   static const double tabAccessorySize = tabAccessoryWidth;
-  static const double tabAccessoryIconSize = 18;
+  static const double tabBookmarkIconSize = 16;
+  static const double tabHeartIconWidth = 15;
+  static const double tabHeartIconHeight = 14;
 
-  /// Fixed height of the white tab pill (Figma 51px inner track).
-  static const double tabBarHeight = 51;
-  static const double tabBarRadius = 25.5;
-  static const double tabSelectedPillRadius = 19.5;
-  /// Drop shadow around tab track (Figma 12% black, 2px blur).
+  /// White tab track (Figma 291×40, rx=12).
+  static const double tabBarTrackHeight = 40;
+  static const double tabBarTrackRadius = 12;
+  static const double tabBarInnerPadding = 4;
+  static const double tabSelectedPillWidth = 68;
+  static const double tabSelectedPillHeight = 32;
+  static const double tabSelectedPillRadius = 8;
+  /// Selected tab chip fill (Figma #1A1A1A).
+  static const Color tabSelectedPillFill = Color(0xFF1A1A1A);
+  /// Gap between tab track and bookmark / star (Figma 4px).
+  static const double tabBarAccessoryGap = 4;
+  /// Full tab row width incl. accessories (Figma 387).
+  static const double profileTabBarRowMaxWidth = 387;
+  /// Drop shadow on tab track + accessories (Figma 12% black, σ=2).
   static const Color tabBarShadowColor = Color(0x1F000000);
   static const double tabBarShadowBlur = 4;
-  /// Selected tab fill (#660033).
+  static const List<BoxShadow> tabBarElementShadow = [
+    BoxShadow(
+      color: tabBarShadowColor,
+      blurRadius: tabBarShadowBlur,
+    ),
+  ];
+
+  /// Legacy aliases — prefer [tabBarTrackHeight] / [tabBarTrackRadius].
+  static const double tabBarHeight = tabBarTrackHeight;
+  static const double tabBarRadius = tabBarTrackRadius;
+  static const double tabBarOuterPadding = tabBarInnerPadding;
+
+  /// Magenta accent — highlights add tile, loading spinners (#660033).
   static const Color tabSelectedFill = AppColors.feedFollowButton;
   /// Unselected tab label (#5D5F5F).
   static const Color tabUnselectedLabelColor = AppColors.profileTabUnselectedLabel;
 
-  static const double highlightTileWidth = 64;
-  static const double highlightTileHeight = 64;
-  static const double highlightTileRadius = 12;
-  static const double highlightTileGap = 20;
-  static const double highlightLabelGap = 6;
+  static const double highlightTileWidth = 68;
+  static const double highlightTileHeight = 68;
+  static const double highlightTileRadius = 10;
+  static const double highlightTileGap = 16.7;
+  static const double highlightLabelGap = 5;
   static const double highlightLabelFontSize = 12;
   static const FontWeight highlightLabelFontWeight = FontWeight.w400;
   static const double highlightLabelLineHeight = 14;
@@ -60,76 +85,113 @@ abstract final class ProfileFigmaTokens {
   static const Color highlightAlbumLabelColor = AppColors.profileDisplayName;
   /// Highlight album placeholder / empty cover (Figma #EFEDED).
   static const Color highlightTileBackground = AppColors.profileStatChipBackground;
-  /// Story / highlight add "+" tile fill — matches selected tab chip (#660033).
-  static const Color highlightAddFill = tabSelectedFill;
+  /// Story / highlight add "+" tile fill (Figma #1A1A1A).
+  static const Color highlightAddFill = Color(0xFF1A1A1A);
+  /// Chevron handle above highlights row (Figma #1A1A1A).
+  static const Color highlightsToggleFill = highlightAddFill;
+  /// Highlights opener — Figma 68×19.
+  static const double highlightsToggleWidth = 68;
+  static const double highlightsToggleHeight = 19;
+  static const double highlightsToggleChevronWidth = 8;
+  static const double highlightsToggleChevronHeight = 5;
   /// Album cover drop shadow — Figma dy=1, blur 2px @ 5% black.
   static const Color highlightTileShadowColor = Color(0x0D000000);
   static const double highlightTileShadowBlur = 2;
   static const Offset highlightTileShadowOffset = Offset(0, 1);
 
-  /// Tile + gap + single-line label — Figma row 97px.
-  static const double highlightRowHeight = 97;
+  /// Tile + gap + single-line label — Figma row 85px.
+  static const double highlightRowHeight = 85;
 
-  /// Magenta chevron handle — toggles highlights list (width matches Posts tab cell).
-  static const double highlightsToggleHeight = 24;
-  /// Top corners only — bottom edge is square.
+  /// Highlights opener inset from content column start (Figma ~14px).
+  static const double highlightsOpenerLeftInset = 14;
   static const double highlightsToggleTopRadius = 12;
   static const double highlightsToggleTopGap = 8;
   static const double highlightsSectionTopGap = 12;
 
-  /// Edit Profile pill fill — near-black per Figma.
-  static const Color actionButtonFill = primaryText;
+  /// Edit Profile pill fill — near-black per Figma (#1C1C1C).
+  static const Color actionButtonFill = Color(0xFF1C1C1C);
 
-  /// Secondary circular action buttons.
-  static const Color secondaryActionFill = cardBackground;
+  /// Total avatar frame (with story ring) — Figma 130×130.
+  static const double avatarOuterSize = 130;
+  /// White gap between story ring and photo (Figma padding 4.66).
+  static const double avatarRingPadding = 4.66;
+  /// Story ring stroke (Figma gap 4.66).
+  static const double avatarRingWidth = 4.66;
 
-  /// Total avatar frame (with story ring). ~46% of typical phone width.
-  static const double avatarOuterSize = 180;
-  static const double avatarRingPadding = 4;
-  static const double avatarRingWidth = 3;
+  /// Horizontal inset — header + content column (Figma 15px left / right).
+  static const double profileContentHorizontalPad = 15;
+  static const double profileHeaderHorizontalPad = profileContentHorizontalPad;
 
-  /// Horizontal inset of the header column (matches [AppSpacing.md]).
-  static const double profileHeaderHorizontalPad = 16;
+  /// Shared content column width below tabs (Figma 387).
+  static const double profileContentColumnWidth = 387;
 
-  /// Posts grid / tab content — same left and right inset as the tab bar row.
-  static const EdgeInsets profileGridPadding = EdgeInsets.symmetric(
-    horizontal: profileHeaderHorizontalPad,
-  );
+  /// Shared top inset — profile avatar row and side drawer start here.
+  static const double profileHeaderTop = profileHeaderHorizontalPad;
+
+  /// Hamburger menu sits slightly below the shared header top edge.
+  static const double profileHeaderMenuTopInset = 8;
+
+  /// Profile post grid — edge-to-edge in the grey card (Figma: no side inset).
+  static const EdgeInsets profileGridPadding = EdgeInsets.zero;
+
+  /// Highlights / opener align with selected Feed pill — tab track inner pad (4px).
+  static const double profileHighlightsLeftInset = tabBarInnerPadding;
 
   static const double displayNameFontSize = 20;
   static const double displayNameHeight = 25 / 20;
+  /// Display name + badge row height (Figma 32).
+  static const double displayNameRowHeight = 32;
   /// Figma display-name fill (#1B1C1C).
   static const Color displayNameColor = AppColors.profileDisplayName;
-  static const double nameVerifiedGap = 6.79;
-  static const double verifiedBadgeSize = 18;
+  /// Gap between display name and verification badge (Figma ~8.82).
+  static const double nameVerifiedGap = 8.82;
+  /// Verification badge diameter (Figma 16.67).
+  static const double verifiedBadgeSize = 16.667;
+  /// Default verified badge fill — personal accounts (Figma #22C55E).
+  static const Color verifiedBadgeGreen = Color(0xFF22C55E);
 
   static const double statChipRadius = 12;
-  static const double statChipWidth = 100;
-  static const double statChipHeight = 72;
+  static const double statChipWidth = 85;
+  static const double statChipHeight = 55;
   static const double statChipGap = 12;
-  static const double statValueFontSize = 20;
+  static const double statChipValueLabelGap = 4;
+  static const double statValueFontSize = 18;
   static const double statValueLineHeight = 24;
   static const double statLabelFontSize = 12;
+  static const double statLabelLineHeight = 16;
   /// Stat chip fill (#EFEDED).
   static const Color statChipBackground = AppColors.profileStatChipBackground;
   /// Stat counter value fill (#1B1C1C).
   static const Color statValueColor = AppColors.profileDisplayName;
-  /// Stat chip label fill (#554247).
-  static const Color statLabelColor = AppColors.profileStatLabel;
+  /// Stat chip label fill (Figma #808080).
+  static const Color statChipLabelColor = Color(0xFF808080);
 
   static const double actionButtonWidth = 146;
   static const double actionButtonHeight = 40;
-  static const double actionButtonRadius = 52;
+  static const double actionButtonRadius = 20;
   static const double actionButtonPaddingH = 26;
   static const double actionButtonPaddingV = 10;
-  static const double actionButtonGap = 8;
+  static const double actionButtonGap = 12;
   static const double actionButtonFontSize = 16;
   static const FontWeight actionButtonFontWeight = FontWeight.w500;
   static const double actionIconButtonSize = 40;
   static const double actionIconSize = 22;
+  /// Profile action row max width (Figma 338).
+  static const double profileActionRowMaxWidth = 338;
+  /// Circular share / story buttons (Figma #E9E8E7).
+  static const Color secondaryActionFill = Color(0xFFE9E8E7);
 
-  static const double bioFontSize = 14;
+  static const double bioFontSize = 16;
+  static const double bioLineHeight = 20;
   static const double musicFontSize = 12;
+  /// Bio + music block max width (Figma 338).
+  static const double profileBioMusicMaxWidth = 338;
+  /// Bio and music line color (Figma #808080).
+  static const Color profileBioMusicColor = Color(0xFF808080);
+  /// Gap between bio line and profile music line.
+  static const double profileBioMusicGap = 8;
+  static const double profileBioMusicIconSize = 14;
+  static const double profileBioMusicIconGap = 6;
 
   /// Posts / VR / Clips / Tags panel surface.
   static const Color contentSurface = cardBackground;
@@ -145,40 +207,41 @@ abstract final class ProfileFigmaTokens {
   /// Gap between action buttons and the grey content card.
   static const double contentSectionTopGap = 20;
 
-  /// Gutter between profile post tiles (4pt grid).
-  static const double contentGridGap = 2;
+  /// Gutter between profile post tiles (Figma 1.06px).
+  static const double contentGridGap = 1.06;
 
-  /// Rounded corners on each profile post tile.
-  static const double contentGridRadius = 8;
+  /// Portrait tile corners — flush grid in Figma (no visible radius).
+  static const double contentGridRadius = 0;
 
-  /// Posts / VR / Saved masonry grid — 4 columns with 2×2 hero per block.
-  static const int contentGridCrossAxisCount = 4;
-  static const double tabBarOuterPadding = 6;
+  /// Profile feed grid — 3 columns, uniform portrait tiles (Figma).
+  static const int contentGridCrossAxisCount = 3;
+  /// Tile width / height from Figma row (~132.49 × 165.61).
+  static const double contentGridTileAspectRatio = 132.49 / 165.61;
+  /// Reference row width for design QA (399.59px @ 3 cols + 2 gaps).
+  static const double contentGridReferenceRowWidth = 399.59;
   static const double tabSelectedFontSize = 16;
-  static const double tabUnselectedFontSize = 12;
+  static const double tabUnselectedFontSize = 16;
   static const double tabFontSize = tabUnselectedFontSize;
 
   static const double headerUsernameFontSize = 18;
 
-  /// Profile side rail (burgundy drawer) beside avatar.
-  static const double profileSideRailWidth = 52;
-  static const double profileSideRailRadius = 20;
-  /// Drawer fill — open and collapsed handle (Figma #660033).
-  static const Color sideDrawerFill = AppColors.feedFollowButton;
-  /// Drawer wallet / chat / revenue icons (Figma #EC709C @ 70%).
-  static const Color sideDrawerSecondaryIcon = AppColors.profileDrawerSecondaryIcon;
-  /// Vertical offset — lines up with [profileHeaderHorizontalPad] above the avatar.
-  static const double profileSideRailTop = 16;
-  /// Same height as [avatarOuterSize] (profile photo frame).
-  static const double profileSideRailHeight = avatarOuterSize;
-  static const double profileSideRailIconSize = 22;
-  static const double profileSideAccentWidth = 8;
-
-  /// Collapsed drawer handle — narrow plum tab peeking from the left edge (Figma 9×180).
-  static const double profileSideRailHandleWidth = 9;
-  /// Right-edge corner radius on the collapsed handle (Figma ~11.02).
-  static const double profileSideRailHandleCornerRadius = 11.0204;
-  static const Duration profileSideDrawerAnimation = Duration(milliseconds: 260);
+  /// Profile side rail beside avatar — expanded (Figma 43×150).
+  static const double profileSideRailWidth = 43;
+  /// Collapsed peek tab width (Figma 12×150).
+  static const double profileSideRailCollapsedWidth = 12;
+  static const double profileSideRailHeight = 150;
+  /// Right-edge corner radius on the drawer panel (Figma 10).
+  static const double profileSideRailRadius = 10;
+  /// Drawer fill (#1A1A1A).
+  static const Color sideDrawerFill = Color(0xFF1A1A1A);
+  /// Drawer icon tint (white glyphs in SVG).
+  static const Color sideDrawerIconColor = Color(0xFFFFFFFF);
+  /// Vertical offset — top-aligned with the profile avatar row.
+  static const double profileSideRailTop = profileHeaderTop;
+  /// Tap target height for each drawer icon row.
+  static const double profileSideRailTapHeight = 42;
+  static const Duration profileSideDrawerAnimation =
+      Duration(milliseconds: 260);
 
   /// Compact other-user profile top bar.
   static const double otherUserHeaderAvatarRadius = 18;

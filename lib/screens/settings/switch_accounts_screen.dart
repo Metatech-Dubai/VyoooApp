@@ -93,7 +93,7 @@ class _SwitchAccountsScreenState extends State<SwitchAccountsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SettingsInnerAppBar(title: 'Switch accounts'),
+              const SettingsInnerAppBar(title: 'Switch Accounts'),
               Expanded(
                 child: ValueListenableBuilder<int>(
                   valueListenable: SavedAccountsService.revision,

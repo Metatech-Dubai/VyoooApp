@@ -745,7 +745,7 @@ class _NotifTile extends StatelessWidget {
           );
         }
         return _PinkPillButton(
-          label: 'Follow back',
+          label: 'Follow Back',
           onTap: onFollowBack ?? onOpenProfile,
         );
       case 'followRequest':

@@ -243,6 +243,6 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Report problem');
+    return const SettingsInnerAppBar(title: 'Report Problem');
   }
 }

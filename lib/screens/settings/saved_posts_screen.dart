@@ -146,6 +146,6 @@ class SavedPostsScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Saved posts (private)');
+    return const SettingsInnerAppBar(title: 'Saved Posts (Private)');
   }
 }

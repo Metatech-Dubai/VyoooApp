@@ -93,11 +93,11 @@ class _CloseFriendsScreenState extends State<CloseFriendsScreen>
   @override
   Widget build(BuildContext context) {
     if (prefsLoading) {
-      return SettingsPageShell(title: 'Close friends', children: [buildPrefsLoading()]);
+      return SettingsPageShell(title: 'Close Friends', children: [buildPrefsLoading()]);
     }
 
     return SettingsPageShell(
-      title: 'Close friends',
+      title: 'Close Friends',
       subtitle:
           'Share stories with a smaller group. Add up to 50 people by username.',
       children: [

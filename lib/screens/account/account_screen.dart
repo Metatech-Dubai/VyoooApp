@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../core/strings/app_strings.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/subscription/subscription_controller.dart';
@@ -57,7 +58,7 @@ class AccountScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           _AccountRow(
-                            label: 'Personal Information',
+                            label: AppStrings.personalInformation,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -68,7 +69,7 @@ class AccountScreen extends StatelessWidget {
                           ),
                           _divider(),
                           _AccountRow(
-                            label: 'Change Password',
+                            label: AppStrings.changePassword,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -79,7 +80,7 @@ class AccountScreen extends StatelessWidget {
                           ),
                           _divider(),
                           _AccountRow(
-                            label: 'Two-factor authentication',
+                            label: AppStrings.twoFactorAuthentication,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -90,7 +91,7 @@ class AccountScreen extends StatelessWidget {
                           ),
                           _divider(),
                           _AccountRow(
-                            label: 'Request verification',
+                            label: AppStrings.requestVerification,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -101,7 +102,7 @@ class AccountScreen extends StatelessWidget {
                           ),
                           _divider(),
                           _AccountRow(
-                            label: 'Blocked Users',
+                            label: AppStrings.blockedAccounts,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -123,7 +124,7 @@ class AccountScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Account');
+    return const SettingsInnerAppBar(title: AppStrings.account);
   }
 
   Widget _buildSectionHeader(String title) {

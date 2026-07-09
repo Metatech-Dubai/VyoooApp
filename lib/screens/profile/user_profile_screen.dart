@@ -155,7 +155,7 @@ class UserProfileScreen extends StatefulWidget {
 }
 
 class _UserProfileScreenState extends State<UserProfileScreen> {
-  static const List<String> _tabs = ['Posts', 'VR', 'Clips', 'Tags'];
+  static const List<String> _tabs = ['Feed', 'Reels', 'VR', 'Tags'];
   static const int _savedTabIndex = 4;
   static const Map<String, String> _accountTypeLabels = <String, String>{
     'personal': 'Personal',
@@ -684,10 +684,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!_highlightsExpanded) ...[
-              ProfileTabUnderFirstTab(
-                tabCount: _tabs.length,
-                showBookmarkAccessory: true,
-                showStarAccessory: true,
+              ProfileContentColumnAlign(
+                reserveTabAccessories: true,
+                alignWithFeedPill: true,
                 child: ProfileHighlightsToggleHandle(
                   expanded: false,
                   onTap: () => setState(() => _highlightsExpanded = true),
@@ -711,10 +710,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               const SizedBox(
                 height: ProfileFigmaTokens.highlightsToggleTopGap,
               ),
-              ProfileTabUnderFirstTab(
-                tabCount: _tabs.length,
-                showBookmarkAccessory: true,
-                showStarAccessory: true,
+              ProfileContentColumnAlign(
+                reserveTabAccessories: true,
+                alignWithFeedPill: true,
                 child: ProfileHighlightsToggleHandle(
                   expanded: true,
                   onTap: () => setState(() => _highlightsExpanded = false),
@@ -733,10 +731,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     required List<StoryHighlightModel> highlights,
     required bool loading,
   }) {
-    return ProfileTabTrackRow(
-      showBookmarkAccessory: true,
-      showStarAccessory: true,
-      alignWithPostsStart: true,
+    return ProfileContentColumnAlign(
+      reserveTabAccessories: true,
+      alignWithFeedPill: true,
       child: SizedBox(
         height: ProfileFigmaTokens.highlightRowHeight,
         child: loading && highlights.isEmpty
@@ -1063,34 +1060,15 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                         badgeColor: badgeColor,
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ProfileFigmaStatChip(
-                            label: 'Posts',
-                            value: _formatCount(_livePostCount ?? p.postCount),
-                          ),
-                          const SizedBox(
-                            width: ProfileFigmaTokens.statChipGap,
-                          ),
-                          ProfileFigmaStatChip(
-                            label: 'Followers',
-                            value: _formatCount(
-                              _liveFollowerCount ?? p.followerCount,
-                            ),
-                            onTap: () => _openFollowersFollowing(p, 0),
-                          ),
-                          const SizedBox(
-                            width: ProfileFigmaTokens.statChipGap,
-                          ),
-                          ProfileFigmaStatChip(
-                            label: 'Following',
-                            value: _formatCount(
-                              _liveFollowingCount ?? p.followingCount,
-                            ),
-                            onTap: () => _openFollowersFollowing(p, 1),
-                          ),
-                        ],
+                      ProfileFigmaStatChipsRow(
+                        postCount: _formatCount(_livePostCount ?? p.postCount),
+                        followerCount:
+                            _formatCount(_liveFollowerCount ?? p.followerCount),
+                        followingCount: _formatCount(
+                          _liveFollowingCount ?? p.followingCount,
+                        ),
+                        onFollowersTap: () => _openFollowersFollowing(p, 0),
+                        onFollowingTap: () => _openFollowersFollowing(p, 1),
                       ),
                       const SizedBox(height: 16),
                       _buildProfileInfoSection(p),
@@ -1345,14 +1323,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             ),
           ),
         ),
-        if (bio.isNotEmpty) ...[
+        if (bio.isNotEmpty || profileMusic.isNotEmpty) ...[
           const SizedBox(height: 12),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: ProfileBioText(bio: bio),
+          ProfileFigmaBioMusicSection(
+            bio: bio,
+            musicLabel: profileMusic,
           ),
         ],
-        ProfileFigmaMusicLine(label: profileMusic),
       ],
     );
   }
@@ -1645,10 +1622,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               return _buildEmptyTab();
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: reels,
                 thumbnailFor: ProfileReelGridNavigation.thumbnailFromReel,
@@ -1709,10 +1683,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               return SizedBox(height: 280, child: _buildEmptyTagsTab());
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: tagged,
                 thumbnailFor: ProfileReelGridNavigation.thumbnailFromReel,
@@ -1842,10 +1813,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
               return _buildEmptyTab();
             }
             return ProfileModularGrid(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.md,
-                vertical: AppSpacing.sm,
-              ),
+              padding: ProfileFigmaTokens.profileGridPadding,
               items: profileGridItemsFromReels(
                 reels: savedReels,
                 thumbnailFor: ProfileReelGridNavigation.thumbnailFromReel,

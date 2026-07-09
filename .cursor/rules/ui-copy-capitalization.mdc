@@ -1,0 +1,30 @@
+# UI copy capitalization (Vyooo)
+
+User-facing **labels** use **Title Case**: capitalize the first letter of each word.
+
+## Applies to
+
+- App bar titles
+- Settings / list tile labels
+- Button labels (primary, secondary, dialog actions)
+- Section headers and tab names
+- Short status chips (e.g. `Coming Soon`)
+
+## Does not apply to
+
+- Long body copy, subtitles, and snackbar sentences (sentence case)
+- User-generated content
+- Brand tokens: `Vyooo`, `VR`, acronyms (`OTP`, `4K`)
+
+## Source of truth
+
+Shared settings/account strings: `lib/core/strings/app_strings.dart`. Reuse constants when adding duplicate labels.
+
+## Examples
+
+| Use | Style |
+|-----|-------|
+| Settings tile | `Personal Information` |
+| Button | `Log Out`, `Sign In` |
+| Section | `Creator Tools` |
+| Snackbar | `Sign in to follow people.` (sentence) |

@@ -63,7 +63,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SettingsInnerAppBar(title: 'Creator subscriptions'),
+            const SettingsInnerAppBar(title: 'Creator Subscriptions'),
             Expanded(
               child: uid.isEmpty
                   ? const Center(

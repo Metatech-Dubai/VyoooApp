@@ -4,7 +4,7 @@ import '../../theme/app_spacing.dart';
 import '../../../screens/profile/profile_figma_tokens.dart';
 import 'profile_grid_title_overlay.dart';
 
-/// Square thumbnail for profile modular grids.
+/// Portrait thumbnail for profile modular grids.
 class ProfileGridTile extends StatelessWidget {
   const ProfileGridTile({
     super.key,

@@ -125,7 +125,7 @@ class _LiveStreamMonetisationScreenState
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Live stream Monetisation');
+    return const SettingsInnerAppBar(title: 'Live Stream Monetisation');
   }
 }
 

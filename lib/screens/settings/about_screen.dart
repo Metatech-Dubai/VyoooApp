@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/strings/app_strings.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_service_screen.dart';
@@ -36,7 +37,7 @@ class AboutScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           _AboutTile(
-                            label: 'Privacy Policy',
+                            label: AppStrings.privacyPolicy,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -51,7 +52,7 @@ class AboutScreen extends StatelessWidget {
                             color: Colors.white.withValues(alpha: 0.1),
                           ),
                           _AboutTile(
-                            label: 'Terms of service',
+                            label: AppStrings.termsOfService,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(

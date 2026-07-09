@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/strings/app_strings.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/widgets/app_gradient_background.dart';
 
@@ -36,7 +37,7 @@ class SettingsSubscriptionsScreen extends StatelessWidget {
                       child: Column(
                         children: [
                           _SubscriptionRow(
-                            label: 'Manage subscriptions',
+                            label: AppStrings.manageSubscriptions,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -48,7 +49,7 @@ class SettingsSubscriptionsScreen extends StatelessWidget {
                           ),
                           _divider(),
                           _SubscriptionRow(
-                            label: 'Live stream Monetisation',
+                            label: AppStrings.liveStreamMonetization,
                             onTap: () {
                               Navigator.of(context).push(
                                 MaterialPageRoute<void>(
@@ -71,7 +72,7 @@ class SettingsSubscriptionsScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Subscriptions');
+    return const SettingsInnerAppBar(title: AppStrings.subscriptions);
   }
 
   Widget _divider() {

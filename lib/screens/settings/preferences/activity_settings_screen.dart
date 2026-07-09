@@ -14,24 +14,24 @@ class _ActivitySettingsScreenState extends State<ActivitySettingsScreen>
     with UserPreferencesPageMixin {
   @override
   Widget build(BuildContext context) {
-    if (prefsLoading) return SettingsPageShell(title: 'Your activity', children: [buildPrefsLoading()]);
+    if (prefsLoading) return SettingsPageShell(title: 'Your Activity', children: [buildPrefsLoading()]);
 
     return SettingsPageShell(
-      title: 'Your activity',
+      title: 'Your Activity',
       subtitle: 'Control what others see about your interactions on Vyooo.',
       children: [
         if (buildPrefsErrorBanner() != null) buildPrefsErrorBanner()!,
         SettingsGroupCard(
           children: [
             SettingsSwitchTile(
-              title: 'Show activity status',
+              title: 'Show Activity Status',
               subtitle: 'Let followers see when you were last active',
               value: prefs.showActivityStatus,
               enabled: !prefsSaving,
               onChanged: (v) => patchUserPreferences((p) => p.copyWith(showActivityStatus: v)),
             ),
             SettingsSwitchTile(
-              title: 'Share likes to feed',
+              title: 'Share Likes To Feed',
               subtitle: 'Show posts you liked in friends\' activity feeds',
               value: prefs.allowSharingLikesToFeed,
               enabled: !prefsSaving,
@@ -39,7 +39,7 @@ class _ActivitySettingsScreenState extends State<ActivitySettingsScreen>
                   patchUserPreferences((p) => p.copyWith(allowSharingLikesToFeed: v)),
             ),
             SettingsSwitchTile(
-              title: 'Save search history',
+              title: 'Save Search History',
               subtitle: 'Improve recommendations from your searches',
               value: prefs.saveSearchHistory,
               enabled: !prefsSaving,

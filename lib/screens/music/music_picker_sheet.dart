@@ -162,7 +162,7 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
         ),
         child: Row(
           children: [
-            _buildTabItem('For you', 0),
+            _buildTabItem('For You', 0),
             _buildTabItem('Trending', 1),
             _buildTabItem('Saved', 2),
           ],
