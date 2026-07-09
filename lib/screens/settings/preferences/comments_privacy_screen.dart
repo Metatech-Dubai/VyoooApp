@@ -17,7 +17,7 @@ class _CommentsPrivacyScreenState extends State<CommentsPrivacyScreen>
   Future<void> _pickComments() async {
     final picked = await showAudiencePickerSheet(
       context,
-      title: 'Who can comment',
+      title: 'Who Can Comment',
       currentValue: prefs.allowCommentsFrom,
     );
     if (picked == null) return;
@@ -38,12 +38,12 @@ class _CommentsPrivacyScreenState extends State<CommentsPrivacyScreen>
         SettingsGroupCard(
           children: [
             SettingsNavTile(
-              title: 'Allow comments from',
+              title: 'Allow Comments From',
               trailing: AudienceOption.labels[prefs.allowCommentsFrom],
               onTap: prefsSaving ? () {} : _pickComments,
             ),
             SettingsSwitchTile(
-              title: 'Filter offensive comments',
+              title: 'Filter Offensive Comments',
               subtitle: 'Hide comments that may be spam or harassment',
               value: prefs.filterOffensiveComments,
               enabled: !prefsSaving,

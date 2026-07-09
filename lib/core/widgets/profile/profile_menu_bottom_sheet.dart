@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../strings/app_strings.dart';
 import '../../theme/app_background_assets.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
@@ -120,14 +121,14 @@ class ProfileMenuBottomSheet extends StatelessWidget {
                 ),
                 _ProfileMenuTile(
                   assetIconPath: 'assets/vyooO_icons/Settings/Wallet.png',
-                  label: 'Vyooo coin',
-                  subtitle: 'Coming soon',
+                  label: AppStrings.vyoooCoin,
+                  subtitle: AppStrings.comingSoon,
                   onTap: onVyoooCoin,
                 ),
                 _ProfileMenuTile(
                   icon: Icons.payments_rounded,
-                  label: 'Revenue',
-                  subtitle: 'Coming soon',
+                  label: AppStrings.revenue,
+                  subtitle: AppStrings.comingSoon,
                   onTap: onRevenue,
                 ),
                 Padding(
@@ -142,17 +143,17 @@ class ProfileMenuBottomSheet extends StatelessWidget {
                 ),
                 _ProfileMenuTile(
                   icon: Icons.settings_rounded,
-                  label: 'Settings',
+                  label: AppStrings.settings,
                   onTap: onSettings,
                 ),
                 _ProfileMenuTile(
                   icon: Icons.music_note_rounded,
-                  label: 'Music library',
+                  label: 'Music Library',
                   onTap: onMusicLibrary,
                 ),
                 _ProfileMenuTile(
                   icon: Icons.upload_rounded,
-                  label: 'Upload Stream videos',
+                  label: 'Upload Stream Videos',
                   onTap: onUploadStreamVideos,
                 ),
                 Padding(
@@ -167,12 +168,12 @@ class ProfileMenuBottomSheet extends StatelessWidget {
                 ),
                 _ProfileMenuTile(
                   icon: Icons.switch_account_rounded,
-                  label: 'Switch accounts',
+                  label: 'Switch Accounts',
                   onTap: onSwitchAccounts,
                 ),
                 _ProfileMenuTile(
                   icon: Icons.logout_rounded,
-                  label: 'Log out',
+                  label: AppStrings.logOut,
                   onTap: onLogout,
                 ),
                 const SizedBox(height: AppSpacing.sm),

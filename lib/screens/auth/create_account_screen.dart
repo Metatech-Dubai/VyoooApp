@@ -75,7 +75,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           const AuthScreenHeader(
             centerAlign: true,
             titleTextAlign: TextAlign.start,
-            title: 'Create an\nAccount',
+            title: 'Create An\nAccount',
           ),
           const SizedBox(height: AppSpacing.md),
           AuthSegmentedToggle(
@@ -107,12 +107,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
           const SizedBox(height: AppSpacing.md),
           AuthLinkPrompt(
             prompt: 'Already have an account? ',
-            actionLabel: 'Sign in',
+            actionLabel: 'Sign In',
             onActionTap: _onSignIn,
           ),
           const SizedBox(height: AppSpacing.authDividerBlock),
           const AuthLabeledDivider(
-            label: 'Or sign up with',
+            label: 'Or Sign Up With',
             centerAsset: AuthAssets.orSignUpWith,
           ),
           const SizedBox(height: AppSpacing.authDividerBlock),

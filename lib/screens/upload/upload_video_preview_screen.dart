@@ -517,7 +517,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
               ),
               const Divider(color: Colors.white10, height: 1),
               _buildQuitOption(
-                label: 'Exit editing',
+                label: 'Exit Editing',
                 iconPath:
                     'assets/vyooO_icons/Upload_Story_Live/exit_editing.png',
                 onTap: () {

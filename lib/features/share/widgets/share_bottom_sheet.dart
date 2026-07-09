@@ -113,12 +113,12 @@ class _ShareSheet extends StatelessWidget {
                 const SizedBox(height: AppSpacing.sm),
                 _ShareActionTile(
                   icon: Icons.ios_share_rounded,
-                  label: 'Share link',
+                  label: 'Share Link',
                   onTap: () => _openNativeShare(context),
                 ),
                 _ShareActionTile(
                   icon: Icons.link_rounded,
-                  label: 'Copy link',
+                  label: 'Copy Link',
                   onTap: () => _copyLink(context),
                 ),
                 const SizedBox(height: AppSpacing.md),

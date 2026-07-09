@@ -288,7 +288,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
                     _buildSection([
                       _buildTile(
                         icon: Icons.person_outline,
-                        label: 'View profile',
+                        label: 'View Profile',
                         onTap: _viewProfile,
                       ),
                       _buildTile(
@@ -300,24 +300,24 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
                       ),
                       _buildTile(
                         icon: Icons.delete_outline,
-                        label: 'Clear chat',
+                        label: 'Clear Chat',
                         onTap: _clearChat,
                       ),
                       _buildTile(
                         icon: Icons.search,
-                        label: 'Search in conversation',
+                        label: 'Search In Conversation',
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Coming soon')),
+                            const SnackBar(content: Text('Coming Soon')),
                           );
                         },
                       ),
                       _buildTile(
                         icon: Icons.photo_library_outlined,
-                        label: 'Media, links and files',
+                        label: 'Media, Links And Files',
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Coming soon')),
+                            const SnackBar(content: Text('Coming Soon')),
                           );
                         },
                       ),
@@ -348,7 +348,7 @@ class _ChatInfoScreenState extends State<ChatInfoScreen> {
                         color: AppColors.deleteRed,
                         onTap: () {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Coming soon')),
+                            const SnackBar(content: Text('Coming Soon')),
                           );
                         },
                       ),

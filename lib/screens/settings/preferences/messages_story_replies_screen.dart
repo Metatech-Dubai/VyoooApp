@@ -18,7 +18,7 @@ class _MessagesStoryRepliesScreenState extends State<MessagesStoryRepliesScreen>
   Future<void> _pickMessageAudience() async {
     final picked = await showAudiencePickerSheet(
       context,
-      title: 'Who can message you',
+      title: 'Who Can Message You',
       currentValue: prefs.messageRequests,
     );
     if (picked == null) return;
@@ -28,7 +28,7 @@ class _MessagesStoryRepliesScreenState extends State<MessagesStoryRepliesScreen>
   Future<void> _pickStoryReplies() async {
     final picked = await showAudiencePickerSheet(
       context,
-      title: 'Who can reply to your stories',
+      title: 'Who Can Reply To Your Stories',
       currentValue: prefs.storyReplies,
     );
     if (picked == null) return;
@@ -38,23 +38,23 @@ class _MessagesStoryRepliesScreenState extends State<MessagesStoryRepliesScreen>
   @override
   Widget build(BuildContext context) {
     if (prefsLoading) {
-      return SettingsPageShell(title: 'Messages & story replies', children: [buildPrefsLoading()]);
+      return SettingsPageShell(title: 'Messages & Story Replies', children: [buildPrefsLoading()]);
     }
 
     return SettingsPageShell(
-      title: 'Messages & story replies',
+      title: 'Messages & Story Replies',
       subtitle: 'Choose who can contact you and reply to your stories.',
       children: [
         if (buildPrefsErrorBanner() != null) buildPrefsErrorBanner()!,
         SettingsGroupCard(
           children: [
             SettingsNavTile(
-              title: 'Message requests',
+              title: 'Message Requests',
               trailing: AudienceOption.labels[prefs.messageRequests],
               onTap: prefsSaving ? () {} : _pickMessageAudience,
             ),
             SettingsNavTile(
-              title: 'Story replies',
+              title: 'Story Replies',
               trailing: AudienceOption.labels[prefs.storyReplies],
               onTap: prefsSaving ? () {} : _pickStoryReplies,
             ),

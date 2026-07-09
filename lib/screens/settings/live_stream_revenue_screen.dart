@@ -77,7 +77,7 @@ class LiveStreamRevenueScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Live stream revenue');
+    return const SettingsInnerAppBar(title: 'Live Stream Revenue');
   }
 }
 

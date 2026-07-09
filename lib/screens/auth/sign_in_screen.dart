@@ -302,7 +302,7 @@ class _SignInScreenState extends State<SignInScreen> {
             onActionTap: _onRegister,
           ),
           const SizedBox(height: AppSpacing.authDividerBlock),
-          const AuthLabeledDivider(label: 'Or sign in with'),
+          const AuthLabeledDivider(label: 'Or Sign In With'),
           const SizedBox(height: AppSpacing.authDividerBlock),
           AuthSocialSignInRow(
             isGoogleLoading: _isGoogleLoading,

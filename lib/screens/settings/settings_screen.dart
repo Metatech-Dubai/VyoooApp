@@ -7,6 +7,7 @@ import '../../core/profile/creator_monetization.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/subscription/subscription_controller.dart';
+import '../../core/strings/app_strings.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
@@ -120,141 +121,141 @@ class SettingsScreen extends StatelessWidget {
         AppSpacing.xl,
       ),
       children: [
-        _sectionHeader('Your account'),
+        _sectionHeader(AppStrings.yourAccount),
         _settingsGroup([
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Account.png',
-            label: 'Accounts Center',
-            subtitle: 'Password, security, verification',
+            label: AppStrings.accountsCenter,
+            subtitle: AppStrings.passwordSecurityVerification,
             onTap: () => _push(context, const AccountScreen()),
           ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Account.png',
-            label: 'Personal information',
+            label: AppStrings.personalInformation,
             onTap: () => _push(context, const PersonalInformationScreen()),
           ),
           _SettingsTile(
             icon: Icons.lock_outline_rounded,
-            label: 'Password & security',
+            label: AppStrings.passwordAndSecurity,
             onTap: () => _push(context, const ChangePasswordScreen()),
           ),
           _SettingsTile(
             icon: Icons.verified_user_outlined,
-            label: 'Two-factor authentication',
+            label: AppStrings.twoFactorAuthentication,
             onTap: () => _push(context, const TwoFactorScreen()),
           ),
           _SettingsTile(
             icon: Icons.verified_outlined,
-            label: 'Request verification',
+            label: AppStrings.requestVerification,
             onTap: () => _push(context, const VerificationRequestScreen()),
           ),
           _SettingsTile(
             icon: Icons.block_flipped,
-            label: 'Blocked accounts',
+            label: AppStrings.blockedAccounts,
             onTap: () => _push(context, const BlockedUsersScreen()),
           ),
         ]),
         const SizedBox(height: AppSpacing.md),
-        _sectionHeader('How you use Vyooo'),
+        _sectionHeader(AppStrings.howYouUseVyooo),
         _settingsGroup([
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Home/Save.png',
-            label: 'Saved',
-            subtitle: 'Private saved posts',
+            label: AppStrings.saved,
+            subtitle: AppStrings.privateSavedPosts,
             onTap: () => _push(context, const SavedPostsScreen()),
           ),
           _SettingsTile(
             icon: Icons.archive_outlined,
-            label: 'Archive',
+            label: AppStrings.archive,
             onTap: () => _push(context, const ArchiveSettingsScreen()),
           ),
           _SettingsTile(
             icon: Icons.history_rounded,
-            label: 'Your activity',
+            label: AppStrings.yourActivity,
             onTap: () => _push(context, const ActivitySettingsScreen()),
           ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Notification.png',
-            label: 'Notifications',
+            label: AppStrings.notifications,
             onTap: () => _push(context, const NotificationSettingsScreen()),
           ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Downloaded.png',
-            label: 'Downloaded videos',
+            label: AppStrings.downloadedVideos,
             isPremium: true,
             onTap: () => _push(context, const DownloadedVideosScreen()),
           ),
           _SettingsTile(
             icon: Icons.language_rounded,
-            label: 'Language',
+            label: AppStrings.language,
             onTap: () => _push(context, const LanguageSettingsScreen()),
           ),
           _SettingsTile(
             icon: Icons.data_usage_rounded,
-            label: 'Data usage & media quality',
+            label: AppStrings.dataUsageAndMediaQuality,
             onTap: () => _push(context, const DataUsageSettingsScreen()),
           ),
         ]),
         const SizedBox(height: AppSpacing.md),
-        _sectionHeader('Who can see your content'),
+        _sectionHeader(AppStrings.whoCanSeeYourContent),
         _settingsGroup([
           _SettingsTile(
             icon: Icons.lock_person_outlined,
-            label: 'Account privacy',
-            subtitle: 'Public or private account',
+            label: AppStrings.accountPrivacy,
+            subtitle: AppStrings.publicOrPrivateAccount,
             onTap: () => _push(context, const PersonalInformationScreen()),
           ),
           _SettingsTile(
             icon: Icons.people_outline_rounded,
-            label: 'Close friends',
+            label: AppStrings.closeFriends,
             onTap: () => _push(context, const CloseFriendsScreen()),
           ),
           _SettingsTile(
             icon: Icons.volume_off_outlined,
-            label: 'Muted accounts',
+            label: AppStrings.mutedAccounts,
             onTap: () => _push(context, const BlockedUsersScreen()),
           ),
           _SettingsTile(
             icon: Icons.chat_bubble_outline_rounded,
-            label: 'Messages & story replies',
+            label: AppStrings.messagesAndStoryReplies,
             onTap: () => _push(context, const MessagesStoryRepliesScreen()),
           ),
           _SettingsTile(
             icon: Icons.tag_outlined,
-            label: 'Tags & mentions',
+            label: AppStrings.tagsAndMentions,
             onTap: () => _push(context, const TagsMentionsScreen()),
           ),
           _SettingsTile(
             icon: Icons.comment_outlined,
-            label: 'Comments',
+            label: AppStrings.comments,
             onTap: () => _push(context, const CommentsPrivacyScreen()),
           ),
           _SettingsTile(
             icon: Icons.slideshow_outlined,
-            label: 'Story & reels',
+            label: AppStrings.storyAndReels,
             onTap: () => _push(context, const StoryReelsPrivacyScreen()),
           ),
         ]),
         const SizedBox(height: AppSpacing.md),
-        _sectionHeader('Creator tools'),
+        _sectionHeader(AppStrings.creatorTools),
         _settingsGroup([
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Subscription.png',
-            label: 'Subscriptions',
+            label: AppStrings.subscriptions,
             isPremium: true,
             onTap: () => _push(context, const SettingsSubscriptionsScreen()),
           ),
           if (showCreatorMonetization)
             _SettingsTile(
               iconPath: 'assets/vyooO_icons/Settings/Subscription.png',
-              label: 'Creator subscriptions',
+              label: AppStrings.creatorSubscriptions,
               isPremium: true,
               onTap: () => _push(context, const CreatorMonetizationScreen()),
             ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Wallet.png',
-            label: 'Vyooo coin',
-            subtitle: 'Coming soon',
+            label: AppStrings.vyoooCoin,
+            subtitle: AppStrings.comingSoon,
             isPremium: true,
             onTap: () => _push(
               context,
@@ -277,8 +278,8 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.payments_outlined,
-            label: 'Revenue',
-            subtitle: 'Coming soon',
+            label: AppStrings.revenue,
+            subtitle: AppStrings.comingSoon,
             isPremium: true,
             onTap: () => _push(
               context,
@@ -290,59 +291,59 @@ class SettingsScreen extends StatelessWidget {
           ),
           _SettingsTile(
             icon: Icons.live_tv_rounded,
-            label: 'Live stream monetization',
+            label: AppStrings.liveStreamMonetization,
             onTap: () => _push(context, const LiveStreamMonetisationScreen()),
           ),
         ]),
         const SizedBox(height: AppSpacing.md),
-        _sectionHeader('Support & about'),
+        _sectionHeader(AppStrings.supportAndAbout),
         _settingsGroup([
           // Parental consent flow temporarily disabled (min sign-up age is 16);
           // uncomment to restore the parent-side approvals entry.
           // if (showFamilyApprovals)
           //   _SettingsTile(
           //     iconPath: 'assets/vyooO_icons/Settings/About.png',
-          //     label: 'Family approvals',
+          //     label: 'Family Approvals',
           //     onTap: () => _push(context, const ParentalApprovalsScreen()),
           //   ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Customer Support.png',
-            label: 'Help center',
+            label: AppStrings.helpCenter,
             onTap: () => _push(context, const ContactSupportScreen()),
           ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Report a problem.png',
-            label: 'Report a problem',
+            label: AppStrings.reportAProblem,
             onTap: () => _push(context, const ReportProblemScreen()),
           ),
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/About.png',
-            label: 'About Vyooo',
+            label: AppStrings.aboutVyooo,
             onTap: () => _push(context, const AboutScreen()),
           ),
           _SettingsTile(
             icon: Icons.privacy_tip_outlined,
-            label: 'Privacy policy',
+            label: AppStrings.privacyPolicy,
             onTap: () => _push(context, const PrivacyPolicyScreen()),
           ),
           _SettingsTile(
             icon: Icons.description_outlined,
-            label: 'Terms of service',
+            label: AppStrings.termsOfService,
             onTap: () => _push(context, const TermsServiceScreen()),
           ),
         ]),
         const SizedBox(height: AppSpacing.md),
-        _sectionHeader('Login'),
+        _sectionHeader(AppStrings.login),
         _settingsGroup([
           _SettingsTile(
             iconPath: 'assets/vyooO_icons/Settings/Logout.png',
-            label: 'Log out',
+            label: AppStrings.logOut,
             isLogout: true,
             onTap: () => _logout(context),
           ),
           _SettingsTile(
             icon: Icons.delete_forever_outlined,
-            label: 'Delete account',
+            label: AppStrings.deleteAccount,
             isLogout: true,
             onTap: () => _push(context, const DeleteAccountScreen()),
           ),
@@ -401,7 +402,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Settings');
+    return const SettingsInnerAppBar(title: AppStrings.settings);
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -442,7 +443,7 @@ class SettingsScreen extends StatelessWidget {
                   TextButton(
                     onPressed: () => Navigator.pop(context, false),
                     child: Text(
-                      'No, stay',
+                      'No, Stay',
                       style: AppTypography.authDialogOption,
                     ),
                   ),
@@ -453,7 +454,7 @@ class SettingsScreen extends StatelessWidget {
                       backgroundColor: Colors.black,
                       foregroundColor: Colors.white,
                     ),
-                    child: const Text('Yes, logout'),
+                    child: const Text('Yes, Logout'),
                   ),
                 ],
               ),

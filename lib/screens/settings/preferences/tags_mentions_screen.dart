@@ -17,7 +17,7 @@ class _TagsMentionsScreenState extends State<TagsMentionsScreen>
   Future<void> _pickTags() async {
     final picked = await showAudiencePickerSheet(
       context,
-      title: 'Who can tag you',
+      title: 'Who Can Tag You',
       currentValue: prefs.allowTagsFrom,
     );
     if (picked == null) return;
@@ -27,23 +27,23 @@ class _TagsMentionsScreenState extends State<TagsMentionsScreen>
   @override
   Widget build(BuildContext context) {
     if (prefsLoading) {
-      return SettingsPageShell(title: 'Tags & mentions', children: [buildPrefsLoading()]);
+      return SettingsPageShell(title: 'Tags & Mentions', children: [buildPrefsLoading()]);
     }
 
     return SettingsPageShell(
-      title: 'Tags & mentions',
+      title: 'Tags & Mentions',
       subtitle: 'Control when others tag or mention you in posts and comments.',
       children: [
         if (buildPrefsErrorBanner() != null) buildPrefsErrorBanner()!,
         SettingsGroupCard(
           children: [
             SettingsNavTile(
-              title: 'Allow tags from',
+              title: 'Allow Tags From',
               trailing: AudienceOption.labels[prefs.allowTagsFrom],
               onTap: prefsSaving ? () {} : _pickTags,
             ),
             SettingsSwitchTile(
-              title: 'Review tags before they appear',
+              title: 'Review Tags Before They Appear',
               subtitle: 'Manually approve tags on your profile (coming to feed)',
               value: false,
               enabled: false,

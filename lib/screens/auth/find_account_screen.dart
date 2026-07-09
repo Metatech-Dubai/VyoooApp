@@ -136,7 +136,7 @@ class _FindAccountScreenState extends State<FindAccountScreen> {
           AuthScreenHeader(
             centerAlign: true,
             titleTextAlign: TextAlign.start,
-            title: 'Find your\naccount',
+            title: 'Find Your\nAccount',
             subtitle: _isEmailMethod
                 ? 'Enter your Email address or Username'
                 : 'Enter your Mobile number',

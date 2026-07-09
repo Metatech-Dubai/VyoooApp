@@ -67,7 +67,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   bool get wantKeepAlive => true;
 
-  static const List<String> _tabs = ['Posts', 'VR', 'Clips', 'Tags'];
+  static const List<String> _tabs = ['Feed', 'Reels', 'VR', 'Tags'];
   static const int _savedTabIndex = 4;
   static const Map<String, String> _accountTypeLabels = <String, String>{
     'personal': 'Personal',
@@ -577,134 +577,103 @@ class _ProfileScreenState extends State<ProfileScreen>
                       ),
                       child: Column(
                         children: [
-                          const SizedBox(height: AppSpacing.md),
-                          StreamBuilder<List<StoryModel>>(
-                        stream: profileUid.isEmpty
-                            ? null
-                            : _activeStoriesStreamFor(profileUid),
-                        builder: (context, snap) {
-                          final activeStories = snap.data ?? const <StoryModel>[];
-                          return ProfileFigmaAvatar(
-                            imageUrl: avatarUrl,
-                            hasStory: activeStories.isNotEmpty,
-                            onTap: profileUid.isEmpty
-                                ? null
-                                : () => _openMyStoryComposerOrViewer(
-                                      context,
-                                      userId: profileUid,
-                                      username: username,
-                                      avatarUrl: avatarUrl ?? '',
-                                    ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
+                          const SizedBox(height: ProfileFigmaTokens.profileHeaderTop),
+                          ProfileFigmaAvatarHeaderRow(
+                            onMenuTap: () => _showProfileMenu(context),
+                            avatar: StreamBuilder<List<StoryModel>>(
+                              stream: profileUid.isEmpty
+                                  ? null
+                                  : _activeStoriesStreamFor(profileUid),
+                              builder: (context, snap) {
+                                final activeStories =
+                                    snap.data ?? const <StoryModel>[];
+                                return ProfileFigmaAvatar(
+                                  imageUrl: avatarUrl,
+                                  hasStory: activeStories.isNotEmpty,
+                                  onTap: profileUid.isEmpty
+                                      ? null
+                                      : () => _openMyStoryComposerOrViewer(
+                                            context,
+                                            userId: profileUid,
+                                            username: username,
+                                            avatarUrl: avatarUrl ?? '',
+                                          ),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                       ProfileFigmaDisplayNameRow(
                         displayName: displayName,
                         isVerified: isVerified,
                         badgeColor: badgeColor,
                       ),
                       const SizedBox(height: 12),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          ProfileFigmaStatChip(
-                            label: 'Posts',
-                            value: _formatStatCount(postCount),
-                          ),
-                          const SizedBox(
-                            width: ProfileFigmaTokens.statChipGap,
-                          ),
-                          ProfileFigmaStatChip(
-                            label: 'Followers',
-                            value: _formatStatCount(followerCount),
-                            onTap: () {
-                              if (profileUid.isEmpty) return;
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => FollowersFollowingScreen(
-                                    initialTab: 0,
-                                    profileUserId: profileUid,
+                      ProfileFigmaStatChipsRow(
+                        postCount: _formatStatCount(postCount),
+                        followerCount: _formatStatCount(followerCount),
+                        followingCount: _formatStatCount(followingCount),
+                        onFollowersTap: profileUid.isEmpty
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => FollowersFollowingScreen(
+                                      initialTab: 0,
+                                      profileUserId: profileUid,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(
-                            width: ProfileFigmaTokens.statChipGap,
-                          ),
-                          ProfileFigmaStatChip(
-                            label: 'Following',
-                            value: _formatStatCount(followingCount),
-                            onTap: () {
-                              if (profileUid.isEmpty) return;
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => FollowersFollowingScreen(
-                                    initialTab: 1,
-                                    profileUserId: profileUid,
+                                );
+                              },
+                        onFollowingTap: profileUid.isEmpty
+                            ? null
+                            : () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute<void>(
+                                    builder: (_) => FollowersFollowingScreen(
+                                      initialTab: 1,
+                                      profileUserId: profileUid,
+                                    ),
                                   ),
-                                ),
-                              );
-                            },
-                          ),
-                        ],
+                                );
+                              },
                       ),
-                      if (bio.isNotEmpty) ...[
+                      if (bio.isNotEmpty || profileMusic.isNotEmpty) ...[
                         const SizedBox(height: 16),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          child: ProfileBioText(bio: bio),
+                        ProfileFigmaBioMusicSection(
+                          bio: bio,
+                          musicLabel: profileMusic,
                         ),
                       ],
-                      ProfileFigmaMusicLine(label: profileMusic),
                       const SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        mainAxisSize: MainAxisSize.max,
-                        children: [
-                          ProfileFigmaActionButton(
-                            onPressed: () {
-                              Navigator.of(context).push(
-                                MaterialPageRoute<void>(
-                                  builder: (_) => EditProfileScreen(
-                                    initialName: user?.displayName ??
-                                        user?.username ??
-                                        '',
-                                    initialUsername: user?.username ?? '',
-                                    initialBio: user?.bio ?? '',
-                                    initialMusic: user?.profileMusic ?? '',
-                                    avatarUrl: user?.profileImage,
-                                  ),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(
-                            width: ProfileFigmaTokens.actionButtonGap,
-                          ),
-                          ProfileFigmaIconActionButton(
-                            svgAssetPath: ProfileAssets.profileActionShare,
-                            onPressed: () => _shareProfile(
-                              uid: profileUid,
-                              username: user?.username,
+                      ProfileFigmaActionButtonsRow(
+                        onEditProfile: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => EditProfileScreen(
+                                initialName: user?.displayName ??
+                                    user?.username ??
+                                    '',
+                                initialUsername: user?.username ?? '',
+                                initialBio: user?.bio ?? '',
+                                initialMusic: user?.profileMusic ?? '',
+                                avatarUrl: user?.profileImage,
+                              ),
                             ),
-                          ),
-                          const SizedBox(
-                            width: ProfileFigmaTokens.actionButtonGap,
-                          ),
-                          ProfileFigmaIconActionButton(
-                            svgAssetPath: ProfileAssets.profileActionPlus,
-                            onPressed: profileUid.isEmpty
-                                ? () {}
-                                : () => _openMyStoryComposerOrViewer(
-                                      context,
-                                      userId: profileUid,
-                                      username: username,
-                                      avatarUrl: avatarUrl ?? '',
-                                    ),
-                          ),
-                        ],
+                          );
+                        },
+                        onShare: () => _shareProfile(
+                          uid: profileUid,
+                          username: user?.username,
+                        ),
+                        onStory: profileUid.isEmpty
+                            ? () {}
+                            : () => _openMyStoryComposerOrViewer(
+                                  context,
+                                  userId: profileUid,
+                                  username: username,
+                                  avatarUrl: avatarUrl ?? '',
+                                ),
                       ),
                       const SizedBox(
                         height: ProfileFigmaTokens.contentSectionTopGap,
@@ -754,10 +723,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     height: ProfileFigmaTokens
                                         .highlightsToggleTopGap,
                                   ),
-                                  ProfileTabUnderFirstTab(
-                                    tabCount: _tabs.length,
-                                    showBookmarkAccessory: true,
-                                    showStarAccessory: true,
+                                  ProfileContentColumnAlign(
+                                    reserveTabAccessories: true,
+                                    alignWithFeedPill: true,
                                     child: ProfileHighlightsToggleHandle(
                                       expanded: false,
                                       onTap: () => setState(
@@ -785,10 +753,9 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     height: ProfileFigmaTokens
                                         .highlightsToggleTopGap,
                                   ),
-                                  ProfileTabUnderFirstTab(
-                                    tabCount: _tabs.length,
-                                    showBookmarkAccessory: true,
-                                    showStarAccessory: true,
+                                  ProfileContentColumnAlign(
+                                    reserveTabAccessories: true,
+                                    alignWithFeedPill: true,
                                     child: ProfileHighlightsToggleHandle(
                                       expanded: true,
                                       onTap: () => setState(
@@ -830,7 +797,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           left: 0,
           top: ProfileFigmaTokens.profileSideRailTop,
           child: ProfileSideDrawer(
-            onMenuTap: () => _showProfileMenu(context),
             onWalletTap: () => _openWalletFromRail(context),
             onChatTap: _openChatFromRail,
             onRevenueTap: () => _openRevenueFromRail(context),
@@ -859,10 +825,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             !snap.hasData;
 
         if (snap.hasError) {
-          return ProfileTabTrackRow(
-            showBookmarkAccessory: true,
-            showStarAccessory: true,
-            alignWithPostsStart: true,
+          return ProfileContentColumnAlign(
+            reserveTabAccessories: true,
+            alignWithFeedPill: true,
             child: Padding(
               padding: const EdgeInsets.only(bottom: AppSpacing.sm),
               child: Text(
@@ -878,10 +843,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           );
         }
 
-        return ProfileTabTrackRow(
-          showBookmarkAccessory: true,
-          showStarAccessory: true,
-          alignWithPostsStart: true,
+        return ProfileContentColumnAlign(
+          reserveTabAccessories: true,
+          alignWithFeedPill: true,
           child: SizedBox(
             height: ProfileFigmaTokens.highlightRowHeight,
             child: Stack(

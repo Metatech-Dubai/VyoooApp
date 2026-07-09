@@ -112,7 +112,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Change plan');
+    return const SettingsInnerAppBar(title: 'Change Plan');
   }
 
   Widget _buildProfileHeader() {

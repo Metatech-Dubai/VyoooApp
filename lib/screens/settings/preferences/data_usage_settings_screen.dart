@@ -42,7 +42,7 @@ class _DataUsageSettingsScreenState extends State<DataUsageSettingsScreen> {
   Widget build(BuildContext context) {
     if (_loading) {
       return const SettingsPageShell(
-        title: 'Data usage & media quality',
+        title: 'Data Usage & Media Quality',
         children: [SizedBox(height: 200, child: Center(child: CircularProgressIndicator()))],
       );
     }
@@ -50,13 +50,13 @@ class _DataUsageSettingsScreenState extends State<DataUsageSettingsScreen> {
     final local = LocalAppPreferencesService.instance;
 
     return SettingsPageShell(
-      title: 'Data usage & media quality',
+      title: 'Data Usage & Media Quality',
       subtitle: 'Reduce mobile data usage or improve upload quality.',
       children: [
         SettingsGroupCard(
           children: [
             SettingsSwitchTile(
-              title: 'Upload over cellular',
+              title: 'Upload Over Cellular',
               subtitle: 'Allow uploads when not on Wi‑Fi',
               value: _cellularUpload,
               onChanged: (v) async {
@@ -65,7 +65,7 @@ class _DataUsageSettingsScreenState extends State<DataUsageSettingsScreen> {
               },
             ),
             SettingsSwitchTile(
-              title: 'High quality uploads',
+              title: 'High Quality Uploads',
               subtitle: 'Use higher resolution for photos and videos',
               value: _highQuality,
               onChanged: (v) async {
@@ -74,7 +74,7 @@ class _DataUsageSettingsScreenState extends State<DataUsageSettingsScreen> {
               },
             ),
             SettingsSwitchTile(
-              title: 'Autoplay on cellular',
+              title: 'Autoplay On Cellular',
               subtitle: 'Auto-play reels and previews on mobile data',
               value: _autoplayCellular,
               onChanged: (v) async {

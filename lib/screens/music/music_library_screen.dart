@@ -15,7 +15,7 @@ class MusicLibraryScreen extends StatefulWidget {
 }
 
 class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
-  static const List<String> _tabs = ['For you', 'Trending', 'Saved'];
+  static const List<String> _tabs = ['For You', 'Trending', 'Saved'];
   int _selectedTabIndex = 0;
   final TextEditingController _searchController = TextEditingController();
   MusicTrack? _playingTrack;

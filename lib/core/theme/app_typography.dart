@@ -543,14 +543,24 @@ abstract final class AppTypography {
     color: AppColors.profileDisplayName,
   );
 
-  /// Profile stat counter — DM Sans SemiBold 20 / 24 line height / #1B1C1C (Figma).
+  /// Profile stat counter — DM Sans SemiBold 18 / 24 line height / #1B1C1C (Figma).
   static const TextStyle profileStatValue = TextStyle(
     fontFamily: AppFonts.body,
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: FontWeight.w600,
-    height: 24 / 20,
+    height: 24 / 18,
     letterSpacing: 0,
     color: AppColors.profileDisplayName,
+  );
+
+  /// Profile stat chip label — DM Sans Medium 12 / 16 / #808080 (Figma).
+  static const TextStyle profileStatChipLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w500,
+    height: 16 / 12,
+    letterSpacing: 0,
+    color: Color(0xFF808080),
   );
 
   /// Profile stat label — DM Sans Regular 12 / #554247 (Figma).
@@ -560,6 +570,25 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w400,
     height: 1.0,
     color: AppColors.profileStatLabel,
+  );
+
+  /// Profile bio — DM Sans Regular 16 / 20 / #808080 (Figma).
+  static const TextStyle profileBio = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    height: 20 / 16,
+    letterSpacing: 0,
+    color: Color(0xFF808080),
+  );
+
+  /// Profile music line — DM Sans Regular 12 / #808080 (Figma).
+  static const TextStyle profileMusicLine = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    fontWeight: FontWeight.w400,
+    height: 1.0,
+    color: Color(0xFF808080),
   );
 
   /// Highlights add chip label — DM Sans Regular 12 / #554247 (Figma).
@@ -590,22 +619,23 @@ abstract final class AppTypography {
     color: Colors.white,
   );
 
-  /// Profile tab — selected chip label (Figma Inter Bold 16 / 18 / 0.55px / white).
+  /// Profile tab — selected chip label (Figma Medium 16 / 18 / 0.55px / white).
   static const TextStyle profileTabSelectedLabel = TextStyle(
-    fontFamily: AppFonts.headline,
+    fontFamily: AppFonts.body,
     fontSize: 16,
-    fontWeight: FontWeight.w700,
+    fontWeight: FontWeight.w500,
     height: 18 / 16,
     letterSpacing: 0.55,
     color: Colors.white,
   );
 
-  /// Profile tab — unselected chip label (Figma Inter Bold 12 / #5D5F5F).
+  /// Profile tab — unselected chip label (Figma Regular 16 / 18 / 0.55px / #5D5F5F).
   static const TextStyle profileTabUnselectedLabel = TextStyle(
-    fontFamily: AppFonts.headline,
-    fontSize: 12,
-    fontWeight: FontWeight.w700,
-    height: 1.0,
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    fontWeight: FontWeight.w400,
+    height: 18 / 16,
+    letterSpacing: 0.55,
     color: AppColors.profileTabUnselectedLabel,
   );
 

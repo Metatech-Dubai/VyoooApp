@@ -19,7 +19,7 @@ class AddAudioScreen extends StatefulWidget {
 }
 
 class _AddAudioScreenState extends State<AddAudioScreen> {
-  static const List<String> _tabs = ['For you', 'Trending', 'Saved'];
+  static const List<String> _tabs = ['For You', 'Trending', 'Saved'];
   static const Color _pink = Color(0xFFDE106B);
 
   int _selectedTabIndex = 0;

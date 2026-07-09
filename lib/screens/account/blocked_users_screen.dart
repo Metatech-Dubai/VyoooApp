@@ -22,7 +22,7 @@ class BlockedUsersScreen extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SettingsInnerAppBar(title: 'Blocked Users', onBack: () => Navigator.pop(context)),
+              SettingsInnerAppBar(title: 'Blocked Accounts', onBack: () => Navigator.pop(context)),
               Expanded(
                 child: uid == null || uid.isEmpty
                     ? const Center(

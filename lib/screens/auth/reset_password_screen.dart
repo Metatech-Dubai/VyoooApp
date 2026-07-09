@@ -91,7 +91,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         children: [
           const SizedBox(height: AppSpacing.sm),
           const AuthScreenHeader(
-            title: 'Reset\npassword',
+            title: 'Reset\nPassword',
             subtitle: 'Please enter your new password',
           ),
           const SizedBox(height: AppSpacing.md),

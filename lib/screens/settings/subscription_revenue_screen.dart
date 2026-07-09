@@ -125,6 +125,6 @@ class SubscriptionRevenueScreen extends StatelessWidget {
   }
 
   Widget _buildAppBar(BuildContext context) {
-    return const SettingsInnerAppBar(title: 'Subscription revenue');
+    return const SettingsInnerAppBar(title: 'Subscription Revenue');
   }
 }

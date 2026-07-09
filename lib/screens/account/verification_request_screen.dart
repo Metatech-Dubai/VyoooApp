@@ -226,7 +226,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
                         const SizedBox(height: 20),
                         _field(
                           controller: _fullNameController,
-                          label: 'Full legal name',
+                          label: 'Full Legal Name',
                           enabled: !requestLocked,
                         ),
                         const SizedBox(height: 12),
@@ -242,7 +242,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
                         const SizedBox(height: 12),
                         _field(
                           controller: _notesController,
-                          label: 'Notes (optional)',
+                          label: 'Notes (Optional)',
                           enabled: !requestLocked,
                           maxLines: 4,
                         ),
