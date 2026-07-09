@@ -41,6 +41,7 @@ import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
 import '../content/vr_detail_screen.dart';
 import '../music/music_library_screen.dart';
+import 'personal_information_screen.dart';
 import 'edit_profile_screen.dart';
 import 'followers_following_screen.dart';
 import 'profile_figma_tokens.dart';
@@ -51,7 +52,7 @@ import '../../features/reel/widgets/profile_grid_span_sheet.dart';
 import '../settings/revenue_coming_soon_view.dart';
 import '../settings/switch_accounts_screen.dart';
 import '../settings/wallet/wallet_coming_soon_view.dart';
-import '../../core/widgets/profile/profile_menu_bottom_sheet.dart';
+import '../../core/widgets/profile/profile_more_drawer.dart';
 import '../../features/vr/vr_screen.dart';
 
 /// Own profile tab: header, stats, Edit Profile/Share, Posts/VR/Clips/Tags, empty or Become Member.
@@ -408,14 +409,34 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   void _showProfileMenu(BuildContext context) {
-    showProfileMenuBottomSheet(
+    showProfileMoreDrawer(
       context,
-      onVr: () {
+      onVyrooAi: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
               backgroundColor: Colors.black,
               body: SafeArea(child: VrComingSoonView()),
+            ),
+          ),
+        );
+      },
+      onMarketplace: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(
+              backgroundColor: Colors.black,
+              body: WalletComingSoonView(),
+            ),
+          ),
+        );
+      },
+      onWallet: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(
+              backgroundColor: Colors.black,
+              body: WalletComingSoonView(),
             ),
           ),
         );
@@ -440,6 +461,16 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         );
       },
+      onOrders: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const Scaffold(
+              backgroundColor: Colors.black,
+              body: WalletComingSoonView(),
+            ),
+          ),
+        );
+      },
       onSettings: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
@@ -455,6 +486,13 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const SwitchAccountsScreen(),
+          ),
+        );
+      },
+      onPrivacy: () {
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => const PersonalInformationScreen(),
           ),
         );
       },

@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../strings/app_strings.dart';
-import '../../theme/app_background_assets.dart';
-import '../../theme/app_spacing.dart';
-import '../../theme/app_typography.dart';
+import 'profile_more_drawer.dart';
 
-/// Profile overflow menu (three lines) — [Comment_section] background.
+/// Profile overflow menu (three lines) — opens the right-side [ProfileMoreDrawer].
+@Deprecated('Use showProfileMoreDrawer directly.')
 Future<void> showProfileMenuBottomSheet(
   BuildContext context, {
   required VoidCallback onVr,
@@ -17,259 +15,19 @@ Future<void> showProfileMenuBottomSheet(
   required VoidCallback onSwitchAccounts,
   required VoidCallback onLogout,
 }) {
-  return showModalBottomSheet<void>(
-    context: context,
-    backgroundColor: Colors.transparent,
-    isScrollControlled: true,
-    builder: (sheetContext) {
-      return ProfileMenuBottomSheet(
-        onVr: () {
-          Navigator.pop(sheetContext);
-          onVr();
-        },
-        onVyoooCoin: () {
-          Navigator.pop(sheetContext);
-          onVyoooCoin();
-        },
-        onRevenue: () {
-          Navigator.pop(sheetContext);
-          onRevenue();
-        },
-        onSettings: () {
-          Navigator.pop(sheetContext);
-          onSettings();
-        },
-        onMusicLibrary: () {
-          Navigator.pop(sheetContext);
-          onMusicLibrary();
-        },
-        onUploadStreamVideos: () {
-          Navigator.pop(sheetContext);
-          onUploadStreamVideos();
-        },
-        onSwitchAccounts: () {
-          Navigator.pop(sheetContext);
-          onSwitchAccounts();
-        },
-        onLogout: () {
-          Navigator.pop(sheetContext);
-          onLogout();
-        },
-      );
-    },
+  return showProfileMoreDrawer(
+    context,
+    onVyrooAi: onVr,
+    onMarketplace: onVyoooCoin,
+    onWallet: onVyoooCoin,
+    onVyoooCoin: onVyoooCoin,
+    onRevenue: onRevenue,
+    onOrders: onVyoooCoin,
+    onSettings: onSettings,
+    onMusicLibrary: onMusicLibrary,
+    onUploadStreamVideos: onUploadStreamVideos,
+    onSwitchAccounts: onSwitchAccounts,
+    onPrivacy: onSettings,
+    onLogout: onLogout,
   );
-}
-
-class ProfileMenuBottomSheet extends StatelessWidget {
-  const ProfileMenuBottomSheet({
-    super.key,
-    required this.onVr,
-    required this.onVyoooCoin,
-    required this.onRevenue,
-    required this.onSettings,
-    required this.onMusicLibrary,
-    required this.onUploadStreamVideos,
-    required this.onSwitchAccounts,
-    required this.onLogout,
-  });
-
-  final VoidCallback onVr;
-  final VoidCallback onVyoooCoin;
-  final VoidCallback onRevenue;
-  final VoidCallback onSettings;
-  final VoidCallback onMusicLibrary;
-  final VoidCallback onUploadStreamVideos;
-  final VoidCallback onSwitchAccounts;
-  final VoidCallback onLogout;
-
-  static const _sheetRadius = BorderRadius.vertical(top: Radius.circular(20));
-
-  @override
-  Widget build(BuildContext context) {
-    final bottomInset = MediaQuery.paddingOf(context).bottom;
-
-    return ClipRRect(
-      borderRadius: _sheetRadius,
-      child: Container(
-        decoration: const BoxDecoration(
-          image: DecorationImage(
-            image: AssetImage(AppBackgroundAssets.commentsSection),
-            fit: BoxFit.cover,
-          ),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Padding(
-            padding: EdgeInsets.only(bottom: bottomInset > 0 ? 0 : AppSpacing.sm),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  width: 48,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(100),
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                _ProfileMenuTile(
-                  assetIconPath: 'assets/vyooO_icons/Home/vr.png',
-                  label: 'VR',
-                  onTap: onVr,
-                ),
-                _ProfileMenuTile(
-                  assetIconPath: 'assets/vyooO_icons/Settings/Wallet.png',
-                  label: AppStrings.vyoooCoin,
-                  subtitle: AppStrings.comingSoon,
-                  onTap: onVyoooCoin,
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.payments_rounded,
-                  label: AppStrings.revenue,
-                  subtitle: AppStrings.comingSoon,
-                  onTap: onRevenue,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Divider(
-                    height: 1,
-                    color: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.settings_rounded,
-                  label: AppStrings.settings,
-                  onTap: onSettings,
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.music_note_rounded,
-                  label: 'Music Library',
-                  onTap: onMusicLibrary,
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.upload_rounded,
-                  label: 'Upload Stream Videos',
-                  onTap: onUploadStreamVideos,
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppSpacing.md,
-                    vertical: AppSpacing.sm,
-                  ),
-                  child: Divider(
-                    height: 1,
-                    color: Colors.white.withValues(alpha: 0.12),
-                  ),
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.switch_account_rounded,
-                  label: 'Switch Accounts',
-                  onTap: onSwitchAccounts,
-                ),
-                _ProfileMenuTile(
-                  icon: Icons.logout_rounded,
-                  label: AppStrings.logOut,
-                  onTap: onLogout,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ProfileMenuTile extends StatelessWidget {
-  const _ProfileMenuTile({
-    required this.label,
-    required this.onTap,
-    this.icon,
-    this.assetIconPath,
-    this.subtitle,
-    this.isDestructive = false,
-  });
-
-  final String label;
-  final VoidCallback onTap;
-  final IconData? icon;
-  final String? assetIconPath;
-  final String? subtitle;
-  final bool isDestructive;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isDestructive
-        ? const Color(0xFFEF4444)
-        : Colors.white.withValues(alpha: 0.92);
-    final iconColor = isDestructive
-        ? const Color(0xFFEF4444)
-        : Colors.white.withValues(alpha: 0.85);
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppSpacing.md,
-            vertical: AppSpacing.sm + 2,
-          ),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: assetIconPath != null
-                    ? Image.asset(
-                        assetIconPath!,
-                        width: 24,
-                        height: 24,
-                        color: iconColor,
-                      )
-                    : Icon(icon, color: iconColor, size: 24),
-              ),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      label,
-                      style: AppTypography.authDialogOption.copyWith(
-                        color: color,
-                        fontWeight:
-                            isDestructive ? FontWeight.w600 : FontWeight.w500,
-                      ),
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle!,
-                        style: AppTypography.authSmallBody.copyWith(
-                          color: Colors.white.withValues(alpha: 0.5),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.45),
-                size: 22,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
 }

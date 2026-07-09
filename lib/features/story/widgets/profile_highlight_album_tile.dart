@@ -25,8 +25,8 @@ class ProfileHighlightAlbumTile extends StatelessWidget {
 
     return SizedBox(
       width: ProfileFigmaTokens.highlightTileWidth,
+      height: ProfileFigmaTokens.highlightRowHeight,
       child: Column(
-        mainAxisSize: MainAxisSize.min,
         children: [
           Material(
             color: Colors.transparent,
@@ -63,12 +63,18 @@ class ProfileHighlightAlbumTile extends StatelessWidget {
             ),
           ),
           SizedBox(height: ProfileFigmaTokens.highlightLabelGap),
-          Text(
-            title,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: AppTypography.profileHighlightAlbumLabel,
+          SizedBox(
+            height: ProfileFigmaTokens.highlightLabelAreaHeight,
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: AppTypography.profileHighlightAlbumLabel,
+              ),
+            ),
           ),
         ],
       ),

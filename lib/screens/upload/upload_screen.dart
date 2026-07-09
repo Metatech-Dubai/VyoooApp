@@ -27,10 +27,18 @@ class UploadScreen extends StatefulWidget {
   const UploadScreen({
     super.key,
     this.initialBottomSegment = 1,
+    this.openVideoCameraOnLaunch = false,
+    this.preferVrUpload = false,
   });
 
   /// `0` Story, `1` Post (gallery), `2` Live — used when opening from Story/Live hub bar.
   final int initialBottomSegment;
+
+  /// Opens the device video camera immediately (Reel create menu action).
+  final bool openVideoCameraOnLaunch;
+
+  /// Pre-enables 360 / VR on the upload details screen for single-video uploads.
+  final bool preferVrUpload;
 
   /// Opens the Post (gallery) hub without pulling [StoryUploadScreen] into this library’s import graph.
   static void openPostHub(BuildContext context) {
@@ -104,6 +112,10 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+      if (widget.openVideoCameraOnLaunch) {
+        _openCamera(videoOnly: true);
+        return;
+      }
       if (_bottomSegment == 1) _loadGallery();
     });
   }
@@ -168,8 +180,8 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
 
   /// Capture a photo or video with the device camera, save it to the gallery
   /// and continue with the regular post preview flow.
-  Future<void> _openCamera() async {
-    final isVideo = await _showCameraModePicker();
+  Future<void> _openCamera({bool videoOnly = false}) async {
+    final isVideo = videoOnly ? true : await _showCameraModePicker();
     if (isVideo == null || !mounted) return;
 
     final picker = ImagePicker();
@@ -209,7 +221,10 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (_) => isVideo
-            ? UploadVideoPreviewScreen(asset: entity!)
+            ? UploadVideoPreviewScreen(
+                asset: entity!,
+                preferVrUpload: widget.preferVrUpload,
+              )
             : UploadPhotoPreviewScreen(asset: entity!),
       ),
     );
@@ -440,7 +455,10 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
     if (_isVideoAsset(selected)) {
       Navigator.of(context).push(
         MaterialPageRoute<void>(
-          builder: (_) => UploadVideoPreviewScreen(asset: selected),
+          builder: (_) => UploadVideoPreviewScreen(
+            asset: selected,
+            preferVrUpload: widget.preferVrUpload,
+          ),
         ),
       );
     } else if (selected.type == AssetType.image) {
