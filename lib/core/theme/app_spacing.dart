@@ -17,7 +17,13 @@ abstract final class AppSpacing {
   /// Large (feed interaction button vertical spacing)
   static const double lg = 22;
 
-  /// Home reel action column — gap between labeled buttons (Figma ~23px).
+  /// Home reel action column — gap after a count label to the next icon (Figma 15px).
+  static const double feedInteractionGapAfterCount = 15;
+
+  /// Home reel action column — gap between icon-only buttons (Figma 12px).
+  static const double feedInteractionGapIconOnly = storyItem;
+
+  /// @deprecated Use [feedInteractionGapAfterCount] or [feedInteractionGapIconOnly].
   static const double feedInteractionButtonGap = lg + xs;
 
   /// Extra large (section spacing)

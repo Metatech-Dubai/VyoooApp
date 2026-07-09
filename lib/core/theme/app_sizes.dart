@@ -45,8 +45,12 @@ abstract final class AppSizes {
   static const double feedInteractionIcon = 42;
   static const double feedInteractionTapTarget = 48;
 
-  /// Reel like heart icon inside the frosted circle.
-  static const double feedLikeIcon = 42;
+  /// Reel like heart glyph inside the 42px frosted circle (Figma vector).
+  static const double feedLikeIconWidth = 18.28;
+  static const double feedLikeIconHeight = 16.47;
+
+  /// Reel comment bubble glyph inside the frosted circle (Figma 19×19).
+  static const double feedCommentIconSize = 19;
 
   /// Reel playback control pill — pause + speaker (Figma 114×50).
   static const double feedReelPlaybackControlPillWidth = 114;
