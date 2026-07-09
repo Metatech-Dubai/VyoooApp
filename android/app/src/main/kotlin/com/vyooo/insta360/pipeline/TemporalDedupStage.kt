@@ -37,9 +37,14 @@ class TemporalDedupStage(
 
     override val name: String = "TemporalDedup"
 
-    /** Live toggle for A/B: when false every frame passes through (no temporal reduction). */
+    /**
+     * Temporal reduction is **off by default** so the live stream runs at full/original fps — the
+     * frame-dropping (≈1 fps in a static scene) made the viewer perceive a freeze. The reduction is
+     * still a demonstrable M2 capability: enable it via `Insta360FrameSink.setTemporalEnabled(true)`
+     * for A/B / KPI capture. When false, every frame passes through.
+     */
     @Volatile
-    var enabled: Boolean = true
+    var enabled: Boolean = false
 
     // ── Runtime state (extract thread only) ──────────────────────────────────
     // Consecutive frames dropped since the last kept frame. Init "large" so the very first frame is
