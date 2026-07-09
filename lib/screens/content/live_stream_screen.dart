@@ -15,7 +15,9 @@ import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_sizes.dart';
+import '../../core/utils/live_stream_viewer_playback.dart';
 import '../../core/widgets/live_comment_input_field.dart';
+import '../../widgets/live_360_view.dart';
 
 /// Viewer live stream screen.
 /// Pass a [LiveStreamModel] to open any live stream as a viewer.
@@ -78,14 +80,17 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
       // Send leave message before leaving channel so creator sees it
       final user = FirebaseAuth.instance.currentUser;
       if (user != null) {
-        final name = user.displayName ?? user.email?.split('@').first ?? 'Viewer';
-        await _liveService.sendMessage(
-          streamId: widget.stream.id,
-          userId: user.uid,
-          username: name,
-          message: '$name left the stream',
-          type: ChatMessageType.system,
-        ).catchError((_) {});
+        final name =
+            user.displayName ?? user.email?.split('@').first ?? 'Viewer';
+        await _liveService
+            .sendMessage(
+              streamId: widget.stream.id,
+              userId: user.uid,
+              username: name,
+              message: '$name left the stream',
+              type: ChatMessageType.system,
+            )
+            .catchError((_) {});
       }
       await _liveService.viewerLeft(widget.stream.id).catchError((_) {});
       await _engine.leaveChannel();
@@ -97,70 +102,79 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
 
   Future<void> _initAndJoin() async {
     _engine = createAgoraRtcEngine();
-    await _engine.initialize(RtcEngineContext(
-      appId: AgoraConfig.appId,
-      channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
-    ));
+    await _engine.initialize(
+      RtcEngineContext(
+        appId: AgoraConfig.appId,
+        channelProfile: ChannelProfileType.channelProfileLiveBroadcasting,
+      ),
+    );
 
-    _engine.registerEventHandler(RtcEngineEventHandler(
-      onJoinChannelSuccess: (connection, elapsed) async {
-        _hasJoined = true;
-        await _liveService.viewerJoined(widget.stream.id).catchError((_) {});
-        // Send join message so the creator sees who joined
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          final profile =
-              await _liveService.resolveChatSenderProfile(user.uid);
-          await _liveService.sendMessage(
-            streamId: widget.stream.id,
-            userId: user.uid,
-            username: profile.username,
-            profileImage: profile.profileImage,
-            message: '${profile.username} joined the stream 👋',
-            type: ChatMessageType.join,
-          ).catchError((_) {});
-        }
-      },
-      onUserJoined: (connection, remoteUid, elapsed) {
-        if (!mounted) return;
-        setState(() {
-          _remoteUid = remoteUid;
-          _hostVideoAvailable = true;
-        });
-      },
-      onUserOffline: (connection, remoteUid, reason) {
-        if (!mounted) return;
-        if (remoteUid == _remoteUid) {
+    _engine.registerEventHandler(
+      RtcEngineEventHandler(
+        onJoinChannelSuccess: (connection, elapsed) async {
+          _hasJoined = true;
+          await _liveService.viewerJoined(widget.stream.id).catchError((_) {});
+          // Send join message so the creator sees who joined
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null) {
+            final profile = await _liveService.resolveChatSenderProfile(
+              user.uid,
+            );
+            await _liveService
+                .sendMessage(
+                  streamId: widget.stream.id,
+                  userId: user.uid,
+                  username: profile.username,
+                  profileImage: profile.profileImage,
+                  message: '${profile.username} joined the stream 👋',
+                  type: ChatMessageType.join,
+                )
+                .catchError((_) {});
+          }
+        },
+        onUserJoined: (connection, remoteUid, elapsed) {
+          if (!mounted) return;
           setState(() {
-            _hostVideoAvailable = false;
-            _remoteUid = 0;
+            _remoteUid = remoteUid;
+            _hostVideoAvailable = true;
           });
-          _showToast('Host ended the stream');
-        }
-      },
-      onRemoteVideoStateChanged: (connection, remoteUid, state, reason, elapsed) {
-        if (!mounted) return;
-        final hasVideo = state == RemoteVideoState.remoteVideoStateDecoding ||
-            state == RemoteVideoState.remoteVideoStateStarting;
-        setState(() => _hostVideoAvailable = hasVideo);
-      },
-      onTokenPrivilegeWillExpire: (connection, token) async {
-        try {
-          final newToken = await _tokenService.renewToken(
-            channelName: widget.stream.agoraChannelName,
-            uid: 0,
-            isHost: false,
-          );
-          await _engine.renewToken(newToken);
-        } catch (_) {
-          _showToast('Token renewal failed — stream may disconnect');
-        }
-      },
-      onError: (err, msg) {
-        if (!mounted) return;
-        _showToast('Connection error');
-      },
-    ));
+        },
+        onUserOffline: (connection, remoteUid, reason) {
+          if (!mounted) return;
+          if (remoteUid == _remoteUid) {
+            setState(() {
+              _hostVideoAvailable = false;
+              _remoteUid = 0;
+            });
+            _showToast('Host ended the stream');
+          }
+        },
+        onRemoteVideoStateChanged:
+            (connection, remoteUid, state, reason, elapsed) {
+              if (!mounted) return;
+              final hasVideo =
+                  state == RemoteVideoState.remoteVideoStateDecoding ||
+                  state == RemoteVideoState.remoteVideoStateStarting;
+              setState(() => _hostVideoAvailable = hasVideo);
+            },
+        onTokenPrivilegeWillExpire: (connection, token) async {
+          try {
+            final newToken = await _tokenService.renewToken(
+              channelName: widget.stream.agoraChannelName,
+              uid: 0,
+              isHost: false,
+            );
+            await _engine.renewToken(newToken);
+          } catch (_) {
+            _showToast('Token renewal failed — stream may disconnect');
+          }
+        },
+        onError: (err, msg) {
+          if (!mounted) return;
+          _showToast('Connection error');
+        },
+      ),
+    );
 
     await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
     await _engine.enableVideo();
@@ -217,7 +231,9 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
 
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid != null) {
-      _likeSub = _liveService.userLikedStream(widget.stream.id, uid).listen((liked) {
+      _likeSub = _liveService.userLikedStream(widget.stream.id, uid).listen((
+        liked,
+      ) {
         if (!mounted) return;
         setState(() => _isLiked = liked);
       });
@@ -276,7 +292,9 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
 
   Future<void> _shareStream(LiveStreamModel doc) async {
     final title = doc.title.trim().isEmpty ? 'Live on VyooO' : doc.title.trim();
-    final body = doc.description.trim().isNotEmpty ? doc.description.trim() : title;
+    final body = doc.description.trim().isNotEmpty
+        ? doc.description.trim()
+        : title;
     await SharePlus.instance.share(
       ShareParams(text: 'Watch this live stream on VyooO: $body'),
     );
@@ -313,12 +331,16 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
             child: Stack(
               children: [
                 // Top bar
-                Positioned(
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  child: _buildTopBar(doc),
-                ),
+                Positioned(top: 0, left: 0, right: 0, child: _buildTopBar(doc)),
+                if (LiveStreamViewerPlayback.showInteractiveUnavailableNotice(
+                  doc,
+                ))
+                  Positioned(
+                    top: 56,
+                    left: 16,
+                    right: 16,
+                    child: _buildInteractiveUnavailableBanner(),
+                  ),
                 // Bottom: chat + input
                 Positioned(
                   left: 0,
@@ -347,19 +369,31 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
           if (_toast != null)
             Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withValues(alpha: 0.72),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Text(_toast!, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+                child: Text(
+                  _toast!,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ),
             ),
           // Loading state
           if (!_engineReady)
             Container(
               color: Colors.black,
-              child: const Center(child: CircularProgressIndicator(color: Colors.white)),
+              child: const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
             ),
         ],
       ),
@@ -367,47 +401,113 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   }
 
   Widget _buildVideoBackground(LiveStreamModel doc) {
-    if (!_engineReady || !_hostVideoAvailable || _remoteUid == 0) {
-      // No video yet — show host avatar placeholder
-      return Container(
-        color: const Color(0xFF0A000F),
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              CircleAvatar(
-                radius: 48,
-                backgroundColor: Colors.white.withValues(alpha: 0.1),
-                backgroundImage: doc.hostProfileImage?.isNotEmpty == true
-                    ? NetworkImage(doc.hostProfileImage!)
-                    : null,
-                child: doc.hostProfileImage?.isNotEmpty != true
-                    ? Text(
-                        doc.hostUsername.isNotEmpty ? doc.hostUsername[0].toUpperCase() : '?',
-                        style: const TextStyle(color: Colors.white, fontSize: 36, fontWeight: FontWeight.w600),
-                      )
-                    : null,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                doc.hostUsername,
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Connecting to stream...',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
-              ),
-            ],
+    final mode = LiveStreamViewerPlayback.videoMode(
+      doc: doc,
+      engineReady: _engineReady,
+      hostVideoAvailable: _hostVideoAvailable,
+      remoteUid: _remoteUid,
+    );
+
+    switch (mode) {
+      case LiveStreamViewerVideoMode.interactive360:
+        // Guard: only enter URL player when routing says interactive AND URL is playable.
+        final url = doc.hlsUrl?.trim();
+        if (url == null || url.isEmpty || !doc.hasPlayableHlsUrl) {
+          break;
+        }
+        return Live360View(streamUrl: url);
+      case LiveStreamViewerVideoMode.waitingForHost:
+        return _buildHostConnectingPlaceholder(doc);
+      case LiveStreamViewerVideoMode.flatAgora:
+        return AgoraVideoView(
+          controller: VideoViewController.remote(
+            rtcEngine: _engine,
+            canvas: VideoCanvas(uid: _remoteUid),
+            connection: RtcConnection(
+              channelId: widget.stream.agoraChannelName,
+            ),
           ),
+        );
+    }
+
+    // Defensive fallback if interactive URL became invalid between rebuilds.
+    if (_engineReady && _hostVideoAvailable && _remoteUid != 0) {
+      return AgoraVideoView(
+        controller: VideoViewController.remote(
+          rtcEngine: _engine,
+          canvas: VideoCanvas(uid: _remoteUid),
+          connection: RtcConnection(channelId: widget.stream.agoraChannelName),
         ),
       );
     }
-    return AgoraVideoView(
-      controller: VideoViewController.remote(
-        rtcEngine: _engine,
-        canvas: VideoCanvas(uid: _remoteUid),
-        connection: RtcConnection(channelId: widget.stream.agoraChannelName),
+    return _buildHostConnectingPlaceholder(doc);
+  }
+
+  Widget _buildHostConnectingPlaceholder(LiveStreamModel doc) {
+    return Container(
+      color: const Color(0xFF0A000F),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircleAvatar(
+              radius: 48,
+              backgroundColor: Colors.white.withValues(alpha: 0.1),
+              backgroundImage: doc.hostProfileImage?.isNotEmpty == true
+                  ? NetworkImage(doc.hostProfileImage!)
+                  : null,
+              child: doc.hostProfileImage?.isNotEmpty != true
+                  ? Text(
+                      doc.hostUsername.isNotEmpty
+                          ? doc.hostUsername[0].toUpperCase()
+                          : '?',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    )
+                  : null,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              doc.hostUsername,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Connecting to stream...',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.6),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInteractiveUnavailableBanner() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+      ),
+      child: Text(
+        '360° interactive view unavailable — showing live flat video',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.9),
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
       ),
     );
   }
@@ -445,9 +545,14 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
           CircleAvatar(
             radius: 18,
             backgroundColor: Colors.white.withValues(alpha: 0.2),
-            backgroundImage: doc.hostProfileImage?.isNotEmpty == true ? NetworkImage(doc.hostProfileImage!) : null,
+            backgroundImage: doc.hostProfileImage?.isNotEmpty == true
+                ? NetworkImage(doc.hostProfileImage!)
+                : null,
             child: doc.hostProfileImage?.isNotEmpty != true
-                ? Text(doc.hostUsername[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 13))
+                ? Text(
+                    doc.hostUsername[0].toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontSize: 13),
+                  )
                 : null,
           ),
           const SizedBox(width: 8),
@@ -458,13 +563,20 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
               children: [
                 Text(
                   doc.hostUsername,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 Text(
                   doc.title,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 12,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -478,7 +590,14 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
               color: AppColors.deleteRed,
               borderRadius: BorderRadius.circular(5),
             ),
-            child: const Text('LIVE', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+            child: const Text(
+              'LIVE',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           const SizedBox(width: 8),
           // Viewer count
@@ -491,11 +610,19 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.remove_red_eye_outlined, color: Colors.white.withValues(alpha: 0.85), size: 14),
+                Icon(
+                  Icons.remove_red_eye_outlined,
+                  color: Colors.white.withValues(alpha: 0.85),
+                  size: 14,
+                ),
                 const SizedBox(width: 4),
                 Text(
                   _formatCount(doc.viewerCount),
-                  style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ],
             ),
@@ -521,7 +648,11 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
               child: Center(
                 child: Text(
                   m.message,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12, fontStyle: FontStyle.italic),
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 12,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
               ),
             );
@@ -534,9 +665,17 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
                 CircleAvatar(
                   radius: 12,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
-                  backgroundImage: m.profileImage?.isNotEmpty == true ? NetworkImage(m.profileImage!) : null,
+                  backgroundImage: m.profileImage?.isNotEmpty == true
+                      ? NetworkImage(m.profileImage!)
+                      : null,
                   child: m.profileImage?.isNotEmpty != true
-                      ? Text(m.username[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10))
+                      ? Text(
+                          m.username[0].toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                        )
                       : null,
                 ),
                 const SizedBox(width: 8),
@@ -549,11 +688,16 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
                       children: [
                         TextSpan(
                           text: '${m.username} ',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.9),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         TextSpan(
                           text: m.message,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.8),
+                          ),
                         ),
                       ],
                     ),
@@ -582,14 +726,22 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
           child: Row(
             children: [
               Icon(
-                _isLiked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                _isLiked
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
                 color: _isLiked
                     ? AppColors.feedLikeActive
                     : Colors.white.withValues(alpha: 0.9),
                 size: 20,
               ),
               const SizedBox(width: 4),
-              Text(_formatCount(doc.likeCount), style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 13)),
+              Text(
+                _formatCount(doc.likeCount),
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.85),
+                  fontSize: 13,
+                ),
+              ),
             ],
           ),
         ),
