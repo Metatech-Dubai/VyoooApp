@@ -3,48 +3,42 @@ package com.vyooo.insta360.pipeline
 import kotlin.math.abs
 
 /**
- * Temporal redundancy reduction (Milestone 2).
+ * Temporal redundancy reduction — **motion/static time-paced** variant.
  *
- * Transmits **≤ 1 frame per [keepEveryN] captured** (N ≥ 2, default 3) via **deterministic
- * scheduling + motion gating**: between the scheduled slots a frame is kept only if the scene has
- * changed enough versus the **last kept (transmitted) frame**, so near-duplicate frames in a static
- * scene are dropped and the encoder simply holds the previous frame (bitrate falls). A generous
- * **heartbeat** ([heartbeatEveryN]) force-keeps a frame even in a fully static scene, so the stream
- * never stalls and a late-joining viewer/encoder always refreshes soon.
+ * Goal: keep the live stream at **full/original fps while there is motion**, and drop to an
+ * **evenly-spaced [staticFps]** (default 10) while the scene is static — so a static scene reduces
+ * bitrate without freezing (10 fps ≫ the ~1 fps a frozen scene showed) and without the *irregular*
+ * timing that a frame-count "1-in-N" drop produced (which lagged when combined with the SDK's bursty
+ * frame delivery). Pacing is **time-based** ([PipelineFrame.ptsUs]) so kept static frames are evenly
+ * spaced ⇒ smooth for the viewer/encoder.
  *
- * Dropping is done by returning `null` (the pipeline then forwards nothing for that frame, so
- * `Insta360FrameSink` neither displays nor pushes it). Invariants (Master Plan §3.5):
- *  - **PTS monotonic:** [PipelineFrame.ptsUs] is never modified or reordered; dropping frames keeps
- *    the surviving timestamps strictly increasing.
- *  - **Audio never gated:** audio is Agora's separate mic path and never flows through this pipeline.
- *  - **Conservative over aggressive:** defaults favour stability; motion keeps err toward keeping.
+ * Decision per frame:
+ *  - **motion** (luma change ≥ [motionThreshold]) → **keep** (full rate).
+ *  - **static** → keep only if ≥ `1/[staticFps]` s since the last kept frame; else **drop** (`null`).
  *
- * Motion metric: mean absolute difference of a coarse [GRID_COLS]×[GRID_ROWS] luma grid vs. the last
- * kept frame, normalised to [0,1] — a few hundred pixel reads per frame, comfortably real-time. An
- * on-device AI layer may override it via [PipelineHints.motion]; when absent the metric is computed.
+ * Invariants: PTS never modified/reordered (dropping keeps timestamps monotonic); audio is Agora's
+ * separate path and never gated. Motion may be supplied by the AI layer via [PipelineHints.motion];
+ * otherwise it is computed from a coarse luma grid. State is touched only on the SDK extract thread;
+ * [enabled] is `@Volatile` for live A/B toggling.
  *
- * State is touched only on the single SDK extract thread (via `Insta360FrameSink.submit`); [enabled]
- * is `@Volatile` for live A/B toggling from another thread.
+ * (This is the product-tuned behaviour; the patent's strict frame-count "≤1 per N" scheduler is
+ * preserved in history on the M2 branch.)
  */
 class TemporalDedupStage(
-    /** Scheduling cap: keep at most 1 frame per N captured (N ≥ 2). Default 3. */
-    @JvmField var keepEveryN: Int = 3,
-    /** Normalised luma MAD (0..1) above which a frame counts as motion and is kept. */
+    /** Normalised luma MAD (0..1) at/above which a frame counts as motion → kept at full rate. */
     @JvmField var motionThreshold: Float = 0.010f,
-    /** Force-keep cadence: keep at least 1 frame per this many captured, even in a static scene. */
-    @JvmField var heartbeatEveryN: Int = 30,
+    /** Frames/sec transmitted while static — evenly time-paced so the output stays smooth. */
+    @JvmField var staticFps: Int = 10,
 ) : FrameStage {
 
     override val name: String = "TemporalDedup"
 
-    /** Live toggle for A/B: when false every frame passes through (no temporal reduction). */
+    /** Live A/B toggle. When false every frame passes through (no reduction). */
     @Volatile
     var enabled: Boolean = true
 
     // ── Runtime state (extract thread only) ──────────────────────────────────
-    // Consecutive frames dropped since the last kept frame. Init "large" so the very first frame is
-    // kept (establishes the baseline). Bounded by the heartbeat, so it never overflows.
-    private var droppedSinceKept = Int.MAX_VALUE
+    private var lastKeptPtsUs = Long.MIN_VALUE
     private var lastGrid: IntArray? = null
     @Volatile private var lastMotion: Float = 0f
 
@@ -52,9 +46,8 @@ class TemporalDedupStage(
     private var seen = 0L
     private var kept = 0L
     private var motionKeeps = 0L
-    private var heartbeatKeeps = 0L
-    private var scheduleDrops = 0L
-    private var duplicateDrops = 0L
+    private var staticKeeps = 0L
+    private var staticDrops = 0L
 
     override fun process(frame: PipelineFrame, hints: PipelineHints): PipelineFrame? {
         if (!enabled) {
@@ -67,52 +60,47 @@ class TemporalDedupStage(
         val motion = hints.motion ?: motionFrom(curGrid)
         lastMotion = motion
 
-        val n = keepEveryN.coerceAtLeast(2)
-        val minDrops = n - 1
-        val heartbeatDrops = heartbeatEveryN.coerceAtLeast(n) - 1
-
-        val keep: Boolean = when {
-            droppedSinceKept >= heartbeatDrops -> { heartbeatKeeps++; true } // stability floor
-            droppedSinceKept < minDrops -> { scheduleDrops++; false } // ≤ 1 per N cap
-            motion >= motionThreshold -> { motionKeeps++; true } // motion gate
-            else -> { duplicateDrops++; false } // near-duplicate → drop
-        }
+        val moving = motion >= motionThreshold
+        val minGapUs = 1_000_000L / staticFps.coerceAtLeast(1)
+        val elapsedUs =
+            if (lastKeptPtsUs == Long.MIN_VALUE) Long.MAX_VALUE else frame.ptsUs - lastKeptPtsUs
+        // Keep every motion frame (full rate); in a static scene keep one frame per staticFps window.
+        val keep = moving || elapsedUs >= minGapUs
 
         return if (keep) {
-            droppedSinceKept = 0
+            lastKeptPtsUs = frame.ptsUs
             if (curGrid != null) lastGrid = curGrid
             kept++
+            if (moving) motionKeeps++ else staticKeeps++
             frame
         } else {
-            if (droppedSinceKept < Int.MAX_VALUE) droppedSinceKept++
+            staticDrops++
             null
         }
     }
 
-    /** Live KPI snapshot: keep ratio (effective fps fraction), motion-gate rate, drop breakdown. */
+    /** Live KPI snapshot: keep ratio, motion vs. static-paced keeps, static drops. */
     fun stats(): Map<String, Any> = mapOf(
         "temporalEnabled" to enabled,
-        "keepEveryN" to keepEveryN,
+        "staticFps" to staticFps,
         "framesSeen" to seen,
         "framesKept" to kept,
         "keepRatio" to if (seen > 0) kept.toDouble() / seen else 1.0,
         "motionKeeps" to motionKeeps,
-        "heartbeatKeeps" to heartbeatKeeps,
-        "scheduleDrops" to scheduleDrops,
-        "duplicateDrops" to duplicateDrops,
+        "staticKeeps" to staticKeeps,
+        "staticDrops" to staticDrops,
         "lastMotion" to lastMotion,
     )
 
     /** Clear runtime state + cumulative stats (called from `Insta360FrameSink.reset`). */
     fun reset() {
         resetRuntimeState()
-        seen = 0; kept = 0; motionKeeps = 0; heartbeatKeeps = 0
-        scheduleDrops = 0; duplicateDrops = 0
+        seen = 0; kept = 0; motionKeeps = 0; staticKeeps = 0; staticDrops = 0
         lastMotion = 0f
     }
 
     private fun resetRuntimeState() {
-        droppedSinceKept = Int.MAX_VALUE
+        lastKeptPtsUs = Long.MIN_VALUE
         lastGrid = null
     }
 
