@@ -123,8 +123,8 @@ object Insta360FrameSink {
             "temporal enabled=${s["temporalEnabled"]} " +
                 "capFps=${"%.1f".format(capFps)} effFps=${"%.1f".format(effFps)} " +
                 "keepRatio=${"%.2f".format(s["keepRatio"] as Double)} " +
-                "kept=$kept/$seen motion=${s["motionKeeps"]} heartbeat=${s["heartbeatKeeps"]} " +
-                "schedDrop=${s["scheduleDrops"]} dupDrop=${s["duplicateDrops"]} " +
+                "kept=$kept/$seen motionKeep=${s["motionKeeps"]} staticKeep=${s["staticKeeps"]} " +
+                "staticDrop=${s["staticDrops"]} " +
                 "lastMotion=${"%.3f".format(s["lastMotion"] as Float)}",
         )
     }
