@@ -139,7 +139,8 @@ object Insta360FrameSink {
                 "kept=$kept/$seen motionKeep=${s["motionKeeps"]} staticKeep=${s["staticKeeps"]} " +
                 "staticDrop=${s["staticDrops"]} " +
                 "lastMotion=${"%.3f".format(s["lastMotion"] as Float)} | " +
-                "ai=${ai["aiEnabled"]} aiMotion=${"%.3f".format(ai["aiMotion"] as Float)} " +
+                "ai=${ai["aiEnabled"]} aiMoving=${ai["aiMoving"]} " +
+                "aiActivity=${"%.3f".format(ai["aiActivity"] as Float)} " +
                 "aiDetail=${"%.3f".format(ai["aiSpatialDetail"] as Float)} " +
                 "aiRecScale=${"%.2f".format(ai["aiRecommendedScale"] as Float)} " +
                 "aiTheta=${"%.1f".format(ai["aiThetaDeg"] as Float)} " +
