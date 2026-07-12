@@ -47,10 +47,11 @@ import kotlin.math.abs
  * Constraints honoured: metadata-only, no pixel modification, no training/cloud, deterministic
  * fall-open, bounded (a few hundred luma reads per observation).
  *
- * **[enabled] ships `false`**: the layer is inert by default, so the live path keeps the temporal
- * behaviour already validated on-device (deterministic fall-open). Nothing in the app calls
- * `setAiEnabled` yet, so enabling it currently means flipping this default or calling
- * `Insta360FrameSink.setAiEnabled(true)` — do that deliberately, for A/B / KPI capture.
+ * **[enabled] ships `true`** — the layer is *applied live*: it supplies the motion decision the temporal
+ * pacer acts on. That is the point of M3; a decision layer that never influences the pipeline would not
+ * be a deliverable. Validated on-device (gate stable, full rate in motion, correct static pacing,
+ * 0.13–0.55 ms/frame overhead). Set `Insta360FrameSink.setAiEnabled(false)` to fall open to the
+ * pipeline's own deterministic metrics — for A/B and KPI capture.
  *
  * State is touched only on the SDK extract thread (via `Insta360FrameSink.submit`); the toggles are
  * `@Volatile` for live control from another thread.
@@ -58,10 +59,11 @@ import kotlin.math.abs
 class HeuristicDecisionLayer(private val hints: MutableHints) {
 
     /**
-     * Master enable. **Default off** → hints are cleared and the pipeline falls open to its own
-     * deterministic metrics (the validated M2 behaviour). Flip on for A/B / KPI capture.
+     * Master enable. **On** → the layer supplies the decision signals the pipeline acts on (M3 applied
+     * live). Set to `false` to clear the hints and fall open to the pipeline's own deterministic metrics
+     * (the M2 behaviour) — the A/B arm, and the safety path if the layer ever misbehaves.
      */
-    @Volatile var enabled: Boolean = false
+    @Volatile var enabled: Boolean = true
 
     /** Apply the computed spatial-reduction recommendation to the hint (default off = mapping only). */
     @Volatile var applyPerceptual: Boolean = false
