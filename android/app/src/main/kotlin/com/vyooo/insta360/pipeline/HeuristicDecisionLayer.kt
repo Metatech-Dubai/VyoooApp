@@ -27,10 +27,11 @@ import kotlin.math.abs
  *     spacing — the exact failure that made the earlier frame-count scheduler lag the encoder. So the
  *     decision uses **hysteresis** ([motionEnter] > [motionExit]) plus a **hold** ([motionHoldMs])
  *     after activity subsides.
- *  3. **Slow motion must accumulate.** The stage's own metric compares against the last *kept* frame,
- *     so a slow pan builds up and is not silently dropped. Comparing consecutive frames would lose
- *     that. We reproduce it by **freezing the reference grid while static** (drift accumulates against
- *     it) and refreshing it while moving.
+ *  3. **The measurement must not depend on the gate.** Motion is measured against a **fixed ~[refLagMs]
+ *     time-lagged reference**. Making the reference state-dependent (frozen while static, refreshed
+ *     while moving) turns the pair into a relaxation oscillator — measured on-device as 32 gate flips
+ *     with `effFps` swinging 29↔9. A constant lag also lets a slow pan accumulate across the window,
+ *     so it is not silently paced down.
  *
  * ## Signals (contract §3.4 / Patent Fig. 2–3)
  *  - **motion** → [TemporalDedupStage]: hysteretic moving/static decision from a robust,
@@ -82,9 +83,16 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
     /** Stay "moving" this long after activity drops below [motionExit] — damps gate flapping. */
     @Volatile var motionHoldMs: Long = 400
 
+    /**
+     * Age of the motion-diff reference. Motion is measured against the frame from ~this long ago — a
+     * **constant lag, independent of the gate state** (see [observe]). Long enough that a slow pan
+     * accumulates a visible diff; short enough to react promptly.
+     */
+    @Volatile var refLagMs: Long = 250
+
     // ── Runtime state (extract thread) ───────────────────────────────────────
-    /** Motion-diff reference: refreshed while moving, **frozen while static** so slow drift accumulates. */
-    private var refGrid: IntArray? = null
+    /** Recent grids (ts, grid), trimmed to ~[refLagMs] — the oldest is the fixed-lag motion reference. */
+    private val history = ArrayDeque<Pair<Long, IntArray>>()
     private var frameCounter = 0L
     private var activityEma = 0f
     private var detailEma = 0f
@@ -117,10 +125,22 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
         val t0 = System.nanoTime()
         val grid = sampleLuma(pixels, width, height) ?: return
 
-        // Activity vs the reference grid. The reference is frozen while static, so a slow pan
-        // accumulates against it and is eventually detected (mirrors the stage's last-kept baseline).
-        // Top-percentile (not whole-frame mean) keeps a small moving region from being averaged away.
-        val ref = refGrid
+        // Activity vs a FIXED ~[refLagMs] time-lagged reference — never a state-dependent one.
+        //
+        // The reference MUST NOT depend on the moving/static decision. Refreshing it only while moving
+        // (and freezing it while static) makes the measurement a function of the state it is supposed
+        // to drive, which is a relaxation oscillator: frozen ref → drift accumulates → MOVING → ref now
+        // refreshes every frame → consecutive-frame diff collapses to ~noise → STATIC → repeat. Measured
+        // on-device: 32 gate flips, effFps swinging 29↔9, `aiMoving=true` while `aiActivity=0.010`.
+        //
+        // A constant lag fixes it: sustained motion at ~29 fps gives a large diff over 250 ms that does
+        // not collapse, a static scene gives only sensor noise, and a slow pan still accumulates across
+        // the window (the property the frozen reference was reaching for). Top-percentile (not a
+        // whole-frame mean) keeps a small moving region from being averaged away.
+        history.addLast(t0 to grid)
+        val lagNs = refLagMs * 1_000_000L
+        while (history.size > 1 && t0 - history.first().first > lagNs) history.removeFirst()
+        val ref = if (history.size > 1) history.first().second else null
         val activity = if (ref == null) 1f else topPercentileDiff(grid, ref)
         activityEma = MOTION_EMA_ALPHA * activity + (1 - MOTION_EMA_ALPHA) * activityEma
 
@@ -145,9 +165,6 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
             motionSpans++
             Log.i(TAG, "gate static→MOVING activity=${"%.4f".format(activityEma)} enter=$motionEnter spans=$motionSpans")
         }
-
-        // Refresh the reference only while moving; freeze it while static (see above).
-        if (moving || ref == null) refGrid = grid
 
         // Spatial detail: mean neighbour gradient of the grid (texture/complexity estimate).
         val detail = neighbourGradient(grid)
@@ -197,7 +214,7 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
     )
 
     fun reset() {
-        refGrid = null
+        history.clear()
         frameCounter = 0
         activityEma = 0f; detailEma = 0f; thetaEma = 0f
         moving = false; belowExitSinceNs = 0L
