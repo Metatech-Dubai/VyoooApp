@@ -1,5 +1,6 @@
 package com.vyooo.insta360.pipeline
 
+import android.util.Log
 import kotlin.math.abs
 
 /**
@@ -45,9 +46,9 @@ import kotlin.math.abs
  * Constraints honoured: metadata-only, no pixel modification, no training/cloud, deterministic
  * fall-open, bounded (a few hundred luma reads per observation).
  *
- * **[enabled] defaults to `false`**: the layer ships inert so the live path keeps the temporal
- * behaviour already validated on-device. Turn it on deliberately for A/B / KPI capture via
- * `Insta360FrameSink.setAiEnabled(true)`.
+ * **[enabled] is `true` on this integration/test branch** so the layer is exercised on-device (nothing
+ * in the app calls `setAiEnabled` yet). It ships **off** on the M3 branch, where the pipeline falls
+ * open to its deterministic metrics. A/B at runtime via `Insta360FrameSink.setAiEnabled(false)`.
  *
  * State is touched only on the SDK extract thread (via `Insta360FrameSink.submit`); the toggles are
  * `@Volatile` for live control from another thread.
@@ -131,6 +132,9 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
                 if ((t0 - belowExitSinceNs) / 1_000_000L >= motionHoldMs) {
                     moving = false
                     belowExitSinceNs = 0L
+                    // Logged on the flip itself: the ~1/s monitor samples too coarsely to reveal a
+                    // short flap, and every flip changes the pacer's rate (full ⇄ staticFps).
+                    Log.i(TAG, "gate moving→STATIC activity=${"%.4f".format(activityEma)} exit=$motionExit hold=${motionHoldMs}ms")
                 }
             } else {
                 belowExitSinceNs = 0L // re-armed by fresh activity
@@ -139,6 +143,7 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
             moving = true
             belowExitSinceNs = 0L
             motionSpans++
+            Log.i(TAG, "gate static→MOVING activity=${"%.4f".format(activityEma)} enter=$motionEnter spans=$motionSpans")
         }
 
         // Refresh the reference only while moving; freeze it while static (see above).
@@ -272,6 +277,7 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
     }
 
     private companion object {
+        const val TAG = "HeuristicAI"
         const val GRID_COLS = 32
         const val GRID_ROWS = 18
         const val TOP_FRACTION = 0.15f

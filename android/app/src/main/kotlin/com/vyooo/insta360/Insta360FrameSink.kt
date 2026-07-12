@@ -81,6 +81,7 @@ object Insta360FrameSink {
     private var lastTemporalLogNs: Long = 0
     private var lastLogSeen: Long = 0
     private var lastLogKept: Long = 0
+    private var lastLogSpans: Long = 0
 
     private const val TAG = "Insta360FrameSink"
 
@@ -94,7 +95,7 @@ object Insta360FrameSink {
     fun reset() {
         count = 0; windowStartNs = 0; framesThisWindow = 0; lastFps = 0; basePtsNs = 0
         lastTransmitNs = 0
-        lastTemporalLogNs = 0; lastLogSeen = 0; lastLogKept = 0
+        lastTemporalLogNs = 0; lastLogSeen = 0; lastLogKept = 0; lastLogSpans = 0
         pipeline.metrics.reset()
         temporalDedup.reset()
         decisionLayer.reset()
@@ -112,10 +113,15 @@ object Insta360FrameSink {
     }
 
     /**
-     * Throttled (~1/s) logcat monitor of the temporal stage — the on-device stability readout.
-     * `capFps` (frames arriving from the camera) staying steady = real-time sustained / no backlog;
-     * `effFps` (frames kept) is the temporally-reduced output rate; the two together show frame
-     * pacing and that drops never run away (effFps holds at the heartbeat floor in a static scene).
+     * Throttled (~1/s) logcat monitor of the temporal stage + the M3 decision layer — the on-device
+     * stability readout. `capFps` (frames arriving from the camera) staying steady = real-time
+     * sustained / no backlog; `effFps` (frames kept) is the temporally-reduced output rate — in a
+     * static scene it should settle at `staticFps`, in motion it tracks `capFps`.
+     *
+     * AI side: `aiMoving` is the decision handed to the pacer (so `lastMotion` reads 1.000/0.000 when
+     * the layer is on — that is the decision, not a score); `aiActivity` is the raw score behind it
+     * (use it to tune `motionEnter`/`motionExit`); `aiSpans/s` is the **gate-stability** KPI — it must
+     * stay near 0 in a steady scene, since a flapping gate gives the encoder irregular frame spacing.
      */
     private fun maybeLogTemporal(nowNs: Long) {
         val dt = nowNs - lastTemporalLogNs
@@ -130,6 +136,11 @@ object Insta360FrameSink {
         lastLogSeen = seen
         lastLogKept = kept
         val ai = decisionLayer.stats()
+        // Gate-stability KPI: static→moving transitions per second. A steady scene should sit near 0;
+        // a climbing rate means the motion gate is flapping → irregular frame spacing into the encoder.
+        val spans = ai["aiMotionSpans"] as Long
+        val spansPerSec = (spans - lastLogSpans) / secs
+        lastLogSpans = spans
         Log.i(
             TAG,
             "temporal enabled=${s["temporalEnabled"]} " +
@@ -144,6 +155,8 @@ object Insta360FrameSink {
                 "aiDetail=${"%.3f".format(ai["aiSpatialDetail"] as Float)} " +
                 "aiRecScale=${"%.2f".format(ai["aiRecommendedScale"] as Float)} " +
                 "aiTheta=${"%.1f".format(ai["aiThetaDeg"] as Float)} " +
+                "aiSpans=$spans (${"%.1f".format(spansPerSec)}/s) " +
+                "aiDecisions=${ai["aiDecisions"]} " +
                 "aiMs=${"%.2f".format(ai["aiOverheadMs"] as Double)}",
         )
     }
