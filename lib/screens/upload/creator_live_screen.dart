@@ -72,6 +72,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   bool _maskEnabled = true;
   StreamSubscription<Insta360Frame>? _instaFrameSub;
   Timer? _instaConnectTimer;
+  // Agora-monotonic anchor for pushed-frame timestamps (see [_pushInstaFrame]); null = not yet set.
+  int? _pushTsBaseMs;
 
   // Interactive 360 view orientation (degrees), driven by host drag on the preview.
   double _viewYaw = 0;
@@ -496,6 +498,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           degradationPreference: DegradationPreference.maintainResolution,
         ),
       );
+      _pushTsBaseMs = null; // re-anchor the frame timestamps to Agora's clock for this session
       _instaFrameSub = _insta.frames().listen(_pushInstaFrame);
       await _insta.setFrameStreaming(true);
 
@@ -631,8 +634,14 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
     _showToast(_maskEnabled ? 'Forward mask on' : 'Full 360° (unmasked)');
   }
 
-  void _pushInstaFrame(Insta360Frame frame) {
+  Future<void> _pushInstaFrame(Insta360Frame frame) async {
     if (_cameraSource != _CameraSource.insta360) return;
+    // Align the external-frame timestamp to Agora's monotonic clock (the SDK-recommended source).
+    // The capture PTS is 0-based; pushing it raw leaves Agora's A/V-sync trying to reconcile a clock
+    // mismatch, which buffers video and adds latency. Anchor the first frame to Agora's clock and
+    // advance by the capture PTS thereafter.
+    final ptsMs = frame.ptsUs ~/ 1000;
+    _pushTsBaseMs ??= (await _engine.getCurrentMonotonicTimeInMs()) - ptsMs;
     _engine
         .getMediaEngine()
         .pushVideoFrame(
@@ -642,7 +651,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
             buffer: frame.bytes,
             stride: frame.width,
             height: frame.height,
-            timestamp: frame.ptsUs ~/ 1000,
+            timestamp: _pushTsBaseMs! + ptsMs,
           ),
         )
         .catchError((_) {});

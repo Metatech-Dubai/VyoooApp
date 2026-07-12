@@ -153,7 +153,15 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
       },
     ));
 
-    await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
+    // Ultra-low-latency audience: the default live-broadcasting audience level buffers ~1.5 s+;
+    // ultra-low targets ~400 ms, cutting the viewer-side stream delay.
+    await _engine.setClientRole(
+      role: ClientRoleType.clientRoleAudience,
+      options: const ClientRoleOptions(
+        audienceLatencyLevel:
+            AudienceLatencyLevelType.audienceLatencyLevelUltraLowLatency,
+      ),
+    );
     await _engine.enableVideo();
     await _engine.enableAudio();
 

@@ -84,10 +84,10 @@ object Insta360FrameSink {
 
     private const val TAG = "Insta360FrameSink"
 
-    // Cap the transmit copy rate. The pipeline runs at the extract rate (~60 fps) to keep the host
-    // display smooth, but each transmitted frame allocates a fresh ~7 MB copy (+ another ~7 MB in the
-    // platform-channel codec), so forwarding all 60 fps thrashes the heap. The Agora encoder runs at
-    // 15 fps; 24 fps here gives it full frames with headroom while cutting allocation churn ~2.5×.
+    // Cap the transmit copy rate. Each transmitted frame allocates a fresh ~7 MB copy (+ another
+    // ~7 MB in the platform-channel codec). The effective transmit rate is bottlenecked by the
+    // native→Dart platform channel (~11 fps for these 7 MB frames), well below this cap, so 24 fps
+    // is just a safety ceiling — raising it does not raise fps (that needs a native push path).
     private const val TRANSMIT_MIN_INTERVAL_NS = 1_000_000_000L / 24
 
     @Synchronized
@@ -135,8 +135,9 @@ object Insta360FrameSink {
             "temporal enabled=${s["temporalEnabled"]} " +
                 "capFps=${"%.1f".format(capFps)} effFps=${"%.1f".format(effFps)} " +
                 "keepRatio=${"%.2f".format(s["keepRatio"] as Double)} " +
-                "kept=$kept/$seen motion=${s["motionKeeps"]} heartbeat=${s["heartbeatKeeps"]} " +
-                "schedDrop=${s["scheduleDrops"]} dupDrop=${s["duplicateDrops"]} " +
+                "staticFps=${s["staticFps"]} " +
+                "kept=$kept/$seen motionKeep=${s["motionKeeps"]} staticKeep=${s["staticKeeps"]} " +
+                "staticDrop=${s["staticDrops"]} " +
                 "lastMotion=${"%.3f".format(s["lastMotion"] as Float)} | " +
                 "ai=${ai["aiEnabled"]} aiMotion=${"%.3f".format(ai["aiMotion"] as Float)} " +
                 "aiDetail=${"%.3f".format(ai["aiSpatialDetail"] as Float)} " +
