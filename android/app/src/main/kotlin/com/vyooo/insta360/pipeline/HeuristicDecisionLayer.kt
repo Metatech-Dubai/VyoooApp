@@ -47,9 +47,10 @@ import kotlin.math.abs
  * Constraints honoured: metadata-only, no pixel modification, no training/cloud, deterministic
  * fall-open, bounded (a few hundred luma reads per observation).
  *
- * **[enabled] is `true` on this integration/test branch** so the layer is exercised on-device (nothing
- * in the app calls `setAiEnabled` yet). It ships **off** on the M3 branch, where the pipeline falls
- * open to its deterministic metrics. A/B at runtime via `Insta360FrameSink.setAiEnabled(false)`.
+ * **[enabled] ships `false`**: the layer is inert by default, so the live path keeps the temporal
+ * behaviour already validated on-device (deterministic fall-open). Nothing in the app calls
+ * `setAiEnabled` yet, so enabling it currently means flipping this default or calling
+ * `Insta360FrameSink.setAiEnabled(true)` — do that deliberately, for A/B / KPI capture.
  *
  * State is touched only on the SDK extract thread (via `Insta360FrameSink.submit`); the toggles are
  * `@Volatile` for live control from another thread.
