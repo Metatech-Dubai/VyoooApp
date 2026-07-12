@@ -55,10 +55,12 @@ import kotlin.math.abs
 class HeuristicDecisionLayer(private val hints: MutableHints) {
 
     /**
-     * Master enable. **Default off** → hints are cleared and the pipeline falls open to its own
-     * deterministic metrics (the validated M2 behaviour). Flip on for A/B / KPI capture.
+     * Master enable. **On for this integration/test branch** so M3 is exercised on-device without a UI
+     * toggle (nothing in the app calls `setAiEnabled` yet). It ships **off** on the M3 branch, where the
+     * pipeline falls open to its own deterministic metrics (the validated M2 behaviour). A/B at runtime
+     * via `Insta360FrameSink.setAiEnabled(false)`.
      */
-    @Volatile var enabled: Boolean = false
+    @Volatile var enabled: Boolean = true
 
     /** Apply the computed spatial-reduction recommendation to the hint (default off = mapping only). */
     @Volatile var applyPerceptual: Boolean = false
