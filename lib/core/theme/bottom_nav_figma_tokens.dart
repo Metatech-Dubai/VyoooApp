@@ -28,18 +28,12 @@ abstract final class BottomNavFigmaTokens {
   static const FontWeight createMenuLabelWeight = FontWeight.w500;
 
   /// Gap between create menu stack and nav pill.
-  static const double createMenuToNavGap = 12;
+  static const double createMenuToNavGap = 16;
 
   static const Duration createMenuAnimation = Duration(milliseconds: 260);
   static const Curve createMenuCurve = Curves.easeOutCubic;
 
-  static const List<BoxShadow> createMenuRowShadow = [
-    BoxShadow(
-      color: Color(0x40000000),
-      blurRadius: 4,
-      offset: Offset(0, 4),
-    ),
-  ];
+  static const List<BoxShadow> createMenuRowShadow = <BoxShadow>[];
 
   static const List<BoxShadow> pillShadow = [
     BoxShadow(

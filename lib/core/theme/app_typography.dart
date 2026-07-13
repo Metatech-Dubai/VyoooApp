@@ -512,7 +512,7 @@ abstract final class AppTypography {
   /// Alias for caption blocks — same as [feedReelName].
   static const TextStyle feedReelCaption = feedReelName;
 
-  /// Hashtags in reel caption — DM Sans Medium 14 @ #FFB3CC.
+  /// Hashtags in reel caption — DM Sans Medium 14 @ #B3B3B3.
   static const TextStyle feedReelHashtag = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: feedReelHashtagSize,
@@ -684,7 +684,7 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
-  /// Music row ("note" layer) — DM Sans Regular 12 @ #808080.
+  /// Music row label — DM Sans Regular 12 @ #FFFFFF 80%.
   static const TextStyle feedReelNote = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: feedReelNoteSize,

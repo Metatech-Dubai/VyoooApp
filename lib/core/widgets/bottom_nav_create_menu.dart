@@ -38,6 +38,31 @@ class BottomNavCreateMenu extends StatelessWidget {
     if (reveal <= 0) return const SizedBox.shrink();
 
     final rowGap = BottomNavFigmaTokens.createMenuRowGap;
+    final menu = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        for (var i = 0; i < _items.length; i++) ...[
+          if (i > 0) SizedBox(height: rowGap),
+          _CreateMenuRow(
+            label: _items[i].label,
+            iconAsset: _items[i].icon,
+            progress: _staggeredProgress(reveal, i),
+            onTap: () => onAction(_items[i].action),
+          ),
+        ],
+      ],
+    );
+
+    // Once fully open, skip clip so the last row (Live) is never cropped.
+    if (reveal >= 0.999) {
+      return IgnorePointer(
+        ignoring: false,
+        child: SizedBox(
+          width: BottomNavFigmaTokens.createMenuWidth,
+          child: menu,
+        ),
+      );
+    }
 
     return IgnorePointer(
       ignoring: reveal < 0.85,
@@ -49,20 +74,7 @@ class BottomNavCreateMenu extends StatelessWidget {
             heightFactor: reveal.clamp(0.001, 1.0),
             child: Opacity(
               opacity: reveal,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  for (var i = 0; i < _items.length; i++) ...[
-                    if (i > 0) SizedBox(height: rowGap),
-                    _CreateMenuRow(
-                      label: _items[i].label,
-                      iconAsset: _items[i].icon,
-                      progress: _staggeredProgress(reveal, i),
-                      onTap: () => onAction(_items[i].action),
-                    ),
-                  ],
-                ],
-              ),
+              child: menu,
             ),
           ),
         ),
@@ -70,12 +82,13 @@ class BottomNavCreateMenu extends StatelessWidget {
     );
   }
 
+  /// Stagger that always finishes at 1.0 when [master] is 1.0 (including Live).
   static double _staggeredProgress(double master, int index) {
-    final start = index * 0.08;
-    final end = start + 0.72;
+    final start = index * 0.06;
+    final span = 1.0 - start;
+    if (span <= 0) return master >= 1 ? 1 : 0;
     if (master <= start) return 0;
-    if (master >= end) return 1;
-    return ((master - start) / (end - start)).clamp(0.0, 1.0);
+    return ((master - start) / span).clamp(0.0, 1.0);
   }
 }
 
@@ -94,7 +107,8 @@ class _CreateMenuRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final slideY = (1 - progress) * 8;
+    // Slide down into place from above — never push past the clip bottom edge.
+    final slideY = (1 - progress) * -6;
     return Transform.translate(
       offset: Offset(0, slideY),
       child: Opacity(

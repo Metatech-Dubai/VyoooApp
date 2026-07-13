@@ -32,4 +32,7 @@ abstract final class FeedInteractionAssets {
   static const String playbackSpeaker = '$_playbackControls/speaker.svg';
   static const String playbackSpeakerMuted =
       '$_playbackControls/speaker_muted.svg';
+
+  /// Reel music row note icon (Figma 11×12).
+  static const String feedMusicNote = '$_home/feed_music_note.svg';
 }

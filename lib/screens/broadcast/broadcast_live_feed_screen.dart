@@ -745,103 +745,119 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
     }
 
     final doc = _liveDoc ?? _currentStream!;
-    final shellBottomInset = _feedShellBottomInset(
-      context,
-      hostCaptionVisible: _showHostCaption,
-    );
-    final overlayBottom = _feedOverlayBottom(
-      context,
-      hostCaptionVisible: _showHostCaption,
-    );
 
-    return ColoredBox(
-      color: AppColors.feedBottomChrome,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: shellBottomInset,
-            child: const ColoredBox(color: AppColors.feedBottomChrome),
-          ),
-          Positioned.fill(
-            bottom: shellBottomInset,
-            child: _buildFeedClipArea(
-              Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildVideoLayer(doc),
-                  _buildGradientOverlay(),
-                  const FeedBottomScrim(clipBottomCorners: false),
-                  PageView.builder(
-                    controller: _pageController,
-                    scrollDirection: Axis.vertical,
-                    itemCount: _streams.length,
-                    onPageChanged: _onPageChanged,
-                    itemBuilder: (context, index) => const SizedBox.expand(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: overlayBottom,
-            child: _BroadcastFeedPageOverlay(
-              stream: doc,
-              chatMessages: _chatMessages,
-              isLiked: _isLiked,
-              chatController: _chatCtrl,
-              streamProgress: _streamProgress,
-              showHostCaption: _showHostCaption,
-              onHostCaptionVisibilityChanged: _onHostCaptionVisibilityChanged,
-              onSendMessage: _sendMessage,
-              onLike: _sendLike,
-              onShare: () => _shareStream(doc),
-              onHostTap: () {
-                final stream = _currentStream;
-                if (stream == null) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => UserProfileScreen(
-                      payload: UserProfilePayload(
-                        targetUserId: stream.hostId,
-                        username: stream.hostUsername,
-                        displayName: stream.hostUsername,
-                        avatarUrl: stream.hostProfileImage ?? '',
-                        followerCount: 0,
+    return ValueListenableBuilder<bool>(
+      valueListenable: MainNavWrapper.createMenuOpenNotifier,
+      builder: (context, createMenuOpen, _) {
+        final shellBottomInset = createMenuOpen
+            ? AppBottomNavigation.totalHeightFor(context)
+            : _feedShellBottomInset(
+                context,
+                hostCaptionVisible: _showHostCaption,
+              );
+        final overlayBottom = createMenuOpen
+            ? AppBottomNavigation.totalHeightFor(context) +
+                AppSpacing.feedReelBottomContentNavGap
+            : _feedOverlayBottom(
+                context,
+                hostCaptionVisible: _showHostCaption,
+              );
+
+        return ColoredBox(
+          color: createMenuOpen
+              ? Colors.black
+              : AppColors.feedBottomChrome,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!createMenuOpen)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: shellBottomInset,
+                  child: const ColoredBox(color: AppColors.feedBottomChrome),
+                ),
+              Positioned.fill(
+                bottom: createMenuOpen ? 0 : shellBottomInset,
+                child: _buildFeedClipArea(
+                  Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildVideoLayer(doc),
+                      _buildGradientOverlay(),
+                      if (!createMenuOpen)
+                        const FeedBottomScrim(clipBottomCorners: false),
+                      PageView.builder(
+                        controller: _pageController,
+                        scrollDirection: Axis.vertical,
+                        itemCount: _streams.length,
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (context, index) => const SizedBox.expand(),
                       ),
-                    ),
+                    ],
                   ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: _buildHeader(context),
-            ),
-          ),
-          if (!_engineReady || _joining)
-            Positioned.fill(
-              bottom: shellBottomInset,
-              child: ColoredBox(
-                color: const Color(0x880A000F),
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
                 ),
               ),
-            ),
-          if (_toast != null) _buildToast(_toast!),
-        ],
-      ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: overlayBottom,
+                child: _BroadcastFeedPageOverlay(
+                  stream: doc,
+                  chatMessages: _chatMessages,
+                  isLiked: _isLiked,
+                  chatController: _chatCtrl,
+                  streamProgress: _streamProgress,
+                  showHostCaption: _showHostCaption,
+                  onHostCaptionVisibilityChanged:
+                      _onHostCaptionVisibilityChanged,
+                  onSendMessage: _sendMessage,
+                  onLike: _sendLike,
+                  onShare: () => _shareStream(doc),
+                  onHostTap: () {
+                    final stream = _currentStream;
+                    if (stream == null) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => UserProfileScreen(
+                          payload: UserProfilePayload(
+                            targetUserId: stream.hostId,
+                            username: stream.hostUsername,
+                            displayName: stream.hostUsername,
+                            avatarUrl: stream.hostProfileImage ?? '',
+                            followerCount: 0,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: _buildHeader(context),
+                ),
+              ),
+              if (!_engineReady || _joining)
+                Positioned.fill(
+                  bottom: shellBottomInset,
+                  child: ColoredBox(
+                    color: const Color(0x880A000F),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+                ),
+              if (_toast != null) _buildToast(_toast!),
+            ],
+          ),
+        );
+      },
     );
   }
 

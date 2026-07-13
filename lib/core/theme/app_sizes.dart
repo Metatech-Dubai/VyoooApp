@@ -172,6 +172,10 @@ abstract final class AppSizes {
   /// Plus glyph inside reel follow pill (Figma ~6px).
   static const double feedReelFollowPlusIcon = 10;
 
+  /// Reel music row note icon (Figma 11×12).
+  static const double feedReelMusicIconWidth = 11;
+  static const double feedReelMusicIconHeight = 12;
+
   /// Following tab — story avatar diameter (Figma).
   static const double followingStoryAvatarSize = 68;
   static const double followingStoryBorderWidth = 3;

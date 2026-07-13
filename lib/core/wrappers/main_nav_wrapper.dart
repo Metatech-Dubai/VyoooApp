@@ -33,6 +33,10 @@ class MainNavWrapper extends StatefulWidget {
 
   static final ValueNotifier<int?> tabNotifier = ValueNotifier<int?>(null);
 
+  /// True while the bottom-nav create hub (plus menu) is open.
+  static final ValueNotifier<bool> createMenuOpenNotifier =
+      ValueNotifier<bool>(false);
+
   /// Same navigation path as tapping a bottom-nav item (except index 2 → Upload push).
   static void switchToTab(int index) {
     final safe = index.clamp(0, 4);
@@ -176,6 +180,7 @@ class _MainNavWrapperState extends State<MainNavWrapper>
     _reelDeepLinkSub?.cancel();
     _profileDeepLinkSub?.cancel();
     _createMenuController.dispose();
+    MainNavWrapper.createMenuOpenNotifier.value = false;
     PresenceService.instance.stop();
     ChatNotificationService.instance.stop();
     _homeFeedChrome.dispose();
@@ -233,11 +238,14 @@ class _MainNavWrapperState extends State<MainNavWrapper>
     if (!_createMenuOpen) return;
     if (!animate) {
       _createMenuController.value = 0;
+      MainNavWrapper.createMenuOpenNotifier.value = false;
       setState(() => _createMenuOpen = false);
       return;
     }
     _createMenuController.reverse().whenComplete(() {
-      if (mounted) setState(() => _createMenuOpen = false);
+      if (!mounted) return;
+      MainNavWrapper.createMenuOpenNotifier.value = false;
+      setState(() => _createMenuOpen = false);
     });
   }
 
@@ -246,6 +254,7 @@ class _MainNavWrapperState extends State<MainNavWrapper>
       _closeCreateMenu();
       return;
     }
+    MainNavWrapper.createMenuOpenNotifier.value = true;
     setState(() => _createMenuOpen = true);
     _createMenuController.forward(from: 0);
   }

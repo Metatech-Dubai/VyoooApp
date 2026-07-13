@@ -36,8 +36,8 @@ class AppColors {
   /// Profile tab bookmark / star icon default (Figma #808080).
   static const Color profileTabAccessoryIcon = Color(0xFF808080);
 
-  /// Reel music row ("note" layer) — DM Sans Regular 12 @ #808080.
-  static const Color feedReelNoteText = profileTabAccessoryIcon;
+  /// Reel music row label (Figma DM Sans Regular 12 @ #FFFFFF 80%).
+  static const Color feedReelNoteText = Color(0xCCFFFFFF);
 
   /// Profile side drawer — wallet / chat / revenue icons (Figma #EC709C @ 70%).
   static const Color profileDrawerSecondaryIcon = Color(0xB3EC709C);
@@ -54,8 +54,8 @@ class AppColors {
   static const Color feedReelPlaybackControlFill = Color(0xB3242323);
   /// Reel playback pill center divider (Figma #8D8C8C).
   static const Color feedReelPlaybackControlDivider = Color(0xFF8D8C8C);
-  /// Reel caption hashtags (Figma #FFB3CC).
-  static const Color feedReelHashtag = Color(0xFFFFB3CC);
+  /// Reel caption hashtags (Figma #B3B3B3).
+  static const Color feedReelHashtag = Color(0xFFB3B3B3);
 
   /// Bottom nav chrome behind the floating pill (Figma dark strip).
   static const Color feedBottomChrome = Color(0xFF0C0C0C);
@@ -63,8 +63,11 @@ class AppColors {
   /// Post-upload success toast on home feed (Figma dark translucent pill).
   static const Color uploadPostSuccessToastBackground = Color(0xE63A3A3C);
 
-  /// Home reel progress bar track (Figma remaining segment on dark chrome).
-  static const Color feedReelProgressTrack = Color(0xFF333333);
+  /// Home reel progress bar played segment (Figma #FFFFFF).
+  static const Color feedReelProgressFill = Color(0xFFFFFFFF);
+
+  /// Home reel progress bar track (Figma remaining segment — white @ ~24%).
+  static const Color feedReelProgressTrack = Color(0x3DFFFFFF);
   static const Color brandPurple = Color(0xFF490038);
   static const Color brandDeepPurple = Color(0xFF21002B);
   static const Color brandNearBlack = Color(0xFF07010F);

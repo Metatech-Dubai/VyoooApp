@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -1514,27 +1515,37 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         lerpDouble(followingStoriesTop, storiesCollapsedTop, collapseT) ??
         followingStoriesTop;
 
-    final feedBottomInset = _feedShellBottomInset(context);
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          Stack(
-            children: [
-              Positioned(
-                left: 0,
-                right: 0,
-                bottom: 0,
-                height: feedBottomInset,
-                child: const ColoredBox(color: AppColors.feedBottomChrome),
-              ),
-              Positioned.fill(
-                top: 0,
-                bottom: feedBottomInset,
-                child: _buildFeedClipArea(),
-              ),
-            ],
+          ValueListenableBuilder<bool>(
+            valueListenable: MainNavWrapper.createMenuOpenNotifier,
+            builder: (context, createMenuOpen, _) {
+              final feedBottomInset = AppBottomNavigation.totalHeightFor(
+                context,
+                feedChrome: !createMenuOpen,
+                includeReelProgressBand:
+                    !createMenuOpen && _showHomeReelProgressBar(),
+              );
+              return Stack(
+                children: [
+                  if (!createMenuOpen)
+                    Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      height: feedBottomInset,
+                      child: const ColoredBox(color: AppColors.feedBottomChrome),
+                    ),
+                  Positioned.fill(
+                    top: 0,
+                    bottom: createMenuOpen ? 0 : feedBottomInset,
+                    child: _buildFeedClipArea(),
+                  ),
+                ],
+              );
+            },
           ),
           _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
             if (isFollowing)
@@ -2464,10 +2475,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
 
     return Row(
       children: [
-        const Icon(
-          Icons.music_note_rounded,
-          color: AppColors.feedReelNoteText,
-          size: AppTypography.feedReelNoteSize,
+        SvgPicture.asset(
+          FeedInteractionAssets.feedMusicNote,
+          width: AppSizes.feedReelMusicIconWidth,
+          height: AppSizes.feedReelMusicIconHeight,
         ),
         SizedBox(width: AppSpacing.reelMusicIconGap),
         Expanded(
