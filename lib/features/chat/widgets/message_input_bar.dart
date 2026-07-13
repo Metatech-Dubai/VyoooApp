@@ -7,9 +7,9 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_padding.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/theme/app_typography.dart';
 import '../utils/chat_constants.dart';
 
 enum MediaAction {
@@ -324,9 +324,9 @@ class _MessageInputBarState extends State<MessageInputBar> {
     final hasPending = _pendingFilePath != null;
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        AppPadding.screenHorizontal.left,
+        AppSizes.chatMessageInputBarInset,
         AppSpacing.sm,
-        AppPadding.screenHorizontal.right,
+        AppSizes.chatMessageInputBarInset,
         AppSpacing.sm,
       ),
       child: SafeArea(
@@ -596,37 +596,39 @@ class _MessageInputBarState extends State<MessageInputBar> {
       height: AppSizes.chatMessageInputHeight,
       decoration: BoxDecoration(
         color: AppColors.chatInputBar,
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(AppSizes.chatMessageInputBarRadius),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 7.5,
+            blurRadius: 6,
             offset: const Offset(0, 4),
+          ),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 15,
+            offset: const Offset(0, 10),
           ),
         ],
       ),
       padding: EdgeInsets.only(
-        left: AppSpacing.sm,
+        left: AppSizes.chatMessageInputBarInset,
         right: AppSpacing.md - AppSpacing.xs,
       ),
       child: Row(
         children: [
           _buildCameraButton(),
-          SizedBox(width: AppSpacing.sm),
+          SizedBox(width: AppSizes.chatMessageInputCameraGap),
           Expanded(
             child: TextField(
               controller: _controller,
               focusNode: _focusNode,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: AppTypography.chatMessageInputText,
               maxLines: 4,
               minLines: 1,
               textInputAction: TextInputAction.newline,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 hintText: 'Message...',
-                hintStyle: TextStyle(
-                  color: AppColors.chatInputHint,
-                  fontSize: 15,
-                ),
+                hintStyle: AppTypography.chatMessageInputHint,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
                 focusedBorder: InputBorder.none,
@@ -634,7 +636,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
                 errorBorder: InputBorder.none,
                 focusedErrorBorder: InputBorder.none,
                 isDense: true,
-                contentPadding: EdgeInsets.symmetric(vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
             ),
           ),
@@ -674,21 +676,12 @@ class _MessageInputBarState extends State<MessageInputBar> {
       onTap: widget.mediaLoading
           ? null
           : () => widget.onMediaAction?.call(MediaAction.cameraPhoto),
-      child: Container(
-        width: AppSizes.chatInputCameraButton,
-        height: AppSizes.chatInputCameraButton,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: widget.mediaLoading
-              ? AppColors.chatDivider
-              : AppColors.chatOutgoingBubble,
-        ),
-        child: Icon(
-          Icons.camera_alt_outlined,
-          color: widget.mediaLoading
-              ? AppColors.chatTextSecondary
-              : Colors.white,
-          size: 20,
+      child: Opacity(
+        opacity: widget.mediaLoading ? 0.5 : 1,
+        child: SvgPicture.asset(
+          ChatAssets.inputCameraIcon,
+          width: AppSizes.chatInputCameraButton,
+          height: AppSizes.chatInputCameraButton,
         ),
       ),
     );
@@ -709,7 +702,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
         ? Colors.white
         : (isActive
             ? AppColors.brandDeepMagenta
-            : const Color(0xFFE6E6E6));
+            : AppColors.chatInputActionIcon);
 
     final boxSize = assetPath != null
         ? (assetHeight ?? AppSizes.chatInputActionIcon) + AppSpacing.xs

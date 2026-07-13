@@ -259,17 +259,14 @@ class AppGradients {
     colors: [Color(0xB3200226), Color(0xB35A1531)],
   );
 
-  /// Chat inbox / thread — white with soft pink glow at bottom (Figma).
+  /// Chat inbox / thread — plain white background.
   static const LinearGradient chatBackgroundGradient = LinearGradient(
     begin: Alignment.topCenter,
     end: Alignment.bottomCenter,
     colors: [
       Color(0xFFFFFFFF),
       Color(0xFFFFFFFF),
-      Color(0xFFFFF5F9),
-      Color(0xFFFFE8F0),
     ],
-    stops: [0.0, 0.55, 0.82, 1.0],
   );
 
   /// Subtle white sheen on top of [commentsSheetGlassGradient].

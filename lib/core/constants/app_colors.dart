@@ -84,20 +84,27 @@ class AppColors {
   static const Color chatSearchFill = Color(0xFFF2F2F7);
   static const Color chatTextPrimary = Color(0xFF1C1C1E);
   static const Color chatTextSecondary = Color(0xFF8E8E93);
-  static const Color chatIncomingBubble = Color(0xFFE6E6E6);
-  static const Color chatOutgoingBubble = Color(0xFF660033);
-  /// Sent text bubble body — Figma #CCC on burgundy bubble.
-  static const Color chatSentBubbleText = Color(0xFFCCCCCC);
-  /// Incoming text bubble body — Figma black on #E6E6E6.
-  static const Color chatIncomingBubbleText = Color(0xFF000000);
-  static const Color chatInputBar = Color(0xFF4D4D4D);
+  static const Color chatIncomingBubble = Color(0xFF666666);
+  static const Color chatOutgoingBubble = Color(0xFFE6E6E6);
+  /// Sent text bubble body — Figma #000 on #E6E6E6 bubble.
+  static const Color chatSentBubbleText = Color(0xFF000000);
+  /// Incoming text bubble body — Figma #CCC on #666 bubble.
+  static const Color chatIncomingBubbleText = Color(0xFFCCCCCC);
+  /// Pure black text for inbox/thread labels — Figma #000000.
+  static const Color chatTextBlack = Color(0xFF000000);
+  static const Color chatInputBar = Color(0xFF666666);
+  /// Chat input camera button — Figma #3A3939 circle.
+  static const Color chatInputCameraButton = Color(0xFF3A3939);
   /// Live comment glass field — Figma white @ 10% on blurred backdrop.
   static const Color liveCommentInputGlassFill = Color(0x1AFFFFFF);
   /// Live comment typed + placeholder text — Figma #EEEEEE.
   static const Color liveCommentInputText = Color(0xFFEEEEEE);
   /// Live feed host caption — Figma #F0F0F0.
   static const Color liveFeedHostCaption = Color(0xFFF0F0F0);
-  static const Color chatInputHint = Color(0xFF999999);
+  /// Chat input placeholder — Figma #D9D9D9.
+  static const Color chatInputHint = Color(0xFFD9D9D9);
+  /// Chat input action icons — Figma #E6E6E6.
+  static const Color chatInputActionIcon = Color(0xFFE6E6E6);
   static const Color chatDivider = Color(0xFFE5E5EA);
   static const Color chatVerified = Color(0xFF34C759);
   static const Color chatNoteBubbleFill = Color(0xFFFFFFFF);
@@ -106,8 +113,10 @@ class AppColors {
   static const Color chatNoteBubbleText = Color(0xFFB3B3B3);
   /// Inbox notes row name label — Figma #333.
   static const Color chatNoteNameText = Color(0xFF333333);
-  /// Inbox section Requests title — Figma #AA0055.
-  static const Color chatRequestsTitle = Color(0xFFAA0055);
+  /// Inbox Messages section header bottom border — Figma #000000 @ 6%.
+  static const Color chatMessagesSectionBorder = Color(0x0F000000);
+  /// Inbox section Requests title — Figma #007AFF.
+  static const Color chatRequestsTitle = Color(0xFF007AFF);
   /// Inbox chat tile unread dot — Figma #EE116C.
   static const Color chatUnreadDot = Color(0xFFEE116C);
   /// Chat thread header display name — Figma 14 / #333.

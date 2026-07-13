@@ -293,45 +293,91 @@ abstract final class AppSizes {
   static const double chatThreadBubbleAvatarSourceHeight = 37.171;
   static const double chatIncomingBubbleMinHeight = 40.82;
   static const double chatOutgoingBubbleMinHeight = 40.82;
+  /// Incoming text bubble — Figma 193×41 sample, rx 20, 16px horizontal inset.
+  static const double chatIncomingBubblePaddingHorizontal = 16;
+  static const double chatIncomingBubblePaddingVertical = 12;
+  /// Outgoing text bubble — Figma 133×41 sample, rx 20, ~16px horizontal inset.
+  static const double chatOutgoingBubblePaddingHorizontal = 16;
+  static const double chatOutgoingBubblePaddingVertical = 12;
   static const double chatCallBubbleHeight = 66;
   static const double chatCallBubbleRadius = 24;
   static const double chatCallBubbleIcon = 43;
   static const double chatForwardButton = 40;
+  /// Message like/reaction heart badge — Figma 33×33.
+  static const double chatMessageReactionHeart = 33;
+  static const double chatMessageReactionHeartOverlap = 8;
   /// Chat thread photo/video frame — Figma 185×370 (aspect 1:2).
   static const double chatMediaMessageWidth = 185;
   static const double chatMediaMessageHeight = 370;
-  static const double chatNoteAvatar = 64;
-  static const double chatNoteAvatarIcon = 26;
-  static const double chatNoteItemWidth = 64;
+  static const double chatNoteAvatarFrame = 75;
+  /// Notes row profile photo — Figma image 77 (64×73 @ left 5, top 4 in frame).
+  static const double chatNoteAvatarImageWidth = 64;
+  static const double chatNoteAvatarImageHeight = 73;
+  static const double chatNoteAvatarImageLeft = 5;
+  static const double chatNoteAvatarImageTop = 4;
+  /// Circular mask over the photo — Figma 68×68 @ left 4, top 4.
+  static const double chatNoteAvatarMaskSize = 68;
+  static const double chatNoteAvatarMaskLeft = 4;
+  static const double chatNoteAvatarMaskTop = 4;
+  static const double chatNoteAvatarIcon = 28;
+  static const double chatNoteYourItemWidth = 84;
+  static const double chatNoteItemWidth = 75;
+  static const double chatNoteWideItemWidth = 78;
   static const double chatNoteBubbleWidth = 66;
   static const double chatNoteBubbleHeight = 38;
-  /// Lifts the note bubble above the avatar — clears profile overlap.
-  static const double chatNoteBubbleLift = 12;
+  static const double chatNoteBubbleActiveWidth = 80;
+  static const double chatNoteBubbleActiveHeight = 53;
+  static const double chatNoteBubbleActiveBodyHeight = 46;
+  /// Bubble sits slightly above the avatar stack (Figma top: -2px).
+  static const double chatNoteBubbleTopOffset = 2;
+  /// Avatar block offset inside the note stack (Figma top: 22px).
+  static const double chatNoteAvatarTopInset = 22;
   /// Rounded bubble body above the tail — matches note_bubble.svg geometry.
   static const double chatNoteBubbleBodyHeight = 33;
-  static const double chatNoteItemStackHeight = 90;
-  static const double chatNoteItemGap = 4;
-  static const double chatNoteLabelGap = 2;
+  static const double chatNoteItemStackHeight = 97;
+  static const double chatNoteItemStackHeightWithBubble = 106;
+  static const double chatNoteItemGap = 20;
+  static const double chatNoteLabelGap = 6;
+  static const double chatNoteLocationTopGap = 4;
   static const double chatNoteYourNoteLabelHeight = 9;
   static const double chatNoteNameLabelHeight = 17;
-  static const double chatNotesRowHeight =
-      chatNoteItemStackHeight + chatNoteLabelGap + chatNoteNameLabelHeight;
-  static const double chatNoteNameWidth = 61;
-  static const double chatMessagesTitleWidth = 101;
-  static const double chatMessagesTitleHeight = 14;
-  static const double chatRequestsTitleWidth = 119;
-  static const double chatRequestsTitleHeight = 14;
+  static const double chatNoteLocationIcon = 13;
+  /// Chat inbox notes row — Figma Frame 2147224971 (372×129, 20px gap).
+  static const double chatNotesRowWidth = 372;
+  static const double chatNotesRowHeight = 129;
+  static const double chatNotesRowPaddingHorizontal = 15;
+  static const double chatNoteNameWidth = 78;
+  static const double chatMessagesTitleWidth = 75;
+  static const double chatMessagesTitleHeight = 17;
+  static const double chatRequestsTitleWidth = 99;
+  static const double chatRequestsTitleHeight = 17;
+  /// Messages section header row — Figma 370×41 Hug, 12px vertical padding.
+  static const double chatMessagesSectionWidth = 370;
+  static const double chatMessagesSectionPaddingVertical = 12;
+  static const double chatMessagesSectionBorderWidth = 1;
   static const double chatTileUnreadDot = 8;
   static const double chatTileCamera = 24;
   static const double chatTileVerifiedBadge = 14;
+  /// Inbox chat tile display name — Figma DM Sans Medium 18 / 100% lh.
+  static const double chatInboxTileNameFontSize = 18;
+  static const double chatInboxTileNameLineHeight = 18;
+  /// Inbox chat tile preview line — Figma DM Sans 14 / 17lh.
+  static const double chatInboxTilePreviewFontSize = 14;
+  static const double chatInboxTilePreviewLineHeight = 17;
   /// Chat thread header profile — Figma mask 41.33 circle (image 41.176×49.375).
   static const double chatThreadHeaderAvatar = 41.33;
   static const double chatThreadHeaderAvatarSourceWidth = 41.176;
   static const double chatThreadHeaderAvatarSourceHeight = 49.375;
   static const double chatSearchHeight = 34;
+  static const double chatSearchWidth = 370;
+  static const double chatSearchPaddingLeft = 13;
+  static const double chatSearchPaddingRight = 19;
   static const double chatInboxSectionGap = 20;
   static const double chatComposeButton = 34;
   static const double chatMessageInputHeight = 64;
+  static const double chatMessageInputBarRadius = 32;
+  static const double chatMessageInputBarInset = 12;
+  static const double chatMessageInputCameraGap = 10;
   static const double chatInputCameraButton = 40;
   static const double chatInputActionIcon = 22;
 

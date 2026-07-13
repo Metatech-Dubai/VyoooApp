@@ -714,12 +714,22 @@ abstract final class AppTypography {
 
   // — Chat (light inbox / thread — Figma) —
 
+  /// Inbox top-center username — Figma DM Sans Regular 20 / 17lh / black.
   static const TextStyle chatInboxTitle = TextStyle(
     fontFamily: AppFonts.body,
-    fontSize: 17,
-    height: 1.2,
-    fontWeight: FontWeight.w700,
-    color: AppColors.chatTextPrimary,
+    fontSize: 20,
+    height: 17 / 20,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatTextBlack,
+  );
+
+  /// Inbox search typed text — aligns with Figma search field body.
+  static const TextStyle chatInboxSearchInput = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatTextBlack,
   );
 
   static const TextStyle chatSectionHeader = TextStyle(
@@ -730,6 +740,24 @@ abstract final class AppTypography {
     color: AppColors.chatTextPrimary,
   );
 
+  /// Inbox "Messages" section title — Figma DM Sans Medium 16 / 17lh / black.
+  static const TextStyle chatInboxMessagesTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    height: 17 / 16,
+    fontWeight: FontWeight.w500,
+    color: AppColors.chatTextBlack,
+  );
+
+  /// Inbox "Requests (n)" link — Figma DM Sans Bold 16 / 17lh / #007AFF.
+  static const TextStyle chatInboxRequestsTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    height: 17 / 16,
+    fontWeight: FontWeight.w700,
+    color: AppColors.chatRequestsTitle,
+  );
+
   static const TextStyle chatTileName = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: 14,
@@ -738,12 +766,57 @@ abstract final class AppTypography {
     color: AppColors.chatTextPrimary,
   );
 
+  /// Inbox chat tile display name — Figma DM Sans Medium 18 / 100% lh / black.
+  static const TextStyle chatInboxTileName = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 18,
+    height: 1.0,
+    fontWeight: FontWeight.w500,
+    color: AppColors.chatTextBlack,
+  );
+
   static const TextStyle chatTilePreview = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: 13,
     height: 1.2,
     fontWeight: FontWeight.w400,
     color: AppColors.chatTextSecondary,
+  );
+
+  /// Inbox tile preview body — Figma DM Sans Regular 14 / 17lh / #666.
+  static const TextStyle chatInboxTilePreview = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 17 / 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatCallBubbleSubtitle,
+  );
+
+  /// Inbox tile unread count preview — Figma DM Sans Bold 14 / 17lh / black.
+  static const TextStyle chatInboxTilePreviewUnread = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 17 / 14,
+    fontWeight: FontWeight.w700,
+    color: AppColors.chatTextBlack,
+  );
+
+  /// Inbox tile unread reply CTA — Figma DM Sans Medium 14 / 17lh / black.
+  static const TextStyle chatInboxTilePreviewReply = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 17 / 14,
+    fontWeight: FontWeight.w500,
+    color: AppColors.chatTextBlack,
+  );
+
+  /// Inbox tile preview time separator — Figma DM Sans Regular 14 / 17lh / #666.
+  static const TextStyle chatInboxTileTime = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 17 / 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatCallBubbleSubtitle,
   );
 
   /// Inbox tile preview when unread — Figma 14 / 700 / black.
@@ -764,11 +837,11 @@ abstract final class AppTypography {
     color: AppColors.chatTextPrimary,
   );
 
-  /// Inbox notes row bubble placeholder — Figma 14 / 400 / #B3B3B3.
+  /// Inbox notes row bubble placeholder — Figma 14 / 400 / 17lh / #B3B3B3.
   static const TextStyle chatNoteBubbleText = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: 14,
-    height: 1.0,
+    height: 17 / 14,
     fontWeight: FontWeight.w400,
     color: AppColors.chatNoteBubbleText,
   );
@@ -782,6 +855,35 @@ abstract final class AppTypography {
     color: AppColors.chatNoteNameText,
   );
 
+  // — Chat inbox notes row (Figma Frame 2147224971) —
+
+  /// Inbox notes location/status chip — Figma DM Sans Regular 12 / 17 / #808080.
+  static const TextStyle chatNoteLocationLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    height: 17 / 12,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFF808080),
+  );
+
+  /// Active note bubble primary line — Figma 12 / 100% lh / #FFF (SF Pro → DM Sans).
+  static const TextStyle chatNoteActiveBubbleText = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
+
+  /// Active note bubble secondary line — Figma #B3B3B3 ~9.36 / 11.
+  static const TextStyle chatNoteActiveBubbleSubtext = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 9.36,
+    height: 11 / 9.36,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatNoteBubbleText,
+  );
+
   static const TextStyle chatBubbleText = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: 14,
@@ -789,7 +891,7 @@ abstract final class AppTypography {
     fontWeight: FontWeight.w400,
   );
 
-  /// Incoming message bubble text — Figma DM Sans 16.938 / 500 / black / normal lh.
+  /// Incoming message bubble text — Figma DM Sans Medium 16.938 / 100% lh / #CCC.
   static const double chatIncomingBubbleTextSize = 16.938;
 
   static const TextStyle chatIncomingBubbleText = TextStyle(
@@ -800,7 +902,7 @@ abstract final class AppTypography {
     color: AppColors.chatIncomingBubbleText,
   );
 
-  /// Sent message bubble text — Figma DM Sans 16.938 / 500 / #CCC / normal lh.
+  /// Sent message bubble text — Figma DM Sans Medium 16.938 / 100% lh / black.
   static const TextStyle chatSentBubbleText = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: chatIncomingBubbleTextSize,
@@ -831,5 +933,23 @@ abstract final class AppTypography {
     height: 1.0,
     fontWeight: FontWeight.w400,
     color: AppColors.chatThreadHeaderUsername,
+  );
+
+  /// Chat thread message input typed text — Figma on #666 bar.
+  static const TextStyle chatMessageInputText = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 15,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
+
+  /// Chat thread message input placeholder — Figma #D9D9D9.
+  static const TextStyle chatMessageInputHint = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 15,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatInputHint,
   );
 }

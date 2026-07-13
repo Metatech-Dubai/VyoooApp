@@ -6,6 +6,7 @@ import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import 'chat_bubble_avatar.dart';
+import 'message_reaction_heart_overlay.dart';
 import 'message_reply_quote.dart';
 
 class MessageBubble extends StatelessWidget {
@@ -20,6 +21,8 @@ class MessageBubble extends StatelessWidget {
     this.replyToSenderName,
     this.replyToPreview,
     this.senderAvatarUrl,
+    this.reactions = const {},
+    this.onHeartReactionTap,
   });
 
   final String text;
@@ -31,67 +34,87 @@ class MessageBubble extends StatelessWidget {
   final String? replyToSenderName;
   final String? replyToPreview;
   final String? senderAvatarUrl;
+  final Map<String, dynamic> reactions;
+  final VoidCallback? onHeartReactionTap;
+
+  EdgeInsets _bubblePadding() {
+    if (isSent) {
+      return EdgeInsets.symmetric(
+        horizontal: AppSizes.chatOutgoingBubblePaddingHorizontal,
+        vertical: AppSizes.chatOutgoingBubblePaddingVertical,
+      );
+    }
+    return EdgeInsets.symmetric(
+      horizontal: AppSizes.chatIncomingBubblePaddingHorizontal,
+      vertical: AppSizes.chatIncomingBubblePaddingVertical,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final bubble = Container(
-      constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.72,
-        minHeight: isSent
-            ? AppSizes.chatOutgoingBubbleMinHeight
-            : AppSizes.chatIncomingBubbleMinHeight,
-      ),
-      padding: EdgeInsets.symmetric(
-        horizontal: AppSpacing.md,
-        vertical: AppSpacing.sm + AppSpacing.xs - 2,
-      ),
-      decoration: BoxDecoration(
-        color: isSent
-            ? AppColors.chatOutgoingBubble
-            : AppColors.chatIncomingBubble,
-        borderRadius: isSent
-            ? AppRadius.chatOutgoingBubbleRadius
-            : AppRadius.pillRadius,
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          if (senderName != null && !isSent)
-            Padding(
-              padding: EdgeInsets.only(bottom: AppSpacing.xs - 2),
-              child: Text(
-                senderName!,
-                style: AppTypography.chatTilePreview.copyWith(
-                  color: AppColors.brandDeepMagenta,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 11,
+    final bubble = MessageReactionHeartOverlay(
+      reactions: reactions,
+      onHeartTap: onHeartReactionTap,
+      child: Container(
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.72,
+          minHeight: isSent
+              ? AppSizes.chatOutgoingBubbleMinHeight
+              : AppSizes.chatIncomingBubbleMinHeight,
+        ),
+        padding: _bubblePadding(),
+        decoration: BoxDecoration(
+          color: isSent
+              ? AppColors.chatOutgoingBubble
+              : AppColors.chatIncomingBubble,
+          borderRadius: isSent
+              ? AppRadius.chatOutgoingBubbleRadiusShape
+              : AppRadius.chatIncomingBubbleRadiusShape,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (senderName != null && !isSent)
+              Padding(
+                padding: EdgeInsets.only(bottom: AppSpacing.xs - 2),
+                child: Text(
+                  senderName!,
+                  style: AppTypography.chatTilePreview.copyWith(
+                    color: AppColors.brandDeepMagenta,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                  ),
                 ),
               ),
+            if (replyToSenderName != null && replyToPreview != null)
+              MessageReplyQuote(
+                senderName: replyToSenderName!,
+                preview: replyToPreview!,
+                isSentBubble: isSent,
+              ),
+            Text(
+              isDeleted ? 'This message was deleted' : text,
+              style: isSent
+                  ? AppTypography.chatSentBubbleText.copyWith(
+                      fontStyle:
+                          isDeleted ? FontStyle.italic : FontStyle.normal,
+                      color: isDeleted
+                          ? AppColors.chatSentBubbleText.withValues(alpha: 0.6)
+                          : AppColors.chatSentBubbleText,
+                    )
+                  : AppTypography.chatIncomingBubbleText.copyWith(
+                      color: isDeleted
+                          ? AppColors.chatIncomingBubbleText.withValues(
+                              alpha: 0.6,
+                            )
+                          : AppColors.chatIncomingBubbleText,
+                      fontStyle:
+                          isDeleted ? FontStyle.italic : FontStyle.normal,
+                    ),
             ),
-          if (replyToSenderName != null && replyToPreview != null)
-            MessageReplyQuote(
-              senderName: replyToSenderName!,
-              preview: replyToPreview!,
-              isSentBubble: isSent,
-            ),
-          Text(
-            isDeleted ? 'This message was deleted' : text,
-            style: isSent
-                ? AppTypography.chatSentBubbleText.copyWith(
-                    fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
-                    color: isDeleted
-                        ? AppColors.chatSentBubbleText.withValues(alpha: 0.6)
-                        : AppColors.chatSentBubbleText,
-                  )
-                : AppTypography.chatIncomingBubbleText.copyWith(
-                    color: isDeleted
-                        ? AppColors.chatTextSecondary
-                        : AppColors.chatIncomingBubbleText,
-                    fontStyle: isDeleted ? FontStyle.italic : FontStyle.normal,
-                  ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
 

@@ -18,7 +18,7 @@ class MessageReactionsBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final grouped = groupReactionsByEmoji(reactions);
+    final grouped = nonHeartReactions(reactions);
     if (grouped.isEmpty) return const SizedBox.shrink();
 
     return Padding(
