@@ -56,6 +56,10 @@ abstract final class BottomNavFigmaTokens {
 
   /// Broadcast artboard is bottom-heavy (camera body) — nudge up vs home/chat/plus.
   static const double broadcastIconOpticalOffsetY = -3;
+
+  /// Profile avatar ring (Figma 56×56, 2px #000000 center stroke).
+  static const double profileAvatarBorderWidth = 2;
+  static const Color profileAvatarBorderColor = Color(0xFF000000);
 }
 
 /// Create hub actions from the bottom-nav plus menu.

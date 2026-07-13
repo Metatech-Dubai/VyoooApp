@@ -100,38 +100,64 @@ class AppBottomNavigation extends StatelessWidget {
   static const double _tapTargetSize = AppSizes.bottomNavTapTarget;
 
   Widget _buildProfileIcon(bool isSelected) {
+    final size = AppSizes.bottomNavProfileIcon;
+    final borderWidth =
+        isSelected ? BottomNavFigmaTokens.profileAvatarBorderWidth : 0.0;
+    final photoSize = size - borderWidth * 2;
+
+    final Widget photo;
     final hasProfileImage =
         profileImageUrl != null && profileImageUrl!.trim().isNotEmpty;
     if (!hasProfileImage) {
-      return _NavIconImage(
+      photo = _NavIconImage(
         assetPath: isSelected
             ? BottomNavAssets.profileSelected
             : BottomNavAssets.profileUnselected,
-        size: AppSizes.bottomNavProfileIcon,
+        size: photoSize,
+      );
+    } else {
+      photo = ClipOval(
+        child: Image.network(
+          profileImageUrl!,
+          fit: BoxFit.cover,
+          width: photoSize,
+          height: photoSize,
+          errorBuilder: (_, error, stackTrace) => Image.asset(
+            BottomNavAssets.profileDefault,
+            fit: BoxFit.cover,
+            width: photoSize,
+            height: photoSize,
+            errorBuilder: (_, error1, stack1) => Icon(
+              Icons.person_rounded,
+              size: photoSize * 0.7,
+              color: _iconColor,
+            ),
+          ),
+        ),
       );
     }
 
-    final avatar = ClipOval(
-      child: Image.network(
-        profileImageUrl!,
-        fit: BoxFit.cover,
-        width: AppSizes.bottomNavProfileIcon,
-        height: AppSizes.bottomNavProfileIcon,
-        errorBuilder: (_, error, stackTrace) => Image.asset(
-          BottomNavAssets.profileDefault,
-          fit: BoxFit.cover,
-          width: AppSizes.bottomNavProfileIcon,
-          height: AppSizes.bottomNavProfileIcon,
-          errorBuilder: (_, error1, stack1) => Icon(
-            Icons.person_rounded,
-            size: AppSizes.bottomNavProfileIcon * 0.7,
-            color: _iconColor,
-          ),
+    if (!isSelected) {
+      return SizedBox(
+        width: size,
+        height: size,
+        child: ClipOval(child: photo),
+      );
+    }
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(
+          color: BottomNavFigmaTokens.profileAvatarBorderColor,
+          width: borderWidth,
         ),
       ),
+      alignment: Alignment.center,
+      child: ClipOval(child: photo),
     );
-
-    return avatar;
   }
 
   Widget _buildNavTap({
@@ -621,14 +647,14 @@ class _NavIconImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: AppSizes.bottomNavIconSlot,
-      height: AppSizes.bottomNavIconSlot,
+      width: size,
+      height: size,
       child: Center(
         child: Image.asset(
           assetPath,
           width: size,
           height: size,
-          fit: BoxFit.contain,
+          fit: BoxFit.cover,
           filterQuality: FilterQuality.high,
         ),
       ),
