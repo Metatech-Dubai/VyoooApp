@@ -9,11 +9,15 @@ import '../../core/mock/mock_music_data.dart';
 import '../../core/navigation/app_route_observer.dart';
 import '../../core/utils/reel_video_tone.dart';
 import '../../core/utils/reel_video_trimmer.dart';
+import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
-import '../music/add_audio_screen.dart';
 import 'upload_details_screen.dart';
 import 'widgets/reel_brightness_sheet.dart';
 import 'widgets/reel_trim_sheet.dart';
+import 'widgets/upload_edit_media_toolbar.dart';
+import 'widgets/upload_music_picker_sheet.dart';
+import 'widgets/upload_post_chrome_buttons.dart';
+import 'widgets/upload_video_scrubber_bar.dart';
 
 /// Edit video screen: title, close, Next >, video preview, tool row, timeline with scrubber.
 class EditVideoScreen extends StatefulWidget {
@@ -358,9 +362,17 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _buildToolRow(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: Center(
+                    child: UploadEditMediaToolbar(onToolTap: _onEditToolTap),
+                  ),
+                ),
                 const SizedBox(height: 16),
-                _buildTimeline(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+                  child: _buildTimeline(),
+                ),
               ],
             ),
           ),
@@ -402,7 +414,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   Widget _buildHeader(BuildContext context) {
     return Row(
       children: [
-        GestureDetector(
+        UploadPostCloseButton(
           onTap: () {
             showModalBottomSheet(
               context: context,
@@ -410,25 +422,15 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               builder: (ctx) => _ExitSheet(
                 onContinue: () => Navigator.pop(ctx),
                 onExit: () {
-                  Navigator.pop(ctx); // close sheet
-                  Navigator.pop(context); // close editor
+                  Navigator.pop(ctx);
+                  Navigator.pop(context);
                 },
               ),
             );
           },
-          child: const Icon(Icons.close, color: Colors.white, size: 28),
         ),
         const Spacer(),
-        _headerActionPill(
-          label: 'Trim',
-          icon: Icons.content_cut_rounded,
-          onTap: _openTrimSheet,
-          isPink: false,
-        ),
-        const SizedBox(width: 8),
-        _headerActionPill(
-          label: 'Next',
-          icon: Icons.arrow_forward_ios_rounded,
+        UploadNextPillButton(
           onTap: () {
             Navigator.of(context).push(
               MaterialPageRoute<void>(
@@ -439,46 +441,8 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               ),
             );
           },
-          isPink: true,
         ),
       ],
-    );
-  }
-
-  Widget _headerActionPill({
-    required String label,
-    required IconData icon,
-    required VoidCallback onTap,
-    required bool isPink,
-  }) {
-    final isNext = label == 'Next';
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isNext
-              ? Colors.white
-              : (isPink ? _pink : Colors.black.withValues(alpha: 0.5)),
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              label,
-              style: TextStyle(
-                color: isNext ? Colors.black : Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-            ),
-            const SizedBox(width: 6),
-            Icon(icon, color: isNext ? Colors.black : Colors.white, size: 14),
-          ],
-        ),
-      ),
     );
   }
 
@@ -513,57 +477,37 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     );
   }
 
-  Widget _buildToolRow() {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 40),
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.65),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          _toolIconButton(
-            icon: Icons.music_note_rounded,
-            onTap: () {
-              _controller?.pause();
-              Navigator.of(context)
-                  .push<MusicTrack?>(MaterialPageRoute(
-                    builder: (_) => AddAudioScreen(videoAsset: widget.asset),
-                  ))
-                  .then((track) async {
-                if (!mounted) return;
-                if (track != null) {
-                  setState(() => _selectedTrack = track);
-                  _controller?.setVolume(0);
-                  setState(() => _muted = true);
-                  try {
-                    await _audioPlayer.setUrl(track.audioUrl);
-                    await _audioPlayer.play();
-                  } catch (_) {}
-                }
-                _controller?.play();
-              });
-            },
-          ),
-          _toolIconButton(
-            icon: Icons.tune_rounded,
-            onTap: _openBrightnessSheet,
-          ),
-          _toolIconButton(icon: Icons.content_cut_rounded, onTap: _openTrimSheet),
-          _toolIconButton(
-            icon: Icons.timer_outlined,
-            onTap: () => _showEditorNotAvailable('Speed'),
-          ),
-          _toolIconButton(
-            icon: Icons.delete_outline_rounded,
-            onTap: _onDiscardTrimTap,
-          ),
-        ],
-      ),
-    );
+  void _onEditToolTap(UploadEditMediaTool tool) {
+    switch (tool) {
+      case UploadEditMediaTool.music:
+        _controller?.pause();
+        showUploadMusicPickerSheet(
+          context,
+          videoAsset: widget.asset,
+        ).then((track) async {
+          if (!mounted) return;
+          if (track != null) {
+            setState(() => _selectedTrack = track);
+            _controller?.setVolume(0);
+            setState(() => _muted = true);
+            try {
+              await _audioPlayer.setUrl(track.audioUrl);
+              await _audioPlayer.play();
+            } catch (_) {}
+          }
+          _controller?.play();
+        });
+      case UploadEditMediaTool.adjust:
+        _openBrightnessSheet();
+      case UploadEditMediaTool.filter:
+        _showEditorNotAvailable('Filter');
+      case UploadEditMediaTool.trim:
+        _openTrimSheet();
+      case UploadEditMediaTool.speed:
+        _showEditorNotAvailable('Speed');
+      case UploadEditMediaTool.delete:
+        _onDiscardTrimTap();
+    }
   }
 
   void _showEditorNotAvailable(String name) {
@@ -630,14 +574,6 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     await _reloadVideoFromFile(source);
   }
 
-  Widget _toolIconButton({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Icon(icon, color: Colors.white, size: 24),
-    );
-  }
-
   Widget _buildMusicBar() {
     final t = _selectedTrack!;
     return Container(
@@ -689,53 +625,22 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _buildTimeline() {
     if (!_isInitialized || _controller == null) {
-      return const SizedBox(height: 50);
+      return const SizedBox(height: AppSizes.uploadVideoScrubberBarHeight);
     }
     final pos = _controller!.value.position;
     final dur = _controller!.value.duration;
-    final totalSec = dur.inMilliseconds > 0 ? dur.inMilliseconds / 1000 : 1.0;
-    final progress = totalSec > 0 ? (pos.inMilliseconds / 1000 / totalSec).clamp(0.0, 1.0) : 0.0;
+    final totalMs = dur.inMilliseconds > 0 ? dur.inMilliseconds : 1;
+    final progress = (pos.inMilliseconds / totalMs).clamp(0.0, 1.0);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                overlayColor: Colors.transparent,
-                thumbColor: _pink,
-                activeTrackColor: _pink,
-                inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
-                trackHeight: 3,
-                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 5),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
-              ),
-              child: Slider(
-                value: progress,
-                onChanged: (v) {
-                  final sec = v * dur.inMilliseconds / 1000;
-                  _controller?.seekTo(Duration(milliseconds: (sec * 1000).round()));
-                },
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            _formatDuration(dur),
-            style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(width: 8),
-          GestureDetector(
-            onTap: _toggleMute,
-            child: Icon(
-              _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-        ],
-      ),
+    return UploadVideoScrubberBar(
+      progress: progress,
+      durationLabel: _formatDuration(dur),
+      muted: _muted,
+      onSeek: (value) {
+        final targetMs = (value * dur.inMilliseconds).round();
+        _controller?.seekTo(Duration(milliseconds: targetMs));
+      },
+      onMuteToggle: _toggleMute,
     );
   }
 }

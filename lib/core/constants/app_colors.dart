@@ -60,6 +60,9 @@ class AppColors {
   /// Bottom nav chrome behind the floating pill (Figma dark strip).
   static const Color feedBottomChrome = Color(0xFF0C0C0C);
 
+  /// Post-upload success toast on home feed (Figma dark translucent pill).
+  static const Color uploadPostSuccessToastBackground = Color(0xE63A3A3C);
+
   /// Home reel progress bar track (Figma remaining segment on dark chrome).
   static const Color feedReelProgressTrack = Color(0xFF333333);
   static const Color brandPurple = Color(0xFF490038);
@@ -115,6 +118,8 @@ class AppColors {
   static const Color chatNoteNameText = Color(0xFF333333);
   /// Inbox Messages section header bottom border — Figma #000000 @ 6%.
   static const Color chatMessagesSectionBorder = Color(0x0F000000);
+  /// Post upload edit media pill — Figma #817E7E.
+  static const Color uploadEditMediaPill = Color(0xFF817E7E);
   /// Inbox section Requests title — Figma #007AFF.
   static const Color chatRequestsTitle = Color(0xFF007AFF);
   /// Inbox chat tile unread dot — Figma #EE116C.

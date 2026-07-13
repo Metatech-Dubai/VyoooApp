@@ -402,4 +402,38 @@ abstract final class AppSizes {
 
   static double chatInboxScaleH(BuildContext context, double designPx) =>
       designPx * chatInboxHeightScale(context);
+
+  // — Post upload album picker (Figma 149×159 menu) —
+  static const double uploadAlbumPickerMenuWidth = 149;
+  static const double uploadAlbumPickerMenuHeight = 159;
+  static const double uploadAlbumPickerMenuRowHeight = 53;
+  static const double uploadAlbumPickerMenuRadius = 7.94667;
+  static const double uploadAlbumPickerMenuOffsetY = 4;
+  static const double uploadAlbumPickerChevron = 18;
+
+  // — Post upload chrome (Figma close / edit / next buttons) —
+  static const double uploadPostCloseButton = 40;
+  static const double uploadEditMediaButtonWidth = 116;
+  static const double uploadEditMediaButtonHeight = 28;
+  static const double uploadNextPillButtonWidth = 70;
+  static const double uploadNextPillButtonHeight = 27;
+  static const double uploadDetailsUploadButtonWidth = 85;
+  static const double uploadDetailsUploadButtonHeight = 35;
+  static const double uploadMediaPreviewToolbarHeight = 40;
+
+  // — Edit media screen (Figma toolbar + scrubber) —
+  static const double uploadEditMediaToolbarWidth = 350;
+  static const double uploadEditMediaToolbarHeight = 52;
+  static const double uploadVideoScrubberBarWidth = 386;
+  static const double uploadVideoScrubberBarHeight = 22;
+
+  // — Upload music picker sheet (Figma) —
+  static const double musicPickerGrabHandleWidth = 46;
+  static const double musicPickerGrabHandleHeight = 3;
+  static const double musicPickerSearchFieldHeight = 34;
+  static const double musicPickerTabsBarHeight = 27;
+  static const double musicPickerAlbumArt = 58.59;
+  static const double musicPickerSearchFieldWidth = 349;
+  static const double musicPickerTabsBarWidth = 349;
+  static const double musicPickerTabPillWidth = 111.25;
 }

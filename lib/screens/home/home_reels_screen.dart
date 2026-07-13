@@ -56,6 +56,7 @@ import '../../features/home/widgets/following_header_stories.dart';
 import '../../features/home/widgets/following_stories_toggle.dart';
 import '../../features/home/widgets/for_you_ai_verified_badge.dart';
 import '../../features/story/story_upload_screen.dart';
+import '../upload/widgets/upload_post_success_toast.dart';
 import '../../features/story/story_viewer_screen.dart';
 import '../../features/reel/widgets/download_subscription_sheet.dart';
 import '../../features/reel/widgets/manage_content_preferences_sheet.dart';
@@ -105,6 +106,9 @@ class HomeReelsScreen extends StatefulWidget {
     this.refreshToken = 0,
     this.deepLinkReelId,
     this.deepLinkNonce = 0,
+    this.deepLinkPreferForYou = false,
+    this.uploadSuccessMessage,
+    this.uploadToastNonce = 0,
     this.chromeController,
   });
 
@@ -116,6 +120,13 @@ class HomeReelsScreen extends StatefulWidget {
   final int refreshToken;
   final String? deepLinkReelId;
   final int deepLinkNonce;
+
+  /// When true, deep links land on the For You tab (post-upload navigation).
+  final bool deepLinkPreferForYou;
+
+  /// Toast copy shown after a successful post upload.
+  final String? uploadSuccessMessage;
+  final int uploadToastNonce;
 
   /// Drives the reel progress bar rendered in [AppBottomNavigation] chrome.
   final HomeFeedChromeController? chromeController;
@@ -196,6 +207,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   bool _isAppForeground = true;
   bool _isRouteObserverSubscribed = false;
   int _lastHandledDeepLinkNonce = -1;
+  String? _uploadToastMessage;
+  Timer? _uploadToastTimer;
   late final AnimationController _followingStoriesCollapse;
 
   /// Set when the feed cannot load (e.g. offline); cleared on successful refresh.
@@ -369,12 +382,15 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   void didUpdateWidget(HomeReelsScreen old) {
     super.didUpdateWidget(old);
     if (widget.refreshToken != old.refreshToken) {
+      _lastHandledDeepLinkNonce = -1;
       _cancelAutoScrollTimer();
       _videoCompletedForCurrentItem = false;
       _videoStartedForCurrentItem = false;
       _jumpPageControllerToStart();
       setState(() {
-        currentTab = _defaultHomeTab;
+        currentTab = widget.deepLinkPreferForYou
+            ? HomeTab.forYou
+            : _defaultHomeTab;
         _currentIndex = 0;
       });
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -387,6 +403,22 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     }
     if (widget.deepLinkNonce != old.deepLinkNonce) {
       _handleIncomingDeepLink();
+    }
+    if (widget.uploadToastNonce != old.uploadToastNonce &&
+        widget.uploadSuccessMessage != null &&
+        widget.uploadSuccessMessage!.isNotEmpty) {
+      _showUploadSuccessToast(widget.uploadSuccessMessage!);
+      if (widget.deepLinkPreferForYou && currentTab != HomeTab.forYou) {
+        setState(() {
+          currentTab = HomeTab.forYou;
+          _currentIndex = 0;
+        });
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          _jumpPageControllerToStart();
+          _ensurePageControllerMatchesFeed();
+        });
+      }
     }
     if (widget.isActive != old.isActive) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -465,6 +497,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       if (hydratedForYou.isNotEmpty) {
         unawaited(FeedReelsCacheService.instance.saveForYou(hydratedForYou));
       }
+      await _ensureUploadedReelOnForYou();
       _handleIncomingDeepLink();
 
       await _loadReelsSupplement(
@@ -707,20 +740,27 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     if (_lastHandledDeepLinkNonce == widget.deepLinkNonce) return;
     final reelId = widget.deepLinkReelId;
     if (reelId == null || reelId.isEmpty) return;
-    var target = _findReelTarget(reelId);
-    if (target == null) {
-      final fetched = await _reelsService.getReelById(reelId);
-      if (!mounted) return;
-      if (fetched != null) {
-        setState(() {
-          final exists = _reelsForYou.any((r) => _asString(r['id']) == reelId);
-          if (!exists) {
-            _reelsForYou = [fetched, ..._reelsForYou];
-          }
-        });
-        target = _findReelTarget(reelId);
+
+    _ReelTarget? target;
+    if (widget.deepLinkPreferForYou) {
+      target = await _resolveForYouDeepLinkTarget(reelId);
+    } else {
+      target = _findReelTarget(reelId);
+      if (target == null) {
+        final fetched = await _reelsService.getReelById(reelId);
+        if (!mounted) return;
+        if (fetched != null) {
+          setState(() {
+            final exists = _reelsForYou.any((r) => _asString(r['id']) == reelId);
+            if (!exists) {
+              _reelsForYou = [fetched, ..._reelsForYou];
+            }
+          });
+          target = _findReelTarget(reelId);
+        }
       }
     }
+
     _lastHandledDeepLinkNonce = widget.deepLinkNonce;
     if (target == null) return;
     final resolvedTarget = target;
@@ -733,6 +773,61 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       if (_pageController.hasClients) {
         _pageController.jumpToPage(resolvedTarget.index);
       }
+    });
+  }
+
+  Future<_ReelTarget?> _resolveForYouDeepLinkTarget(String reelId) async {
+    await _ensureUploadedReelOnForYou(reelId: reelId);
+    final idx = _reelsForYou.indexWhere((r) => _asString(r['id']) == reelId);
+    if (idx < 0) return null;
+    return _ReelTarget(HomeTab.forYou, idx);
+  }
+
+  Future<void> _ensureUploadedReelOnForYou({String? reelId}) async {
+    if (!widget.deepLinkPreferForYou) return;
+    final targetId = reelId ?? widget.deepLinkReelId;
+    if (targetId == null || targetId.isEmpty) return;
+
+    var idx = _reelsForYou.indexWhere((r) => _asString(r['id']) == targetId);
+    if (idx == 0) {
+      if (mounted && currentTab != HomeTab.forYou) {
+        setState(() {
+          currentTab = HomeTab.forYou;
+          _currentIndex = 0;
+        });
+      }
+      return;
+    }
+
+    Map<String, dynamic>? reel;
+    if (idx > 0) {
+      reel = _reelsForYou[idx];
+    } else {
+      reel = await _reelsService.getReelById(targetId);
+      if (!mounted) return;
+    }
+    if (reel == null) return;
+
+    setState(() {
+      final updated =
+          _reelsForYou.where((r) => _asString(r['id']) != targetId).toList();
+      updated.insert(0, reel!);
+      _reelsForYou = updated;
+      currentTab = HomeTab.forYou;
+      _currentIndex = 0;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_pageController.hasClients) return;
+      _pageController.jumpToPage(0);
+    });
+  }
+
+  void _showUploadSuccessToast(String message) {
+    _uploadToastTimer?.cancel();
+    setState(() => _uploadToastMessage = message);
+    _uploadToastTimer = Timer(const Duration(seconds: 3), () {
+      if (!mounted) return;
+      setState(() => _uploadToastMessage = null);
     });
   }
 
@@ -755,6 +850,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   @override
   void dispose() {
     _cancelAutoScrollTimer();
+    _uploadToastTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     if (_isRouteObserverSubscribed) {
       appRouteObserver.unsubscribe(this);
@@ -1468,6 +1564,16 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     onIconTap: () =>
                         setState(() => _showForYouAiVerifiedTooltip = true),
                   ),
+                ),
+              ),
+            if (_uploadToastMessage != null)
+              Positioned(
+                top: topPadding + headerEstimate + AppSpacing.xl,
+                left: AppSpacing.lg,
+                right: AppSpacing.lg,
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: UploadPostSuccessToast(message: _uploadToastMessage!),
                 ),
               ),
             _buildInteractionButtons(),

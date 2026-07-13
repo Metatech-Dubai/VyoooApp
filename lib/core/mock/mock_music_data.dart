@@ -25,6 +25,7 @@ class MusicTrack {
 }
 
 /// Shared mock music list. Same data for Music library and Edit Profile music picker.
+/// [audioUrl] uses stable HTTPS samples so preview works when Jamendo is unreachable.
 const List<MusicTrack> mockMusicTracks = [
   MusicTrack(
     id: '1',
@@ -32,6 +33,7 @@ const List<MusicTrack> mockMusicTracks = [
     artist: 'Mehul Mahesh, DJ Aynik',
     duration: '3:05',
     albumArtUrl: 'https://picsum.photos/80/80?random=zulfein',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
     isSaved: true,
   ),
   MusicTrack(
@@ -40,6 +42,7 @@ const List<MusicTrack> mockMusicTracks = [
     artist: 'Artist Two',
     duration: '2:45',
     albumArtUrl: 'https://picsum.photos/80/80?random=dive',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3',
     isSaved: false,
   ),
   MusicTrack(
@@ -48,6 +51,7 @@ const List<MusicTrack> mockMusicTracks = [
     artist: 'Lost Stories, JAI DHIR',
     duration: '2:25',
     albumArtUrl: 'https://picsum.photos/80/80?random=sunhera',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3',
     isSaved: true,
   ),
   MusicTrack(
@@ -56,6 +60,7 @@ const List<MusicTrack> mockMusicTracks = [
     artist: 'Another Artist',
     duration: '3:30',
     albumArtUrl: 'https://picsum.photos/80/80?random=next',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3',
     isSaved: false,
   ),
   MusicTrack(
@@ -64,6 +69,7 @@ const List<MusicTrack> mockMusicTracks = [
     artist: 'DJ Someone',
     duration: '4:00',
     albumArtUrl: 'https://picsum.photos/80/80?random=more',
+    audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3',
     isSaved: false,
   ),
 ];

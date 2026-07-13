@@ -6,6 +6,8 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/navigation/app_route_observer.dart';
 import 'edit_video_screen.dart';
 import 'upload_details_screen.dart';
+import 'widgets/upload_post_chrome_buttons.dart';
+import 'widgets/upload_video_scrubber_bar.dart';
 
 /// Preview selected video before upload: play/pause, seek bar, duration, mute, Edit Video, Next.
 class UploadVideoPreviewScreen extends StatefulWidget {
@@ -32,7 +34,6 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
   bool _isRouteVisible = true;
   bool _isAppForeground = true;
   bool _isRouteObserverSubscribed = false;
-  static const Color _pink = Color(0xFFDE106B);
 
   @override
   void initState() {
@@ -155,6 +156,18 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
     });
   }
 
+  void _goToDetails() {
+    _controller?.pause();
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => UploadDetailsScreen(
+          asset: widget.asset,
+          initialMarkAs360: widget.preferVrUpload,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -168,12 +181,23 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
           // 2. Gradients for visibility
           _buildGradients(),
 
-          // 3. Header
+          // 3. Header — Figma 370×40 toolbar
           Positioned(
-            top: MediaQuery.of(context).padding.top + 10,
-            left: 16,
-            right: 16,
-            child: _buildHeader(context),
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              bottom: false,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+                child: UploadMediaPreviewToolbar(
+                  mediaType: UploadPreviewMediaType.video,
+                  onCloseTap: _showQuitConfirmation,
+                  onEditTap: _openEditor,
+                  onNextTap: _goToDetails,
+                ),
+              ),
+            ),
           ),
 
           // 4. Bottom controls
@@ -223,110 +247,6 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) {
-    final detectedDuration = (_isInitialized && _controller != null)
-        ? _controller!.value.duration
-        : Duration.zero;
-    final hasDetectedDuration = detectedDuration.inMilliseconds > 0;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
-          children: [
-            IconButton(
-              onPressed: () => _showQuitConfirmation(),
-              icon: const Icon(Icons.close, color: Colors.white, size: 28),
-            ),
-            const Spacer(),
-            GestureDetector(
-              behavior: HitTestBehavior.opaque,
-              onTap: _openEditor,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Text(
-                    'Edit Video',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  Image.asset(
-                    'assets/vyooO_icons/Upload_Story_Live/edit_video.png',
-                    width: 16,
-                    height: 16,
-                    color: Colors.white,
-                  ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            GestureDetector(
-              onTap: () {
-                _controller?.pause();
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => UploadDetailsScreen(
-                      asset: widget.asset,
-                      initialMarkAs360: widget.preferVrUpload,
-                    ),
-                  ),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Next',
-                      style: TextStyle(
-                        color: Colors.black,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 14,
-                      ),
-                    ),
-                    SizedBox(width: 4),
-                    Icon(
-                      Icons.arrow_forward_ios_rounded,
-                      color: Colors.black,
-                      size: 12,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-        if (hasDetectedDuration) ...[
-          const SizedBox(height: 10),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.45),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white24),
-            ),
-            child: Text(
-              'Length ${_formatDuration(detectedDuration)}',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
-                fontSize: 12,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ],
     );
   }
 
@@ -384,104 +304,20 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
   Widget _buildControls() {
     final pos = _controller!.value.position;
     final dur = _controller!.value.duration;
-    final progress = dur.inSeconds > 0
-        ? (pos.inSeconds / dur.inSeconds).clamp(0.0, 1.0)
-        : 0.0;
+    final totalMs = dur.inMilliseconds > 0 ? dur.inMilliseconds : 1;
+    final progress = (pos.inMilliseconds / totalMs).clamp(0.0, 1.0);
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Tools row
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            children: [
-              _buildToolIcon(
-                'assets/vyooO_icons/Upload_Story_Live/audio_icon.png',
-                _openEditor,
-              ),
-              _buildToolIcon(
-                'assets/vyooO_icons/Upload_Story_Live/adjust.png',
-                _openEditor,
-              ),
-              _buildToolIcon(
-                'assets/vyooO_icons/Upload_Story_Live/crop.png',
-                _openEditor,
-              ),
-              _buildToolIcon(
-                'assets/vyooO_icons/Upload_Story_Live/speed.png',
-                _openEditor,
-              ),
-              _buildToolIcon(
-                'assets/vyooO_icons/Upload_Story_Live/delete_inactive.png',
-                _openEditor,
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 24),
-        // Progress bar and duration
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              Expanded(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.white.withValues(alpha: 0.3),
-                    valueColor: const AlwaysStoppedAnimation<Color>(_pink),
-                    minHeight: 3,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _formatDuration(dur),
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: _toggleMute,
-                behavior: HitTestBehavior.opaque,
-                child: Icon(
-                  _muted ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                  color: Colors.white,
-                  size: 26,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildToolIcon(String path, VoidCallback onTap) {
     return Padding(
-      padding: const EdgeInsets.only(right: 12),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Ink(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            padding: const EdgeInsets.all(12),
-            child: Image.asset(path, color: Colors.white),
-          ),
-        ),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
+      child: UploadVideoScrubberBar(
+        progress: progress,
+        durationLabel: _formatDuration(dur),
+        muted: _muted,
+        onSeek: (value) {
+          final targetMs = (value * dur.inMilliseconds).round();
+          _controller!.seekTo(Duration(milliseconds: targetMs));
+        },
+        onMuteToggle: _toggleMute,
       ),
     );
   }

@@ -29,6 +29,7 @@ import '../../core/utils/user_facing_errors.dart';
 import '../../core/utils/verification_badge.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
+import '../../core/navigation/post_upload_navigation.dart';
 import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/story/highlight_viewer_screen.dart';
@@ -91,6 +92,23 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<List<Map<String, dynamic>>>? _savedReelsFuture;
   String? _savedReelsFutureUid;
   Future<List<Map<String, dynamic>>>? _vrReelsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    PostUploadNavigation.profileRefreshToken.addListener(_onProfilePostsRefresh);
+  }
+
+  @override
+  void dispose() {
+    PostUploadNavigation.profileRefreshToken.removeListener(_onProfilePostsRefresh);
+    super.dispose();
+  }
+
+  void _onProfilePostsRefresh() {
+    if (!mounted) return;
+    setState(() => _vrReelsFuture = null);
+  }
 
   Stream<List<StoryHighlightModel>> _highlightsStreamFor(String uid) {
     if (_highlightsStreamUid != uid || _highlightsStream == null) {
