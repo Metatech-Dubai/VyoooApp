@@ -83,7 +83,8 @@ class AppInteractionButton extends StatelessWidget {
     final tintActiveAsset =
         asset != null &&
         (asset.contains('/interactions/like_active') ||
-            asset.contains('/interactions/star_active'));
+            asset.contains('/interactions/star_active') ||
+            asset.contains('/interactions/save_active'));
 
     if (asset != null) {
       if (asset.endsWith('.svg')) {
@@ -191,7 +192,9 @@ class AppInteractionButton extends StatelessWidget {
     final countTint = countColor ?? Colors.white;
     final caption = count.isNotEmpty ? count : (label ?? '');
     final tapTarget = useFeedFrostedStyle
-        ? AppSizes.feedInteractionTapTarget
+        ? (caption.isEmpty
+              ? circleSize
+              : AppSizes.feedInteractionTapTarget)
         : AppSizes.iconTapTarget;
 
     return GestureDetector(

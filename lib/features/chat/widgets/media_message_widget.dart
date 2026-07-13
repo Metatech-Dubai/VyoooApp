@@ -10,6 +10,7 @@ import '../models/message_model.dart';
 import '../screens/chat_media_viewer_screen.dart';
 import '../utils/chat_constants.dart';
 import 'chat_bubble_avatar.dart';
+import 'message_reaction_heart_overlay.dart';
 import 'message_reply_quote.dart';
 
 class MediaMessageWidget extends StatelessWidget {
@@ -22,6 +23,8 @@ class MediaMessageWidget extends StatelessWidget {
     this.replyToSenderName,
     this.replyToPreview,
     this.senderAvatarUrl,
+    this.reactions = const {},
+    this.onHeartReactionTap,
   });
 
   final MessageModel message;
@@ -31,6 +34,8 @@ class MediaMessageWidget extends StatelessWidget {
   final String? replyToSenderName;
   final String? replyToPreview;
   final String? senderAvatarUrl;
+  final Map<String, dynamic> reactions;
+  final VoidCallback? onHeartReactionTap;
 
   @override
   Widget build(BuildContext context) {
@@ -94,73 +99,77 @@ class MediaMessageWidget extends StatelessWidget {
     final isVideo = message.type == 'video';
     final isGif = message.type == 'gif';
 
-    return SizedBox(
-      width: AppSizes.chatMediaMessageWidth,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isSent ? null : AppColors.chatIncomingBubble,
-          borderRadius: AppRadius.pillRadius,
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (replyToSenderName != null && replyToPreview != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
-              child: MessageReplyQuote(
-                senderName: replyToSenderName!,
-                preview: replyToPreview!,
-                isSentBubble: isSent,
-              ),
-            ),
-          GestureDetector(
-            onTap: () => _openViewer(context),
-            child: Stack(
-              children: [
-                _buildMediaContent(isVideo, isGif),
-                Positioned(
-                  right: 8,
-                  bottom: 8,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 3,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.45),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (seenText != null) ...[
-                          Text(
-                            seenText!,
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontSize: 10,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        Text(
-                          time,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 10,
-                          ),
-                        ),
-                      ],
-                    ),
+    return MessageReactionHeartOverlay(
+      reactions: reactions,
+      onHeartTap: onHeartReactionTap,
+      child: SizedBox(
+        width: AppSizes.chatMediaMessageWidth,
+        child: Container(
+          decoration: BoxDecoration(
+            color: isSent ? null : AppColors.chatIncomingBubble,
+            borderRadius: AppRadius.pillRadius,
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              if (replyToSenderName != null && replyToPreview != null)
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 8, 8, 0),
+                  child: MessageReplyQuote(
+                    senderName: replyToSenderName!,
+                    preview: replyToPreview!,
+                    isSentBubble: isSent,
                   ),
                 ),
-              ],
-            ),
+              GestureDetector(
+                onTap: () => _openViewer(context),
+                child: Stack(
+                  children: [
+                    _buildMediaContent(isVideo, isGif),
+                    Positioned(
+                      right: 8,
+                      bottom: 8,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (seenText != null) ...[
+                              Text(
+                                seenText!,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.9),
+                                  fontSize: 10,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                            ],
+                            Text(
+                              time,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
       ),
     );
   }

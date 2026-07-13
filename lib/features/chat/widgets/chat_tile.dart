@@ -23,6 +23,8 @@ class ChatTile extends StatelessWidget {
 
   bool get _hasMultipleUnread => summary.unreadCount > 1;
 
+  bool get _hasSingleUnread => summary.unreadCount == 1;
+
   String get _previewBody {
     if (_hasMultipleUnread) {
       return '${summary.unreadCount}+ new messages';
@@ -35,11 +37,60 @@ class ChatTile extends StatelessWidget {
 
   String get _timeLabel => ChatHelpers.formatInboxTime(summary.lastMessageAt);
 
+  List<InlineSpan> _buildPreviewSpans({
+    required double previewFontSize,
+    required double previewLineHeight,
+  }) {
+    final time = _timeLabel;
+    final lineHeight = previewLineHeight / previewFontSize;
+    final previewStyle = AppTypography.chatInboxTilePreview.copyWith(
+      fontSize: previewFontSize,
+      height: lineHeight,
+    );
+    final unreadStyle = AppTypography.chatInboxTilePreviewUnread.copyWith(
+      fontSize: previewFontSize,
+      height: lineHeight,
+    );
+    final replyStyle = AppTypography.chatInboxTilePreviewReply.copyWith(
+      fontSize: previewFontSize,
+      height: lineHeight,
+    );
+    final timeStyle = AppTypography.chatInboxTileTime.copyWith(
+      fontSize: previewFontSize,
+      height: lineHeight,
+    );
+
+    if (_hasMultipleUnread) {
+      return [
+        TextSpan(text: _previewBody, style: unreadStyle),
+        if (time.isNotEmpty) ...[
+          TextSpan(text: ' · ', style: timeStyle),
+          TextSpan(text: time, style: timeStyle),
+        ],
+      ];
+    }
+
+    if (_hasSingleUnread) {
+      return [
+        TextSpan(text: _previewBody, style: previewStyle),
+        TextSpan(text: ' · ', style: timeStyle),
+        TextSpan(text: 'Reply?', style: replyStyle),
+      ];
+    }
+
+    return [
+      TextSpan(text: _previewBody, style: previewStyle),
+      if (time.isNotEmpty) ...[
+        TextSpan(text: ' · ', style: timeStyle),
+        TextSpan(text: time, style: timeStyle),
+      ],
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final hasAvatar = summary.avatarUrl.trim().isNotEmpty;
     final hasUnread = summary.unreadCount > 0;
-    final time = _timeLabel;
     final avatarSize =
         AppSizes.chatInboxScaleW(context, AppSizes.chatInboxAvatar);
     final unreadDotSize =
@@ -48,6 +99,22 @@ class ChatTile extends StatelessWidget {
         AppSizes.chatInboxScaleW(context, AppSizes.chatTileCamera);
     final verifiedBadgeSize =
         AppSizes.chatInboxScaleW(context, AppSizes.chatTileVerifiedBadge);
+    final nameFontSize = AppSizes.chatInboxScaleW(
+      context,
+      AppSizes.chatInboxTileNameFontSize,
+    );
+    final nameLineHeight = AppSizes.chatInboxScaleH(
+      context,
+      AppSizes.chatInboxTileNameLineHeight,
+    );
+    final previewFontSize = AppSizes.chatInboxScaleW(
+      context,
+      AppSizes.chatInboxTilePreviewFontSize,
+    );
+    final previewLineHeight = AppSizes.chatInboxScaleH(
+      context,
+      AppSizes.chatInboxTilePreviewLineHeight,
+    );
 
     return InkWell(
       onTap: onTap,
@@ -88,9 +155,9 @@ class ChatTile extends StatelessWidget {
                           summary.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: AppTypography.chatTileName.copyWith(
-                            fontWeight:
-                                hasUnread ? FontWeight.w700 : FontWeight.w600,
+                          style: AppTypography.chatInboxTileName.copyWith(
+                            fontSize: nameFontSize,
+                            height: nameLineHeight / nameFontSize,
                           ),
                         ),
                       ),
@@ -112,31 +179,10 @@ class ChatTile extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           TextSpan(
-                            children: [
-                              TextSpan(
-                                text: _previewBody,
-                                style: hasUnread && _hasMultipleUnread
-                                    ? AppTypography.chatTilePreviewUnread
-                                    : AppTypography.chatTilePreview.copyWith(
-                                        fontWeight: hasUnread
-                                            ? FontWeight.w700
-                                            : FontWeight.w400,
-                                        color: hasUnread
-                                            ? AppColors.chatTextPrimary
-                                            : AppColors.chatTextSecondary,
-                                      ),
-                              ),
-                              if (time.isNotEmpty) ...[
-                                TextSpan(
-                                  text: ' · ',
-                                  style: AppTypography.chatTileTime,
-                                ),
-                                TextSpan(
-                                  text: time,
-                                  style: AppTypography.chatTileTime,
-                                ),
-                              ],
-                            ],
+                            children: _buildPreviewSpans(
+                              previewFontSize: previewFontSize,
+                              previewLineHeight: previewLineHeight,
+                            ),
                           ),
                         ),
                       ),

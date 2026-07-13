@@ -54,10 +54,18 @@ abstract final class ChatAssets {
   static const String searchBar = 'assets/vyooO_icons/Chat/search_bar.svg';
   static const String yourNoteLabel = 'assets/vyooO_icons/Chat/your_note.svg';
   static const String noteBubble = 'assets/vyooO_icons/Chat/note_bubble.svg';
+  static const String noteBubbleActive =
+      'assets/vyooO_icons/Chat/note_bubble_active.svg';
   static const String messagesTitle =
       'assets/vyooO_icons/Chat/messages_title.svg';
   static const String requestsTitle =
       'assets/vyooO_icons/Chat/requests_title.svg';
+  static const String messageReactionHeart =
+      'assets/vyooO_icons/Chat/message_reaction_heart.svg';
+  static const String outgoingMessageBubble =
+      'assets/vyooO_icons/Chat/outgoing_message_bubble.svg';
+  static const String incomingMessageBubble =
+      'assets/vyooO_icons/Chat/incoming_message_bubble.svg';
   static const String newChatIcon = 'assets/vyooO_icons/Chat/new_chat.svg';
   static const String chatUnreadDot =
       'assets/vyooO_icons/Chat/chat_unread_dot.svg';
@@ -69,6 +77,10 @@ abstract final class ChatAssets {
       'assets/vyooO_icons/Chat/input_gallery.svg';
   static const String inputStickerIcon =
       'assets/vyooO_icons/Chat/input_sticker.svg';
+  static const String inputCameraIcon =
+      'assets/vyooO_icons/Chat/input_camera.svg';
+  static const String chatMessageInputBar =
+      'assets/vyooO_icons/Chat/chat_message_input_bar.svg';
   static const String audioCallIcon = 'assets/vyooO_icons/Chat/audio_call.svg';
   static const String videoCallIcon = 'assets/vyooO_icons/Chat/video_call.svg';
 }

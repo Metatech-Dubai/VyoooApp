@@ -36,7 +36,13 @@ abstract final class AppRadius {
   /// Reel post bottom edge — rounded before the nav chrome (bottom only).
   static BorderRadius get feedPostBottomRadius => feedBottomChromeRadius;
 
+  /// Chat inbox search field — Figma rx 10 on 34px height.
+  static const double chatSearch = 10;
+
+  static BorderRadius get chatSearchRadius => BorderRadius.circular(chatSearch);
+
   static BorderRadius get inputRadius => BorderRadius.circular(input);
+
   static BorderRadius get pillRadius => BorderRadius.circular(pill);
   static BorderRadius get buttonRadius => BorderRadius.circular(button);
   static BorderRadius get feedTabRadius => BorderRadius.circular(feedTab);
@@ -47,16 +53,15 @@ abstract final class AppRadius {
   static BorderRadius get authOtpBoxRadius =>
       BorderRadius.circular(authOtpBox);
 
-  /// Outgoing chat bubble — Figma sent bubble (133×41, fill #660033).
-  static const double chatOutgoingBubbleRadiusTopLeft = 20.4103;
-  static const double chatOutgoingBubbleRadiusTopRight = 22.5846;
-  static const double chatOutgoingBubbleRadiusBottomRight = 11.2923;
-  static const double chatOutgoingBubbleRadiusBottomLeft = 20.4103;
+  /// Incoming chat bubble — Figma rx 20 on #666 fill.
+  static const double chatIncomingBubbleRadius = 20;
 
-  static BorderRadius get chatOutgoingBubbleRadius => const BorderRadius.only(
-        topLeft: Radius.circular(chatOutgoingBubbleRadiusTopLeft),
-        topRight: Radius.circular(chatOutgoingBubbleRadiusTopRight),
-        bottomRight: Radius.circular(chatOutgoingBubbleRadiusBottomRight),
-        bottomLeft: Radius.circular(chatOutgoingBubbleRadiusBottomLeft),
-      );
+  static BorderRadius get chatIncomingBubbleRadiusShape =>
+      BorderRadius.circular(chatIncomingBubbleRadius);
+
+  /// Outgoing chat bubble — Figma rx 20 on #E6E6E6 fill.
+  static const double chatOutgoingBubbleRadius = 20;
+
+  static BorderRadius get chatOutgoingBubbleRadiusShape =>
+      BorderRadius.circular(chatOutgoingBubbleRadius);
 }

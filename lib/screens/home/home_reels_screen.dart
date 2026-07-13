@@ -1990,7 +1990,6 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     final privacy = ReelCountPrivacy.fromMap(reel);
     final interactionBottom = _feedInteractionBottom(context);
     const feedActionStyle = AppTypography.feedReelMetric;
-    const feedActionGap = AppSpacing.feedInteractionButtonGap;
 
     return Positioned(
       right: AppSpacing.md,
@@ -2015,7 +2014,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             countTextStyle: feedActionStyle,
             spacing: AppSpacing.xs,
           ),
-          SizedBox(height: feedActionGap),
+          const SizedBox(height: AppSpacing.feedInteractionGapAfterCount),
           AppInteractionButton(
             iconAsset: FeedInteractionAssets.interactionChat,
             count: privacy.displayCount(
@@ -2030,35 +2029,26 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
             countTextStyle: feedActionStyle,
             spacing: AppSpacing.xs,
           ),
-          SizedBox(height: feedActionGap),
+          const SizedBox(height: AppSpacing.feedInteractionGapAfterCount),
           AppInteractionButton(
-            iconAsset: isFavorite
-                ? FeedInteractionAssets.savePost
-                : FeedInteractionAssets.save,
-            label: 'Save',
-            colorizeAsset: false,
+            iconAsset: FeedInteractionAssets.interactionSave,
+            iconAssetActive: FeedInteractionAssets.interactionSaveActive,
+            colorizeAsset: true,
             isActive: isFavorite,
-            activeColor: AppColors.brandPink,
-            countColor: Colors.white,
+            activeColor: AppColors.feedLikeActive,
+            defaultColor: Colors.white,
             useFeedFrostedStyle: true,
-            iconSize: 24,
             onTap: () => _onFavorite(engagementId, isFavorite),
-            countTextStyle: AppTypography.feedReelActionLabel,
-            spacing: AppSpacing.xs,
           ),
-          SizedBox(height: feedActionGap),
+          const SizedBox(height: AppSpacing.feedInteractionGapIconOnly),
           AppInteractionButton(
             iconAsset: FeedInteractionAssets.interactionShare,
-            label: 'Share',
             colorizeAsset: true,
             defaultColor: Colors.white,
-            countColor: Colors.white,
             useFeedFrostedStyle: true,
             onTap: () => _onShare(reelId),
-            countTextStyle: feedActionStyle,
-            spacing: AppSpacing.xs,
           ),
-          SizedBox(height: feedActionGap),
+          const SizedBox(height: AppSpacing.feedInteractionGapIconOnly),
           AppInteractionButton(
             iconAsset: FeedInteractionAssets.interactionMore,
             count: '',

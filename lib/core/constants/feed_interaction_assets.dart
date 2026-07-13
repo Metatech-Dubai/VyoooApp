@@ -20,6 +20,8 @@ abstract final class FeedInteractionAssets {
   static const String interactionStar = '$_interactions/star.svg';
   static const String interactionStarActive = '$_interactions/star_active.svg';
   static const String interactionShare = '$_interactions/share.svg';
+  static const String interactionSave = '$_interactions/save.svg';
+  static const String interactionSaveActive = '$_interactions/save_active.svg';
   static const String interactionMore = '$_interactions/more.svg';
 
   /// Reel playback overlay pill (`playback_controls/*.svg`).

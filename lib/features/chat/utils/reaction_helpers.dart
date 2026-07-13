@@ -12,3 +12,17 @@ Map<String, List<String>> groupReactionsByEmoji(Map<String, dynamic> reactions) 
 
 bool hasReactions(Map<String, dynamic> reactions) =>
     groupReactionsByEmoji(reactions).isNotEmpty;
+
+const Set<String> heartReactionEmojis = {'❤️', '❤', '♥️', '♥'};
+
+bool hasHeartReaction(Map<String, dynamic> reactions) {
+  final grouped = groupReactionsByEmoji(reactions);
+  return grouped.keys.any(heartReactionEmojis.contains);
+}
+
+Map<String, List<String>> nonHeartReactions(Map<String, dynamic> reactions) {
+  final grouped = groupReactionsByEmoji(reactions);
+  return Map.fromEntries(
+    grouped.entries.where((entry) => !heartReactionEmojis.contains(entry.key)),
+  );
+}

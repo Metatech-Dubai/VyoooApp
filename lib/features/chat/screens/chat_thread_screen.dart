@@ -764,6 +764,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
       replyToSenderName: replyToSenderName,
       replyToPreview: replyToPreview,
       senderAvatarUrl: _senderAvatarUrl(msg),
+      reactions: msg.reactions,
+      onHeartReactionTap: () => _setReaction(
+        msg,
+        ChatReactionEmojis.defaultReaction,
+      ),
     );
     if (name == null) return media;
     return Align(
@@ -1052,6 +1057,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             isDeleted: true,
                             senderName: _senderName(msg),
                             senderAvatarUrl: _senderAvatarUrl(msg),
+                            reactions: msg.reactions,
+                            onHeartReactionTap: () => _setReaction(
+                              msg,
+                              ChatReactionEmojis.defaultReaction,
+                            ),
                           );
                         } else if (msg.isViewOnce &&
                             (msg.type == ChatMessageTypes.image ||
@@ -1104,6 +1114,11 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                             replyToSenderName: replyQuote?.senderName,
                             replyToPreview: replyQuote?.preview,
                             senderAvatarUrl: _senderAvatarUrl(msg),
+                            reactions: msg.reactions,
+                            onHeartReactionTap: () => _setReaction(
+                              msg,
+                              ChatReactionEmojis.defaultReaction,
+                            ),
                           );
                         }
 
