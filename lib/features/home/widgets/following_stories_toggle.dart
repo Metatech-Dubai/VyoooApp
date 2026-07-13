@@ -6,7 +6,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_spacing.dart';
 
-/// Maroon status chevron after the tab pills on Following (Figma SVG asset).
+/// Status chevron after the tab pills on Following (Figma SVG asset).
 class FollowingStoriesToggle extends StatelessWidget {
   const FollowingStoriesToggle({
     super.key,
@@ -36,7 +36,7 @@ class FollowingStoriesToggle extends StatelessWidget {
             child: Transform.translate(
               offset: const Offset(0, AppSpacing.followingStoriesToggleDown),
               child: Transform.rotate(
-                angle: isExpanded ? pi : 0,
+                angle: isExpanded ? 0 : pi,
                 child: SvgPicture.asset(
                   asset,
                   width: AppSizes.followingStoriesToggleWidth,

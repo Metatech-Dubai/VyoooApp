@@ -45,9 +45,9 @@ class AppPadding {
   static const feedTabChipCompact =
       EdgeInsets.fromLTRB(8, 4, 8, 6);
 
-  /// Reel overlay "+ Follow" chip (Figma 71×24, 12 horizontal inset).
+  /// Reel overlay "+ Follow" chip (Figma 71×24, 12×4 inset).
   static const feedReelFollowChip =
-      EdgeInsets.symmetric(horizontal: 12);
+      EdgeInsets.symmetric(horizontal: 12, vertical: 4);
 
   /// Live stream comment field — horizontal inset; vertical centers 15px line in 32px.
   static const liveCommentInputContent =

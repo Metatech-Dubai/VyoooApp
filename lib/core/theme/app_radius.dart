@@ -19,8 +19,8 @@ abstract final class AppRadius {
   /// Home feed nav chips — rounded rect (Figma rx 9 on 29px height).
   static const double feedTab = 9;
 
-  /// Reel overlay "+ Follow" pill — stadium cap (Figma rx 12 on 24px height).
-  static const double feedReelFollowButton = 12;
+  /// Reel overlay "+ Follow" pill (Figma rx 20 on 24px height).
+  static const double feedReelFollowButton = 20;
 
   /// Reel playback control pill — pause + speaker (Figma rx 25 on 50px height).
   static const double feedReelPlaybackControlPill = 25;

@@ -10,6 +10,12 @@ class AppColors {
   static const Color brandDeepMagenta = Color(0xFFDE106B);
   /// Reel overlay "+ Follow" pill + profile side drawer (Figma #660033).
   static const Color feedFollowButton = Color(0xFF660033);
+
+  /// Home reel "+ Follow" pill fill (Figma #1A1A1A).
+  static const Color feedReelFollowButtonFill = Color(0xFF1A1A1A);
+
+  /// Home reel "+ Follow" pill border (Figma #FFFFFF @ 20%).
+  static const Color feedReelFollowButtonBorder = Color(0x33FFFFFF);
   /// Light auth surfaces — wordmark and accent links (Figma #600030).
   static const Color authBrandBurgundy = Color(0xFF600030);
   /// Verify-code CTA + floating back (Figma #7B0A3F).

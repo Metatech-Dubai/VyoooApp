@@ -2410,10 +2410,12 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                           height: AppSizes.feedReelFollowButtonHeight,
                           padding: AppPadding.feedReelFollowChip,
                           decoration: BoxDecoration(
-                            color: isFollowing
-                                ? White24.value
-                                : AppColors.feedFollowButton,
+                            color: AppColors.feedReelFollowButtonFill,
                             borderRadius: AppRadius.feedReelFollowButtonRadius,
+                            border: Border.all(
+                              color: AppColors.feedReelFollowButtonBorder,
+                              width: 1,
+                            ),
                           ),
                           child: followBusy
                               ? const Center(
