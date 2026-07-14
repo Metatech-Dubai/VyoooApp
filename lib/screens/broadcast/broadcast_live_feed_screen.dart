@@ -25,6 +25,8 @@ import '../../core/widgets/app_feed_notification_button.dart';
 import '../../core/widgets/feed_bottom_scrim.dart';
 import '../../core/widgets/live_feed_comment_bar.dart';
 import '../../core/widgets/live_feed_host_caption_row.dart';
+import '../../core/services/live_360_snapshot_hub.dart';
+import '../../core/utils/live_360_meta_log.dart';
 import '../../core/widgets/live_stream_video_surface.dart';
 import '../../core/widgets/app_network_avatar.dart';
 import '../../core/navigation/home_feed_chrome_controller.dart';
@@ -305,10 +307,21 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   }
 
   Future<void> _onSnapshotTaken(String filePath, int errCode) async {
+    if (await Live360SnapshotHub.instance.deliver(filePath, errCode)) {
+      return;
+    }
+
     _snapshotInFlight = false;
     final elapsedSec = _pendingSnapshotElapsedSec;
     _pendingSnapshotElapsedSec = null;
-    if (!mounted || errCode != 0 || elapsedSec == null) return;
+    if (!mounted || errCode != 0 || elapsedSec == null) {
+      if (elapsedSec == null && errCode == 0) {
+        try {
+          await File(filePath).delete();
+        } catch (_) {}
+      }
+      return;
+    }
 
     try {
       final file = File(filePath);
@@ -475,6 +488,16 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
             _remoteVideoWidth = width;
             _remoteVideoHeight = height;
           });
+          final stream = _liveDoc ?? _currentStream;
+          if (stream != null) {
+            Live360MetaLog.log(
+              source: 'broadcast_agora_video_size',
+              stream: stream,
+              remoteVideoWidth: width,
+              remoteVideoHeight: height,
+              motionActive: widget.isActive && _streamProgress >= 0.99,
+            );
+          }
         },
         onTokenPrivilegeWillExpire: (connection, token) async {
           final stream = _currentStream;
@@ -624,6 +647,12 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       );
 
       if (!mounted) return;
+      Live360MetaLog.resetDedupe();
+      Live360MetaLog.log(
+        source: 'broadcast_join_feed',
+        stream: stream,
+        motionActive: widget.isActive && _streamProgress >= 0.99,
+      );
       setState(() {
         _joinedStreamId = stream.id;
         _liveDoc = stream;
@@ -635,6 +664,13 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
 
       _streamDocSub = _liveService.streamDoc(stream.id).listen((doc) {
         if (!mounted || doc == null) return;
+        Live360MetaLog.log(
+          source: 'broadcast_firestore_stream_doc',
+          stream: doc,
+          remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+          remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
+          motionActive: widget.isActive && _streamProgress >= 0.99,
+        );
         setState(() => _liveDoc = doc);
         if (doc.status == LiveStreamStatus.ended) {
           _showToast('Stream has ended');

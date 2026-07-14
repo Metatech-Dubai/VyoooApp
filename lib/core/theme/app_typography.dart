@@ -294,24 +294,26 @@ abstract final class AppTypography {
     color: AppColors.liveFeedHostCaption,
   );
 
-  /// Live feed chat username — DM Sans Medium 12 / 16px line (Figma card 1).
+  /// Live feed chat username — DM Sans Medium 12 / 16 @ #B3B3B3 (Figma).
   static const TextStyle liveChatUsername = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: AppSizes.liveChatUsernameFontSize,
     height: AppSizes.liveChatUsernameLineHeight /
         AppSizes.liveChatUsernameFontSize,
     fontWeight: FontWeight.w500,
-    color: Colors.white,
+    letterSpacing: 0,
+    color: AppColors.liveChatUsername,
   );
 
-  /// Live feed chat message — DM Sans Regular 13 / 17px line @ 60% white.
+  /// Live feed chat message — DM Sans Regular 13 / 17 @ #FFFFFF (Figma).
   static const TextStyle liveChatMessage = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: AppSizes.liveChatMessageFontSize,
     height:
         AppSizes.liveChatMessageLineHeight / AppSizes.liveChatMessageFontSize,
     fontWeight: FontWeight.w400,
-    color: Color(0x99FFFFFF),
+    letterSpacing: 0,
+    color: AppColors.liveChatMessage,
   );
 
   /// Segmented toggle — DM Sans Regular 16, 100% line height (Figma).

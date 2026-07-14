@@ -13,7 +13,10 @@ bool isLikelyEquirectangularLiveVideo(int width, int height) {
       aspect <= kLive360EquirectangularMaxAspect;
 }
 
-/// Resolves how the viewer should map gyro onto the Agora texture.
+/// Resolves how the viewer should render the incoming Agora video.
+///
+/// 1. Firestore [LiveStreamModel.isImmersive360Live] (host enabled 360° live).
+/// 2. Fallback: incoming remote frame looks like 2:1 equirectangular (360 camera).
 LiveGyroProjectionMode resolveLiveGyroProjectionMode({
   required LiveStreamModel stream,
   int? remoteVideoWidth,

@@ -116,6 +116,10 @@ class AppColors {
   static const Color liveCommentInputText = Color(0xFFEEEEEE);
   /// Live feed host caption — Figma #F0F0F0.
   static const Color liveFeedHostCaption = Color(0xFFF0F0F0);
+  /// Live stream chat username (Figma DM Sans Medium 12 @ #B3B3B3).
+  static const Color liveChatUsername = Color(0xFFB3B3B3);
+  /// Live stream chat message body (Figma DM Sans Regular 13 @ #FFFFFF).
+  static const Color liveChatMessage = Color(0xFFFFFFFF);
   /// Chat input placeholder — Figma #D9D9D9.
   static const Color chatInputHint = Color(0xFFD9D9D9);
   /// Chat input action icons — Figma #E6E6E6.

@@ -13,8 +13,11 @@ import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
+import '../../core/services/live_360_snapshot_hub.dart';
+import '../../core/utils/live_360_meta_log.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_sizes.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/widgets/live_comment_input_field.dart';
 import '../../core/widgets/live_stream_video_surface.dart';
 
@@ -60,6 +63,10 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   void initState() {
     super.initState();
     _liveDoc = widget.stream;
+    Live360MetaLog.log(
+      source: 'standalone_open',
+      stream: widget.stream,
+    );
     _initAndJoin();
   }
 
@@ -155,6 +162,13 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
           _remoteVideoWidth = width;
           _remoteVideoHeight = height;
         });
+        final doc = _liveDoc ?? widget.stream;
+        Live360MetaLog.log(
+          source: 'standalone_agora_video_size',
+          stream: doc,
+          remoteVideoWidth: width,
+          remoteVideoHeight: height,
+        );
       },
       onTokenPrivilegeWillExpire: (connection, token) async {
         try {
@@ -171,6 +185,9 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
       onError: (err, msg) {
         if (!mounted) return;
         _showToast('Connection error');
+      },
+      onSnapshotTaken: (connection, uid, filePath, width, height, errCode) {
+        unawaited(Live360SnapshotHub.instance.deliver(filePath, errCode));
       },
     ));
 
@@ -204,6 +221,12 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
     _streamSub = _liveService.streamDoc(widget.stream.id).listen((doc) {
       if (!mounted) return;
       if (doc == null) return;
+      Live360MetaLog.log(
+        source: 'standalone_firestore_stream_doc',
+        stream: doc,
+        remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+        remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
+      );
       setState(() => _liveDoc = doc);
       if (doc.status == LiveStreamStatus.ended) {
         _showToast('Stream has ended');
@@ -541,36 +564,41 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
             );
           }
           return Padding(
-            padding: const EdgeInsets.only(bottom: 6),
+            padding: const EdgeInsets.only(bottom: AppSpacing.xs),
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CircleAvatar(
-                  radius: 12,
+                  radius: AppSizes.liveChatAvatarSize / 2,
                   backgroundColor: Colors.white.withValues(alpha: 0.2),
                   backgroundImage: m.profileImage?.isNotEmpty == true ? NetworkImage(m.profileImage!) : null,
                   child: m.profileImage?.isNotEmpty != true
-                      ? Text(m.username[0].toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 10))
+                      ? Text(
+                          m.username[0].toUpperCase(),
+                          style: AppTypography.liveChatUsername.copyWith(
+                            fontSize: 10,
+                          ),
+                        )
                       : null,
                 ),
-                const SizedBox(width: 8),
+                const SizedBox(width: AppSizes.liveChatAvatarToTextGap),
                 Expanded(
-                  child: RichText(
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    text: TextSpan(
-                      style: const TextStyle(fontSize: 13, height: 1.3),
-                      children: [
-                        TextSpan(
-                          text: '${m.username} ',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.9), fontWeight: FontWeight.w600),
-                        ),
-                        TextSpan(
-                          text: m.message,
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-                        ),
-                      ],
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        m.username,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: AppTypography.liveChatUsername,
+                      ),
+                      const SizedBox(height: AppSizes.liveChatUsernameMessageGap),
+                      Text(
+                        m.message,
+                        style: AppTypography.liveChatMessage,
+                      ),
+                    ],
                   ),
                 ),
               ],
