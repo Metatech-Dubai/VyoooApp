@@ -14,6 +14,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/live_stream_assets.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
+import '../../core/models/video_360_metadata.dart';
 import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/notification_service.dart';
@@ -126,6 +127,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
   String _streamTitle = '';
   String _streamDescription = '';
   String _streamCategory = '';
+  bool _is360Live = false;
   List<String> _streamTags = [];
   int _streamPrice = 0;
 
@@ -614,6 +616,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
         category: _streamCategory,
         tags: _streamTags,
         pricePerMinute: _streamPrice,
+        is360Live: _is360Live,
+        projectionType: _is360Live
+            ? Video360Projection.equirectangular
+            : Video360Projection.flat,
       );
       _streamId = streamId;
 
@@ -786,12 +792,17 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
       _streamCategory = result.category;
       _streamTags = result.tags;
       _streamPrice = result.price;
+      _is360Live = result.is360Live;
     });
     if (_liveState == _LiveState.live && _streamId != null) {
       await _liveService.updateStreamMetadata(
         streamId: _streamId!,
         title: result.title,
         description: result.description,
+        is360Live: result.is360Live,
+        projectionType: result.is360Live
+            ? Video360Projection.equirectangular
+            : Video360Projection.flat,
       );
     }
   }
@@ -808,6 +819,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
             initialCategory: _streamCategory,
             initialTags: _streamTags,
             initialPrice: _streamPrice,
+            initialIs360Live: _is360Live,
             isLive: _liveState == _LiveState.live,
           ),
         ),
@@ -1912,6 +1924,7 @@ class _LiveSettingsResult {
     required this.category,
     required this.tags,
     required this.price,
+    required this.is360Live,
   });
 
   final String title;
@@ -1919,6 +1932,7 @@ class _LiveSettingsResult {
   final String category;
   final List<String> tags;
   final int price;
+  final bool is360Live;
 }
 
 class _LiveSettingsSheet extends StatefulWidget {
@@ -1928,6 +1942,7 @@ class _LiveSettingsSheet extends StatefulWidget {
     required this.initialCategory,
     required this.initialTags,
     required this.initialPrice,
+    required this.initialIs360Live,
     required this.isLive,
   });
 
@@ -1936,6 +1951,7 @@ class _LiveSettingsSheet extends StatefulWidget {
   final String initialCategory;
   final List<String> initialTags;
   final int initialPrice;
+  final bool initialIs360Live;
   final bool isLive;
 
   @override
@@ -1953,6 +1969,7 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
   late String _selectedCategory;
   late List<String> _tags;
   late double _priceLevel;
+  late bool _is360Live;
 
   static const _categories = [
     'Entertainment',
@@ -1975,6 +1992,7 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
     _selectedCategory = widget.initialCategory;
     _tags = List.from(widget.initialTags);
     _priceLevel = widget.initialPrice.toDouble().clamp(0, 7);
+    _is360Live = widget.initialIs360Live;
   }
 
   @override
@@ -1993,6 +2011,7 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
         category: _selectedCategory,
         tags: List<String>.from(_tags),
         price: _priceLevel.round(),
+        is360Live: _is360Live,
       ),
     );
   }
@@ -2079,6 +2098,8 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
                     _buildCategoryDropdown(),
                     const SizedBox(height: 24),
                     _buildTagsField(),
+                    const SizedBox(height: 24),
+                    _build360LiveToggle(),
                     // Pricing only editable pre-live
                     if (!widget.isLive) ...[
                       const SizedBox(height: 24),
@@ -2299,6 +2320,42 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
             }).toList(),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _build360LiveToggle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '360° immersive live',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Switch.adaptive(
+              value: _is360Live,
+              activeTrackColor: AppColors.brandMagenta.withValues(alpha: 0.45),
+              activeThumbColor: AppColors.brandMagenta,
+              onChanged: (value) => setState(() => _is360Live = value),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Enable when broadcasting from a 360° camera (Insta360, etc.) so viewers can look around the full sphere.',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45),
+            fontSize: 11,
+          ),
+        ),
       ],
     );
   }

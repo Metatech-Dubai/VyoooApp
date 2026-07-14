@@ -235,10 +235,10 @@ abstract final class AppSizes {
   /// Tab icon render size inside the tap target / selected pill.
   static const double bottomNavIcon = bottomNavIconSlot;
 
-  /// Profile tab avatar (Figma 56×56 with 2px border).
+  /// Profile tab avatar (Figma 56×56 circle, 2px stroke).
   static const double bottomNavProfileIcon = 56;
-  static const double bottomNavTapTarget = 45;
-  static const double bottomNavBarHeight = 60;
+  static const double bottomNavTapTarget = 48;
+  static const double bottomNavBarHeight = 64;
 
   // — Icons —
   static const double fieldIcon = 22;

@@ -25,6 +25,7 @@ import '../../core/widgets/app_feed_notification_button.dart';
 import '../../core/widgets/feed_bottom_scrim.dart';
 import '../../core/widgets/live_feed_comment_bar.dart';
 import '../../core/widgets/live_feed_host_caption_row.dart';
+import '../../core/widgets/live_stream_video_surface.dart';
 import '../../core/widgets/app_network_avatar.dart';
 import '../../core/navigation/home_feed_chrome_controller.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
@@ -64,6 +65,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   String? _joinedStreamId;
   int _remoteUid = 0;
   bool _hostVideoAvailable = false;
+  int _remoteVideoWidth = 0;
+  int _remoteVideoHeight = 0;
   bool _hasJoined = false;
 
   StreamSubscription<List<LiveStreamModel>>? _streamsSub;
@@ -451,6 +454,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
             setState(() {
               _hostVideoAvailable = false;
               _remoteUid = 0;
+              _remoteVideoWidth = 0;
+              _remoteVideoHeight = 0;
             });
           }
         },
@@ -461,6 +466,15 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
               state == RemoteVideoState.remoteVideoStateDecoding ||
               state == RemoteVideoState.remoteVideoStateStarting;
           setState(() => _hostVideoAvailable = hasVideo);
+        },
+        onVideoSizeChanged: (connection, sourceType, uid, width, height, rotation) {
+          if (!mounted || uid != _remoteUid) return;
+          if (sourceType != VideoSourceType.videoSourceRemote) return;
+          if (width <= 0 || height <= 0) return;
+          setState(() {
+            _remoteVideoWidth = width;
+            _remoteVideoHeight = height;
+          });
         },
         onTokenPrivilegeWillExpire: (connection, token) async {
           final stream = _currentStream;
@@ -514,6 +528,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       _engineReady = false;
       _remoteUid = 0;
       _hostVideoAvailable = false;
+      _remoteVideoWidth = 0;
+      _remoteVideoHeight = 0;
       _hasJoined = false;
       _joinedStreamId = null;
       _liveDoc = null;
@@ -564,6 +580,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       setState(() {
         _remoteUid = 0;
         _hostVideoAvailable = false;
+        _remoteVideoWidth = 0;
+        _remoteVideoHeight = 0;
         _isLiked = false;
       });
     }
@@ -1010,23 +1028,21 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
         ? _frameForFraction(doc, _streamProgress)
         : null;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        AgoraVideoView(
-          controller: VideoViewController.remote(
-            rtcEngine: engine,
-            canvas: VideoCanvas(uid: _remoteUid),
-            connection: RtcConnection(channelId: doc.agoraChannelName),
-          ),
-        ),
-        if (replayFrame != null)
-          Image.memory(
-            replayFrame,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          ),
-      ],
+    return LiveStreamVideoSurface(
+      rtcEngine: engine,
+      remoteUid: _remoteUid,
+      stream: doc,
+      motionActive: widget.isActive && _streamProgress >= 0.99,
+      gyroToggleTopInset: AppSizes.feedHeaderContentHeight + AppSpacing.md,
+      remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+      remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
+      scrubOverlay: replayFrame != null
+          ? Image.memory(
+              replayFrame,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            )
+          : null,
     );
   }
 

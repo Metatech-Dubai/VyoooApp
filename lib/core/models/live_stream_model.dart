@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import 'video_360_metadata.dart';
+
 enum LiveStreamStatus { live, ended }
 
 /// Firestore document model for a live stream.
@@ -23,6 +25,8 @@ class LiveStreamModel {
     required this.createdAt,
     this.endedAt,
     this.savedToProfile = false,
+    this.is360Live = false,
+    this.projectionType = Video360Projection.flat,
   });
 
   final String id;
@@ -48,6 +52,13 @@ class LiveStreamModel {
   final Timestamp? endedAt;
   final bool savedToProfile;
 
+  /// When true, host publishes equirectangular 360° frames via Agora.
+  final bool is360Live;
+  final Video360Projection projectionType;
+
+  bool get isImmersive360Live =>
+      is360Live && projectionType == Video360Projection.equirectangular;
+
   bool get isLive => status == LiveStreamStatus.live;
 
   Map<String, dynamic> toJson() => {
@@ -68,6 +79,8 @@ class LiveStreamModel {
         'createdAt': createdAt,
         'endedAt': endedAt,
         'savedToProfile': savedToProfile,
+        'is360Live': is360Live,
+        'projectionType': projectionType.firestoreValue,
       };
 
   factory LiveStreamModel.fromJson(Map<String, dynamic> json) {
@@ -94,6 +107,8 @@ class LiveStreamModel {
       createdAt: json['createdAt'] is Timestamp ? json['createdAt'] as Timestamp : Timestamp.now(),
       endedAt: json['endedAt'] is Timestamp ? json['endedAt'] as Timestamp : null,
       savedToProfile: json['savedToProfile'] as bool? ?? false,
+      is360Live: json['is360Live'] == true,
+      projectionType: Video360Projection.parse(json['projectionType'] as String?),
     );
   }
 
@@ -104,6 +119,8 @@ class LiveStreamModel {
     LiveStreamStatus? status,
     Timestamp? endedAt,
     bool? savedToProfile,
+    bool? is360Live,
+    Video360Projection? projectionType,
   }) {
     return LiveStreamModel(
       id: id,
@@ -123,6 +140,8 @@ class LiveStreamModel {
       createdAt: createdAt,
       endedAt: endedAt ?? this.endedAt,
       savedToProfile: savedToProfile ?? this.savedToProfile,
+      is360Live: is360Live ?? this.is360Live,
+      projectionType: projectionType ?? this.projectionType,
     );
   }
 }

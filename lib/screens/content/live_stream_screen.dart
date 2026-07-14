@@ -16,6 +16,7 @@ import '../../core/services/live_stream_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_sizes.dart';
 import '../../core/widgets/live_comment_input_field.dart';
+import '../../core/widgets/live_stream_video_surface.dart';
 
 /// Viewer live stream screen.
 /// Pass a [LiveStreamModel] to open any live stream as a viewer.
@@ -34,6 +35,8 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   bool _engineReady = false;
   int _remoteUid = 0; // host's Agora UID — set when first remote user joins
   bool _hostVideoAvailable = false;
+  int _remoteVideoWidth = 0;
+  int _remoteVideoHeight = 0;
 
   // ── Firebase ──────────────────────────────────────────────────────────────────
   final _liveService = LiveStreamService();
@@ -143,6 +146,15 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
         final hasVideo = state == RemoteVideoState.remoteVideoStateDecoding ||
             state == RemoteVideoState.remoteVideoStateStarting;
         setState(() => _hostVideoAvailable = hasVideo);
+      },
+      onVideoSizeChanged: (connection, sourceType, uid, width, height, rotation) {
+        if (!mounted || uid != _remoteUid) return;
+        if (sourceType != VideoSourceType.videoSourceRemote) return;
+        if (width <= 0 || height <= 0) return;
+        setState(() {
+          _remoteVideoWidth = width;
+          _remoteVideoHeight = height;
+        });
       },
       onTokenPrivilegeWillExpire: (connection, token) async {
         try {
@@ -403,12 +415,14 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
         ),
       );
     }
-    return AgoraVideoView(
-      controller: VideoViewController.remote(
-        rtcEngine: _engine,
-        canvas: VideoCanvas(uid: _remoteUid),
-        connection: RtcConnection(channelId: widget.stream.agoraChannelName),
-      ),
+    return LiveStreamVideoSurface(
+      rtcEngine: _engine,
+      remoteUid: _remoteUid,
+      stream: doc,
+      motionActive: true,
+      gyroToggleTopInset: 52,
+      remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+      remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
     );
   }
 

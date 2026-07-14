@@ -7,14 +7,14 @@
   "iosAppStoreId": "6757733269",
   "ios": {
     "minVersion": "1.2.4",
-    "latestVersion": "1.2.4",
-    "minBuildNumber": 50,
+    "latestVersion": "1.2.5",
+    "minBuildNumber": 52,
     "updateUrl": "https://apps.apple.com/app/id6757733269"
   },
   "android": {
     "minVersion": "1.2.4",
-    "latestVersion": "1.2.4",
-    "minBuildNumber": 50,
+    "latestVersion": "1.2.5",
+    "minBuildNumber": 52,
     "updateUrl": "https://play.google.com/store/apps/details?id=com.vyooo"
   }
 }
