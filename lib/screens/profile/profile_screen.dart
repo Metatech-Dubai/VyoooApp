@@ -9,7 +9,7 @@ import '../../core/models/video_360_metadata.dart';
 import '../../core/widgets/post_media_carousel.dart';
 import '../../features/reel/widgets/owner_post_options_sheet.dart';
 import '../../core/config/deep_link_config.dart';
-import '../../core/theme/app_gradients.dart';
+import '../../core/widgets/logout_confirm_dialog.dart';
 import '../../core/widgets/profile/profile_screen_background.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
@@ -170,78 +170,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _logout(BuildContext context) async {
-    final bool? shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: AppGradients.premiumDarkGradient,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Do you want to logout from your account?',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text(
-                      'No, stay',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      'Yes, Logout',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final bool? shouldLogout = await LogoutConfirmDialog.show(context);
     if (shouldLogout != true) return;
     await AuthService().signOutCurrentAccount();
     if (!context.mounted) return;

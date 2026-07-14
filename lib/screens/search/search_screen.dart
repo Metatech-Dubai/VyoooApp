@@ -11,7 +11,6 @@ import '../../core/models/live_stream_model.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_background_assets.dart';
 import '../../core/widgets/live_now_strip.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -567,10 +566,7 @@ class SearchScreenState extends State<SearchScreen>
     return t;
   }
 
-  _SearchChrome get _chrome => _SearchChrome(
-        onDecorBackground:
-            _isSearchActive || _searchController.text.trim().isNotEmpty,
-      );
+  _SearchChrome get _chrome => const _SearchChrome(onDecorBackground: false);
 
   void _activateHashtagSearch() {
     final raw = _searchController.text.trimLeft();
@@ -822,26 +818,14 @@ class SearchScreenState extends State<SearchScreen>
     final chrome = _chrome;
     return Scaffold(
       backgroundColor: AppColors.chatBackground,
-      body: Stack(
-        fit: StackFit.expand,
+      body: Column(
         children: [
-          if (chrome.onDecorBackground)
-            Positioned.fill(
-              child: Image.asset(
-                AppBackgroundAssets.search,
-                fit: BoxFit.cover,
-              ),
-            ),
-          Column(
-            children: [
-              _buildSearchBar(
-                chrome: chrome,
-                showHashButton: !_isSearchActive,
-              ),
-              const SizedBox(height: 12),
-              Expanded(child: _buildMainSearchBody(chrome)),
-            ],
+          _buildSearchBar(
+            chrome: chrome,
+            showHashButton: !_isSearchActive,
           ),
+          const SizedBox(height: 12),
+          Expanded(child: _buildMainSearchBody(chrome)),
         ],
       ),
     );
