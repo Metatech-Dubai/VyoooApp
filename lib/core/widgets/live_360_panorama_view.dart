@@ -10,14 +10,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_cube/flutter_cube.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../services/device_motion_tracker.dart';
 import '../services/live_360_snapshot_hub.dart';
 import '../utils/equirectangular_sphere_mesh.dart';
 
 /// Spherical 360° live viewer with gyro look-around.
-///
-/// Feeds equirectangular frames into an inverted sphere using periodic Agora
-/// [RtcEngine.takeSnapshot] JPEGs (works on iOS and Android). Snapshot
-/// callbacks are routed via [Live360SnapshotHub].
 class Live360PanoramaView extends StatefulWidget {
   const Live360PanoramaView({
     super.key,
@@ -45,20 +42,23 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
   static const double _radius = 500;
   static const double _damping = 0.08;
 
+  final DeviceMotionTracker _motionTracker = DeviceMotionTracker();
   final StreamController<void> _renderTick = StreamController<void>.broadcast();
 
   Scene? _scene;
   Object? _surface;
+  VoidCallback? _motionListener;
 
   late AnimationController _animController;
-  late double _latitudeRad;
-  late double _longitudeRad;
+  double _latitudeRad = 0;
+  double _longitudeRad = 0;
   double _latitudeDelta = 0;
   double _longitudeDelta = 0;
   double _zoomDelta = 0;
 
-  final Vector3 _orientation = Vector3(0, radians(90), 0);
+  final Vector3 _fusedOrientation = Vector3(0, radians(90), 0);
   double _screenOrientationRad = 0;
+  bool _useFusedOrientation = false;
 
   StreamSubscription<OrientationEvent>? _orientationSub;
   StreamSubscription<ScreenOrientationEvent>? _screenOrientSub;
@@ -74,8 +74,6 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
   @override
   void initState() {
     super.initState();
-    _latitudeRad = 0;
-    _longitudeRad = 0;
     _animController = AnimationController(
       duration: const Duration(minutes: 1),
       vsync: this,
@@ -94,6 +92,7 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
         oldWidget.channelId != widget.channelId) {
       _framesApplied = 0;
       _snapshotFailures = 0;
+      _motionTracker.reset();
     }
     if (oldWidget.gyroEnabled != widget.gyroEnabled) {
       _syncSensors();
@@ -108,6 +107,10 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     _captureTimer?.cancel();
     _orientationSub?.cancel();
     _screenOrientSub?.cancel();
+    if (_motionListener != null) {
+      _motionTracker.sample.removeListener(_motionListener!);
+    }
+    _motionTracker.dispose();
     _animController.dispose();
     _renderTick.close();
     Live360SnapshotHub.instance.unbind(_snapshotHandler);
@@ -139,13 +142,28 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
   void _syncSensors() {
     _orientationSub?.cancel();
     _screenOrientSub?.cancel();
+    if (_motionListener != null) {
+      _motionTracker.sample.removeListener(_motionListener!);
+      _motionListener = null;
+    }
 
-    if (kIsWeb || !widget.gyroEnabled) return;
+    if (kIsWeb || !widget.gyroEnabled) {
+      _motionTracker.stop();
+      _useFusedOrientation = false;
+      return;
+    }
+
+    unawaited(_motionTracker.start());
+    _motionListener = () {
+      if (mounted) _updateView();
+    };
+    _motionTracker.sample.addListener(_motionListener!);
 
     motionSensors.orientationUpdateInterval =
         Duration.microsecondsPerSecond ~/ 60;
     _orientationSub = motionSensors.orientation.listen((event) {
-      _orientation.setValues(event.yaw, event.pitch, event.roll);
+      _fusedOrientation.setValues(event.yaw, event.pitch, event.roll);
+      _useFusedOrientation = true;
     });
     _screenOrientSub = motionSensors.screenOrientation.listen((event) {
       _screenOrientationRad = radians(event.angle ?? 0);
@@ -206,11 +224,6 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     try {
       if (errCode != 0) {
         _snapshotFailures++;
-        if (_snapshotFailures <= 3 || _snapshotFailures % 20 == 0) {
-          debugPrint(
-            '[Live360Panorama] snapshot errCode=$errCode path=$filePath',
-          );
-        }
         return;
       }
 
@@ -233,7 +246,7 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
       if (firstFrame) {
         debugPrint(
           '[Live360Panorama] first frame ${frame.image.width}x'
-          '${frame.image.height}',
+          '${frame.image.height} platform=${Platform.operatingSystem}',
         );
         setState(() {});
       }
@@ -267,22 +280,27 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     if (previous != null && previous != _placeholderTexture) {
       previous.dispose();
     }
+    scene.update();
     _renderTick.add(null);
   }
 
   void _onSceneCreated(Scene scene) {
     _scene = scene;
-    scene.camera.near = 1;
+    scene.camera.near = 0.01;
     scene.camera.far = _radius + 1;
     scene.camera.fov = 75;
     scene.camera.zoom = 1;
-    scene.camera.position.setFrom(Vector3(0, 0, 0.1));
+    scene.camera.position.setFrom(Vector3(0, 0, 0.01));
 
     final mesh = buildEquirectangularSphereMesh(
       radius: _radius,
       texture: _placeholderTexture,
     );
-    _surface = Object(name: 'live360', mesh: mesh, backfaceCulling: false);
+    _surface = Object(
+      name: 'live360',
+      mesh: mesh,
+      backfaceCulling: true,
+    );
     scene.world.add(_surface!);
     _updateView();
   }
@@ -295,10 +313,14 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
 
   void _handleScaleUpdate(ScaleUpdateDetails details) {
     if (!widget.touchEnabled) return;
+    final scene = _scene;
+    if (scene == null) return;
+
     final offset = details.localFocalPoint - _lastFocalPoint;
     _lastFocalPoint = details.localFocalPoint;
-    _latitudeDelta += 0.5 * math.pi * offset.dy / 400;
-    _longitudeDelta -= 0.5 * math.pi * offset.dx / 400;
+    final viewport = math.max(scene.camera.viewportHeight, 1.0);
+    _latitudeDelta += 0.5 * math.pi * offset.dy / viewport;
+    _longitudeDelta -= 0.5 * math.pi * offset.dx / viewport;
   }
 
   void _updateView() {
@@ -314,30 +336,41 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     _zoomDelta *= 1 - _damping;
     scene.camera.zoom = zoom;
 
+    final touchLat =
+        _latitudeRad.clamp(-math.pi / 2 + 0.05, math.pi / 2 - 0.05);
+    final touchLon = _longitudeRad;
+
     var q = Quaternion.axisAngle(Vector3(0, 0, 1), _screenOrientationRad);
-    if (widget.gyroEnabled) {
+
+    if (widget.gyroEnabled && _motionTracker.isAvailable.value) {
+      final gyroLon = _motionTracker.sample.value.yaw;
+      final gyroLat = _motionTracker.sample.value.pitch;
+      q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon + gyroLon);
+      q = Quaternion.axisAngle(Vector3(1, 0, 0), -(touchLat + gyroLat)) * q;
+    } else if (widget.gyroEnabled && _useFusedOrientation) {
       q *= Quaternion.euler(
-        -_orientation.z,
-        -_orientation.y,
-        -_orientation.x,
+        -_fusedOrientation.z,
+        -_fusedOrientation.y,
+        -_fusedOrientation.x,
       );
+      q *= Quaternion.axisAngle(Vector3(1, 0, 0), math.pi * 0.5);
+
+      var o = _quaternionToOrientation(q);
+      const minLat = -math.pi / 2 + 0.05;
+      const maxLat = math.pi / 2 - 0.05;
+      final lat = (-o.y).clamp(minLat, maxLat);
+      final lon = o.x;
+      o.x = lon;
+      o.y = -lat;
+      q = _orientationToQuaternion(o);
+
+      q *= Quaternion.axisAngle(Vector3(0, 1, 0), -math.pi * 0.5);
+      q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon);
+      q = Quaternion.axisAngle(Vector3(1, 0, 0), -touchLat) * q;
+    } else {
+      q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon);
+      q = Quaternion.axisAngle(Vector3(1, 0, 0), -touchLat) * q;
     }
-    q *= Quaternion.axisAngle(Vector3(1, 0, 0), math.pi * 0.5);
-
-    var o = _quaternionToOrientation(q);
-    const minLat = -math.pi / 2 + 0.05;
-    const maxLat = math.pi / 2 - 0.05;
-    final lat = (-o.y).clamp(minLat, maxLat);
-    final lon = o.x;
-    if (lat + _latitudeRad < minLat) _latitudeRad = minLat - lat;
-    if (lat + _latitudeRad > maxLat) _latitudeRad = maxLat - lat;
-    o.x = lon;
-    o.y = -lat;
-    q = _orientationToQuaternion(o);
-
-    q *= Quaternion.axisAngle(Vector3(0, 1, 0), -math.pi * 0.5);
-    q *= Quaternion.axisAngle(Vector3(0, 1, 0), _longitudeRad);
-    q = Quaternion.axisAngle(Vector3(1, 0, 0), -_latitudeRad) * q;
 
     q.rotate(scene.camera.target..setFrom(Vector3(0, 0, -_radius)));
     q.rotate(scene.camera.up..setFrom(Vector3(0, 1, 0)));
@@ -370,12 +403,10 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
       fit: StackFit.expand,
       children: [
         const ColoredBox(color: Colors.black),
-        StreamBuilder<void>(
-          stream: _renderTick.stream,
-          builder: (context, _) => Cube(
-            interactive: false,
-            onSceneCreated: _onSceneCreated,
-          ),
+        Cube(
+          key: const ValueKey('live360_cube'),
+          interactive: false,
+          onSceneCreated: _onSceneCreated,
         ),
         if (_framesApplied == 0)
           const Center(
@@ -389,6 +420,7 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
 
     if (widget.touchEnabled) {
       sphere = GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onScaleStart: _handleScaleStart,
         onScaleUpdate: _handleScaleUpdate,
         child: sphere,
