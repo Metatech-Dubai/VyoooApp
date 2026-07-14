@@ -55,6 +55,8 @@ class DeviceMotionTracker {
   double _pitch = 0;
   double _filteredYaw = 0;
   double _filteredPitch = 0;
+  double _yawBaseline = 0;
+  double _pitchBaseline = 0;
   DateTime? _lastGyroAt;
   bool _startAttempted = false;
 
@@ -118,7 +120,20 @@ class DeviceMotionTracker {
     _pitch = 0;
     _filteredYaw = 0;
     _filteredPitch = 0;
+    _yawBaseline = 0;
+    _pitchBaseline = 0;
     sample.value = DeviceMotionSample.zero;
+  }
+
+  /// Sets the current device orientation as the look-around center (0, 0).
+  void calibrate() {
+    _yawBaseline = _filteredYaw;
+    _pitchBaseline = _filteredPitch;
+    sample.value = DeviceMotionSample(
+      yaw: 0,
+      pitch: 0,
+      timestamp: DateTime.now(),
+    );
   }
 
   void dispose() {
@@ -145,8 +160,8 @@ class DeviceMotionTracker {
     _filteredYaw += (_yaw - _filteredYaw) * smoothingFactor;
 
     sample.value = DeviceMotionSample(
-      yaw: _filteredYaw,
-      pitch: _filteredPitch,
+      yaw: _filteredYaw - _yawBaseline,
+      pitch: _filteredPitch - _pitchBaseline,
       timestamp: now,
     );
   }

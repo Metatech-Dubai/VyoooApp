@@ -14,6 +14,25 @@ import '../services/device_motion_tracker.dart';
 import '../services/live_360_snapshot_hub.dart';
 import '../utils/equirectangular_sphere_mesh.dart';
 
+/// Controls an attached [Live360PanoramaView] (e.g. gyro recalibration).
+class Live360PanoramaViewController {
+  VoidCallback? _onRecalibrate;
+
+  bool get isAttached => _onRecalibrate != null;
+
+  void recalibrateGyro() {
+    _onRecalibrate?.call();
+  }
+
+  void _attach(VoidCallback onRecalibrate) {
+    _onRecalibrate = onRecalibrate;
+  }
+
+  void _detach() {
+    _onRecalibrate = null;
+  }
+}
+
 /// Spherical 360° live viewer with gyro look-around.
 class Live360PanoramaView extends StatefulWidget {
   const Live360PanoramaView({
@@ -21,6 +40,7 @@ class Live360PanoramaView extends StatefulWidget {
     required this.rtcEngine,
     required this.remoteUid,
     required this.channelId,
+    this.controller,
     this.gyroEnabled = true,
     this.touchEnabled = true,
     this.snapshotIntervalMs = 200,
@@ -29,6 +49,7 @@ class Live360PanoramaView extends StatefulWidget {
   final RtcEngine rtcEngine;
   final int remoteUid;
   final String channelId;
+  final Live360PanoramaViewController? controller;
   final bool gyroEnabled;
   final bool touchEnabled;
   final int snapshotIntervalMs;
@@ -57,6 +78,7 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
   double _zoomDelta = 0;
 
   final Vector3 _fusedOrientation = Vector3(0, radians(90), 0);
+  Vector3? _fusedOrientationBaseline;
   double _screenOrientationRad = 0;
   bool _useFusedOrientation = false;
 
@@ -83,16 +105,41 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     unawaited(_loadPlaceholderTexture());
     _syncSensors();
     _startCaptureLoop();
+    widget.controller?._attach(_recalibrateGyro);
+  }
+
+  void _recalibrateGyro() {
+    _latitudeRad = 0;
+    _longitudeRad = 0;
+    _latitudeDelta = 0;
+    _longitudeDelta = 0;
+    _zoomDelta = 0;
+
+    if (widget.gyroEnabled && _motionTracker.isAvailable.value) {
+      _motionTracker.calibrate();
+      _fusedOrientationBaseline = null;
+    } else if (widget.gyroEnabled && _useFusedOrientation) {
+      _fusedOrientationBaseline = Vector3.copy(_fusedOrientation);
+    } else {
+      _fusedOrientationBaseline = null;
+    }
+
+    _updateView();
   }
 
   @override
   void didUpdateWidget(covariant Live360PanoramaView oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller?._detach();
+      widget.controller?._attach(_recalibrateGyro);
+    }
     if (oldWidget.remoteUid != widget.remoteUid ||
         oldWidget.channelId != widget.channelId) {
       _framesApplied = 0;
       _snapshotFailures = 0;
       _motionTracker.reset();
+      _fusedOrientationBaseline = null;
     }
     if (oldWidget.gyroEnabled != widget.gyroEnabled) {
       _syncSensors();
@@ -104,6 +151,7 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
 
   @override
   void dispose() {
+    widget.controller?._detach();
     _captureTimer?.cancel();
     _orientationSub?.cancel();
     _screenOrientSub?.cancel();
@@ -348,11 +396,18 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
       q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon + gyroLon);
       q = Quaternion.axisAngle(Vector3(1, 0, 0), -(touchLat + gyroLat)) * q;
     } else if (widget.gyroEnabled && _useFusedOrientation) {
-      q *= Quaternion.euler(
-        -_fusedOrientation.z,
-        -_fusedOrientation.y,
-        -_fusedOrientation.x,
-      );
+      final baseline = _fusedOrientationBaseline;
+      final yaw = baseline == null
+          ? _fusedOrientation.x
+          : _fusedOrientation.x - baseline.x;
+      final pitch = baseline == null
+          ? _fusedOrientation.y
+          : _fusedOrientation.y - baseline.y;
+      final roll = baseline == null
+          ? _fusedOrientation.z
+          : _fusedOrientation.z - baseline.z;
+
+      q *= Quaternion.euler(-roll, -pitch, -yaw);
       q *= Quaternion.axisAngle(Vector3(1, 0, 0), math.pi * 0.5);
 
       var o = _quaternionToOrientation(q);
