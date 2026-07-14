@@ -416,7 +416,8 @@ abstract final class AppSizes {
   static const double uploadAlbumPickerChevron = 18;
 
   // — Post upload chrome (Figma close / edit / next buttons) —
-  static const double uploadPostCloseButton = 40;
+  static const double uploadPostCloseButton = 22;
+  static const double uploadPostCloseHitTarget = 44;
   static const double uploadEditMediaButtonWidth = 116;
   static const double uploadEditMediaButtonHeight = 28;
   static const double uploadNextPillButtonWidth = 70;

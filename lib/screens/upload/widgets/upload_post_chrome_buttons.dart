@@ -38,12 +38,18 @@ class UploadPostCloseButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ChromeSvgButton(
-      assetPath: UploadPostChromeAssets.closeButton,
-      width: size,
-      height: size,
-      onTap: onTap,
-      borderRadius: size / 2,
+    return SizedBox(
+      width: AppSizes.uploadPostCloseHitTarget,
+      height: AppSizes.uploadPostCloseHitTarget,
+      child: Center(
+        child: _ChromeSvgButton(
+          assetPath: UploadPostChromeAssets.closeButton,
+          width: size,
+          height: size,
+          onTap: onTap,
+          borderRadius: size / 2,
+        ),
+      ),
     );
   }
 }
