@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/app_user_model.dart';
 import '../../../core/services/user_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../services/chat_service.dart';
 import 'chat_thread_screen.dart';
 import 'group_create_screen.dart';
@@ -115,41 +118,13 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.45, 1.0],
-                  colors: [
-                    Color(0xFF1A0826),
-                    Color(0xFF10041A),
-                    Color(0xFF07010F),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -100,
-            left: -100,
-            right: -100,
-            child: Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [Color(0x88DE106B), Color(0x00000000)],
-                  radius: 0.75,
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
+    return Theme(
+      data: AppTheme.light,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.lightEdgeToEdgeOverlay,
+        child: Scaffold(
+          backgroundColor: AppColors.chatBackground,
+          body: SafeArea(
             child: Column(
               children: [
                 Padding(
@@ -157,16 +132,17 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: AppColors.chatTextBlack,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: 4),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'New Message',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 17,
+                          style: AppTypography.chatInboxMessagesTitle.copyWith(
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -175,14 +151,14 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                   ),
                 ),
                 _buildSearchField(),
-                Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
+                const Divider(color: AppColors.chatDivider, height: 1),
                 _buildGroupChatRow(),
-                Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
+                const Divider(color: AppColors.chatDivider, height: 1),
                 Expanded(child: _buildList()),
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -194,23 +170,23 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
         children: [
           Text(
             'To:',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+            style: AppTypography.chatInboxTilePreview.copyWith(
               fontSize: 15,
               fontWeight: FontWeight.w500,
+              color: AppColors.chatTextSecondary,
             ),
           ),
           const SizedBox(width: 10),
           Expanded(
             child: TextField(
               controller: _searchController,
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: AppTypography.chatInboxSearchInput.copyWith(fontSize: 15),
               cursorColor: AppColors.brandDeepMagenta,
               decoration: InputDecoration(
                 hintText: 'Search...',
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                hintStyle: AppTypography.chatInboxSearchInput.copyWith(
                   fontSize: 15,
+                  color: AppColors.chatTextSecondary,
                 ),
                 border: InputBorder.none,
                 isDense: true,
@@ -239,30 +215,26 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
               width: 44,
               height: 44,
               decoration: BoxDecoration(
-                color: const Color(0xFF1A0A2E),
+                color: AppColors.chatSearchFill,
                 borderRadius: BorderRadius.circular(22),
-                border: Border.all(color: const Color(0x33FFFFFF), width: 0.5),
+                border: Border.all(color: AppColors.chatDivider, width: 0.5),
               ),
               child: const Icon(
                 Icons.group_add_outlined,
-                color: Colors.white70,
+                color: AppColors.chatTextPrimary,
                 size: 22,
               ),
             ),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Start group chat',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
+                style: AppTypography.chatInboxTileName.copyWith(fontSize: 15),
               ),
             ),
-            Icon(
+            const Icon(
               Icons.chevron_right,
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppColors.chatTextSecondary,
               size: 20,
             ),
           ],
@@ -282,10 +254,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
       return Center(
         child: Text(
           'No users found',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.4),
-            fontSize: 15,
-          ),
+          style: AppTypography.chatInboxTilePreview.copyWith(fontSize: 15),
         ),
       );
     }
@@ -299,10 +268,8 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
             child: Text(
               'Suggested',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              style: AppTypography.chatSectionHeader.copyWith(
+                color: AppColors.chatTextSecondary,
               ),
             ),
           );
@@ -318,7 +285,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: const Color(0xFF1A0A2E),
+                  backgroundColor: AppColors.chatSearchFill,
                   backgroundImage: hasAvatar
                       ? CachedNetworkImageProvider(item.avatarUrl)
                       : null,
@@ -326,7 +293,7 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                       ? null
                       : const Icon(
                           Icons.person,
-                          color: Colors.white54,
+                          color: AppColors.chatTextSecondary,
                           size: 22,
                         ),
                 ),
@@ -339,18 +306,15 @@ class _NewMessageScreenState extends State<NewMessageScreen> {
                         item.displayName,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: AppTypography.chatInboxTileName.copyWith(
                           fontSize: 15,
-                          fontWeight: FontWeight.w500,
                         ),
                       ),
                       Text(
                         '@${item.username}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
+                        style: AppTypography.chatInboxTilePreview.copyWith(
                           fontSize: 13,
                         ),
                       ),
