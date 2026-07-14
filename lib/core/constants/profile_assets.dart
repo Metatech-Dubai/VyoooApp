@@ -47,6 +47,10 @@ abstract final class ProfileAssets {
   /// Legacy alias — prefer [profileTabHeartIcon].
   static const String profileTabStarIcon = profileTabHeartIcon;
 
+  /// Share + story pair next to Edit Profile (Figma 92×40).
+  static const String profileActionSecondaryPair =
+      'assets/vyooO_icons/Profile/profile_action_secondary_pair.svg';
+
   /// Share action next to Edit Profile (40×40 circle + glyph).
   static const String profileActionShare =
       'assets/vyooO_icons/Profile/profile_action_share.svg';
@@ -82,4 +86,8 @@ abstract final class ProfileAssets {
   /// Figma verified badge — green circle + white check (17×17).
   static const String profileVerifiedBadge =
       'assets/vyooO_icons/Profile/profile_verified_badge.svg';
+
+  /// Profile header story ring frame (Figma 131×131 #E51147).
+  static const String profileAvatarStoryRing =
+      'assets/vyooO_icons/Profile/profile_avatar_story_ring.svg';
 }

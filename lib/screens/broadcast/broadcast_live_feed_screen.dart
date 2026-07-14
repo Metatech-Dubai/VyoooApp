@@ -25,6 +25,9 @@ import '../../core/widgets/app_feed_notification_button.dart';
 import '../../core/widgets/feed_bottom_scrim.dart';
 import '../../core/widgets/live_feed_comment_bar.dart';
 import '../../core/widgets/live_feed_host_caption_row.dart';
+import '../../core/services/live_360_snapshot_hub.dart';
+import '../../core/utils/live_360_meta_log.dart';
+import '../../core/widgets/live_stream_video_surface.dart';
 import '../../core/widgets/app_network_avatar.dart';
 import '../../core/navigation/home_feed_chrome_controller.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
@@ -64,6 +67,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   String? _joinedStreamId;
   int _remoteUid = 0;
   bool _hostVideoAvailable = false;
+  int _remoteVideoWidth = 0;
+  int _remoteVideoHeight = 0;
   bool _hasJoined = false;
 
   StreamSubscription<List<LiveStreamModel>>? _streamsSub;
@@ -302,10 +307,21 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   }
 
   Future<void> _onSnapshotTaken(String filePath, int errCode) async {
+    if (await Live360SnapshotHub.instance.deliver(filePath, errCode)) {
+      return;
+    }
+
     _snapshotInFlight = false;
     final elapsedSec = _pendingSnapshotElapsedSec;
     _pendingSnapshotElapsedSec = null;
-    if (!mounted || errCode != 0 || elapsedSec == null) return;
+    if (!mounted || errCode != 0 || elapsedSec == null) {
+      if (elapsedSec == null && errCode == 0) {
+        try {
+          await File(filePath).delete();
+        } catch (_) {}
+      }
+      return;
+    }
 
     try {
       final file = File(filePath);
@@ -451,6 +467,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
             setState(() {
               _hostVideoAvailable = false;
               _remoteUid = 0;
+              _remoteVideoWidth = 0;
+              _remoteVideoHeight = 0;
             });
           }
         },
@@ -461,6 +479,25 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
               state == RemoteVideoState.remoteVideoStateDecoding ||
               state == RemoteVideoState.remoteVideoStateStarting;
           setState(() => _hostVideoAvailable = hasVideo);
+        },
+        onVideoSizeChanged: (connection, sourceType, uid, width, height, rotation) {
+          if (!mounted || uid != _remoteUid) return;
+          if (sourceType != VideoSourceType.videoSourceRemote) return;
+          if (width <= 0 || height <= 0) return;
+          setState(() {
+            _remoteVideoWidth = width;
+            _remoteVideoHeight = height;
+          });
+          final stream = _liveDoc ?? _currentStream;
+          if (stream != null) {
+            Live360MetaLog.log(
+              source: 'broadcast_agora_video_size',
+              stream: stream,
+              remoteVideoWidth: width,
+              remoteVideoHeight: height,
+              motionActive: widget.isActive && _streamProgress >= 0.99,
+            );
+          }
         },
         onTokenPrivilegeWillExpire: (connection, token) async {
           final stream = _currentStream;
@@ -514,6 +551,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       _engineReady = false;
       _remoteUid = 0;
       _hostVideoAvailable = false;
+      _remoteVideoWidth = 0;
+      _remoteVideoHeight = 0;
       _hasJoined = false;
       _joinedStreamId = null;
       _liveDoc = null;
@@ -564,6 +603,8 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       setState(() {
         _remoteUid = 0;
         _hostVideoAvailable = false;
+        _remoteVideoWidth = 0;
+        _remoteVideoHeight = 0;
         _isLiked = false;
       });
     }
@@ -606,6 +647,12 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       );
 
       if (!mounted) return;
+      Live360MetaLog.resetDedupe();
+      Live360MetaLog.log(
+        source: 'broadcast_join_feed',
+        stream: stream,
+        motionActive: widget.isActive && _streamProgress >= 0.99,
+      );
       setState(() {
         _joinedStreamId = stream.id;
         _liveDoc = stream;
@@ -617,6 +664,13 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
 
       _streamDocSub = _liveService.streamDoc(stream.id).listen((doc) {
         if (!mounted || doc == null) return;
+        Live360MetaLog.log(
+          source: 'broadcast_firestore_stream_doc',
+          stream: doc,
+          remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+          remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
+          motionActive: widget.isActive && _streamProgress >= 0.99,
+        );
         setState(() => _liveDoc = doc);
         if (doc.status == LiveStreamStatus.ended) {
           _showToast('Stream has ended');
@@ -745,103 +799,119 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
     }
 
     final doc = _liveDoc ?? _currentStream!;
-    final shellBottomInset = _feedShellBottomInset(
-      context,
-      hostCaptionVisible: _showHostCaption,
-    );
-    final overlayBottom = _feedOverlayBottom(
-      context,
-      hostCaptionVisible: _showHostCaption,
-    );
 
-    return ColoredBox(
-      color: AppColors.feedBottomChrome,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: shellBottomInset,
-            child: const ColoredBox(color: AppColors.feedBottomChrome),
-          ),
-          Positioned.fill(
-            bottom: shellBottomInset,
-            child: _buildFeedClipArea(
-              Stack(
-                fit: StackFit.expand,
-                children: [
-                  _buildVideoLayer(doc),
-                  _buildGradientOverlay(),
-                  const FeedBottomScrim(clipBottomCorners: false),
-                  PageView.builder(
-                    controller: _pageController,
-                    scrollDirection: Axis.vertical,
-                    itemCount: _streams.length,
-                    onPageChanged: _onPageChanged,
-                    itemBuilder: (context, index) => const SizedBox.expand(),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: overlayBottom,
-            child: _BroadcastFeedPageOverlay(
-              stream: doc,
-              chatMessages: _chatMessages,
-              isLiked: _isLiked,
-              chatController: _chatCtrl,
-              streamProgress: _streamProgress,
-              showHostCaption: _showHostCaption,
-              onHostCaptionVisibilityChanged: _onHostCaptionVisibilityChanged,
-              onSendMessage: _sendMessage,
-              onLike: _sendLike,
-              onShare: () => _shareStream(doc),
-              onHostTap: () {
-                final stream = _currentStream;
-                if (stream == null) return;
-                Navigator.of(context).push(
-                  MaterialPageRoute<void>(
-                    builder: (_) => UserProfileScreen(
-                      payload: UserProfilePayload(
-                        targetUserId: stream.hostId,
-                        username: stream.hostUsername,
-                        displayName: stream.hostUsername,
-                        avatarUrl: stream.hostProfileImage ?? '',
-                        followerCount: 0,
+    return ValueListenableBuilder<bool>(
+      valueListenable: MainNavWrapper.createMenuOpenNotifier,
+      builder: (context, createMenuOpen, _) {
+        final shellBottomInset = createMenuOpen
+            ? AppBottomNavigation.totalHeightFor(context)
+            : _feedShellBottomInset(
+                context,
+                hostCaptionVisible: _showHostCaption,
+              );
+        final overlayBottom = createMenuOpen
+            ? AppBottomNavigation.totalHeightFor(context) +
+                AppSpacing.feedReelBottomContentNavGap
+            : _feedOverlayBottom(
+                context,
+                hostCaptionVisible: _showHostCaption,
+              );
+
+        return ColoredBox(
+          color: createMenuOpen
+              ? Colors.black
+              : AppColors.feedBottomChrome,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (!createMenuOpen)
+                Positioned(
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  height: shellBottomInset,
+                  child: const ColoredBox(color: AppColors.feedBottomChrome),
+                ),
+              Positioned.fill(
+                bottom: createMenuOpen ? 0 : shellBottomInset,
+                child: _buildFeedClipArea(
+                  Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      _buildVideoLayer(doc),
+                      _buildGradientOverlay(),
+                      if (!createMenuOpen)
+                        const FeedBottomScrim(clipBottomCorners: false),
+                      PageView.builder(
+                        controller: _pageController,
+                        scrollDirection: Axis.vertical,
+                        itemCount: _streams.length,
+                        onPageChanged: _onPageChanged,
+                        itemBuilder: (context, index) => const SizedBox.expand(),
                       ),
-                    ),
+                    ],
                   ),
-                );
-              },
-            ),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: SafeArea(
-              bottom: false,
-              child: _buildHeader(context),
-            ),
-          ),
-          if (!_engineReady || _joining)
-            Positioned.fill(
-              bottom: shellBottomInset,
-              child: ColoredBox(
-                color: const Color(0x880A000F),
-                child: const Center(
-                  child: CircularProgressIndicator(color: Colors.white),
                 ),
               ),
-            ),
-          if (_toast != null) _buildToast(_toast!),
-        ],
-      ),
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: overlayBottom,
+                child: _BroadcastFeedPageOverlay(
+                  stream: doc,
+                  chatMessages: _chatMessages,
+                  isLiked: _isLiked,
+                  chatController: _chatCtrl,
+                  streamProgress: _streamProgress,
+                  showHostCaption: _showHostCaption,
+                  onHostCaptionVisibilityChanged:
+                      _onHostCaptionVisibilityChanged,
+                  onSendMessage: _sendMessage,
+                  onLike: _sendLike,
+                  onShare: () => _shareStream(doc),
+                  onHostTap: () {
+                    final stream = _currentStream;
+                    if (stream == null) return;
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => UserProfileScreen(
+                          payload: UserProfilePayload(
+                            targetUserId: stream.hostId,
+                            username: stream.hostUsername,
+                            displayName: stream.hostUsername,
+                            avatarUrl: stream.hostProfileImage ?? '',
+                            followerCount: 0,
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: SafeArea(
+                  bottom: false,
+                  child: _buildHeader(context),
+                ),
+              ),
+              if (!_engineReady || _joining)
+                Positioned.fill(
+                  bottom: shellBottomInset,
+                  child: ColoredBox(
+                    color: const Color(0x880A000F),
+                    child: const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    ),
+                  ),
+                ),
+              if (_toast != null) _buildToast(_toast!),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -994,23 +1064,21 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
         ? _frameForFraction(doc, _streamProgress)
         : null;
 
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        AgoraVideoView(
-          controller: VideoViewController.remote(
-            rtcEngine: engine,
-            canvas: VideoCanvas(uid: _remoteUid),
-            connection: RtcConnection(channelId: doc.agoraChannelName),
-          ),
-        ),
-        if (replayFrame != null)
-          Image.memory(
-            replayFrame,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          ),
-      ],
+    return LiveStreamVideoSurface(
+      rtcEngine: engine,
+      remoteUid: _remoteUid,
+      stream: doc,
+      motionActive: widget.isActive && _streamProgress >= 0.99,
+      gyroToggleTopInset: AppSizes.feedHeaderContentHeight + AppSpacing.md,
+      remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+      remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
+      scrubOverlay: replayFrame != null
+          ? Image.memory(
+              replayFrame,
+              fit: BoxFit.cover,
+              gaplessPlayback: true,
+            )
+          : null,
     );
   }
 

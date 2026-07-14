@@ -9,18 +9,21 @@ import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import 'profile_figma_tokens.dart';
 
-/// Circular profile photo with optional story ring (Figma 130×130, #E51147).
+/// Circular profile photo with optional Figma story ring SVG (131×131, #E51147).
 class ProfileFigmaAvatar extends StatelessWidget {
   const ProfileFigmaAvatar({
     super.key,
     required this.imageUrl,
     this.hasStory = false,
     this.onTap,
+    this.outerSize,
   });
 
   final String? imageUrl;
   final bool hasStory;
   final VoidCallback? onTap;
+  /// When set, story-ring insets scale from the 131px Figma artboard.
+  final double? outerSize;
 
   static bool isValidNetworkUrl(String? raw) {
     final value = (raw ?? '').trim();
@@ -30,54 +33,54 @@ class ProfileFigmaAvatar extends StatelessWidget {
     return uri.scheme == 'http' || uri.scheme == 'https';
   }
 
+  double get _outer => outerSize ?? ProfileFigmaTokens.avatarOuterSize;
+
+  double get _storyRingScale =>
+      _outer / ProfileFigmaTokens.avatarOuterSize;
+
   @override
   Widget build(BuildContext context) {
-    final outer = ProfileFigmaTokens.avatarOuterSize;
-    final pad = ProfileFigmaTokens.avatarRingPadding;
-    final ring = ProfileFigmaTokens.avatarRingWidth;
-    final photoDiameter = hasStory ? outer - 2 * (pad + ring) : outer;
-    final photoRadius = photoDiameter / 2;
-
-    final avatar = CircleAvatar(
-      radius: photoRadius,
-      backgroundColor: ProfileFigmaTokens.cardBackground,
-      backgroundImage:
-          isValidNetworkUrl(imageUrl) ? NetworkImage(imageUrl!) : null,
-      child: !isValidNetworkUrl(imageUrl)
-          ? Icon(
-              Icons.person_rounded,
-              size: photoRadius,
-              color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.5),
-            )
-          : null,
-    );
+    final outer = _outer;
 
     Widget child;
     if (hasStory) {
+      final scale = _storyRingScale;
+      final inner = ProfileFigmaTokens.avatarStoryRingInnerSize * scale;
+      final whiteGap = ProfileFigmaTokens.avatarStoryWhiteGap * scale;
+      final photoSize = ProfileFigmaTokens.avatarStoryPhotoSize * scale;
+
       child = SizedBox(
         width: outer,
         height: outer,
-        child: Container(
-          decoration: const BoxDecoration(
-            shape: BoxShape.circle,
-            color: ProfileFigmaTokens.storyRing,
-          ),
-          padding: EdgeInsets.all(ring),
-          child: Container(
-            padding: EdgeInsets.all(pad),
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: ProfileFigmaTokens.screenBackground,
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Container(
+              width: inner,
+              height: inner,
+              decoration: const BoxDecoration(
+                shape: BoxShape.circle,
+                color: ProfileFigmaTokens.screenBackground,
+              ),
+              padding: EdgeInsets.all(whiteGap),
+              child: _buildPhotoDisc(diameter: photoSize),
             ),
-            child: avatar,
-          ),
+            IgnorePointer(
+              child: SvgPicture.asset(
+                ProfileAssets.profileAvatarStoryRing,
+                width: outer,
+                height: outer,
+                fit: BoxFit.fill,
+              ),
+            ),
+          ],
         ),
       );
     } else {
       child = SizedBox(
         width: outer,
         height: outer,
-        child: Center(child: avatar),
+        child: Center(child: _buildPhotoDisc(diameter: outer)),
       );
     }
 
@@ -87,23 +90,59 @@ class ProfileFigmaAvatar extends StatelessWidget {
 
     return child;
   }
+
+  Widget _buildPhotoDisc({required double diameter}) {
+    final radius = diameter / 2;
+    final hasImage = isValidNetworkUrl(imageUrl);
+
+    return ClipOval(
+      child: SizedBox(
+        width: diameter,
+        height: diameter,
+        child: ColoredBox(
+          color: ProfileFigmaTokens.cardBackground,
+          child: hasImage
+              ? Image.network(
+                  imageUrl!,
+                  fit: BoxFit.cover,
+                  width: diameter,
+                  height: diameter,
+                  gaplessPlayback: true,
+                  errorBuilder: (_, _, _) => Icon(
+                    Icons.person_rounded,
+                    size: radius,
+                    color: ProfileFigmaTokens.secondaryText
+                        .withValues(alpha: 0.5),
+                  ),
+                )
+              : Icon(
+                  Icons.person_rounded,
+                  size: radius,
+                  color: ProfileFigmaTokens.secondaryText.withValues(alpha: 0.5),
+                ),
+        ),
+      ),
+    );
+  }
 }
 
-/// Profile header band — centered 130px avatar with trailing menu (Figma).
+/// Profile header band — centered avatar with trailing menu (Figma).
 class ProfileFigmaAvatarHeaderRow extends StatelessWidget {
   const ProfileFigmaAvatarHeaderRow({
     super.key,
     required this.avatar,
     this.onMenuTap,
+    this.rowHeight,
   });
 
   final Widget avatar;
   final VoidCallback? onMenuTap;
+  final double? rowHeight;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: ProfileFigmaTokens.avatarOuterSize,
+      height: rowHeight ?? ProfileFigmaTokens.avatarOuterSize,
       width: double.infinity,
       child: Stack(
         clipBehavior: Clip.none,
@@ -353,19 +392,89 @@ class ProfileFigmaIconActionButton extends StatelessWidget {
   }
 }
 
-/// Own-profile action row — Edit Profile | Share | Story+ (Figma 338×40).
+/// Figma 92×40 story + share pair beside Edit Profile.
+class ProfileFigmaSecondaryActionPair extends StatelessWidget {
+  const ProfileFigmaSecondaryActionPair({
+    super.key,
+    required this.onAddFriends,
+    required this.onShare,
+  });
+
+  final VoidCallback onAddFriends;
+  final VoidCallback onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonSize = ProfileFigmaTokens.actionIconButtonSize;
+    final pairWidth = ProfileFigmaTokens.profileSecondaryActionPairWidth;
+    final innerGap = ProfileFigmaTokens.profileSecondaryActionPairInnerGap;
+
+    return SizedBox(
+      width: pairWidth,
+      height: buttonSize,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          SvgPicture.asset(
+            ProfileAssets.profileActionSecondaryPair,
+            width: pairWidth,
+            height: buttonSize,
+            fit: BoxFit.fill,
+          ),
+          Row(
+            children: [
+              _ProfileSecondaryActionHitTarget(
+                size: buttonSize,
+                onTap: onAddFriends,
+              ),
+              SizedBox(width: innerGap),
+              _ProfileSecondaryActionHitTarget(
+                size: buttonSize,
+                onTap: onShare,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSecondaryActionHitTarget extends StatelessWidget {
+  const _ProfileSecondaryActionHitTarget({
+    required this.size,
+    required this.onTap,
+  });
+
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(width: size, height: size),
+      ),
+    );
+  }
+}
+
+/// Own-profile action row — Edit Profile | Story + Share (Figma 338×40).
 class ProfileFigmaActionButtonsRow extends StatelessWidget {
   const ProfileFigmaActionButtonsRow({
     super.key,
     required this.onEditProfile,
     required this.onShare,
-    required this.onStory,
+    required this.onAddFriends,
     this.editLabel = 'Edit Profile',
   });
 
   final VoidCallback onEditProfile;
   final VoidCallback onShare;
-  final VoidCallback onStory;
+  final VoidCallback onAddFriends;
   final String editLabel;
 
   @override
@@ -386,14 +495,9 @@ class ProfileFigmaActionButtonsRow extends StatelessWidget {
                 label: editLabel,
               ),
               const SizedBox(width: ProfileFigmaTokens.actionButtonGap),
-              ProfileFigmaIconActionButton(
-                svgAssetPath: ProfileAssets.profileActionShare,
-                onPressed: onShare,
-              ),
-              const SizedBox(width: ProfileFigmaTokens.actionButtonGap),
-              ProfileFigmaIconActionButton(
-                svgAssetPath: ProfileAssets.profileActionPlus,
-                onPressed: onStory,
+              ProfileFigmaSecondaryActionPair(
+                onAddFriends: onAddFriends,
+                onShare: onShare,
               ),
             ],
           ),
@@ -793,8 +897,10 @@ class ProfileHighlightsToggleHandle extends StatelessWidget {
               borderRadius: _radius,
             ),
             child: Center(
-              child: Transform.rotate(
-                angle: expanded ? 3.141592653589793 : 0,
+              child: AnimatedRotation(
+                turns: expanded ? 0.5 : 0,
+                duration: ProfileFigmaTokens.profileHighlightsAnimation,
+                curve: Curves.easeInOutCubic,
                 child: SvgPicture.asset(
                   ProfileAssets.profileHighlightsOpenerChevron,
                   width: ProfileFigmaTokens.highlightsToggleChevronWidth,
@@ -805,6 +911,57 @@ class ProfileHighlightsToggleHandle extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Collapsible highlights block — height + chevron animate open/close (260ms).
+class ProfileHighlightsExpandableSection extends StatelessWidget {
+  const ProfileHighlightsExpandableSection({
+    super.key,
+    required this.expanded,
+    required this.onToggle,
+    required this.highlights,
+  });
+
+  final bool expanded;
+  final VoidCallback onToggle;
+  final Widget highlights;
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSize(
+      duration: ProfileFigmaTokens.profileHighlightsAnimation,
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      clipBehavior: Clip.hardEdge,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          AnimatedContainer(
+            duration: ProfileFigmaTokens.profileHighlightsAnimation,
+            curve: Curves.easeInOutCubic,
+            height: expanded
+                ? ProfileFigmaTokens.highlightsSectionTopGap
+                : ProfileFigmaTokens.highlightsToggleTopGap,
+          ),
+          if (expanded) ...[
+            highlights,
+            const SizedBox(
+              height: ProfileFigmaTokens.highlightsToggleTopGap,
+            ),
+          ],
+          ProfileContentColumnAlign(
+            reserveTabAccessories: true,
+            alignWithFeedPill: true,
+            child: ProfileHighlightsToggleHandle(
+              expanded: expanded,
+              onTap: onToggle,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -857,6 +1014,48 @@ class ProfileHighlightAddChip extends StatelessWidget {
                 ),
               ),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Own-profile avatar + centered display name — height matches side drawer (150).
+class ProfileFigmaAvatarNameBand extends StatelessWidget {
+  const ProfileFigmaAvatarNameBand({
+    super.key,
+    required this.avatar,
+    required this.displayName,
+    required this.isVerified,
+    this.badgeColor = ProfileFigmaTokens.verifiedBadgeGreen,
+    this.onMenuTap,
+  });
+
+  final Widget avatar;
+  final String displayName;
+  final bool isVerified;
+  final Color badgeColor;
+  final VoidCallback? onMenuTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: ProfileFigmaTokens.profileAvatarNameBandHeight,
+      child: Column(
+        children: [
+          ProfileFigmaAvatarHeaderRow(
+            rowHeight: ProfileFigmaTokens.profileHeaderAvatarSize,
+            onMenuTap: onMenuTap,
+            avatar: avatar,
+          ),
+          const SizedBox(
+            height: ProfileFigmaTokens.profileHeaderAvatarNameGap,
+          ),
+          ProfileFigmaDisplayNameRow(
+            displayName: displayName,
+            isVerified: isVerified,
+            badgeColor: badgeColor,
           ),
         ],
       ),
@@ -1099,8 +1298,8 @@ class ProfileFigmaHeaderFollowChip extends StatelessWidget {
   }
 }
 
-/// Profile bio — Figma 16px / #808080, centered.
-class ProfileBioText extends StatelessWidget {
+/// Profile bio — Figma 16px / #808080, centered; collapses to 30 chars + See more.
+class ProfileBioText extends StatefulWidget {
   const ProfileBioText({
     super.key,
     required this.bio,
@@ -1111,14 +1310,80 @@ class ProfileBioText extends StatelessWidget {
   final TextAlign textAlign;
 
   @override
-  Widget build(BuildContext context) {
-    final text = bio.trim();
-    if (text.isEmpty) return const SizedBox.shrink();
+  State<ProfileBioText> createState() => _ProfileBioTextState();
+}
 
-    return Text(
-      text,
-      textAlign: textAlign,
-      style: AppTypography.profileBio,
+class _ProfileBioTextState extends State<ProfileBioText> {
+  bool _expanded = false;
+
+  String _bioUpTo(int maxChars, String raw) {
+    if (raw.length <= maxChars) return raw;
+    return raw.substring(0, maxChars);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final raw = widget.bio.trim();
+    if (raw.isEmpty) return const SizedBox.shrink();
+
+    final collapsedLen = ProfileFigmaTokens.profileBioCollapsedLength;
+    final expandedLen = ProfileFigmaTokens.profileBioMaxDisplayLength;
+    final needsExpand = raw.length > collapsedLen;
+
+    if (!needsExpand) {
+      return Text(
+        raw,
+        textAlign: widget.textAlign,
+        style: AppTypography.profileBio,
+      );
+    }
+
+    if (_expanded) {
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            _bioUpTo(expandedLen, raw),
+            textAlign: widget.textAlign,
+            style: AppTypography.profileBio,
+          ),
+          GestureDetector(
+            onTap: () => setState(() => _expanded = false),
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: const EdgeInsets.only(top: AppSpacing.xs),
+              child: Text(
+                'See less',
+                textAlign: widget.textAlign,
+                style: AppTypography.profileBioSeeMore,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          _bioUpTo(collapsedLen, raw),
+          textAlign: widget.textAlign,
+          style: AppTypography.profileBio,
+        ),
+        GestureDetector(
+          onTap: () => setState(() => _expanded = true),
+          behavior: HitTestBehavior.opaque,
+          child: Padding(
+            padding: const EdgeInsets.only(top: AppSpacing.xs),
+            child: Text(
+              'See more',
+              textAlign: widget.textAlign,
+              style: AppTypography.profileBioSeeMore,
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

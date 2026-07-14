@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
-import '../theme/app_gradients.dart';
 import '../theme/app_sizes.dart';
 
 /// Home reel progress — Figma 402×3 full-bleed bar (display only; parent handles scrub).
@@ -39,9 +38,7 @@ class FeedReelProgressBar extends StatelessWidget {
                     alignment: Alignment.centerLeft,
                     child: Container(
                       width: fillWidth,
-                      decoration: const BoxDecoration(
-                        gradient: AppGradients.liveFeedStreamProgressFill,
-                      ),
+                      color: AppColors.feedReelProgressFill,
                     ),
                   ),
               ],

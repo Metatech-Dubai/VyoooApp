@@ -9,7 +9,6 @@ import '../../core/onboarding/parental_submit_handoff.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/parental_consent_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart' show AppTheme, White24;
 import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
@@ -319,9 +318,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 8),
-                                const VyoooBrandLogo(
-                                  size: AppSizes.authLogoHeight,
-                                ),
+                                const VyoooBrandLogo.onboarding(),
                                 const SizedBox(height: 28),
                                 Text(
                                   widget.previousDenied
@@ -374,27 +371,10 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 24),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: FilledButton(
-                                    onPressed: _submitting ? null : _submit,
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppTheme.buttonBackground,
-                                      foregroundColor: AppTheme.buttonTextColor,
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 16,
-                                      ),
-                                    ),
-                                    child: _submitting
-                                        ? const SizedBox(
-                                            height: 22,
-                                            width: 22,
-                                            child: CircularProgressIndicator(
-                                              strokeWidth: 2,
-                                            ),
-                                          )
-                                        : const Text('Send request'),
-                                  ),
+                                AuthPillButton(
+                                  label: 'Send request',
+                                  onPressed: _submitting ? null : _submit,
+                                  isLoading: _submitting,
                                 ),
                               ],
                             ),

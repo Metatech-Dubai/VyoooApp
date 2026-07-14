@@ -24,7 +24,8 @@ import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/upload_tag_suggestions.dart';
 import 'location_picker_sheet.dart';
-import 'upload_success_screen.dart';
+import '../../core/navigation/post_upload_navigation.dart';
+import 'widgets/upload_post_chrome_buttons.dart';
 
 /// Upload Details screen: title, description, tags, 360 video options.
 /// Gets a direct upload URL from Cloud Function → uploads to Cloudflare Stream
@@ -89,8 +90,6 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
   bool _isDetecting360 = false;
   Video360DetectionResult? _detectionResult;
   bool _isUploading = false;
-  double _uploadProgress = 0;
-  int _uploadingItemIndex = 0;
   String? _selectedCategory;
   final List<String> _selectedTags = <String>[];
   List<String> _suggestedTags = <String>[];
@@ -205,10 +204,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    setState(() {
-      _isUploading = true;
-      _uploadProgress = 0;
-    });
+    setState(() => _isUploading = true);
 
     try {
       // 1+2 — resolve and upload every selected asset, in carousel order.
@@ -218,10 +214,6 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       final mediaItems = <Map<String, dynamic>>[];
       for (var i = 0; i < assets.length; i++) {
         if (!mounted) return;
-        setState(() {
-          _uploadingItemIndex = i;
-          _uploadProgress = 0;
-        });
         final asset = assets[i];
         final isVideo = _isVideoEntity(asset);
         final File? file = i == 0
@@ -323,14 +315,13 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       }
 
       if (!mounted) return;
-      // 6 — navigate to success
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => UploadSuccessScreen.forMediaPost(
-            mediaItems: mediaItems,
-          ),
-        ),
+      final reelId = reelRef.id;
+      PostUploadNavigation.complete(
+        reelId: reelId,
+        mediaItems: mediaItems,
+        userId: user.uid,
       );
+      Navigator.of(context).popUntil((route) => route.isFirst);
     } catch (e) {
       if (!mounted) return;
       setState(() => _isUploading = false);
@@ -379,8 +370,6 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     await reqRef.delete(); // clean up request doc
 
     // 3 — upload video directly to Cloudflare Stream (stream from disk; no size cap in app)
-    if (mounted) setState(() => _uploadProgress = 0.1);
-
     final request = http.MultipartRequest('POST', Uri.parse(uploadUrl))
       ..files.add(await http.MultipartFile.fromPath(
         'file',
@@ -392,7 +381,6 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
     if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
       throw Exception('Cloudflare upload failed: ${streamed.statusCode}');
     }
-    if (mounted) setState(() => _uploadProgress = 1);
 
     // 4 — return HLS playback URL
     return ReelsService.streamPlaybackUrl(videoId);
@@ -405,7 +393,6 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       'users/$uid/uploads/photos/${DateTime.now().millisecondsSinceEpoch}.$ext',
     );
     await ref.putFile(file, SettableMetadata(contentType: 'image/jpeg'));
-    if (mounted) setState(() => _uploadProgress = 1);
     return ref.getDownloadURL();
   }
 
@@ -442,9 +429,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildHeader(),
-                Expanded(
-                  child: _isUploading ? _buildProgress() : _buildForm(),
-                ),
+                Expanded(child: _buildForm()),
               ],
             ),
           ),
@@ -480,73 +465,12 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
             ),
           ),
           const Spacer(),
-          GestureDetector(
-            onTap: _isUploading ? null : _post,
-            child: Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
-              decoration: BoxDecoration(
-                color: AppColors.authBrandBurgundy,
-                borderRadius: AppRadius.pillRadius,
-              ),
-              child: Text(
-                'Upload',
-                style: AppTypography.chatTileName.copyWith(
-                  color: Colors.white,
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
+          UploadDetailsUploadButton(
+            enabled: !_isUploading,
+            isLoading: _isUploading,
+            onTap: _post,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildProgress() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(
-              Icons.cloud_upload_rounded,
-              color: AppColors.brandDeepMagenta,
-              size: 56,
-            ),
-            const SizedBox(height: AppSpacing.xl),
-            Text(
-              _allAssets.length > 1
-                  ? 'Uploading ${_uploadingItemIndex + 1} of ${_allAssets.length}…'
-                  : (_isVideoAsset
-                        ? 'Uploading your video…'
-                        : 'Uploading your photo…'),
-              style: AppTypography.chatTileName.copyWith(
-                color: AppColors.chatTextPrimary,
-                fontSize: 16,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.md),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(AppSpacing.xs),
-              child: LinearProgressIndicator(
-                value: _uploadProgress > 0 ? _uploadProgress : null,
-                backgroundColor: AppColors.chatSearchFill,
-                color: AppColors.brandDeepMagenta,
-                minHeight: 6,
-              ),
-            ),
-            const SizedBox(height: AppSpacing.sm),
-            Text(
-              _uploadProgress > 0 ? '${(_uploadProgress * 100).toInt()}%' : 'Preparing…',
-              style: AppTypography.chatTilePreview,
-            ),
-          ],
-        ),
       ),
     );
   }

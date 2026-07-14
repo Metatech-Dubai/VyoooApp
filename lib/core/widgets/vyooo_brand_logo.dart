@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 import '../constants/app_colors.dart';
 import '../theme/app_sizes.dart';
@@ -19,9 +20,15 @@ class VyoooBrandLogo extends StatelessWidget {
     this.contentScale = defaultContentScale,
     this.center = true,
     this.alignment = Alignment.center,
-  });
+  }) : svgAssetPath = null;
 
   static const String assetPath = 'assets/BrandLogo/Logo2.png';
+
+  /// Figma vector wordmark (#000000) for auth + onboarding headers.
+  static const String wordmarkSvgAssetPath =
+      'assets/BrandLogo/vyooo_wordmark_onboarding.svg';
+
+  static const double _wordmarkSvgAspectRatio = 128 / 47;
 
   /// Default layout height (auth headers).
   static const double defaultHeight = 52;
@@ -42,16 +49,28 @@ class VyoooBrandLogo extends StatelessWidget {
         height = null,
         contentScale = innerHeaderContentScale,
         center = false,
-        alignment = Alignment.centerRight;
+        alignment = Alignment.centerRight,
+        svgAssetPath = null;
 
-  /// Auth headers — centered burgundy (light) or white (dark) wordmark.
+  /// Auth headers — Figma SVG wordmark (#000000 on light surfaces).
   const VyoooBrandLogo.auth({super.key})
       : width = null,
         size = AppSizes.authLogoHeight,
         height = null,
         contentScale = authContentScale,
         center = true,
-        alignment = Alignment.center;
+        alignment = Alignment.center,
+        svgAssetPath = wordmarkSvgAssetPath;
+
+  /// Onboarding headers — same Figma SVG wordmark as [VyoooBrandLogo.auth].
+  const VyoooBrandLogo.onboarding({super.key})
+      : width = null,
+        size = AppSizes.authLogoHeight,
+        height = null,
+        contentScale = defaultContentScale,
+        center = true,
+        alignment = Alignment.center,
+        svgAssetPath = wordmarkSvgAssetPath;
 
   /// Home feed overlay — left-aligned wordmark with lightbulb mark visible.
   const VyoooBrandLogo.feed({super.key})
@@ -60,7 +79,8 @@ class VyoooBrandLogo extends StatelessWidget {
         height = null,
         contentScale = 1.95,
         center = false,
-        alignment = Alignment.centerLeft;
+        alignment = Alignment.centerLeft,
+        svgAssetPath = null;
 
   final double? width;
   final double? size;
@@ -68,11 +88,16 @@ class VyoooBrandLogo extends StatelessWidget {
   final double contentScale;
   final bool center;
   final AlignmentGeometry alignment;
+  final String? svgAssetPath;
 
   double get _resolvedHeight => height ?? size ?? defaultHeight;
 
   @override
   Widget build(BuildContext context) {
+    if (svgAssetPath != null) {
+      return _buildSvgWordmark(context);
+    }
+
     final isLight = AppTheme.isLight(context);
     final paintedHeight = _resolvedHeight * contentScale;
 
@@ -81,7 +106,7 @@ class VyoooBrandLogo extends StatelessWidget {
       child: ClipRect(
         child: Align(
           alignment: alignment,
-          child: _buildWordmark(
+          child: _buildPngWordmark(
             paintedHeight: paintedHeight,
             tintBurgundy: isLight,
           ),
@@ -96,7 +121,30 @@ class VyoooBrandLogo extends StatelessWidget {
     return logo;
   }
 
-  Widget _buildWordmark({
+  Widget _buildSvgWordmark(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
+    final layoutHeight = _resolvedHeight;
+    final layoutWidth = width ?? layoutHeight * _wordmarkSvgAspectRatio;
+    // Figma fill #000000 on white auth/onboarding shells; white on dark gradient.
+    final fillColor = isLight ? AppTheme.lightOnSurface : AppTheme.primary;
+
+    Widget logo = SvgPicture.asset(
+      svgAssetPath!,
+      height: layoutHeight,
+      width: layoutWidth,
+      fit: BoxFit.contain,
+      colorFilter: ColorFilter.mode(fillColor, BlendMode.srcIn),
+      semanticsLabel: 'Vyooo',
+    );
+
+    if (center) {
+      logo = Center(child: logo);
+    }
+
+    return logo;
+  }
+
+  Widget _buildPngWordmark({
     required double paintedHeight,
     required bool tintBurgundy,
   }) {
@@ -131,7 +179,7 @@ class VyoooBrandLogo extends StatelessWidget {
       'VyooO',
       style: AppTypography.brandFallback.copyWith(
         fontSize: fallbackSize,
-        color: isLight ? AppColors.authBrandBurgundy : AppTheme.primary,
+        color: isLight ? AppTheme.lightOnSurface : AppTheme.primary,
       ),
     );
   }

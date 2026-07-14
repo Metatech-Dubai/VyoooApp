@@ -7,6 +7,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
+import 'widgets/upload_post_chrome_buttons.dart';
 
 /// All Albums screen: 2-column grid of gallery albums (thumbnail, name, count).
 /// Tapping an album pops with that [AssetPathEntity].
@@ -70,14 +71,8 @@ class _AllAlbumsScreenState extends State<AllAlbumsScreen> {
         children: [
           Align(
             alignment: Alignment.centerLeft,
-            child: IconButton(
-              onPressed: () => Navigator.of(context).pop(),
-              icon: Image.asset(
-                'assets/vyooO_icons/Search/close.png',
-                width: 24,
-                height: 24,
-                color: AppColors.chatAppBarActionIcon,
-              ),
+            child: UploadPostCloseButton(
+              onTap: () => Navigator.of(context).pop(),
             ),
           ),
           Text(
@@ -90,13 +85,12 @@ class _AllAlbumsScreenState extends State<AllAlbumsScreen> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).pop(),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.chatTextBlack,
+              ),
               child: Text(
                 'Next',
-                style: AppTypography.chatTileName.copyWith(
-                  color: AppColors.brandDeepMagenta,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: AppTypography.uploadHeaderNext,
               ),
             ),
           ),

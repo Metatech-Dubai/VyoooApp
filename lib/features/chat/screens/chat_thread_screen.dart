@@ -7,7 +7,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/user_facing_errors.dart';
@@ -939,22 +938,13 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             ? _handleVideoCall
             : null,
       ),
-      body: Stack(
+      body: Column(
         children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: AppGradients.chatBackgroundGradient,
-              ),
-            ),
-          ),
-          Column(
-            children: [
-              if (_isUploading) _buildUploadIndicator(),
-              if (_uploadError != null && !_isUploading) _buildRetryBanner(),
-              Expanded(
-                child: StreamBuilder<List<MessageModel>>(
-                  stream: _messagesStream,
+          if (_isUploading) _buildUploadIndicator(),
+          if (_uploadError != null && !_isUploading) _buildRetryBanner(),
+          Expanded(
+            child: StreamBuilder<List<MessageModel>>(
+              stream: _messagesStream,
                   builder: (context, snapshot) {
                     if (snapshot.connectionState == ConnectionState.waiting &&
                         !snapshot.hasData) {
@@ -1182,8 +1172,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                     : ChatHelpers.messageBodyPreview(_replyingTo!),
                 onCancelReply: _cancelReply,
               ),
-            ],
-          ),
         ],
       ),
     );

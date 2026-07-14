@@ -210,30 +210,45 @@ class _SplashVideoScreen extends StatefulWidget {
 
 class _SplashVideoScreenState extends State<_SplashVideoScreen> {
   late final VideoPlayerController _controller;
-  Timer? _navigationTimer;
+  bool _hasNavigated = false;
 
   @override
   void initState() {
     super.initState();
     _controller = VideoPlayerController.asset('assets/videos/splash.mp4');
+    _controller.addListener(_onVideoUpdate);
     _initializeVideo();
-    _navigationTimer = Timer(const Duration(seconds: 3), _goToNextScreen);
   }
 
   Future<void> _initializeVideo() async {
     try {
       await _controller.initialize();
-      await _controller.setLooping(true);
+      await _controller.setLooping(false);
       await _controller.play();
       if (mounted) setState(() {});
     } catch (e, st) {
       debugPrint('Splash video failed to initialize: $e');
       debugPrint(st.toString());
+      _goToNextScreen();
+    }
+  }
+
+  void _onVideoUpdate() {
+    if (_hasNavigated || !_controller.value.isInitialized) return;
+    final value = _controller.value;
+    if (value.isCompleted) {
+      _goToNextScreen();
+      return;
+    }
+    final durationMs = value.duration.inMilliseconds;
+    if (durationMs > 0 && value.position.inMilliseconds >= durationMs) {
+      _goToNextScreen();
     }
   }
 
   void _goToNextScreen() {
-    if (!mounted) return;
+    if (!mounted || _hasNavigated) return;
+    _hasNavigated = true;
     Navigator.of(context).pushReplacement(
       PageRouteBuilder<void>(
         pageBuilder: (context, animation, secondaryAnimation) =>
@@ -248,7 +263,7 @@ class _SplashVideoScreenState extends State<_SplashVideoScreen> {
 
   @override
   void dispose() {
-    _navigationTimer?.cancel();
+    _controller.removeListener(_onVideoUpdate);
     _controller.dispose();
     super.dispose();
   }

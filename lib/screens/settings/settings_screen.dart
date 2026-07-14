@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:vyooo/core/theme/app_gradients.dart';
-
 import '../../core/models/app_user_model.dart';
 import '../../core/profile/creator_monetization.dart';
 import '../../core/services/auth_service.dart';
@@ -13,6 +11,7 @@ import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/widgets/logout_confirm_dialog.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../features/vr/vr_screen.dart';
 import '../account/account_screen.dart';
@@ -406,63 +405,7 @@ class SettingsScreen extends StatelessWidget {
   }
 
   Future<void> _logout(BuildContext context) async {
-    final bool? shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(AppSpacing.xl),
-          decoration: BoxDecoration(
-            gradient: AppGradients.authGradient,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Logout',
-                style: AppTypography.onboardingSectionTitle.copyWith(
-                  fontSize: 20,
-                ),
-              ),
-              const SizedBox(height: AppSpacing.sm + AppSpacing.xs),
-              Text(
-                'Do you want to logout from your account?',
-                style: AppTypography.authDialogOption.copyWith(
-                  color: Colors.white.withValues(alpha: 0.7),
-                ),
-              ),
-              const SizedBox(height: AppSpacing.xxl),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: Text(
-                      'No, Stay',
-                      style: AppTypography.authDialogOption,
-                    ),
-                  ),
-                  const SizedBox(width: AppSpacing.md),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text('Yes, Logout'),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final bool? shouldLogout = await LogoutConfirmDialog.show(context);
 
     if (shouldLogout != true) return;
 

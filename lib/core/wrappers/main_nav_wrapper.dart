@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:async';
 
+import '../navigation/post_upload_navigation.dart';
 import '../navigation/home_feed_chrome_controller.dart';
 import '../services/deep_link_service.dart';
 import '../services/notification_service.dart';
@@ -32,6 +33,10 @@ class MainNavWrapper extends StatefulWidget {
 
   static final ValueNotifier<int?> tabNotifier = ValueNotifier<int?>(null);
 
+  /// True while the bottom-nav create hub (plus menu) is open.
+  static final ValueNotifier<bool> createMenuOpenNotifier =
+      ValueNotifier<bool>(false);
+
   /// Same navigation path as tapping a bottom-nav item (except index 2 → Upload push).
   static void switchToTab(int index) {
     final safe = index.clamp(0, 4);
@@ -55,6 +60,9 @@ class _MainNavWrapperState extends State<MainNavWrapper>
   int _feedRefreshToken = 0;
   int _deepLinkNonce = 0;
   String? _deepLinkedReelId;
+  bool _deepLinkPreferForYou = false;
+  String? _uploadSuccessMessage;
+  int _uploadToastNonce = 0;
   bool _createMenuOpen = false;
   late final AnimationController _createMenuController;
   late final Animation<double> _createMenuAnimation;
@@ -77,6 +85,28 @@ class _MainNavWrapperState extends State<MainNavWrapper>
     }
   }
 
+  void _onPostUploadPending() {
+    final result = PostUploadNavigation.pending.value;
+    if (result == null || !mounted) return;
+    PostUploadNavigation.pending.value = null;
+    setState(() {
+      _currentIndex = 0;
+      _lastSelectedIndex = 0;
+      _deepLinkedReelId = result.reelId;
+      _deepLinkPreferForYou = true;
+      _deepLinkNonce++;
+      _feedRefreshToken++;
+      _uploadSuccessMessage = result.message;
+      _uploadToastNonce++;
+    });
+    Future<void>.delayed(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      if (_deepLinkPreferForYou) {
+        setState(() => _deepLinkPreferForYou = false);
+      }
+    });
+  }
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +119,7 @@ class _MainNavWrapperState extends State<MainNavWrapper>
       curve: BottomNavFigmaTokens.createMenuCurve,
     );
     MainNavWrapper.tabNotifier.addListener(_onTabNotifierChanged);
+    PostUploadNavigation.pending.addListener(_onPostUploadPending);
     if (widget.initialIndex != null) {
       final safe = widget.initialIndex!.clamp(0, 4);
       _currentIndex = safe;
@@ -113,6 +144,7 @@ class _MainNavWrapperState extends State<MainNavWrapper>
         _currentIndex = 0;
         _lastSelectedIndex = 0;
         _deepLinkedReelId = reelId;
+        _deepLinkPreferForYou = false;
         _deepLinkNonce++;
       });
     });
@@ -143,10 +175,12 @@ class _MainNavWrapperState extends State<MainNavWrapper>
   @override
   void dispose() {
     MainNavWrapper.tabNotifier.removeListener(_onTabNotifierChanged);
+    PostUploadNavigation.pending.removeListener(_onPostUploadPending);
     SearchTabLauncher.instance.unregister(_searchTabLaunchHandler);
     _reelDeepLinkSub?.cancel();
     _profileDeepLinkSub?.cancel();
     _createMenuController.dispose();
+    MainNavWrapper.createMenuOpenNotifier.value = false;
     PresenceService.instance.stop();
     ChatNotificationService.instance.stop();
     _homeFeedChrome.dispose();
@@ -204,11 +238,14 @@ class _MainNavWrapperState extends State<MainNavWrapper>
     if (!_createMenuOpen) return;
     if (!animate) {
       _createMenuController.value = 0;
+      MainNavWrapper.createMenuOpenNotifier.value = false;
       setState(() => _createMenuOpen = false);
       return;
     }
     _createMenuController.reverse().whenComplete(() {
-      if (mounted) setState(() => _createMenuOpen = false);
+      if (!mounted) return;
+      MainNavWrapper.createMenuOpenNotifier.value = false;
+      setState(() => _createMenuOpen = false);
     });
   }
 
@@ -217,6 +254,7 @@ class _MainNavWrapperState extends State<MainNavWrapper>
       _closeCreateMenu();
       return;
     }
+    MainNavWrapper.createMenuOpenNotifier.value = true;
     setState(() => _createMenuOpen = true);
     _createMenuController.forward(from: 0);
   }
@@ -258,6 +296,13 @@ class _MainNavWrapperState extends State<MainNavWrapper>
         await openCreatorLiveScreen(context);
     }
     if (!mounted) return;
+    if (PostUploadNavigation.consumeCreateMenuRefreshSuppression()) {
+      setState(() {
+        _currentIndex = 0;
+        _lastSelectedIndex = 0;
+      });
+      return;
+    }
     setState(() {
       _currentIndex = 0;
       _lastSelectedIndex = 0;
@@ -293,6 +338,9 @@ class _MainNavWrapperState extends State<MainNavWrapper>
         refreshToken: _feedRefreshToken,
         deepLinkReelId: _deepLinkedReelId,
         deepLinkNonce: _deepLinkNonce,
+        deepLinkPreferForYou: _deepLinkPreferForYou,
+        uploadSuccessMessage: _uploadSuccessMessage,
+        uploadToastNonce: _uploadToastNonce,
         chromeController: _homeFeedChrome,
       ),
       BroadcastTabHost(
@@ -385,8 +433,9 @@ class _MainNavWrapperState extends State<MainNavWrapper>
                                       _broadcastFeedChrome.isLiveScrubbing,
                                   feedLiveSeekPreviewBytes:
                                       _broadcastFeedChrome.liveSeekPreviewBytes,
-                                  feedLiveSeekPreviewTimeLabel: _broadcastFeedChrome
-                                      .liveSeekPreviewTimeLabel,
+                                  feedLiveSeekPreviewTimeLabel:
+                                      _broadcastFeedChrome
+                                          .liveSeekPreviewTimeLabel,
                                   feedLiveSeekPreviewFallbackUrl:
                                       _broadcastFeedChrome
                                           .liveSeekPreviewFallbackUrl,

@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/live_chat_message_model.dart';
 import '../models/live_stream_model.dart';
+import '../models/video_360_metadata.dart';
 import 'auth_service.dart';
 import 'user_service.dart';
 
@@ -31,6 +32,8 @@ class LiveStreamService {
     String category = '',
     List<String> tags = const [],
     int pricePerMinute = 0,
+    bool is360Live = false,
+    Video360Projection projectionType = Video360Projection.flat,
   }) async {
     // End any stale live streams for this host before creating a new one
     final stale = await _db
@@ -63,6 +66,8 @@ class LiveStreamService {
       hostAgoraUid: 0, // updated after Agora join
       createdAt: Timestamp.now(),
       savedToProfile: false,
+      is360Live: is360Live,
+      projectionType: is360Live ? projectionType : Video360Projection.flat,
     );
     var authorAccountPrivate = false;
     try {
@@ -90,6 +95,8 @@ class LiveStreamService {
     String? category,
     List<String>? tags,
     int? pricePerMinute,
+    bool? is360Live,
+    Video360Projection? projectionType,
   }) async {
     final data = <String, dynamic>{};
     if (title != null) data['title'] = title;
@@ -97,6 +104,12 @@ class LiveStreamService {
     if (category != null) data['category'] = category;
     if (tags != null) data['tags'] = tags;
     if (pricePerMinute != null) data['pricePerMinute'] = pricePerMinute;
+    if (is360Live != null) {
+      data['is360Live'] = is360Live;
+      data['projectionType'] = (is360Live && projectionType != null)
+          ? projectionType.firestoreValue
+          : Video360Projection.flat.firestoreValue;
+    }
     if (data.isEmpty) return;
     await _db.collection(_streamsCol).doc(streamId).update(data);
   }

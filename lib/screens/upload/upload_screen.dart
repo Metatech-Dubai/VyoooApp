@@ -6,23 +6,18 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/constants/app_colors.dart';
-import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import 'all_albums_screen.dart';
 import 'photo_gallery_permission.dart';
-import '../../features/story/story_upload_screen.dart';
-import 'creator_live_route.dart';
 import 'upload_details_screen.dart';
 import 'upload_photo_preview_screen.dart';
 import 'upload_video_preview_screen.dart';
-import 'widgets/upload_create_bottom_bar.dart';
+import 'widgets/album_picker_dropdown.dart';
+import 'widgets/upload_post_chrome_buttons.dart';
 
-/// Upload screen for subscribers: media grid from gallery, album dropdown, Story / Post / Live actions.
-/// Opened from bottom nav plus; standard users are redirected to membership instead.
-///
-/// Defaults to **Post** so the gallery (or permission flow) starts immediately — no extra tap
-/// through instructional copy. Story / Live use the bottom actions only.
+/// Upload screen for subscribers: media grid from gallery and album dropdown.
+/// Opened from bottom nav plus → Post (and Reel/VR camera shortcuts).
 class UploadScreen extends StatefulWidget {
   const UploadScreen({
     super.key,
@@ -40,7 +35,7 @@ class UploadScreen extends StatefulWidget {
   /// Pre-enables 360 / VR on the upload details screen for single-video uploads.
   final bool preferVrUpload;
 
-  /// Opens the Post (gallery) hub without pulling [StoryUploadScreen] into this library’s import graph.
+  /// Opens the Post (gallery) hub.
   static void openPostHub(BuildContext context) {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
@@ -319,7 +314,6 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
             child: _buildHeader(context),
           ),
           Expanded(child: _buildBody()),
-          _buildBottomBar(),
         ],
       ),
     );
@@ -342,24 +336,13 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    padding: EdgeInsets.zero,
-                    constraints:
-                        const BoxConstraints.tightFor(width: 44, height: 44),
-                    icon: Image.asset(
-                      'assets/vyooO_icons/Search/close.png',
-                      width: 24,
-                      height: 24,
-                      color: AppColors.chatAppBarActionIcon,
-                    ),
+                  UploadPostCloseButton(
+                    onTap: () => Navigator.of(context).pop(),
                   ),
                   if (isPost)
-                    _AlbumDropdown(
+                    AlbumPickerDropdown(
                       value: _selectedAlbum,
-                      paths: _paths,
                       onChanged: (v) async {
-                        if (v == null) return;
                         if (v == 'All Albums') {
                           if (_paths.isEmpty) return;
                           final path = await Navigator.of(context)
@@ -403,7 +386,7 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
                   ? TextButton(
                       onPressed: _onNextTap,
                       style: TextButton.styleFrom(
-                        foregroundColor: AppColors.brandDeepMagenta,
+                        foregroundColor: AppColors.chatTextBlack,
                         padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.sm,
                           vertical: AppSpacing.sm,
@@ -413,11 +396,7 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
                       ),
                       child: Text(
                         'Next',
-                        style: AppTypography.chatTileName.copyWith(
-                          color: AppColors.brandDeepMagenta,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
+                        style: AppTypography.uploadHeaderNext,
                       ),
                     )
                   : const SizedBox(width: 44, height: 44),
@@ -657,31 +636,6 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
       },
     );
   }
-
-  Widget _buildBottomBar() {
-    return UploadCreateBottomBar(
-      selectedSegment: _bottomSegment,
-      onStoryTap: () {
-        setState(() => _bottomSegment = 0);
-        Navigator.of(context).push<void>(
-          MaterialPageRoute<void>(
-            builder: (_) => const StoryUploadScreen(successDismissToRoot: true),
-          ),
-        );
-      },
-      onPostTap: () {
-        final wasPost = _bottomSegment == 1;
-        setState(() => _bottomSegment = 1);
-        if (!wasPost || _permissionError != null) {
-          _loadGallery();
-        }
-      },
-      onLiveTap: () {
-        setState(() => _bottomSegment = 2);
-        openCreatorLiveScreen(context);
-      },
-    );
-  }
 }
 
 class _CameraTile extends StatelessWidget {
@@ -808,86 +762,6 @@ class _SelectedBadge extends StatelessWidget {
                 ),
               )
             : const Icon(Icons.check, size: 16, color: Colors.white),
-      ),
-    );
-  }
-}
-
-class _AlbumDropdown extends StatelessWidget {
-  const _AlbumDropdown({
-    required this.value,
-    required this.paths,
-    required this.onChanged,
-  });
-
-  final String value;
-  final List<AssetPathEntity> paths;
-  final void Function(String?) onChanged;
-
-  static const Color _menuFill = Color(0xD93A3A3C);
-
-  @override
-  Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        splashColor: Colors.white24,
-        highlightColor: Colors.white12,
-      ),
-      child: PopupMenuButton<String>(
-        offset: const Offset(0, 44),
-        padding: EdgeInsets.zero,
-        constraints: const BoxConstraints(),
-        color: _menuFill,
-        elevation: 8,
-        shadowColor: Colors.black26,
-        surfaceTintColor: Colors.transparent,
-        shape: RoundedRectangleBorder(borderRadius: AppRadius.inputRadius),
-        tooltip: '',
-        itemBuilder: (context) => [
-          _buildPopupItem('Recents', Icons.photo_library_outlined),
-          _buildPopupItem('Favourites', Icons.favorite_border_rounded),
-          _buildPopupItem('All Albums', Icons.grid_view_outlined),
-        ],
-        onSelected: onChanged,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              value,
-              style: AppTypography.chatTileName.copyWith(
-                color: AppColors.chatTextPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            const SizedBox(width: AppSpacing.xs),
-            const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              color: AppColors.chatAppBarActionIcon,
-              size: 18,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  PopupMenuItem<String> _buildPopupItem(String label, IconData icon) {
-    return PopupMenuItem<String>(
-      value: label,
-      height: 48,
-      child: Row(
-        children: [
-          Icon(icon, size: 20, color: Colors.white.withValues(alpha: 0.95)),
-          const SizedBox(width: AppSpacing.sm + AppSpacing.xs),
-          Text(
-            label,
-            style: AppTypography.chatTileName.copyWith(
-              color: Colors.white,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
       ),
     );
   }

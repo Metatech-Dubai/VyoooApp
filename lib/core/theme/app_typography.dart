@@ -294,24 +294,26 @@ abstract final class AppTypography {
     color: AppColors.liveFeedHostCaption,
   );
 
-  /// Live feed chat username — DM Sans Medium 12 / 16px line (Figma card 1).
+  /// Live feed chat username — DM Sans Medium 12 / 16 @ #B3B3B3 (Figma).
   static const TextStyle liveChatUsername = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: AppSizes.liveChatUsernameFontSize,
     height: AppSizes.liveChatUsernameLineHeight /
         AppSizes.liveChatUsernameFontSize,
     fontWeight: FontWeight.w500,
-    color: Colors.white,
+    letterSpacing: 0,
+    color: AppColors.liveChatUsername,
   );
 
-  /// Live feed chat message — DM Sans Regular 13 / 17px line @ 60% white.
+  /// Live feed chat message — DM Sans Regular 13 / 17 @ #FFFFFF (Figma).
   static const TextStyle liveChatMessage = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: AppSizes.liveChatMessageFontSize,
     height:
         AppSizes.liveChatMessageLineHeight / AppSizes.liveChatMessageFontSize,
     fontWeight: FontWeight.w400,
-    color: Color(0x99FFFFFF),
+    letterSpacing: 0,
+    color: AppColors.liveChatMessage,
   );
 
   /// Segmented toggle — DM Sans Regular 16, 100% line height (Figma).
@@ -512,7 +514,7 @@ abstract final class AppTypography {
   /// Alias for caption blocks — same as [feedReelName].
   static const TextStyle feedReelCaption = feedReelName;
 
-  /// Hashtags in reel caption — DM Sans Medium 14 @ #FFB3CC.
+  /// Hashtags in reel caption — DM Sans Medium 14 @ #B3B3B3.
   static const TextStyle feedReelHashtag = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: feedReelHashtagSize,
@@ -577,6 +579,16 @@ abstract final class AppTypography {
     fontFamily: AppFonts.body,
     fontSize: 16,
     fontWeight: FontWeight.w400,
+    height: 20 / 16,
+    letterSpacing: 0,
+    color: Color(0xFF808080),
+  );
+
+  /// Profile bio "See more" / "See less" — same size, medium weight.
+  static const TextStyle profileBioSeeMore = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
     height: 20 / 16,
     letterSpacing: 0,
     color: Color(0xFF808080),
@@ -684,7 +696,7 @@ abstract final class AppTypography {
     color: AppTheme.primary,
   );
 
-  /// Music row ("note" layer) — DM Sans Regular 12 @ #808080.
+  /// Music row label — DM Sans Regular 12 @ #FFFFFF 80%.
   static const TextStyle feedReelNote = TextStyle(
     fontFamily: AppFonts.body,
     fontSize: feedReelNoteSize,
@@ -951,5 +963,86 @@ abstract final class AppTypography {
     height: 1.0,
     fontWeight: FontWeight.w400,
     color: AppColors.chatInputHint,
+  );
+
+  /// Post upload header Next action — Figma DM Sans Bold 18 / 19lh / #000000.
+  static const TextStyle uploadHeaderNext = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 18,
+    height: 19 / 18,
+    fontWeight: FontWeight.w700,
+    color: AppColors.chatTextBlack,
+  );
+
+  /// Post upload edit media pill label — Figma DM Sans Regular 12 / white.
+  /// Figma video scrubber duration label (DM Sans 600, 12px, white).
+  static const TextStyle uploadVideoScrubberDuration = TextStyle(
+    fontFamily: AppFonts.body,
+    fontWeight: FontWeight.w600,
+    fontSize: 12,
+    height: 1.3,
+    color: Colors.white,
+  );
+
+  static const TextStyle uploadEditMediaPillLabel = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    height: 1.0,
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
+
+  /// Music picker row title — Figma DM Sans Bold ~18 / white.
+  static const TextStyle musicPickerTrackTitle = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 18,
+    height: 1.05,
+    fontWeight: FontWeight.w700,
+    color: Colors.white,
+  );
+
+  /// Music picker row meta — Figma DM Sans Regular 12 / #B3B3B3.
+  static const TextStyle musicPickerTrackMeta = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 12,
+    height: 1.35,
+    fontWeight: FontWeight.w400,
+    color: Color(0xFFB3B3B3),
+  );
+
+  /// Music picker search input — white body text.
+  static const TextStyle musicPickerSearchInput = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.2,
+    fontWeight: FontWeight.w400,
+    color: Colors.white,
+  );
+
+  /// Music picker search placeholder — Figma #EBEBF5 @ 60%.
+  static const TextStyle musicPickerSearchHint = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 14,
+    height: 1.2,
+    fontWeight: FontWeight.w400,
+    color: Color(0x99EBEBF5),
+  );
+
+  /// Music picker tab label — inactive grey / active white.
+  static TextStyle musicPickerTabLabel({required bool active}) => TextStyle(
+        fontFamily: AppFonts.body,
+        fontSize: 12,
+        height: 1.2,
+        fontWeight: active ? FontWeight.w600 : FontWeight.w400,
+        color: active ? Colors.white : const Color(0xFFB3B3B3),
+      );
+
+  /// Post-upload success toast on home feed — DM Sans Medium 15 / white.
+  static const TextStyle uploadPostSuccessToast = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 15,
+    height: 1.25,
+    fontWeight: FontWeight.w500,
+    color: Colors.white,
   );
 }

@@ -7,7 +7,6 @@ import 'package:flutter_svg/flutter_svg.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/app_user_model.dart';
 import '../../../core/services/user_service.dart';
-import '../../../core/theme/app_gradients.dart';
 import '../../../core/theme/app_padding.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_sizes.dart';
@@ -170,44 +169,33 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
     super.build(context);
     return Scaffold(
       backgroundColor: AppColors.chatBackground,
-      body: Stack(
-        children: [
-          const Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: AppGradients.chatBackgroundGradient,
-              ),
+      body: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            _buildHeader(),
+            _buildSearchBar(),
+            _ChatNotesRow(
+              summaries: _primarySummaries,
+              currentUid: _currentUid,
+              currentUser: _currentUser,
+              onTapNote: (summary) {
+                if (summary != null) {
+                  _openThread(summary);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Notes coming soon'),
+                      duration: Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
             ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                _buildHeader(),
-                _buildSearchBar(),
-                _ChatNotesRow(
-                  summaries: _primarySummaries,
-                  currentUid: _currentUid,
-                  currentUser: _currentUser,
-                  onTapNote: (summary) {
-                    if (summary != null) {
-                      _openThread(summary);
-                    } else {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Notes coming soon'),
-                          duration: Duration(seconds: 1),
-                        ),
-                      );
-                    }
-                  },
-                ),
-                _buildMessagesSectionHeader(),
-                Expanded(child: _buildInboxList()),
-              ],
-            ),
-          ),
-        ],
+            _buildMessagesSectionHeader(),
+            Expanded(child: _buildInboxList()),
+          ],
+        ),
       ),
     );
   }
@@ -661,7 +649,7 @@ class _ChatNoteItem extends StatelessWidget {
             if (hasTopLocation) ...[
               _NoteLocationLabel(
                 label: topLocationLabel!,
-                iconColor: locationIconColor ?? Colors.white,
+                iconColor: locationIconColor ?? AppColors.chatTextSecondary,
                 maxWidth: itemWidth,
               ),
               SizedBox(height: locationTopGap),

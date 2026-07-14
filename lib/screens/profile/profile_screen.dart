@@ -9,12 +9,13 @@ import '../../core/models/video_360_metadata.dart';
 import '../../core/widgets/post_media_carousel.dart';
 import '../../features/reel/widgets/owner_post_options_sheet.dart';
 import '../../core/config/deep_link_config.dart';
-import '../../core/theme/app_gradients.dart';
+import '../../core/widgets/logout_confirm_dialog.dart';
 import '../../core/widgets/profile/profile_screen_background.dart';
 import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../core/constants/profile_assets.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/navigation/profile_side_rail_navigation.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/models/story_highlight_model.dart';
 import '../../core/models/story_model.dart';
@@ -29,7 +30,7 @@ import '../../core/utils/user_facing_errors.dart';
 import '../../core/utils/verification_badge.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
-import '../../core/wrappers/main_nav_wrapper.dart';
+import '../../core/navigation/post_upload_navigation.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/story/highlight_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
@@ -46,6 +47,8 @@ import 'edit_profile_screen.dart';
 import 'followers_following_screen.dart';
 import 'profile_figma_tokens.dart';
 import 'profile_figma_widgets.dart';
+import 'profile_side_rail_coming_soon_screen.dart';
+import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../core/widgets/profile/profile_grid.dart';
 import '../../features/reel/widgets/profile_grid_span_sheet.dart';
@@ -91,6 +94,23 @@ class _ProfileScreenState extends State<ProfileScreen>
   Future<List<Map<String, dynamic>>>? _savedReelsFuture;
   String? _savedReelsFutureUid;
   Future<List<Map<String, dynamic>>>? _vrReelsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    PostUploadNavigation.profileRefreshToken.addListener(_onProfilePostsRefresh);
+  }
+
+  @override
+  void dispose() {
+    PostUploadNavigation.profileRefreshToken.removeListener(_onProfilePostsRefresh);
+    super.dispose();
+  }
+
+  void _onProfilePostsRefresh() {
+    if (!mounted) return;
+    setState(() => _vrReelsFuture = null);
+  }
 
   Stream<List<StoryHighlightModel>> _highlightsStreamFor(String uid) {
     if (_highlightsStreamUid != uid || _highlightsStream == null) {
@@ -152,78 +172,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   }
 
   Future<void> _logout(BuildContext context) async {
-    final bool? shouldLogout = await showDialog<bool>(
-      context: context,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: AppGradients.premiumDarkGradient,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
-              width: 1,
-            ),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Logout',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Do you want to logout from your account?',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 32),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text(
-                      'No, stay',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  FilledButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.black,
-                      foregroundColor: Colors.white,
-                    ),
-                    child: const Text(
-                      'Yes, Logout',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+    final bool? shouldLogout = await LogoutConfirmDialog.show(context);
     if (shouldLogout != true) return;
     await AuthService().signOutCurrentAccount();
     if (!context.mounted) return;
@@ -382,30 +331,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _openWalletFromRail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(
-          backgroundColor: Colors.black,
-          body: WalletComingSoonView(),
-        ),
-      ),
+  void _openSideRailComingSoon(BuildContext context) {
+    openProfileSideRailScreen<void>(
+      context,
+      child: const ProfileSideRailComingSoonScreen(),
     );
   }
 
-  void _openRevenueFromRail(BuildContext context) {
-    Navigator.of(context).push(
+  void _openWalletFromRail(BuildContext context) => _openSideRailComingSoon(context);
+
+  void _openRevenueFromRail(BuildContext context) =>
+      _openSideRailComingSoon(context);
+
+  void _openChatFromRail(BuildContext context) => _openSideRailComingSoon(context);
+
+  void _openAddFriendsSearch(BuildContext context) {
+    Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(
-          backgroundColor: Colors.black,
-          body: RevenueComingSoonView(),
+        builder: (_) => const SearchScreen(
+          initialCategoryTabIndex: SearchScreen.usersCategoryTabIndex,
         ),
       ),
     );
-  }
-
-  void _openChatFromRail() {
-    MainNavWrapper.tabNotifier.value = 3;
   }
 
   void _showProfileMenu(BuildContext context) {
@@ -616,8 +563,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                       child: Column(
                         children: [
                           const SizedBox(height: ProfileFigmaTokens.profileHeaderTop),
-                          ProfileFigmaAvatarHeaderRow(
+                          ProfileFigmaAvatarNameBand(
                             onMenuTap: () => _showProfileMenu(context),
+                            displayName: displayName,
+                            isVerified: isVerified,
+                            badgeColor: badgeColor,
                             avatar: StreamBuilder<List<StoryModel>>(
                               stream: profileUid.isEmpty
                                   ? null
@@ -627,6 +577,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     snap.data ?? const <StoryModel>[];
                                 return ProfileFigmaAvatar(
                                   imageUrl: avatarUrl,
+                                  outerSize:
+                                      ProfileFigmaTokens.profileHeaderAvatarSize,
                                   hasStory: activeStories.isNotEmpty,
                                   onTap: profileUid.isEmpty
                                       ? null
@@ -640,12 +592,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                               },
                             ),
                           ),
-                          const SizedBox(height: 16),
-                      ProfileFigmaDisplayNameRow(
-                        displayName: displayName,
-                        isVerified: isVerified,
-                        badgeColor: badgeColor,
-                      ),
                       const SizedBox(height: 12),
                       ProfileFigmaStatChipsRow(
                         postCount: _formatStatCount(postCount),
@@ -704,14 +650,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           uid: profileUid,
                           username: user?.username,
                         ),
-                        onStory: profileUid.isEmpty
-                            ? () {}
-                            : () => _openMyStoryComposerOrViewer(
-                                  context,
-                                  userId: profileUid,
-                                  username: username,
-                                  avatarUrl: avatarUrl ?? '',
-                                ),
+                        onAddFriends: () => _openAddFriendsSearch(context),
                       ),
                       const SizedBox(
                         height: ProfileFigmaTokens.contentSectionTopGap,
@@ -755,54 +694,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   () => _selectedTabIndex = _savedTabIndex,
                                 ),
                               ),
-                              if (profileUid.isNotEmpty) ...[
-                                if (!_highlightsExpanded) ...[
-                                  const SizedBox(
-                                    height: ProfileFigmaTokens
-                                        .highlightsToggleTopGap,
+                              if (profileUid.isNotEmpty)
+                                ProfileHighlightsExpandableSection(
+                                  expanded: _highlightsExpanded,
+                                  onToggle: () => setState(
+                                    () => _highlightsExpanded =
+                                        !_highlightsExpanded,
                                   ),
-                                  ProfileContentColumnAlign(
-                                    reserveTabAccessories: true,
-                                    alignWithFeedPill: true,
-                                    child: ProfileHighlightsToggleHandle(
-                                      expanded: false,
-                                      onTap: () => setState(
-                                        () => _highlightsExpanded = true,
-                                      ),
-                                    ),
+                                  highlights: _buildHighlightsSection(
+                                    context,
+                                    profileUid,
+                                    user,
                                   ),
-                                ] else ...[
-                                  const SizedBox(
-                                    height: ProfileFigmaTokens
-                                        .highlightsSectionTopGap,
-                                  ),
-                                  AnimatedSize(
-                                    duration:
-                                        const Duration(milliseconds: 240),
-                                    curve: Curves.easeInOut,
-                                    alignment: Alignment.topCenter,
-                                    child: _buildHighlightsSection(
-                                      context,
-                                      profileUid,
-                                      user,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: ProfileFigmaTokens
-                                        .highlightsToggleTopGap,
-                                  ),
-                                  ProfileContentColumnAlign(
-                                    reserveTabAccessories: true,
-                                    alignWithFeedPill: true,
-                                    child: ProfileHighlightsToggleHandle(
-                                      expanded: true,
-                                      onTap: () => setState(
-                                        () => _highlightsExpanded = false,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ] else
+                                )
+                              else
                                 const SizedBox(height: 8),
                             ],
                           ),
@@ -836,7 +741,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           top: ProfileFigmaTokens.profileSideRailTop,
           child: ProfileSideDrawer(
             onWalletTap: () => _openWalletFromRail(context),
-            onChatTap: _openChatFromRail,
+            onChatTap: () => _openChatFromRail(context),
             onRevenueTap: () => _openRevenueFromRail(context),
           ),
         ),

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 class OrganizationDetailsScreen extends StatefulWidget {
@@ -227,26 +226,10 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  height: 52,
-                  child: ElevatedButton(
-                    onPressed: _saving ? null : _onContinue,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.buttonBackground,
-                      foregroundColor: AppTheme.buttonTextColor,
-                    ),
-                    child: _saving
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : Text(
-                            _step == 1 ? 'Next' : 'Continue',
-                            style: TextStyle(fontWeight: FontWeight.w600),
-                          ),
-                  ),
+                AuthPillButton(
+                  label: _step == 1 ? 'Next' : 'Continue',
+                  onPressed: _saving ? null : _onContinue,
+                  isLoading: _saving,
                 ),
                 if (_step == 2) ...[
                   const SizedBox(height: 10),

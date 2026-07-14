@@ -23,6 +23,12 @@ Future<void> showProfileMoreDrawer(
   VoidCallback? onRevenue,
   VoidCallback? onMusicLibrary,
 }) {
+  final screenWidth = MediaQuery.sizeOf(context).width;
+  final drawerWidth = math.min(
+    ProfileFigmaTokens.profileMoreDrawerWidth,
+    screenWidth,
+  );
+
   return showGeneralDialog<void>(
     context: context,
     barrierDismissible: true,
@@ -30,52 +36,60 @@ Future<void> showProfileMoreDrawer(
     barrierColor: Colors.black.withValues(alpha: 0.35),
     transitionDuration: ProfileFigmaTokens.profileMoreDrawerAnimation,
     pageBuilder: (dialogContext, animation, secondaryAnimation) {
-      return Align(
-        alignment: Alignment.centerRight,
-        child: ProfileMoreDrawer(
-          onVyrooAi: () {
-            Navigator.pop(dialogContext);
-            onVyrooAi();
-          },
-          onMarketplace: () {
-            Navigator.pop(dialogContext);
-            onMarketplace();
-          },
-          onWallet: () {
-            Navigator.pop(dialogContext);
-            onWallet();
-          },
-          onVyoooCoin: () {
-            Navigator.pop(dialogContext);
-            onVyoooCoin();
-          },
-          onRevenue: onRevenue,
-          onOrders: () {
-            Navigator.pop(dialogContext);
-            onOrders();
-          },
-          onSettings: () {
-            Navigator.pop(dialogContext);
-            onSettings();
-          },
-          onMusicLibrary: onMusicLibrary,
-          onUploadStreamVideos: () {
-            Navigator.pop(dialogContext);
-            onUploadStreamVideos();
-          },
-          onSwitchAccounts: () {
-            Navigator.pop(dialogContext);
-            onSwitchAccounts();
-          },
-          onPrivacy: () {
-            Navigator.pop(dialogContext);
-            onPrivacy();
-          },
-          onLogout: () {
-            Navigator.pop(dialogContext);
-            onLogout();
-          },
-        ),
+      return Stack(
+        children: [
+          Positioned(
+            right: 0,
+            top: 0,
+            bottom: 0,
+            width: drawerWidth,
+            child: ProfileMoreDrawer(
+              drawerWidth: drawerWidth,
+              onVyrooAi: () {
+                Navigator.pop(dialogContext);
+                onVyrooAi();
+              },
+              onMarketplace: () {
+                Navigator.pop(dialogContext);
+                onMarketplace();
+              },
+              onWallet: () {
+                Navigator.pop(dialogContext);
+                onWallet();
+              },
+              onVyoooCoin: () {
+                Navigator.pop(dialogContext);
+                onVyoooCoin();
+              },
+              onRevenue: onRevenue,
+              onOrders: () {
+                Navigator.pop(dialogContext);
+                onOrders();
+              },
+              onSettings: () {
+                Navigator.pop(dialogContext);
+                onSettings();
+              },
+              onMusicLibrary: onMusicLibrary,
+              onUploadStreamVideos: () {
+                Navigator.pop(dialogContext);
+                onUploadStreamVideos();
+              },
+              onSwitchAccounts: () {
+                Navigator.pop(dialogContext);
+                onSwitchAccounts();
+              },
+              onPrivacy: () {
+                Navigator.pop(dialogContext);
+                onPrivacy();
+              },
+              onLogout: () {
+                Navigator.pop(dialogContext);
+                onLogout();
+              },
+            ),
+          ),
+        ],
       );
     },
     transitionBuilder: (context, animation, _, child) {
@@ -107,6 +121,7 @@ typedef _MoreDrawerTapRow = ({
 class ProfileMoreDrawer extends StatelessWidget {
   const ProfileMoreDrawer({
     super.key,
+    required this.drawerWidth,
     required this.onVyrooAi,
     required this.onMarketplace,
     required this.onWallet,
@@ -120,6 +135,9 @@ class ProfileMoreDrawer extends StatelessWidget {
     required this.onPrivacy,
     required this.onLogout,
   });
+
+  /// Full drawer shell width — never shrunk for height fitting.
+  final double drawerWidth;
 
   final VoidCallback onVyrooAi;
   final VoidCallback onMarketplace;
@@ -141,7 +159,6 @@ class ProfileMoreDrawer extends StatelessWidget {
   static const _contentWidth = ProfileFigmaTokens.profileMoreDrawerContentWidth;
 
   List<_MoreDrawerTapRow> get _tapRows => [
-        // Assets (Figma card x=15, y=76)
         (
           top: 76,
           height: 52,
@@ -170,7 +187,6 @@ class ProfileMoreDrawer extends StatelessWidget {
           width: _contentWidth,
           onTap: onRevenue ?? onWallet,
         ),
-        // Creator tools (Figma card y=350)
         if (onMusicLibrary != null)
           (
             top: 350,
@@ -186,7 +202,6 @@ class ProfileMoreDrawer extends StatelessWidget {
           width: _contentWidth,
           onTap: onUploadStreamVideos,
         ),
-        // Management (Figma card y=520)
         (
           top: 520,
           height: 52,
@@ -208,11 +223,11 @@ class ProfileMoreDrawer extends StatelessWidget {
           width: _contentWidth,
           onTap: onPrivacy,
         ),
-        // Logout (Figma x=16.5, y=683.5)
         (
           top: 683.5,
           height: 57,
-          horizontalInset: ProfileFigmaTokens.profileMoreDrawerLogoutHorizontalInset,
+          horizontalInset:
+              ProfileFigmaTokens.profileMoreDrawerLogoutHorizontalInset,
           width: ProfileFigmaTokens.profileMoreDrawerLogoutWidth,
           onTap: onLogout,
         ),
@@ -220,10 +235,33 @@ class ProfileMoreDrawer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.sizeOf(context).width;
-    final drawerWidth = math.min(_designWidth, screenWidth);
-    final panelHeight = drawerWidth * (_designHeight / _designWidth);
+    // Width stays at Figma proportion — only height may overflow → scroll.
     final scale = drawerWidth / _designWidth;
+    final panelHeight = _designHeight * scale;
+
+    final panel = SizedBox(
+      width: drawerWidth,
+      height: panelHeight,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          Positioned.fill(
+            child: SvgPicture.asset(
+              ProfileAssets.profileMoreDrawerPanel,
+              fit: BoxFit.fill,
+            ),
+          ),
+          for (final row in _tapRows)
+            Positioned(
+              top: row.top * scale,
+              left: row.horizontalInset * scale,
+              width: (row.width ?? _contentWidth) * scale,
+              height: row.height * scale,
+              child: _ProfileMoreDrawerTapTarget(onTap: row.onTap),
+            ),
+        ],
+      ),
+    );
 
     return Material(
       color: Colors.white,
@@ -233,31 +271,19 @@ class ProfileMoreDrawer extends StatelessWidget {
         child: SafeArea(
           left: false,
           right: false,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.only(bottom: AppSpacing.md),
-            child: SizedBox(
-              width: drawerWidth,
-              height: panelHeight,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  SvgPicture.asset(
-                    ProfileAssets.profileMoreDrawerPanel,
-                    width: drawerWidth,
-                    height: panelHeight,
-                    fit: BoxFit.fill,
-                  ),
-                  for (final row in _tapRows)
-                    Positioned(
-                      top: row.top * scale,
-                      left: row.horizontalInset * scale,
-                      width: (row.width ?? _contentWidth) * scale,
-                      height: row.height * scale,
-                      child: _ProfileMoreDrawerTapTarget(onTap: row.onTap),
-                    ),
-                ],
-              ),
-            ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final needsScroll =
+                  panelHeight > constraints.maxHeight + 0.5;
+              if (!needsScroll) {
+                return panel;
+              }
+              return SingleChildScrollView(
+                physics: const ClampingScrollPhysics(),
+                padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                child: panel,
+              );
+            },
           ),
         ),
       ),

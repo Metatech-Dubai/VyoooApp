@@ -97,59 +97,36 @@ class AppBottomNavigation extends StatelessWidget {
   static const Color _navBarFill = BottomNavFigmaTokens.pillFill;
   static const Color _splashColor = Color(0x33750047);
 
-  static const double _tapTargetSize = AppSizes.bottomNavTapTarget;
+  static const double _tapTargetWidth = BottomNavFigmaTokens.tabSlotWidth;
+  static const double _tapTargetHeight = BottomNavFigmaTokens.tabSlotHeight;
 
-  Widget _buildProfileIcon(bool isSelected) {
-    final hasProfileImage =
-        profileImageUrl != null && profileImageUrl!.trim().isNotEmpty;
-    if (!hasProfileImage) {
-      return _NavIconImage(
-        assetPath: isSelected
-            ? BottomNavAssets.profileSelected
-            : BottomNavAssets.profileUnselected,
-        size: AppSizes.bottomNavProfileIcon,
-      );
-    }
-
-    final avatar = ClipOval(
-      child: Image.network(
-        profileImageUrl!,
-        fit: BoxFit.cover,
-        width: AppSizes.bottomNavProfileIcon,
-        height: AppSizes.bottomNavProfileIcon,
-        errorBuilder: (_, error, stackTrace) => Image.asset(
-          BottomNavAssets.profileDefault,
-          fit: BoxFit.cover,
-          width: AppSizes.bottomNavProfileIcon,
-          height: AppSizes.bottomNavProfileIcon,
-          errorBuilder: (_, error1, stack1) => Icon(
-            Icons.person_rounded,
-            size: AppSizes.bottomNavProfileIcon * 0.7,
-            color: _iconColor,
-          ),
-        ),
-      ),
+  Widget _buildProfileIcon() {
+    return _BottomNavProfileAvatar(
+      size: BottomNavFigmaTokens.profileAvatarSize,
+      imageUrl: profileImageUrl,
+      fallbackIconColor: _iconColor,
+      isSelected: currentIndex == 4,
     );
-
-    return avatar;
   }
 
   Widget _buildNavTap({
     required VoidCallback onPressed,
     required Widget child,
-    double? tapTargetSize,
+    double? tapTargetWidth,
+    double? tapTargetHeight,
   }) {
-    final targetSize = tapTargetSize ?? _tapTargetSize;
+    final targetWidth = tapTargetWidth ?? _tapTargetWidth;
+    final targetHeight = tapTargetHeight ?? _tapTargetHeight;
     return SizedBox(
-      width: targetSize,
-      height: targetSize,
+      width: targetWidth,
+      height: targetHeight,
       child: Material(
         color: Colors.transparent,
         child: InkResponse(
           onTap: onPressed,
           containedInkWell: true,
-          highlightShape: BoxShape.circle,
-          radius: targetSize / 2,
+          highlightShape: BoxShape.rectangle,
+          radius: targetWidth / 2,
           splashColor: _splashColor,
           highlightColor: _splashColor.withValues(alpha: 0.5),
           child: Center(child: child),
@@ -163,8 +140,8 @@ class AppBottomNavigation extends StatelessWidget {
     final showBadge = count > 0;
     final label = count > 99 ? '99+' : '$count';
     return SizedBox(
-      width: AppSizes.bottomNavIconSlot,
-      height: AppSizes.bottomNavIconSlot,
+      width: isSelected ? 24 : 20,
+      height: isSelected ? 24 : 20,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
@@ -256,6 +233,26 @@ class AppBottomNavigation extends StatelessWidget {
         boxShadow: BottomNavFigmaTokens.pillShadow,
       );
 
+  BoxDecoration get _pillInsetStrokeDecoration => BoxDecoration(
+        borderRadius: BorderRadius.circular(BottomNavFigmaTokens.pillInnerRadius),
+        border: Border.all(
+          color: BottomNavFigmaTokens.pillStrokeColor.withValues(
+            alpha: BottomNavFigmaTokens.pillStrokeOpacity,
+          ),
+          width: 1,
+        ),
+      );
+
+  Widget _buildPill({required Widget child}) {
+    return DecoratedBox(
+      decoration: _pillDecoration,
+      child: DecoratedBox(
+        decoration: _pillInsetStrokeDecoration,
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildCreateMenuStack() {
     final onAction = onCreateAction;
     if (onAction == null || createMenuProgress <= 0) {
@@ -273,13 +270,11 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
-  Widget _buildNavRow() {
-    final createOpen = isCreateMenuOpen;
+  Widget _buildIconGroup({required bool createOpen}) {
     return SizedBox(
-      height: barHeight,
+      width: BottomNavFigmaTokens.iconGroupWidth,
+      height: BottomNavFigmaTokens.iconGroupHeight,
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
           _NavItem(
             unselectedAsset: BottomNavAssets.homeUnselected,
@@ -290,16 +285,19 @@ class AppBottomNavigation extends StatelessWidget {
             iconWidth: currentIndex == 0 ? 28 : 24,
             iconHeight: currentIndex == 0 ? 28 : 24,
           ),
+          const SizedBox(width: BottomNavFigmaTokens.tabGap),
           _NavItem(
             unselectedAsset: BottomNavAssets.broadcastUnselected,
             selectedAsset: BottomNavAssets.broadcastSelected,
             isSelected: currentIndex == 1,
             onTap: () => onTap(1),
             buildTap: _buildNavTap,
-            iconWidth: 32,
+            iconWidth: 27,
             iconHeight: 27,
+            iconOffsetX: BottomNavFigmaTokens.broadcastIconOpticalOffsetX,
             iconOffsetY: BottomNavFigmaTokens.broadcastIconOpticalOffsetY,
           ),
+          const SizedBox(width: BottomNavFigmaTokens.tabGap),
           _NavItem(
             unselectedAsset: BottomNavAssets.addUnselected,
             selectedAsset: BottomNavAssets.addSelected,
@@ -309,18 +307,44 @@ class AppBottomNavigation extends StatelessWidget {
             iconWidth: createOpen ? 30 : 20,
             iconHeight: createOpen ? 30 : 20,
           ),
+          const SizedBox(width: BottomNavFigmaTokens.tabGap),
           _NavItem(
             isSelected: currentIndex == 3,
             onTap: () => onTap(3),
             buildTap: _buildNavTap,
             customChild: _buildChatIcon(currentIndex == 3),
           ),
-          _buildNavTap(
-            onPressed: () => onTap(4),
-            tapTargetSize: AppSizes.bottomNavProfileIcon,
-            child: _buildProfileIcon(currentIndex == 4),
-          ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildNavRow() {
+    final createOpen = isCreateMenuOpen;
+    return SizedBox(
+      height: barHeight,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: BottomNavFigmaTokens.pillContentVerticalInset,
+        ),
+        child: SizedBox(
+          height: BottomNavFigmaTokens.navRowContentHeight,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const SizedBox(width: BottomNavFigmaTokens.pillContentLeftInset),
+              _buildIconGroup(createOpen: createOpen),
+              const Spacer(),
+              _buildNavTap(
+                onPressed: () => onTap(4),
+                tapTargetWidth: BottomNavFigmaTokens.profileAvatarSize,
+                tapTargetHeight: BottomNavFigmaTokens.profileAvatarSize,
+                child: _buildProfileIcon(),
+              ),
+              const SizedBox(width: BottomNavFigmaTokens.pillContentRightInset),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -340,10 +364,7 @@ class AppBottomNavigation extends StatelessWidget {
             _horizontalMargin,
             bottomInset,
           ),
-          child: DecoratedBox(
-            decoration: _pillDecoration,
-            child: _buildNavRow(),
-          ),
+          child: _buildPill(child: _buildNavRow()),
         ),
       ],
     );
@@ -535,10 +556,7 @@ class AppBottomNavigation extends StatelessWidget {
                       _horizontalMargin,
                       bottomInset,
                     ),
-                    child: DecoratedBox(
-                      decoration: _pillDecoration,
-                      child: _buildNavRow(),
-                    ),
+                    child: _buildPill(child: _buildNavRow()),
                   ),
                 ],
               ),
@@ -566,7 +584,8 @@ class AppBottomNavigation extends StatelessWidget {
 typedef _NavTapBuilder = Widget Function({
   required VoidCallback onPressed,
   required Widget child,
-  double? tapTargetSize,
+  double? tapTargetWidth,
+  double? tapTargetHeight,
 });
 
 class _NavItem extends StatelessWidget {
@@ -579,6 +598,7 @@ class _NavItem extends StatelessWidget {
     this.customChild,
     this.iconWidth = AppSizes.bottomNavIconSlot,
     this.iconHeight = AppSizes.bottomNavIconSlot,
+    this.iconOffsetX = 0,
     this.iconOffsetY = 0,
   });
 
@@ -590,6 +610,7 @@ class _NavItem extends StatelessWidget {
   final Widget? customChild;
   final double iconWidth;
   final double iconHeight;
+  final double iconOffsetX;
   final double iconOffsetY;
 
   @override
@@ -599,6 +620,7 @@ class _NavItem extends StatelessWidget {
           assetPath: isSelected ? selectedAsset! : unselectedAsset!,
           width: iconWidth,
           height: iconHeight,
+          offsetX: iconOffsetX,
           offsetY: iconOffsetY,
         );
 
@@ -609,65 +631,128 @@ class _NavItem extends StatelessWidget {
   }
 }
 
-class _NavIconImage extends StatelessWidget {
-  const _NavIconImage({
-    required this.assetPath,
-    this.size = AppSizes.bottomNavIconSlot,
-  });
-
-  final String assetPath;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: AppSizes.bottomNavIconSlot,
-      height: AppSizes.bottomNavIconSlot,
-      child: Center(
-        child: Image.asset(
-          assetPath,
-          width: size,
-          height: size,
-          fit: BoxFit.contain,
-          filterQuality: FilterQuality.high,
-        ),
-      ),
-    );
-  }
-}
-
 class _NavSvgIcon extends StatelessWidget {
   const _NavSvgIcon({
     required this.assetPath,
     this.width = AppSizes.bottomNavIconSlot,
     this.height = AppSizes.bottomNavIconSlot,
+    this.offsetX = 0,
     this.offsetY = 0,
   });
 
   final String assetPath;
   final double width;
   final double height;
+  final double offsetX;
   final double offsetY;
 
   @override
   Widget build(BuildContext context) {
-    final slot = AppSizes.bottomNavIconSlot;
-    return SizedBox(
-      width: slot,
-      height: slot,
+    return Transform.translate(
+      offset: Offset(offsetX, offsetY),
+      child: SizedBox(
+        width: width,
+        height: height,
+        child: SvgPicture.asset(
+          assetPath,
+          fit: BoxFit.contain,
+          alignment: Alignment.center,
+        ),
+      ),
+    );
+  }
+}
+
+/// Figma profile tab — 56×56 circle; layout size never changes when photo loads.
+class _BottomNavProfileAvatar extends StatelessWidget {
+  const _BottomNavProfileAvatar({
+    required this.size,
+    required this.imageUrl,
+    required this.fallbackIconColor,
+    required this.isSelected,
+  });
+
+  final double size;
+  final String? imageUrl;
+  final Color fallbackIconColor;
+  final bool isSelected;
+
+  String? get _resolvedImageUrl {
+    final url = imageUrl?.trim();
+    if (url == null || url.isEmpty) return null;
+    return url;
+  }
+
+  Widget _buildFallback() {
+    return DecoratedBox(
+      decoration: const BoxDecoration(
+        shape: BoxShape.circle,
+        color: BottomNavFigmaTokens.createMenuIconCircleFill,
+      ),
       child: Center(
-        child: Transform.translate(
-          offset: Offset(0, offsetY),
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: SvgPicture.asset(
-              assetPath,
-              fit: BoxFit.contain,
-              alignment: Alignment.center,
-            ),
+        child: Icon(
+          Icons.person_rounded,
+          size: size * 0.45,
+          color: fallbackIconColor,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBorderRing() {
+    return IgnorePointer(
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: BottomNavFigmaTokens.profileAvatarBorderColor,
+            width: BottomNavFigmaTokens.profileAvatarBorderWidth,
           ),
         ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final resolvedUrl = _resolvedImageUrl;
+    final devicePixelRatio = MediaQuery.devicePixelRatioOf(context);
+    final cacheSize = (size * devicePixelRatio).round();
+
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _buildFallback(),
+          if (resolvedUrl != null)
+            ClipOval(
+              child: Image.network(
+                resolvedUrl,
+                fit: BoxFit.cover,
+                width: size,
+                height: size,
+                cacheWidth: cacheSize,
+                cacheHeight: cacheSize,
+                alignment: Alignment(
+                  0,
+                  BottomNavFigmaTokens.profilePhotoVerticalBias,
+                ),
+                gaplessPlayback: true,
+                filterQuality: FilterQuality.medium,
+                errorBuilder: (_, error, stackTrace) =>
+                    const SizedBox.shrink(),
+                frameBuilder: (context, child, frame, wasSynchronouslyLoaded) {
+                  if (frame == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return child;
+                },
+              ),
+            ),
+          if (isSelected) _buildBorderRing(),
+        ],
       ),
     );
   }

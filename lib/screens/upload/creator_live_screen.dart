@@ -2,11 +2,13 @@ import 'dart:async';
 import 'dart:io' show Platform;
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
 
 import '../../core/config/agora_config.dart';
@@ -14,10 +16,12 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/live_stream_assets.dart';
 import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
+import '../../core/models/video_360_metadata.dart';
 import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
 import '../../core/services/notification_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/utils/live_360_meta_log.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_sizes.dart';
@@ -36,6 +40,8 @@ import 'widgets/upload_create_bottom_bar.dart';
 // ── State enum ─────────────────────────────────────────────────────────────────
 
 enum _LiveState { initializing, permissionDenied, offline, countdown, live }
+
+const _kCreatorLive360PrefKey = 'creator_live_is360_default';
 
 /// iOS needs extra time after removing [AgoraVideoView] before creating a new one.
 const Duration _kIosPlatformViewSettleDelay = Duration(milliseconds: 400);
@@ -126,6 +132,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
   String _streamTitle = '';
   String _streamDescription = '';
   String _streamCategory = '';
+  bool _is360Live = false;
   List<String> _streamTags = [];
   int _streamPrice = 0;
 
@@ -435,12 +442,16 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     }
     if (!mounted) return;
 
+    final prefs = await SharedPreferences.getInstance();
+    final saved360 = prefs.getBool(_kCreatorLive360PrefKey) ?? false;
+
     final granted = await _requestPermissions();
     if (!mounted) return;
     if (!granted) {
       setState(() => _liveState = _LiveState.permissionDenied);
       return;
     }
+    setState(() => _is360Live = saved360);
     await _initAgora();
   }
 
@@ -614,8 +625,30 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
         category: _streamCategory,
         tags: _streamTags,
         pricePerMinute: _streamPrice,
+        is360Live: _is360Live,
+        projectionType: _is360Live
+            ? Video360Projection.equirectangular
+            : Video360Projection.flat,
       );
       _streamId = streamId;
+
+      Live360MetaLog.log(
+        source: 'host_go_live_create',
+        stream: LiveStreamModel(
+          id: streamId,
+          hostId: user.uid,
+          hostUsername: username,
+          hostProfileImage: profileImage,
+          title: _streamTitle.isEmpty ? 'Live Stream' : _streamTitle,
+          status: LiveStreamStatus.live,
+          agoraChannelName: streamId,
+          createdAt: Timestamp.now(),
+          is360Live: _is360Live,
+          projectionType: _is360Live
+              ? Video360Projection.equirectangular
+              : Video360Projection.flat,
+        ),
+      );
 
       // Fetch a signed token from the Cloud Function
       final token = await _tokenService.getToken(
@@ -641,7 +674,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
 
       // Subscribe to real-time updates
       _streamSub = _liveService.streamDoc(streamId).listen((doc) {
-        if (mounted && doc != null) setState(() => _streamDoc = doc);
+        if (mounted && doc != null) {
+          Live360MetaLog.log(
+            source: 'host_firestore_stream_doc',
+            stream: doc,
+          );
+          setState(() => _streamDoc = doc);
+        }
       });
       _chatSub = _liveService.chatMessages(streamId).listen((msgs) {
         if (!mounted) return;
@@ -778,6 +817,50 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     widget.onOverlayRouteChanged?.call(open);
   }
 
+  Future<void> _set360LiveEnabled(bool enabled) async {
+    if (_is360Live == enabled) return;
+    setState(() => _is360Live = enabled);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_kCreatorLive360PrefKey, enabled);
+    if (_streamDoc != null) {
+      Live360MetaLog.log(
+        source: 'host_toggle_360',
+        stream: _streamDoc!.copyWith(
+          is360Live: enabled,
+          projectionType: enabled
+              ? Video360Projection.equirectangular
+              : Video360Projection.flat,
+        ),
+      );
+    } else if (_streamId != null) {
+      Live360MetaLog.log(
+        source: 'host_toggle_360_pre_live',
+        stream: LiveStreamModel(
+          id: _streamId!,
+          hostId: FirebaseAuth.instance.currentUser?.uid ?? '',
+          hostUsername: 'Host',
+          title: _streamTitle.isEmpty ? 'Live Stream' : _streamTitle,
+          status: LiveStreamStatus.live,
+          agoraChannelName: _streamId!,
+          createdAt: Timestamp.now(),
+          is360Live: enabled,
+          projectionType: enabled
+              ? Video360Projection.equirectangular
+              : Video360Projection.flat,
+        ),
+      );
+    }
+    if (_liveState == _LiveState.live && _streamId != null) {
+      await _liveService.updateStreamMetadata(
+        streamId: _streamId!,
+        is360Live: enabled,
+        projectionType: enabled
+            ? Video360Projection.equirectangular
+            : Video360Projection.flat,
+      );
+    }
+  }
+
   Future<void> _applySettingsResult(_LiveSettingsResult result) async {
     if (!mounted) return;
     setState(() {
@@ -787,6 +870,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
       _streamTags = result.tags;
       _streamPrice = result.price;
     });
+    await _set360LiveEnabled(result.is360Live);
     if (_liveState == _LiveState.live && _streamId != null) {
       await _liveService.updateStreamMetadata(
         streamId: _streamId!,
@@ -808,6 +892,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
             initialCategory: _streamCategory,
             initialTags: _streamTags,
             initialPrice: _streamPrice,
+            initialIs360Live: _is360Live,
             isLive: _liveState == _LiveState.live,
           ),
         ),
@@ -1157,6 +1242,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                     ),
                   ),
                 const SizedBox(height: 8),
+                _build360QuickToggle(),
+                const SizedBox(height: 8),
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 48,
@@ -1274,6 +1361,13 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     return SafeArea(
       child: Stack(
         children: [
+          if (_is360Live)
+            Positioned(
+              top: _shellLogoBarTopInset + 8,
+              left: 0,
+              right: 0,
+              child: Center(child: _build360HostBadge()),
+            ),
           Positioned(
             top: _shellLogoBarTopInset + 88,
             right: 12,
@@ -1452,20 +1546,14 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                         m.username,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption.copyWith(
-                          color: Colors.white.withValues(alpha: 0.55),
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: AppTypography.liveChatUsername,
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: AppSizes.liveChatUsernameMessageGap),
                       Text(
                         m.message,
                         maxLines: 3,
                         overflow: TextOverflow.ellipsis,
-                        style: AppTypography.caption.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w400,
-                        ),
+                        style: AppTypography.liveChatMessage,
                       ),
                     ],
                   ),
@@ -1620,6 +1708,74 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
     if (n >= 1000000) return '${(n / 1000000).toStringAsFixed(1)}M';
     if (n >= 1000) return '${(n / 1000).toStringAsFixed(1)}k';
     return '$n';
+  }
+
+  Widget _build360QuickToggle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28),
+      child: Material(
+        color: Colors.black.withValues(alpha: 0.42),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+        child: SwitchListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.sm,
+            vertical: AppSpacing.xs,
+          ),
+          value: _is360Live,
+          activeTrackColor: AppColors.brandMagenta.withValues(alpha: 0.45),
+          activeThumbColor: AppColors.brandMagenta,
+          onChanged: (value) => unawaited(_set360LiveEnabled(value)),
+          title: Text(
+            '360° immersive live',
+            style: AppTypography.feedReelHandle.copyWith(
+              color: Colors.white,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          subtitle: Text(
+            'Turn on before going live with a 360° camera (Insta360, etc.)',
+            style: AppTypography.feedReelHandle.copyWith(
+              color: Colors.white.withValues(alpha: 0.55),
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _build360HostBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.sm,
+        vertical: AppSpacing.xs,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.sensors_rounded,
+            color: Color(0xFF00E5A0),
+            size: 16,
+          ),
+          const SizedBox(width: AppSpacing.xs),
+          Text(
+            '360° Live — viewers can look around',
+            style: AppTypography.feedReelHandle.copyWith(
+              color: Colors.white,
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1912,6 +2068,7 @@ class _LiveSettingsResult {
     required this.category,
     required this.tags,
     required this.price,
+    required this.is360Live,
   });
 
   final String title;
@@ -1919,6 +2076,7 @@ class _LiveSettingsResult {
   final String category;
   final List<String> tags;
   final int price;
+  final bool is360Live;
 }
 
 class _LiveSettingsSheet extends StatefulWidget {
@@ -1928,6 +2086,7 @@ class _LiveSettingsSheet extends StatefulWidget {
     required this.initialCategory,
     required this.initialTags,
     required this.initialPrice,
+    required this.initialIs360Live,
     required this.isLive,
   });
 
@@ -1936,6 +2095,7 @@ class _LiveSettingsSheet extends StatefulWidget {
   final String initialCategory;
   final List<String> initialTags;
   final int initialPrice;
+  final bool initialIs360Live;
   final bool isLive;
 
   @override
@@ -1953,6 +2113,7 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
   late String _selectedCategory;
   late List<String> _tags;
   late double _priceLevel;
+  late bool _is360Live;
 
   static const _categories = [
     'Entertainment',
@@ -1975,6 +2136,7 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
     _selectedCategory = widget.initialCategory;
     _tags = List.from(widget.initialTags);
     _priceLevel = widget.initialPrice.toDouble().clamp(0, 7);
+    _is360Live = widget.initialIs360Live;
   }
 
   @override
@@ -1993,6 +2155,7 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
         category: _selectedCategory,
         tags: List<String>.from(_tags),
         price: _priceLevel.round(),
+        is360Live: _is360Live,
       ),
     );
   }
@@ -2079,6 +2242,8 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
                     _buildCategoryDropdown(),
                     const SizedBox(height: 24),
                     _buildTagsField(),
+                    const SizedBox(height: 24),
+                    _build360LiveToggle(),
                     // Pricing only editable pre-live
                     if (!widget.isLive) ...[
                       const SizedBox(height: 24),
@@ -2299,6 +2464,42 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
             }).toList(),
           ),
         ],
+      ],
+    );
+  }
+
+  Widget _build360LiveToggle() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Text(
+                '360° immersive live',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            Switch.adaptive(
+              value: _is360Live,
+              activeTrackColor: AppColors.brandMagenta.withValues(alpha: 0.45),
+              activeThumbColor: AppColors.brandMagenta,
+              onChanged: (value) => setState(() => _is360Live = value),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Enable when broadcasting from a 360° camera (Insta360, etc.) so viewers can look around the full sphere.',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.45),
+            fontSize: 11,
+          ),
+        ),
       ],
     );
   }

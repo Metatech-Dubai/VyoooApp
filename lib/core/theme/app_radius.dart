@@ -11,6 +11,9 @@ abstract final class AppRadius {
   /// Auth Phone/Email segmented control outer track (Figma rx 27).
   static const double authToggle = 27;
 
+  /// Auth / onboarding CTA pill corner radius (Figma rx 24 on 48px height).
+  static const double authPillButton = 24;
+
   /// Verify-code OTP digit box (Figma rx 9.67742 on 50px width).
   static const double authOtpBox = 9.67742;
   static const double button = 30;
@@ -19,8 +22,8 @@ abstract final class AppRadius {
   /// Home feed nav chips — rounded rect (Figma rx 9 on 29px height).
   static const double feedTab = 9;
 
-  /// Reel overlay "+ Follow" pill — stadium cap (Figma rx 12 on 24px height).
-  static const double feedReelFollowButton = 12;
+  /// Reel overlay "+ Follow" pill (Figma rx 20 on 24px height).
+  static const double feedReelFollowButton = 20;
 
   /// Reel playback control pill — pause + speaker (Figma rx 25 on 50px height).
   static const double feedReelPlaybackControlPill = 25;
@@ -50,6 +53,8 @@ abstract final class AppRadius {
       BorderRadius.circular(feedReelFollowButton);
   static BorderRadius get feedReelPlaybackControlPillRadius =>
       BorderRadius.circular(feedReelPlaybackControlPill);
+  static BorderRadius get authPillButtonRadius =>
+      BorderRadius.circular(authPillButton);
   static BorderRadius get authOtpBoxRadius =>
       BorderRadius.circular(authOtpBox);
 

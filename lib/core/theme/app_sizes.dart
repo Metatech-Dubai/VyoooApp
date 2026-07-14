@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 abstract final class AppSizes {
   // — Controls (typography → [AppTypography]) —
   static const double buttonHeight = 56;
+
+  /// Auth / onboarding CTA pill height (Figma 48).
+  static const double authPillButtonHeight = 48;
   /// Auth Phone/Email pill track (Figma 60×342, rx 27).
   static const double authToggleHeight = 60;
 
@@ -172,6 +175,10 @@ abstract final class AppSizes {
   /// Plus glyph inside reel follow pill (Figma ~6px).
   static const double feedReelFollowPlusIcon = 10;
 
+  /// Reel music row note icon (Figma 11×12).
+  static const double feedReelMusicIconWidth = 11;
+  static const double feedReelMusicIconHeight = 12;
+
   /// Following tab — story avatar diameter (Figma).
   static const double followingStoryAvatarSize = 68;
   static const double followingStoryBorderWidth = 3;
@@ -228,10 +235,10 @@ abstract final class AppSizes {
   /// Tab icon render size inside the tap target / selected pill.
   static const double bottomNavIcon = bottomNavIconSlot;
 
-  /// Profile tab — avatar / placeholder larger than other tab icons.
-  static const double bottomNavProfileIcon = 50;
-  static const double bottomNavTapTarget = 45;
-  static const double bottomNavBarHeight = 60;
+  /// Profile tab avatar (Figma 56×56 circle, 2px stroke).
+  static const double bottomNavProfileIcon = 56;
+  static const double bottomNavTapTarget = 48;
+  static const double bottomNavBarHeight = 64;
 
   // — Icons —
   static const double fieldIcon = 22;
@@ -402,4 +409,39 @@ abstract final class AppSizes {
 
   static double chatInboxScaleH(BuildContext context, double designPx) =>
       designPx * chatInboxHeightScale(context);
+
+  // — Post upload album picker (Figma 149×159 menu) —
+  static const double uploadAlbumPickerMenuWidth = 149;
+  static const double uploadAlbumPickerMenuHeight = 159;
+  static const double uploadAlbumPickerMenuRowHeight = 53;
+  static const double uploadAlbumPickerMenuRadius = 7.94667;
+  static const double uploadAlbumPickerMenuOffsetY = 4;
+  static const double uploadAlbumPickerChevron = 18;
+
+  // — Post upload chrome (Figma close / edit / next buttons) —
+  static const double uploadPostCloseButton = 22;
+  static const double uploadPostCloseHitTarget = 44;
+  static const double uploadEditMediaButtonWidth = 116;
+  static const double uploadEditMediaButtonHeight = 28;
+  static const double uploadNextPillButtonWidth = 70;
+  static const double uploadNextPillButtonHeight = 27;
+  static const double uploadDetailsUploadButtonWidth = 85;
+  static const double uploadDetailsUploadButtonHeight = 35;
+  static const double uploadMediaPreviewToolbarHeight = 40;
+
+  // — Edit media screen (Figma toolbar + scrubber) —
+  static const double uploadEditMediaToolbarWidth = 350;
+  static const double uploadEditMediaToolbarHeight = 52;
+  static const double uploadVideoScrubberBarWidth = 386;
+  static const double uploadVideoScrubberBarHeight = 22;
+
+  // — Upload music picker sheet (Figma) —
+  static const double musicPickerGrabHandleWidth = 46;
+  static const double musicPickerGrabHandleHeight = 3;
+  static const double musicPickerSearchFieldHeight = 34;
+  static const double musicPickerTabsBarHeight = 27;
+  static const double musicPickerAlbumArt = 58.59;
+  static const double musicPickerSearchFieldWidth = 349;
+  static const double musicPickerTabsBarWidth = 349;
+  static const double musicPickerTabPillWidth = 111.25;
 }

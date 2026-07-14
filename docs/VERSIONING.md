@@ -21,14 +21,16 @@ Flutter injects these into Android Gradle and iOS `Info.plist` (`FLUTTER_BUILD_N
 
 | Field | Value |
 |-------|--------|
-| Marketing version | **1.2.4** |
-| Build number | **50** |
-| `pubspec.yaml` | `1.2.4+50` |
+| Marketing version | **1.2.5** |
+| Build number | **52** |
+| `pubspec.yaml` | `1.2.5+52` |
 
 ## Release history
 
 | Marketing | Build | Date | Channels | Notes |
 |-----------|-------|------|----------|--------|
+| 1.2.5 | 52 | 2026-07-14 | App Store, Play Store | iOS 1.2.4 train closed; marketing bump + auth/onboarding UI |
+| 1.2.4 | 51 | 2026-07-14 | Play Store | Auth/onboarding Figma logo and black CTA pills (iOS blocked on 1.2.4 train) |
 | 1.2.4 | 50 | 2026-07-02 | App Store, Play Store | iOS 1.2.3 train closed; marketing bump + build |
 | 1.2.3 | 49 | 2026-07-02 | App Store, Play Store | Live stream scrub preview with frame-based replay |
 | 1.2.3 | 48 | 2026-06-24 | Play Store | Profile share icon sharpness fix (vector icon) |

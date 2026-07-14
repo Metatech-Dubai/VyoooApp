@@ -10,6 +10,15 @@ class AppColors {
   static const Color brandDeepMagenta = Color(0xFFDE106B);
   /// Reel overlay "+ Follow" pill + profile side drawer (Figma #660033).
   static const Color feedFollowButton = Color(0xFF660033);
+
+  /// Home reel "+ Follow" pill fill (Figma #1A1A1A).
+  static const Color feedReelFollowButtonFill = Color(0xFF1A1A1A);
+
+  /// Auth / onboarding primary CTA pill (Figma #1A1A1A).
+  static const Color authCtaButtonFill = feedReelFollowButtonFill;
+
+  /// Home reel "+ Follow" pill border (Figma #FFFFFF @ 20%).
+  static const Color feedReelFollowButtonBorder = Color(0x33FFFFFF);
   /// Light auth surfaces — wordmark and accent links (Figma #600030).
   static const Color authBrandBurgundy = Color(0xFF600030);
   /// Verify-code CTA + floating back (Figma #7B0A3F).
@@ -36,8 +45,8 @@ class AppColors {
   /// Profile tab bookmark / star icon default (Figma #808080).
   static const Color profileTabAccessoryIcon = Color(0xFF808080);
 
-  /// Reel music row ("note" layer) — DM Sans Regular 12 @ #808080.
-  static const Color feedReelNoteText = profileTabAccessoryIcon;
+  /// Reel music row label (Figma DM Sans Regular 12 @ #FFFFFF 80%).
+  static const Color feedReelNoteText = Color(0xCCFFFFFF);
 
   /// Profile side drawer — wallet / chat / revenue icons (Figma #EC709C @ 70%).
   static const Color profileDrawerSecondaryIcon = Color(0xB3EC709C);
@@ -54,14 +63,20 @@ class AppColors {
   static const Color feedReelPlaybackControlFill = Color(0xB3242323);
   /// Reel playback pill center divider (Figma #8D8C8C).
   static const Color feedReelPlaybackControlDivider = Color(0xFF8D8C8C);
-  /// Reel caption hashtags (Figma #FFB3CC).
-  static const Color feedReelHashtag = Color(0xFFFFB3CC);
+  /// Reel caption hashtags (Figma #B3B3B3).
+  static const Color feedReelHashtag = Color(0xFFB3B3B3);
 
   /// Bottom nav chrome behind the floating pill (Figma dark strip).
   static const Color feedBottomChrome = Color(0xFF0C0C0C);
 
-  /// Home reel progress bar track (Figma remaining segment on dark chrome).
-  static const Color feedReelProgressTrack = Color(0xFF333333);
+  /// Post-upload success toast on home feed (Figma dark translucent pill).
+  static const Color uploadPostSuccessToastBackground = Color(0xE63A3A3C);
+
+  /// Home reel progress bar played segment (Figma #FFFFFF).
+  static const Color feedReelProgressFill = Color(0xFFFFFFFF);
+
+  /// Home reel progress bar track (Figma remaining segment — white @ ~24%).
+  static const Color feedReelProgressTrack = Color(0x3DFFFFFF);
   static const Color brandPurple = Color(0xFF490038);
   static const Color brandDeepPurple = Color(0xFF21002B);
   static const Color brandNearBlack = Color(0xFF07010F);
@@ -101,6 +116,10 @@ class AppColors {
   static const Color liveCommentInputText = Color(0xFFEEEEEE);
   /// Live feed host caption — Figma #F0F0F0.
   static const Color liveFeedHostCaption = Color(0xFFF0F0F0);
+  /// Live stream chat username (Figma DM Sans Medium 12 @ #B3B3B3).
+  static const Color liveChatUsername = Color(0xFFB3B3B3);
+  /// Live stream chat message body (Figma DM Sans Regular 13 @ #FFFFFF).
+  static const Color liveChatMessage = Color(0xFFFFFFFF);
   /// Chat input placeholder — Figma #D9D9D9.
   static const Color chatInputHint = Color(0xFFD9D9D9);
   /// Chat input action icons — Figma #E6E6E6.
@@ -115,6 +134,8 @@ class AppColors {
   static const Color chatNoteNameText = Color(0xFF333333);
   /// Inbox Messages section header bottom border — Figma #000000 @ 6%.
   static const Color chatMessagesSectionBorder = Color(0x0F000000);
+  /// Post upload edit media pill — Figma #817E7E.
+  static const Color uploadEditMediaPill = Color(0xFF817E7E);
   /// Inbox section Requests title — Figma #007AFF.
   static const Color chatRequestsTitle = Color(0xFF007AFF);
   /// Inbox chat tile unread dot — Figma #EE116C.
