@@ -76,6 +76,8 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
   double _latitudeDelta = 0;
   double _longitudeDelta = 0;
   double _zoomDelta = 0;
+  double _lookOffsetLon = 0;
+  double _lookOffsetLat = 0;
 
   final Vector3 _fusedOrientation = Vector3(0, radians(90), 0);
   Vector3? _fusedOrientationBaseline;
@@ -109,18 +111,34 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
   }
 
   void _recalibrateGyro() {
-    _latitudeRad = 0;
-    _longitudeRad = 0;
     _latitudeDelta = 0;
     _longitudeDelta = 0;
     _zoomDelta = 0;
 
     if (widget.gyroEnabled && _motionTracker.isAvailable.value) {
+      final touchLat = _latitudeRad.clamp(
+        -math.pi / 2 + 0.05,
+        math.pi / 2 - 0.05,
+      );
+      final gyroSample = _motionTracker.sample.value;
+      _lookOffsetLon += _longitudeRad + gyroSample.yaw;
+      _lookOffsetLat += touchLat + gyroSample.pitch;
+
+      _latitudeRad = 0;
+      _longitudeRad = 0;
       _motionTracker.calibrate();
       _fusedOrientationBaseline = null;
     } else if (widget.gyroEnabled && _useFusedOrientation) {
+      // Keep touch pan — only rebaseline fused device orientation.
       _fusedOrientationBaseline = Vector3.copy(_fusedOrientation);
     } else {
+      _lookOffsetLon += _longitudeRad;
+      _lookOffsetLat += _latitudeRad.clamp(
+        -math.pi / 2 + 0.05,
+        math.pi / 2 - 0.05,
+      );
+      _latitudeRad = 0;
+      _longitudeRad = 0;
       _fusedOrientationBaseline = null;
     }
 
@@ -140,6 +158,8 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
       _snapshotFailures = 0;
       _motionTracker.reset();
       _fusedOrientationBaseline = null;
+      _lookOffsetLon = 0;
+      _lookOffsetLat = 0;
     }
     if (oldWidget.gyroEnabled != widget.gyroEnabled) {
       _syncSensors();
@@ -393,8 +413,10 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     if (widget.gyroEnabled && _motionTracker.isAvailable.value) {
       final gyroLon = _motionTracker.sample.value.yaw;
       final gyroLat = _motionTracker.sample.value.pitch;
-      q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon + gyroLon);
-      q = Quaternion.axisAngle(Vector3(1, 0, 0), -(touchLat + gyroLat)) * q;
+      final totalLon = touchLon + gyroLon + _lookOffsetLon;
+      final totalLat = touchLat + gyroLat + _lookOffsetLat;
+      q *= Quaternion.axisAngle(Vector3(0, 1, 0), totalLon);
+      q = Quaternion.axisAngle(Vector3(1, 0, 0), -totalLat) * q;
     } else if (widget.gyroEnabled && _useFusedOrientation) {
       final baseline = _fusedOrientationBaseline;
       final yaw = baseline == null
@@ -423,8 +445,10 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
       q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon);
       q = Quaternion.axisAngle(Vector3(1, 0, 0), -touchLat) * q;
     } else {
-      q *= Quaternion.axisAngle(Vector3(0, 1, 0), touchLon);
-      q = Quaternion.axisAngle(Vector3(1, 0, 0), -touchLat) * q;
+      final totalLon = touchLon + _lookOffsetLon;
+      final totalLat = touchLat + _lookOffsetLat;
+      q *= Quaternion.axisAngle(Vector3(0, 1, 0), totalLon);
+      q = Quaternion.axisAngle(Vector3(1, 0, 0), -totalLat) * q;
     }
 
     q.rotate(scene.camera.target..setFrom(Vector3(0, 0, -_radius)));
