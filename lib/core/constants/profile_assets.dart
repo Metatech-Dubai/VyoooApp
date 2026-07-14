@@ -47,6 +47,10 @@ abstract final class ProfileAssets {
   /// Legacy alias — prefer [profileTabHeartIcon].
   static const String profileTabStarIcon = profileTabHeartIcon;
 
+  /// Share + story pair next to Edit Profile (Figma 92×40).
+  static const String profileActionSecondaryPair =
+      'assets/vyooO_icons/Profile/profile_action_secondary_pair.svg';
+
   /// Share action next to Edit Profile (40×40 circle + glyph).
   static const String profileActionShare =
       'assets/vyooO_icons/Profile/profile_action_share.svg';

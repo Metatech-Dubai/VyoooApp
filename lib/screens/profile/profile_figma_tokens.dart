@@ -188,6 +188,9 @@ abstract final class ProfileFigmaTokens {
   static const FontWeight actionButtonFontWeight = FontWeight.w500;
   static const double actionIconButtonSize = 40;
   static const double actionIconSize = 22;
+  /// Story + share pair beside Edit Profile (Figma 92×40).
+  static const double profileSecondaryActionPairWidth = 92;
+  static const double profileSecondaryActionPairInnerGap = 12;
   /// Profile action row max width (Figma 338).
   static const double profileActionRowMaxWidth = 338;
   /// Circular share / story buttons (Figma #E9E8E7).

@@ -392,19 +392,89 @@ class ProfileFigmaIconActionButton extends StatelessWidget {
   }
 }
 
-/// Own-profile action row — Edit Profile | Share | Story+ (Figma 338×40).
+/// Figma 92×40 story + share pair beside Edit Profile.
+class ProfileFigmaSecondaryActionPair extends StatelessWidget {
+  const ProfileFigmaSecondaryActionPair({
+    super.key,
+    required this.onAddFriends,
+    required this.onShare,
+  });
+
+  final VoidCallback onAddFriends;
+  final VoidCallback onShare;
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonSize = ProfileFigmaTokens.actionIconButtonSize;
+    final pairWidth = ProfileFigmaTokens.profileSecondaryActionPairWidth;
+    final innerGap = ProfileFigmaTokens.profileSecondaryActionPairInnerGap;
+
+    return SizedBox(
+      width: pairWidth,
+      height: buttonSize,
+      child: Stack(
+        alignment: Alignment.centerLeft,
+        children: [
+          SvgPicture.asset(
+            ProfileAssets.profileActionSecondaryPair,
+            width: pairWidth,
+            height: buttonSize,
+            fit: BoxFit.fill,
+          ),
+          Row(
+            children: [
+              _ProfileSecondaryActionHitTarget(
+                size: buttonSize,
+                onTap: onAddFriends,
+              ),
+              SizedBox(width: innerGap),
+              _ProfileSecondaryActionHitTarget(
+                size: buttonSize,
+                onTap: onShare,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProfileSecondaryActionHitTarget extends StatelessWidget {
+  const _ProfileSecondaryActionHitTarget({
+    required this.size,
+    required this.onTap,
+  });
+
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: const CircleBorder(),
+        child: SizedBox(width: size, height: size),
+      ),
+    );
+  }
+}
+
+/// Own-profile action row — Edit Profile | Story + Share (Figma 338×40).
 class ProfileFigmaActionButtonsRow extends StatelessWidget {
   const ProfileFigmaActionButtonsRow({
     super.key,
     required this.onEditProfile,
     required this.onShare,
-    required this.onStory,
+    required this.onAddFriends,
     this.editLabel = 'Edit Profile',
   });
 
   final VoidCallback onEditProfile;
   final VoidCallback onShare;
-  final VoidCallback onStory;
+  final VoidCallback onAddFriends;
   final String editLabel;
 
   @override
@@ -425,14 +495,9 @@ class ProfileFigmaActionButtonsRow extends StatelessWidget {
                 label: editLabel,
               ),
               const SizedBox(width: ProfileFigmaTokens.actionButtonGap),
-              ProfileFigmaIconActionButton(
-                svgAssetPath: ProfileAssets.profileActionShare,
-                onPressed: onShare,
-              ),
-              const SizedBox(width: ProfileFigmaTokens.actionButtonGap),
-              ProfileFigmaIconActionButton(
-                svgAssetPath: ProfileAssets.profileActionPlus,
-                onPressed: onStory,
+              ProfileFigmaSecondaryActionPair(
+                onAddFriends: onAddFriends,
+                onShare: onShare,
               ),
             ],
           ),

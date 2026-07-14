@@ -77,6 +77,8 @@ class SearchScreen extends StatefulWidget {
   /// `0` Live, `1` Posts, `2` VR, `3` Users.
   final int? initialCategoryTabIndex;
 
+  static const int usersCategoryTabIndex = 3;
+
   @override
   SearchScreenState createState() => SearchScreenState();
 }
@@ -148,6 +150,11 @@ class SearchScreenState extends State<SearchScreen>
     final initialQuery = widget.initialQuery?.trim();
     if (initialQuery != null && initialQuery.isNotEmpty) {
       _applyQuery(initialQuery, widget.initialCategoryTabIndex ?? 1);
+    } else if (widget.initialCategoryTabIndex != null) {
+      final safeTab =
+          widget.initialCategoryTabIndex!.clamp(0, _tabs.length - 1);
+      _selectedTabIndex = safeTab;
+      _lastSelectedTabIndex = safeTab;
     }
     _loadUsers();
     _loadVrItems();

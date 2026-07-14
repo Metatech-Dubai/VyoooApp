@@ -15,6 +15,7 @@ import '../../widgets/caption_with_hashtags.dart';
 import '../../widgets/reel_item_widget.dart';
 import '../../core/constants/profile_assets.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/navigation/profile_side_rail_navigation.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/models/story_highlight_model.dart';
 import '../../core/models/story_model.dart';
@@ -30,7 +31,6 @@ import '../../core/utils/verification_badge.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/navigation/post_upload_navigation.dart';
-import '../../core/wrappers/main_nav_wrapper.dart';
 import '../../features/subscription/subscription_screen.dart';
 import '../../features/story/highlight_viewer_screen.dart';
 import '../../features/story/widgets/profile_highlight_album_tile.dart';
@@ -47,6 +47,8 @@ import 'edit_profile_screen.dart';
 import 'followers_following_screen.dart';
 import 'profile_figma_tokens.dart';
 import 'profile_figma_widgets.dart';
+import 'profile_side_rail_coming_soon_screen.dart';
+import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 import '../../core/widgets/profile/profile_grid.dart';
 import '../../features/reel/widgets/profile_grid_span_sheet.dart';
@@ -329,30 +331,28 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  void _openWalletFromRail(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(
-          backgroundColor: Colors.black,
-          body: WalletComingSoonView(),
-        ),
-      ),
+  void _openSideRailComingSoon(BuildContext context) {
+    openProfileSideRailScreen<void>(
+      context,
+      child: const ProfileSideRailComingSoonScreen(),
     );
   }
 
-  void _openRevenueFromRail(BuildContext context) {
-    Navigator.of(context).push(
+  void _openWalletFromRail(BuildContext context) => _openSideRailComingSoon(context);
+
+  void _openRevenueFromRail(BuildContext context) =>
+      _openSideRailComingSoon(context);
+
+  void _openChatFromRail(BuildContext context) => _openSideRailComingSoon(context);
+
+  void _openAddFriendsSearch(BuildContext context) {
+    Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
-        builder: (_) => const Scaffold(
-          backgroundColor: Colors.black,
-          body: RevenueComingSoonView(),
+        builder: (_) => const SearchScreen(
+          initialCategoryTabIndex: SearchScreen.usersCategoryTabIndex,
         ),
       ),
     );
-  }
-
-  void _openChatFromRail() {
-    MainNavWrapper.tabNotifier.value = 3;
   }
 
   void _showProfileMenu(BuildContext context) {
@@ -650,14 +650,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                           uid: profileUid,
                           username: user?.username,
                         ),
-                        onStory: profileUid.isEmpty
-                            ? () {}
-                            : () => _openMyStoryComposerOrViewer(
-                                  context,
-                                  userId: profileUid,
-                                  username: username,
-                                  avatarUrl: avatarUrl ?? '',
-                                ),
+                        onAddFriends: () => _openAddFriendsSearch(context),
                       ),
                       const SizedBox(
                         height: ProfileFigmaTokens.contentSectionTopGap,
@@ -748,7 +741,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           top: ProfileFigmaTokens.profileSideRailTop,
           child: ProfileSideDrawer(
             onWalletTap: () => _openWalletFromRail(context),
-            onChatTap: _openChatFromRail,
+            onChatTap: () => _openChatFromRail(context),
             onRevenueTap: () => _openRevenueFromRail(context),
           ),
         ),
