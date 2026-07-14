@@ -2,6 +2,69 @@ import 'package:flutter/material.dart';
 
 import '../../screens/profile/profile_figma_tokens.dart';
 
+/// Scaled bottom-nav measurements for the current screen (Figma 375×351 pill).
+@immutable
+class BottomNavLayout {
+  const BottomNavLayout({required this.scale});
+
+  /// Figma phone frame width.
+  static const double designArtboardWidth = 375;
+
+  /// Pill width on the Figma artboard (375 − 12 − 12).
+  static const double designPillWidth = 351;
+
+  final double scale;
+
+  double s(double designPx) => designPx * scale;
+
+  static double scaleFor(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    if (width <= 0) return 1;
+    return (width / designArtboardWidth).clamp(0.85, 1.12);
+  }
+
+  factory BottomNavLayout.of(BuildContext context) =>
+      BottomNavLayout(scale: scaleFor(context));
+
+  double get horizontalMargin => s(BottomNavFigmaTokens.horizontalMargin);
+  double get pillRadius => s(BottomNavFigmaTokens.pillRadius);
+  double get pillInnerRadius => s(BottomNavFigmaTokens.pillInnerRadius);
+  double get barHeight => s(BottomNavFigmaTokens.barHeight);
+  double get pillContentLeftInset =>
+      s(BottomNavFigmaTokens.pillContentLeftInset);
+  double get pillContentRightInset =>
+      s(BottomNavFigmaTokens.pillContentRightInset);
+  double get pillContentVerticalInset =>
+      s(BottomNavFigmaTokens.pillContentVerticalInset);
+  double get navRowContentHeight =>
+      s(BottomNavFigmaTokens.navRowContentHeight);
+  double get iconGroupWidth => s(BottomNavFigmaTokens.iconGroupWidth);
+  double get iconGroupHeight => s(BottomNavFigmaTokens.iconGroupHeight);
+  double get tabSlotWidth => s(BottomNavFigmaTokens.tabSlotWidth);
+  double get tabSlotHeight => s(BottomNavFigmaTokens.tabSlotHeight);
+  double get tabGap => s(BottomNavFigmaTokens.tabGap);
+  double get profileToIconGroupGap =>
+      s(BottomNavFigmaTokens.profileToIconGroupGap);
+  double get profileAvatarSize => s(BottomNavFigmaTokens.profileAvatarSize);
+  double get profileAvatarBorderWidth =>
+      s(BottomNavFigmaTokens.profileAvatarBorderWidth);
+  double get createMenuToNavGap => s(BottomNavFigmaTokens.createMenuToNavGap);
+  double get createMenuWidth => s(BottomNavFigmaTokens.createMenuWidth);
+
+  List<BoxShadow> get pillShadow => [
+        BoxShadow(
+          color: const Color(0x1A000000),
+          blurRadius: s(3),
+          offset: Offset(0, s(4)),
+        ),
+        BoxShadow(
+          color: const Color(0x1A000000),
+          blurRadius: s(7.5),
+          offset: Offset(0, s(10)),
+        ),
+      ];
+}
+
 /// Bottom navigation measurements (Figma light pill + create menu).
 abstract final class BottomNavFigmaTokens {
   static const Color pillFill = ProfileFigmaTokens.screenBackground;
@@ -12,6 +75,9 @@ abstract final class BottomNavFigmaTokens {
 
   /// Horizontal inset for the floating pill (Figma 375 frame → 12px each side).
   static const double horizontalMargin = 12;
+
+  /// Pill bar height (Figma 64px).
+  static const double barHeight = 64;
 
   /// Frame 2147225001 — icon row inside the 351×64 pill.
   static const double pillContentLeftInset = 21;

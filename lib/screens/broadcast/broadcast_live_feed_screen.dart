@@ -27,6 +27,8 @@ import '../../core/widgets/live_feed_comment_bar.dart';
 import '../../core/widgets/live_feed_host_caption_row.dart';
 import '../../core/services/live_360_snapshot_hub.dart';
 import '../../core/utils/live_360_meta_log.dart';
+import '../../core/utils/live_360_video.dart';
+import '../../core/widgets/live_stream_gyro_video_view.dart';
 import '../../core/widgets/live_stream_video_surface.dart';
 import '../../core/widgets/app_network_avatar.dart';
 import '../../core/navigation/home_feed_chrome_controller.dart';
@@ -411,6 +413,17 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
       return null;
     }
     return _streams[_pageIndex];
+  }
+
+  bool get _isImmersive360Active {
+    final stream = _liveDoc ?? _currentStream;
+    if (stream == null) return false;
+    return resolveLiveGyroProjectionMode(
+          stream: stream,
+          remoteVideoWidth: _remoteVideoWidth > 0 ? _remoteVideoWidth : null,
+          remoteVideoHeight: _remoteVideoHeight > 0 ? _remoteVideoHeight : null,
+        ) ==
+        LiveGyroProjectionMode.equirectangular;
   }
 
   Future<void> _ensureAgoraAndJoin() async {
@@ -842,12 +855,16 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
                       _buildGradientOverlay(),
                       if (!createMenuOpen)
                         const FeedBottomScrim(clipBottomCorners: false),
-                      PageView.builder(
-                        controller: _pageController,
-                        scrollDirection: Axis.vertical,
-                        itemCount: _streams.length,
-                        onPageChanged: _onPageChanged,
-                        itemBuilder: (context, index) => const SizedBox.expand(),
+                      IgnorePointer(
+                        ignoring: _isImmersive360Active,
+                        child: PageView.builder(
+                          controller: _pageController,
+                          scrollDirection: Axis.vertical,
+                          itemCount: _streams.length,
+                          onPageChanged: _onPageChanged,
+                          itemBuilder: (context, index) =>
+                              const SizedBox.expand(),
+                        ),
                       ),
                     ],
                   ),

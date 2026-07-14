@@ -97,12 +97,17 @@ class AppBottomNavigation extends StatelessWidget {
   static const Color _navBarFill = BottomNavFigmaTokens.pillFill;
   static const Color _splashColor = Color(0x33750047);
 
-  static const double _tapTargetWidth = BottomNavFigmaTokens.tabSlotWidth;
-  static const double _tapTargetHeight = BottomNavFigmaTokens.tabSlotHeight;
+  /// Scaled bar height for the current screen (Figma 64px @ 375pt).
+  static double barHeightFor(BuildContext context) =>
+      BottomNavLayout.of(context).barHeight;
 
-  Widget _buildProfileIcon() {
+  /// Design-time bar height — prefer [barHeightFor] when [BuildContext] is available.
+  static const double barHeight = BottomNavFigmaTokens.barHeight;
+
+  Widget _buildProfileIcon(BottomNavLayout layout) {
     return _BottomNavProfileAvatar(
-      size: BottomNavFigmaTokens.profileAvatarSize,
+      size: layout.profileAvatarSize,
+      borderWidth: layout.profileAvatarBorderWidth,
       imageUrl: profileImageUrl,
       fallbackIconColor: _iconColor,
       isSelected: currentIndex == 4,
@@ -110,13 +115,14 @@ class AppBottomNavigation extends StatelessWidget {
   }
 
   Widget _buildNavTap({
+    required BottomNavLayout layout,
     required VoidCallback onPressed,
     required Widget child,
     double? tapTargetWidth,
     double? tapTargetHeight,
   }) {
-    final targetWidth = tapTargetWidth ?? _tapTargetWidth;
-    final targetHeight = tapTargetHeight ?? _tapTargetHeight;
+    final targetWidth = tapTargetWidth ?? layout.tabSlotWidth;
+    final targetHeight = tapTargetHeight ?? layout.tabSlotHeight;
     return SizedBox(
       width: targetWidth,
       height: targetHeight,
@@ -135,13 +141,14 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
-  Widget _buildChatIcon(bool isSelected) {
+  Widget _buildChatIcon(BottomNavLayout layout, bool isSelected) {
     final count = unreadChatCount < 0 ? 0 : unreadChatCount;
     final showBadge = count > 0;
     final label = count > 99 ? '99+' : '$count';
+    final iconSize = layout.s(isSelected ? 24 : 20);
     return SizedBox(
-      width: isSelected ? 24 : 20,
-      height: isSelected ? 24 : 20,
+      width: iconSize,
+      height: iconSize,
       child: Stack(
         clipBehavior: Clip.none,
         alignment: Alignment.center,
@@ -150,28 +157,34 @@ class AppBottomNavigation extends StatelessWidget {
             assetPath: isSelected
                 ? BottomNavAssets.chatSelected
                 : BottomNavAssets.chatUnselected,
-            width: isSelected ? 24 : 20,
-            height: isSelected ? 24 : 20,
+            width: iconSize,
+            height: iconSize,
           ),
           if (showBadge)
             Positioned(
-              right: -6,
-              top: -4,
+              right: layout.s(-6),
+              top: layout.s(-4),
               child: Container(
-              constraints: const BoxConstraints(minWidth: 18, minHeight: 18),
-              padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              constraints: BoxConstraints(
+                minWidth: layout.s(18),
+                minHeight: layout.s(18),
+              ),
+              padding: EdgeInsets.symmetric(
+                horizontal: layout.s(5),
+                vertical: layout.s(2),
+              ),
               decoration: BoxDecoration(
                 color: const Color(0xFFFF2D55),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: _navBarFill, width: 1),
+                borderRadius: BorderRadius.circular(layout.s(10)),
+                border: Border.all(color: _navBarFill, width: layout.s(1)),
               ),
               alignment: Alignment.center,
               child: Text(
                 label,
-                style: const TextStyle(
+                style: TextStyle(
                   fontFamily: AppFonts.body,
                   color: Colors.white,
-                  fontSize: 10,
+                  fontSize: layout.s(10),
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -182,11 +195,8 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
-  /// Nav icons + artwork height (excludes Android/iOS system nav inset).
-  static const double barHeight = AppSizes.bottomNavBarHeight;
-
   /// Horizontal margin for the floating pill bar inside the chrome.
-  static const double _horizontalMargin = BottomNavFigmaTokens.horizontalMargin;
+  double _horizontalMargin(BottomNavLayout layout) => layout.horizontalMargin;
 
   /// Space above the white pill inside the dark chrome strip (matches progress top gap).
   static const double _chromeTopPadding = AppSpacing.feedPostNavGap;
@@ -213,6 +223,7 @@ class AppBottomNavigation extends StatelessWidget {
     bool includeReelProgressBand = false,
     bool liveProgressBand = false,
   }) {
+    final layout = BottomNavLayout.of(context);
     final bottomInset = AppSystemUi.bottomChromeInset(
       context,
       iosInsetFactor: _iosSafeAreaBottomFactor,
@@ -224,56 +235,62 @@ class AppBottomNavigation extends StatelessWidget {
         : 0.0;
     final chromeTop =
         feedChrome && !includeReelProgressBand ? _chromeTopPadding : 0.0;
-    return progressBand + chromeTop + barHeight + bottomInset;
+    return progressBand + chromeTop + layout.barHeight + bottomInset;
   }
 
-  BoxDecoration get _pillDecoration => BoxDecoration(
+  BoxDecoration _pillDecoration(BottomNavLayout layout) => BoxDecoration(
         color: _navBarFill,
-        borderRadius: BorderRadius.circular(BottomNavFigmaTokens.pillRadius),
-        boxShadow: BottomNavFigmaTokens.pillShadow,
+        borderRadius: BorderRadius.circular(layout.pillRadius),
+        boxShadow: layout.pillShadow,
       );
 
-  BoxDecoration get _pillInsetStrokeDecoration => BoxDecoration(
-        borderRadius: BorderRadius.circular(BottomNavFigmaTokens.pillInnerRadius),
+  BoxDecoration _pillInsetStrokeDecoration(BottomNavLayout layout) =>
+      BoxDecoration(
+        borderRadius: BorderRadius.circular(layout.pillInnerRadius),
         border: Border.all(
           color: BottomNavFigmaTokens.pillStrokeColor.withValues(
             alpha: BottomNavFigmaTokens.pillStrokeOpacity,
           ),
-          width: 1,
+          width: layout.s(1),
         ),
       );
 
-  Widget _buildPill({required Widget child}) {
+  Widget _buildPill({
+    required BottomNavLayout layout,
+    required Widget child,
+  }) {
     return DecoratedBox(
-      decoration: _pillDecoration,
+      decoration: _pillDecoration(layout),
       child: DecoratedBox(
-        decoration: _pillInsetStrokeDecoration,
+        decoration: _pillInsetStrokeDecoration(layout),
         child: child,
       ),
     );
   }
 
-  Widget _buildCreateMenuStack() {
+  Widget _buildCreateMenuStack(BottomNavLayout layout) {
     final onAction = onCreateAction;
     if (onAction == null || createMenuProgress <= 0) {
       return const SizedBox.shrink();
     }
 
     return Padding(
-      padding: const EdgeInsets.only(
-        bottom: BottomNavFigmaTokens.createMenuToNavGap,
-      ),
+      padding: EdgeInsets.only(bottom: layout.createMenuToNavGap),
       child: BottomNavCreateMenu(
         progress: createMenuProgress,
         onAction: onAction,
+        layout: layout,
       ),
     );
   }
 
-  Widget _buildIconGroup({required bool createOpen}) {
+  Widget _buildIconGroup({
+    required BottomNavLayout layout,
+    required bool createOpen,
+  }) {
     return SizedBox(
-      width: BottomNavFigmaTokens.iconGroupWidth,
-      height: BottomNavFigmaTokens.iconGroupHeight,
+      width: layout.iconGroupWidth,
+      height: layout.iconGroupHeight,
       child: Row(
         children: [
           _NavItem(
@@ -281,67 +298,96 @@ class AppBottomNavigation extends StatelessWidget {
             selectedAsset: BottomNavAssets.homeSelected,
             isSelected: currentIndex == 0,
             onTap: () => onTap(0),
-            buildTap: _buildNavTap,
-            iconWidth: currentIndex == 0 ? 28 : 24,
-            iconHeight: currentIndex == 0 ? 28 : 24,
+            buildTap: ({required onPressed, required child, tapTargetWidth, tapTargetHeight}) =>
+                _buildNavTap(
+              layout: layout,
+              onPressed: onPressed,
+              child: child,
+              tapTargetWidth: tapTargetWidth,
+              tapTargetHeight: tapTargetHeight,
+            ),
+            iconWidth: layout.s(currentIndex == 0 ? 28 : 24),
+            iconHeight: layout.s(currentIndex == 0 ? 28 : 24),
           ),
-          const SizedBox(width: BottomNavFigmaTokens.tabGap),
+          SizedBox(width: layout.tabGap),
           _NavItem(
             unselectedAsset: BottomNavAssets.broadcastUnselected,
             selectedAsset: BottomNavAssets.broadcastSelected,
             isSelected: currentIndex == 1,
             onTap: () => onTap(1),
-            buildTap: _buildNavTap,
-            iconWidth: 27,
-            iconHeight: 27,
-            iconOffsetX: BottomNavFigmaTokens.broadcastIconOpticalOffsetX,
-            iconOffsetY: BottomNavFigmaTokens.broadcastIconOpticalOffsetY,
+            buildTap: ({required onPressed, required child, tapTargetWidth, tapTargetHeight}) =>
+                _buildNavTap(
+              layout: layout,
+              onPressed: onPressed,
+              child: child,
+              tapTargetWidth: tapTargetWidth,
+              tapTargetHeight: tapTargetHeight,
+            ),
+            iconWidth: layout.s(27),
+            iconHeight: layout.s(27),
+            iconOffsetX: layout.s(BottomNavFigmaTokens.broadcastIconOpticalOffsetX),
+            iconOffsetY: layout.s(BottomNavFigmaTokens.broadcastIconOpticalOffsetY),
           ),
-          const SizedBox(width: BottomNavFigmaTokens.tabGap),
+          SizedBox(width: layout.tabGap),
           _NavItem(
             unselectedAsset: BottomNavAssets.addUnselected,
             selectedAsset: BottomNavAssets.addSelected,
             isSelected: createOpen,
             onTap: onCreateMenuToggle ?? () => onTap(2),
-            buildTap: _buildNavTap,
-            iconWidth: createOpen ? 30 : 20,
-            iconHeight: createOpen ? 30 : 20,
+            buildTap: ({required onPressed, required child, tapTargetWidth, tapTargetHeight}) =>
+                _buildNavTap(
+              layout: layout,
+              onPressed: onPressed,
+              child: child,
+              tapTargetWidth: tapTargetWidth,
+              tapTargetHeight: tapTargetHeight,
+            ),
+            iconWidth: layout.s(createOpen ? 30 : 20),
+            iconHeight: layout.s(createOpen ? 30 : 20),
           ),
-          const SizedBox(width: BottomNavFigmaTokens.tabGap),
+          SizedBox(width: layout.tabGap),
           _NavItem(
             isSelected: currentIndex == 3,
             onTap: () => onTap(3),
-            buildTap: _buildNavTap,
-            customChild: _buildChatIcon(currentIndex == 3),
+            buildTap: ({required onPressed, required child, tapTargetWidth, tapTargetHeight}) =>
+                _buildNavTap(
+              layout: layout,
+              onPressed: onPressed,
+              child: child,
+              tapTargetWidth: tapTargetWidth,
+              tapTargetHeight: tapTargetHeight,
+            ),
+            customChild: _buildChatIcon(layout, currentIndex == 3),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildNavRow() {
+  Widget _buildNavRow(BottomNavLayout layout) {
     final createOpen = isCreateMenuOpen;
     return SizedBox(
-      height: barHeight,
+      height: layout.barHeight,
       child: Padding(
-        padding: const EdgeInsets.symmetric(
-          vertical: BottomNavFigmaTokens.pillContentVerticalInset,
+        padding: EdgeInsets.symmetric(
+          vertical: layout.pillContentVerticalInset,
         ),
         child: SizedBox(
-          height: BottomNavFigmaTokens.navRowContentHeight,
+          height: layout.navRowContentHeight,
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const SizedBox(width: BottomNavFigmaTokens.pillContentLeftInset),
-              _buildIconGroup(createOpen: createOpen),
-              const Spacer(),
+              SizedBox(width: layout.pillContentLeftInset),
+              _buildIconGroup(layout: layout, createOpen: createOpen),
+              SizedBox(width: layout.profileToIconGroupGap),
               _buildNavTap(
+                layout: layout,
                 onPressed: () => onTap(4),
-                tapTargetWidth: BottomNavFigmaTokens.profileAvatarSize,
-                tapTargetHeight: BottomNavFigmaTokens.profileAvatarSize,
-                child: _buildProfileIcon(),
+                tapTargetWidth: layout.profileAvatarSize,
+                tapTargetHeight: layout.profileAvatarSize,
+                child: _buildProfileIcon(layout),
               ),
-              const SizedBox(width: BottomNavFigmaTokens.pillContentRightInset),
+              SizedBox(width: layout.pillContentRightInset),
             ],
           ),
         ),
@@ -350,28 +396,30 @@ class AppBottomNavigation extends StatelessWidget {
   }
 
   Widget _buildNavChromeBody({
+    required BottomNavLayout layout,
     required double bottomInset,
     required bool includeTopPadding,
   }) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Center(child: _buildCreateMenuStack()),
+        Center(child: _buildCreateMenuStack(layout)),
         Padding(
           padding: EdgeInsets.fromLTRB(
-            _horizontalMargin,
+            _horizontalMargin(layout),
             includeTopPadding ? _chromeTopPadding : 0,
-            _horizontalMargin,
+            _horizontalMargin(layout),
             bottomInset,
           ),
-          child: _buildPill(child: _buildNavRow()),
+          child: _buildPill(layout: layout, child: _buildNavRow(layout)),
         ),
       ],
     );
   }
 
-  Widget _buildFloatingPill(double bottomInset) {
+  Widget _buildFloatingPill(BottomNavLayout layout, double bottomInset) {
     return _buildNavChromeBody(
+      layout: layout,
       bottomInset: bottomInset,
       includeTopPadding: false,
     );
@@ -471,7 +519,7 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
-  Widget _buildFeedChromePill(double bottomInset) {
+  Widget _buildFeedChromePill(BottomNavLayout layout, double bottomInset) {
     final reelProgressListenable = feedReelProgress;
     final liveProgressListenable = feedLiveProgress;
     final hasChromeProgress =
@@ -496,6 +544,7 @@ class AppBottomNavigation extends StatelessWidget {
         ),
         child: !hasChromeProgress
             ? _buildNavChromeBody(
+                layout: layout,
                 bottomInset: bottomInset,
                 includeTopPadding: true,
               )
@@ -503,7 +552,7 @@ class AppBottomNavigation extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Center(child: _buildCreateMenuStack()),
+                  Center(child: _buildCreateMenuStack(layout)),
                   if (reelProgressListenable != null)
                     ValueListenableBuilder<double?>(
                       valueListenable: reelProgressListenable,
@@ -551,12 +600,15 @@ class AppBottomNavigation extends StatelessWidget {
                     ),
                   Padding(
                     padding: EdgeInsets.fromLTRB(
-                      _horizontalMargin,
+                      _horizontalMargin(layout),
                       0,
-                      _horizontalMargin,
+                      _horizontalMargin(layout),
                       bottomInset,
                     ),
-                    child: _buildPill(child: _buildNavRow()),
+                    child: _buildPill(
+                      layout: layout,
+                      child: _buildNavRow(layout),
+                    ),
                   ),
                 ],
               ),
@@ -566,6 +618,7 @@ class AppBottomNavigation extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final layout = BottomNavLayout.of(context);
     final bottomInset = AppSystemUi.bottomChromeInset(
       context,
       iosInsetFactor: _iosSafeAreaBottomFactor,
@@ -575,9 +628,9 @@ class AppBottomNavigation extends StatelessWidget {
     // floating pill while the create hub is open (matches profile/chat).
     final createMenuVisible = isCreateMenuOpen || createMenuProgress > 0;
     if (useFeedChrome && !createMenuVisible) {
-      return _buildFeedChromePill(bottomInset);
+      return _buildFeedChromePill(layout, bottomInset);
     }
-    return _buildFloatingPill(bottomInset);
+    return _buildFloatingPill(layout, bottomInset);
   }
 }
 
@@ -667,12 +720,14 @@ class _NavSvgIcon extends StatelessWidget {
 class _BottomNavProfileAvatar extends StatelessWidget {
   const _BottomNavProfileAvatar({
     required this.size,
+    required this.borderWidth,
     required this.imageUrl,
     required this.fallbackIconColor,
     required this.isSelected,
   });
 
   final double size;
+  final double borderWidth;
   final String? imageUrl;
   final Color fallbackIconColor;
   final bool isSelected;
@@ -706,7 +761,7 @@ class _BottomNavProfileAvatar extends StatelessWidget {
           shape: BoxShape.circle,
           border: Border.all(
             color: BottomNavFigmaTokens.profileAvatarBorderColor,
-            width: BottomNavFigmaTokens.profileAvatarBorderWidth,
+            width: borderWidth,
           ),
         ),
       ),

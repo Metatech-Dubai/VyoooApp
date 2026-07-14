@@ -4,6 +4,8 @@
 
 import 'package:flutter/material.dart';
 
+import 'bottom_nav_figma_tokens.dart';
+
 /// Shared layout dimensions (4pt grid where applicable).
 abstract final class AppSizes {
   // — Controls (typography → [AppTypography]) —
@@ -238,7 +240,8 @@ abstract final class AppSizes {
   /// Profile tab avatar (Figma 56×56 circle, 2px stroke).
   static const double bottomNavProfileIcon = 56;
   static const double bottomNavTapTarget = 48;
-  static const double bottomNavBarHeight = 64;
+  /// Figma pill bar height at the 375pt design artboard — use [BottomNavLayout.barHeight] when scaling.
+  static const double bottomNavBarHeight = BottomNavFigmaTokens.barHeight;
 
   // — Icons —
   static const double fieldIcon = 22;

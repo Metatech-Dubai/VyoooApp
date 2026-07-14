@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../theme/app_gradients.dart';
 import '../theme/app_sizes.dart';
 
 /// Figma live stream progress — 402×3 full-bleed bar (display only; parent handles scrub).
+///
+/// Track: #FFFFFF @ 34%. Played segment: #FFFFFF @ 100%. Scrub thumb: pink gradient.
 class LiveFeedStreamProgressBar extends StatelessWidget {
   const LiveFeedStreamProgressBar({
     super.key,
@@ -44,17 +47,13 @@ class LiveFeedStreamProgressBar extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    ColoredBox(
-                      color: Colors.white.withValues(alpha: 0.34),
-                    ),
+                    const ColoredBox(color: AppColors.liveFeedProgressTrack),
                     if (fillWidth > 0)
                       Align(
                         alignment: Alignment.centerLeft,
                         child: Container(
                           width: fillWidth,
-                          decoration: const BoxDecoration(
-                            gradient: AppGradients.liveFeedStreamProgressFill,
-                          ),
+                          color: AppColors.liveFeedProgressFill,
                         ),
                       ),
                   ],
@@ -69,7 +68,7 @@ class LiveFeedStreamProgressBar extends StatelessWidget {
                     height: thumbSize,
                     decoration: const BoxDecoration(
                       shape: BoxShape.circle,
-                      gradient: AppGradients.liveFeedStreamProgressFill,
+                      gradient: AppGradients.liveFeedStreamProgressThumb,
                       boxShadow: [
                         BoxShadow(
                           color: Color(0x66000000),

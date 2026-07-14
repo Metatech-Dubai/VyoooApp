@@ -211,8 +211,8 @@ class AppGradients {
     colors: [AppColors.storyRing, AppColors.storyRing],
   );
 
-  /// Live feed stream progress fill (Figma #99004D → #FF6699).
-  static const LinearGradient liveFeedStreamProgressFill = LinearGradient(
+  /// Live feed stream progress scrub thumb (Figma pink knob when scrubbing).
+  static const LinearGradient liveFeedStreamProgressThumb = LinearGradient(
     begin: Alignment.centerLeft,
     end: Alignment.centerRight,
     colors: [Color(0xFF99004D), Color(0xFFFF6699)],

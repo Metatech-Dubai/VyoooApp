@@ -77,6 +77,12 @@ class AppColors {
 
   /// Home reel progress bar track (Figma remaining segment — white @ ~24%).
   static const Color feedReelProgressTrack = Color(0x3DFFFFFF);
+
+  /// Live feed progress bar played segment (Figma #FFFFFF @ 100%).
+  static const Color liveFeedProgressFill = Color(0xFFFFFFFF);
+
+  /// Live feed progress bar track (Figma #FFFFFF @ 34%).
+  static const Color liveFeedProgressTrack = Color(0x57FFFFFF);
   static const Color brandPurple = Color(0xFF490038);
   static const Color brandDeepPurple = Color(0xFF21002B);
   static const Color brandNearBlack = Color(0xFF07010F);
