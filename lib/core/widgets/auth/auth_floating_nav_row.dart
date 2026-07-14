@@ -3,10 +3,10 @@ import 'package:flutter/material.dart';
 import '../../platform/app_system_ui.dart';
 import '../../theme/app_sizes.dart';
 import '../../theme/app_spacing.dart';
-import 'auth_floating_circle_button.dart';
 import 'auth_floating_nav_visibility.dart';
+import 'auth_pill_button.dart';
 
-/// Back (left) and forward (right) on one bottom row for auth/onboarding flows.
+/// Back (left) and Continue (right) on one bottom row for auth/onboarding flows.
 class AuthFloatingNavRow extends StatelessWidget {
   const AuthFloatingNavRow({
     super.key,
@@ -14,6 +14,7 @@ class AuthFloatingNavRow extends StatelessWidget {
     this.onForward,
     this.forwardEnabled = true,
     this.forwardLoading = false,
+    this.forwardLabel = 'Continue',
     /// When false (default), the back control is hidden if [Navigator.canPop] is false
     /// (e.g. onboarding steps shown as [AuthWrapper] / [OnboardingGate] roots).
     this.alwaysShowBack = false,
@@ -23,12 +24,13 @@ class AuthFloatingNavRow extends StatelessWidget {
   final VoidCallback? onForward;
   final bool forwardEnabled;
   final bool forwardLoading;
+  final String forwardLabel;
   final bool alwaysShowBack;
 
   /// Trailing spacer / scroll padding so content clears floating auth chrome.
   static double scrollBottomClearance(BuildContext context) =>
       AppSpacing.authFloatingNavBottom +
-      AppSizes.buttonHeight +
+      AppSizes.authPillButtonHeight +
       AppSpacing.md +
       AppSystemUi.bottomChromeInset(context);
 
@@ -39,6 +41,8 @@ class AuthFloatingNavRow extends StatelessWidget {
       hasBackHandler: onBack != null,
       alwaysShowBack: alwaysShowBack,
     );
+    final showForward = onForward != null;
+
     return Positioned(
       left: AppSpacing.xl,
       right: AppSpacing.xl,
@@ -46,17 +50,21 @@ class AuthFloatingNavRow extends StatelessWidget {
           AppSpacing.authFloatingNavBottom +
           AppSystemUi.bottomChromeInset(context),
       child: Row(
-        mainAxisAlignment:
-            showBack ? MainAxisAlignment.spaceBetween : MainAxisAlignment.end,
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          if (showBack)
-            AuthFloatingCircleButton.back(onPressed: onBack),
-          AuthFloatingCircleButton.forward(
-            onPressed: onForward,
-            enabled: forwardEnabled && !forwardLoading,
-            isLoading: forwardLoading,
-          ),
+          if (showBack) ...[
+            AuthPillIconButton.back(onPressed: onBack),
+            if (showForward) const SizedBox(width: AppSpacing.md),
+          ],
+          if (showForward)
+            Expanded(
+              child: AuthPillButton(
+                label: forwardLabel,
+                onPressed: onForward,
+                enabled: forwardEnabled && !forwardLoading,
+                isLoading: forwardLoading,
+              ),
+            ),
         ],
       ),
     );

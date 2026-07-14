@@ -6,7 +6,6 @@ import '../../core/models/post_location_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
@@ -209,7 +208,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
                 children: [
                   const SizedBox(height: 12),
                   const Center(
-                    child: VyoooBrandLogo(size: AppSizes.authLogoHeight),
+                    child: VyoooBrandLogo.onboarding(),
                   ),
                   const SizedBox(height: AppSpacing.md),
                   const OnboardingProgressBar(progress: _progressFill),

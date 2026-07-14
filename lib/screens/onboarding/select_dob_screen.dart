@@ -1,12 +1,10 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import '../../core/platform/app_system_ui.dart';
 import '../../core/models/parent_consent_constants.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_sizes.dart';
-import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
@@ -158,22 +156,17 @@ class _SelectDobScreenState extends State<SelectDobScreen> {
     return AuthLightScaffold(
       padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
       stackChildren: [
-        Positioned(
-          right: AppSpacing.xl,
-          bottom:
-              AppSpacing.authFloatingNavBottom +
-              AppSystemUi.bottomChromeInset(context),
-          child: AuthFloatingCircleButton.forward(
-            onPressed: _onNext,
-            enabled: _isValid,
-          ),
+        AuthFloatingNavRow(
+          onBack: null,
+          onForward: _onNext,
+          forwardEnabled: _isValid,
         ),
       ],
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(height: 20),
-          const VyoooBrandLogo.auth(),
+          const VyoooBrandLogo.onboarding(),
           const SizedBox(height: 16),
           const OnboardingProgressBar(progress: _progressFill),
           const SizedBox(height: 40),

@@ -130,7 +130,7 @@ class _SelectInterestsScreenState extends State<SelectInterestsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const SizedBox(height: 20),
-          const VyoooBrandLogo.auth(),
+          const VyoooBrandLogo.onboarding(),
           const SizedBox(height: 16),
           const OnboardingProgressBar(progress: 0.85),
           const SizedBox(height: 40),

@@ -105,7 +105,7 @@ class OnboardingCompleteScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(height: AppSpacing.xl - AppSpacing.xs),
-          const VyoooBrandLogo.auth(),
+          const VyoooBrandLogo.onboarding(),
           AppPadding.itemGap,
           const OnboardingProgressBar(progress: 1.0),
           SizedBox(height: AppSpacing.xl + AppSpacing.md),

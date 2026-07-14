@@ -11,6 +11,9 @@ abstract final class AppRadius {
   /// Auth Phone/Email segmented control outer track (Figma rx 27).
   static const double authToggle = 27;
 
+  /// Auth / onboarding CTA pill corner radius (Figma rx 24 on 48px height).
+  static const double authPillButton = 24;
+
   /// Verify-code OTP digit box (Figma rx 9.67742 on 50px width).
   static const double authOtpBox = 9.67742;
   static const double button = 30;
@@ -50,6 +53,8 @@ abstract final class AppRadius {
       BorderRadius.circular(feedReelFollowButton);
   static BorderRadius get feedReelPlaybackControlPillRadius =>
       BorderRadius.circular(feedReelPlaybackControlPill);
+  static BorderRadius get authPillButtonRadius =>
+      BorderRadius.circular(authPillButton);
   static BorderRadius get authOtpBoxRadius =>
       BorderRadius.circular(authOtpBox);
 

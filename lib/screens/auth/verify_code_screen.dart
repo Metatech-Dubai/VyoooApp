@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/models/saved_account.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/otp_session_service.dart';
@@ -93,7 +92,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
         AuthFloatingBackButton(
           onPressed: _onBack,
           alwaysShowBack: true,
-          backgroundColor: AppColors.authVerifyCta,
         ),
       ],
       body: Column(
@@ -169,7 +167,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                   label: 'Verify',
                   isLoading: _verifyInFlight,
                   enabled: _isOtpComplete,
-                  backgroundColor: AppColors.authVerifyCta,
                   onPressed: _onVerify,
                 ),
               ],

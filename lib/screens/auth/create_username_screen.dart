@@ -9,7 +9,6 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/onboarding/username_submit_handoff.dart';
-import '../../core/platform/app_system_ui.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/onboarding_profile_avatar.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
@@ -220,15 +219,10 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
     return AuthLightScaffold(
       padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
       stackChildren: [
-        Positioned(
-          right: AppSpacing.xl,
-          bottom:
-              AppSpacing.authFloatingNavBottom +
-              AppSystemUi.bottomChromeInset(context),
-          child: AuthFloatingCircleButton.forward(
-            onPressed: _onNext,
-            enabled: _isUsernameValid,
-          ),
+        AuthFloatingNavRow(
+          onBack: null,
+          onForward: _onNext,
+          forwardEnabled: _isUsernameValid,
         ),
         if (_awaitingGateHandoff) _buildGateHandoffOverlay(),
       ],
@@ -236,7 +230,7 @@ class _CreateUsernameScreenState extends State<CreateUsernameScreen> {
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const SizedBox(height: 20),
-          const VyoooBrandLogo.auth(),
+          const VyoooBrandLogo.onboarding(),
           const SizedBox(height: 16),
           const OnboardingProgressBar(progress: _progressFill),
           const SizedBox(height: 40),

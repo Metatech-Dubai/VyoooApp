@@ -8,6 +8,9 @@ import 'package:flutter/material.dart';
 abstract final class AppSizes {
   // — Controls (typography → [AppTypography]) —
   static const double buttonHeight = 56;
+
+  /// Auth / onboarding CTA pill height (Figma 48).
+  static const double authPillButtonHeight = 48;
   /// Auth Phone/Email pill track (Figma 60×342, rx 27).
   static const double authToggleHeight = 60;
 

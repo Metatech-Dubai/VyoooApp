@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_background_assets.dart';
-import '../../core/theme/app_sizes.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
@@ -172,7 +171,7 @@ class _SelectEstablishmentDateScreenState
                   crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const SizedBox(height: 20),
-                    const VyoooBrandLogo(size: AppSizes.authLogoHeight),
+                    const VyoooBrandLogo.onboarding(),
                     const SizedBox(height: 16),
                     _buildProgressBar(),
                     const SizedBox(height: 40),

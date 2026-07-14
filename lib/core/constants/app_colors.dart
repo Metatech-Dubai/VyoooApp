@@ -14,6 +14,9 @@ class AppColors {
   /// Home reel "+ Follow" pill fill (Figma #1A1A1A).
   static const Color feedReelFollowButtonFill = Color(0xFF1A1A1A);
 
+  /// Auth / onboarding primary CTA pill (Figma #1A1A1A).
+  static const Color authCtaButtonFill = feedReelFollowButtonFill;
+
   /// Home reel "+ Follow" pill border (Figma #FFFFFF @ 20%).
   static const Color feedReelFollowButtonBorder = Color(0x33FFFFFF);
   /// Light auth surfaces — wordmark and accent links (Figma #600030).
