@@ -735,13 +735,22 @@ abstract final class AppTypography {
     color: AppColors.chatTextBlack,
   );
 
-  /// Inbox search typed text — aligns with Figma search field body.
+  /// Inbox search typed text — Figma DM Sans Regular 17 / 22lh / black.
   static const TextStyle chatInboxSearchInput = TextStyle(
     fontFamily: AppFonts.body,
-    fontSize: 14,
-    height: 1.0,
+    fontSize: 17,
+    height: 22 / 17,
     fontWeight: FontWeight.w400,
     color: AppColors.chatTextBlack,
+  );
+
+  /// Inbox search placeholder — Figma DM Sans Regular 17 / 22lh / #999999.
+  static const TextStyle chatInboxSearchHint = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 17,
+    height: 22 / 17,
+    fontWeight: FontWeight.w400,
+    color: AppColors.chatThreadDateLabel,
   );
 
   static const TextStyle chatSectionHeader = TextStyle(

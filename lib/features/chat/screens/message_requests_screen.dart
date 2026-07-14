@@ -1,9 +1,12 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/user_service.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/app_typography.dart';
 import '../models/chat_summary_model.dart';
 import '../services/chat_service.dart';
 import '../utils/chat_helpers.dart';
@@ -66,22 +69,25 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0A2E),
+        backgroundColor: AppColors.chatBackground,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text(
+        title: Text(
           'Decline request',
-          style: TextStyle(color: Colors.white),
+          style: AppTypography.chatInboxTileName.copyWith(fontSize: 17),
         ),
-        content: const Text(
+        content: Text(
           'This conversation will be hidden.',
-          style: TextStyle(color: Colors.white70),
+          style: AppTypography.chatInboxTilePreview.copyWith(fontSize: 14),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text(
+            child: Text(
               'Cancel',
-              style: TextStyle(color: Colors.white54),
+              style: AppTypography.chatInboxTilePreview.copyWith(
+                fontSize: 15,
+                color: AppColors.chatTextSecondary,
+              ),
             ),
           ),
           TextButton(
@@ -103,41 +109,13 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.45, 1.0],
-                  colors: [
-                    Color(0xFF1A0826),
-                    Color(0xFF10041A),
-                    Color(0xFF07010F),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -100,
-            left: -100,
-            right: -100,
-            child: Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [Color(0x88DE106B), Color(0x00000000)],
-                  radius: 0.75,
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
+    return Theme(
+      data: AppTheme.light,
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: AppTheme.lightEdgeToEdgeOverlay,
+        child: Scaffold(
+          backgroundColor: AppColors.chatBackground,
+          body: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -146,15 +124,16 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: AppColors.chatTextBlack,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: 4),
-                      const Text(
+                      Text(
                         'Message requests',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
+                        style: AppTypography.chatInboxMessagesTitle.copyWith(
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -165,8 +144,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
                   child: Text(
                     'Open a chat to get more info about who\'s messaging you. They won\'t know that you\'ve seen it until you accept.',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.45),
+                    style: AppTypography.chatInboxTilePreview.copyWith(
                       fontSize: 13,
                       height: 1.4,
                     ),
@@ -177,8 +155,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                       ? Center(
                           child: Text(
                             'No message requests',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.4),
+                            style: AppTypography.chatInboxTilePreview.copyWith(
                               fontSize: 15,
                             ),
                           ),
@@ -195,7 +172,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
               ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
@@ -212,13 +189,17 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
           children: [
             CircleAvatar(
               radius: 24,
-              backgroundColor: const Color(0xFF1A0A2E),
+              backgroundColor: AppColors.chatSearchFill,
               backgroundImage: hasAvatar
                   ? CachedNetworkImageProvider(summary.avatarUrl)
                   : null,
               child: hasAvatar
                   ? null
-                  : const Icon(Icons.person, color: Colors.white54, size: 24),
+                  : const Icon(
+                      Icons.person,
+                      color: AppColors.chatTextSecondary,
+                      size: 24,
+                    ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -232,8 +213,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                           summary.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: AppTypography.chatInboxTileName.copyWith(
                             fontSize: 15,
                             fontWeight: FontWeight.w600,
                           ),
@@ -241,8 +221,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                       ),
                       Text(
                         ChatHelpers.formatInboxTime(summary.lastMessageAt),
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
+                        style: AppTypography.chatInboxTileTime.copyWith(
                           fontSize: 12,
                         ),
                       ),
@@ -253,8 +232,7 @@ class _MessageRequestsScreenState extends State<MessageRequestsScreen> {
                       summary.lastMessage,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
+                      style: AppTypography.chatInboxTilePreview.copyWith(
                         fontSize: 13,
                       ),
                     ),
