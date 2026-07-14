@@ -250,59 +250,70 @@ class _ChatInboxScreenState extends State<ChatInboxScreen>
   }
 
   Widget _buildSearchBar() {
-    final sectionGap =
-        AppSizes.chatInboxScaleH(context, AppSizes.chatInboxSectionGap);
-    final searchHeight =
-        AppSizes.chatInboxScaleH(context, AppSizes.chatSearchHeight);
-    final searchWidth =
-        AppSizes.chatInboxScaleW(context, AppSizes.chatSearchWidth);
-    final searchTextLeftInset = AppSizes.chatInboxScaleW(context, 38);
+    final scale = AppSizes.chatInboxWidthScale(context);
+    double scaled(double designPx) => designPx * scale;
+
+    final searchWidth = scaled(AppSizes.chatSearchWidth);
+    final searchHeight = scaled(AppSizes.chatSearchHeight);
+    final searchFontSize = scaled(AppSizes.chatSearchFontSize);
+    final searchLineHeight = scaled(AppSizes.chatSearchLineHeight);
+    final searchIconInset = scaled(AppSizes.chatSearchIconInset);
+    final searchIconSize = scaled(AppSizes.chatSearchIconSize);
+    final searchIconTextGap = scaled(AppSizes.chatSearchIconTextGap);
+    final searchTextHeight = searchFontSize > 0
+        ? searchLineHeight / searchFontSize
+        : AppTypography.chatInboxSearchInput.height;
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
-        AppSizes.chatInboxScaleW(context, AppSizes.chatSearchPaddingLeft),
+        scaled(AppSizes.chatSearchPaddingLeft),
         AppSpacing.xs,
-        AppSizes.chatInboxScaleW(context, AppSizes.chatSearchPaddingRight),
-        sectionGap,
+        scaled(AppSizes.chatSearchPaddingRight),
+        scaled(AppSizes.chatInboxSectionGap),
       ),
-      child: SizedBox(
-        width: searchWidth,
-        height: searchHeight,
-        child: Stack(
-          alignment: Alignment.centerLeft,
-          children: [
-            ClipRRect(
-              borderRadius: AppRadius.chatSearchRadius,
-              child: SvgPicture.asset(
-                ChatAssets.searchBar,
-                width: searchWidth,
-                height: searchHeight,
-                fit: BoxFit.fill,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(scaled(AppRadius.chatSearch)),
+        child: Container(
+          width: searchWidth,
+          height: searchHeight,
+          color: AppColors.chatOutgoingBubble,
+          padding: EdgeInsets.only(
+            left: searchIconInset,
+            right: scaled(AppSpacing.sm),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.search,
+                size: searchIconSize,
+                color: AppColors.chatThreadDateLabel,
               ),
-            ),
-            Positioned.fill(
-              child: TextField(
-                controller: _searchController,
-                textAlignVertical: TextAlignVertical.center,
-                style: AppTypography.chatInboxSearchInput.copyWith(
-                  fontSize: AppSizes.chatInboxScaleW(context, 14),
-                ),
-                cursorColor: AppColors.chatInputHint,
-                decoration: InputDecoration(
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: EdgeInsets.fromLTRB(
-                    searchTextLeftInset,
-                    0,
-                    AppSpacing.sm,
-                    0,
+              SizedBox(width: searchIconTextGap),
+              Expanded(
+                child: TextField(
+                  controller: _searchController,
+                  style: AppTypography.chatInboxSearchInput.copyWith(
+                    fontSize: searchFontSize,
+                    height: searchTextHeight,
                   ),
-                  isDense: true,
+                  cursorColor: AppColors.chatTextBlack,
+                  decoration: InputDecoration(
+                    hintText: 'Search',
+                    hintStyle: AppTypography.chatInboxSearchHint.copyWith(
+                      fontSize: searchFontSize,
+                      height: searchTextHeight,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    isCollapsed: true,
+                    contentPadding: EdgeInsets.zero,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

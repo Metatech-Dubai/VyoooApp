@@ -382,6 +382,11 @@ abstract final class AppSizes {
   static const double chatSearchWidth = 370;
   static const double chatSearchPaddingLeft = 13;
   static const double chatSearchPaddingRight = 19;
+  static const double chatSearchIconInset = 16;
+  static const double chatSearchIconSize = 22;
+  static const double chatSearchIconTextGap = 6;
+  static const double chatSearchFontSize = 17;
+  static const double chatSearchLineHeight = 22;
   static const double chatInboxSectionGap = 20;
   static const double chatComposeButton = 34;
   static const double chatMessageInputHeight = 64;
