@@ -82,4 +82,8 @@ abstract final class ProfileAssets {
   /// Figma verified badge — green circle + white check (17×17).
   static const String profileVerifiedBadge =
       'assets/vyooO_icons/Profile/profile_verified_badge.svg';
+
+  /// Profile header story ring frame (Figma 131×131 #E51147).
+  static const String profileAvatarStoryRing =
+      'assets/vyooO_icons/Profile/profile_avatar_story_ring.svg';
 }

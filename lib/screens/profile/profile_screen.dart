@@ -563,8 +563,11 @@ class _ProfileScreenState extends State<ProfileScreen>
                       child: Column(
                         children: [
                           const SizedBox(height: ProfileFigmaTokens.profileHeaderTop),
-                          ProfileFigmaAvatarHeaderRow(
+                          ProfileFigmaAvatarNameBand(
                             onMenuTap: () => _showProfileMenu(context),
+                            displayName: displayName,
+                            isVerified: isVerified,
+                            badgeColor: badgeColor,
                             avatar: StreamBuilder<List<StoryModel>>(
                               stream: profileUid.isEmpty
                                   ? null
@@ -574,6 +577,8 @@ class _ProfileScreenState extends State<ProfileScreen>
                                     snap.data ?? const <StoryModel>[];
                                 return ProfileFigmaAvatar(
                                   imageUrl: avatarUrl,
+                                  outerSize:
+                                      ProfileFigmaTokens.profileHeaderAvatarSize,
                                   hasStory: activeStories.isNotEmpty,
                                   onTap: profileUid.isEmpty
                                       ? null
@@ -587,12 +592,6 @@ class _ProfileScreenState extends State<ProfileScreen>
                               },
                             ),
                           ),
-                          const SizedBox(height: 16),
-                      ProfileFigmaDisplayNameRow(
-                        displayName: displayName,
-                        isVerified: isVerified,
-                        badgeColor: badgeColor,
-                      ),
                       const SizedBox(height: 12),
                       ProfileFigmaStatChipsRow(
                         postCount: _formatStatCount(postCount),
@@ -702,54 +701,20 @@ class _ProfileScreenState extends State<ProfileScreen>
                                   () => _selectedTabIndex = _savedTabIndex,
                                 ),
                               ),
-                              if (profileUid.isNotEmpty) ...[
-                                if (!_highlightsExpanded) ...[
-                                  const SizedBox(
-                                    height: ProfileFigmaTokens
-                                        .highlightsToggleTopGap,
+                              if (profileUid.isNotEmpty)
+                                ProfileHighlightsExpandableSection(
+                                  expanded: _highlightsExpanded,
+                                  onToggle: () => setState(
+                                    () => _highlightsExpanded =
+                                        !_highlightsExpanded,
                                   ),
-                                  ProfileContentColumnAlign(
-                                    reserveTabAccessories: true,
-                                    alignWithFeedPill: true,
-                                    child: ProfileHighlightsToggleHandle(
-                                      expanded: false,
-                                      onTap: () => setState(
-                                        () => _highlightsExpanded = true,
-                                      ),
-                                    ),
+                                  highlights: _buildHighlightsSection(
+                                    context,
+                                    profileUid,
+                                    user,
                                   ),
-                                ] else ...[
-                                  const SizedBox(
-                                    height: ProfileFigmaTokens
-                                        .highlightsSectionTopGap,
-                                  ),
-                                  AnimatedSize(
-                                    duration:
-                                        const Duration(milliseconds: 240),
-                                    curve: Curves.easeInOut,
-                                    alignment: Alignment.topCenter,
-                                    child: _buildHighlightsSection(
-                                      context,
-                                      profileUid,
-                                      user,
-                                    ),
-                                  ),
-                                  const SizedBox(
-                                    height: ProfileFigmaTokens
-                                        .highlightsToggleTopGap,
-                                  ),
-                                  ProfileContentColumnAlign(
-                                    reserveTabAccessories: true,
-                                    alignWithFeedPill: true,
-                                    child: ProfileHighlightsToggleHandle(
-                                      expanded: true,
-                                      onTap: () => setState(
-                                        () => _highlightsExpanded = false,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ] else
+                                )
+                              else
                                 const SizedBox(height: 8),
                             ],
                           ),

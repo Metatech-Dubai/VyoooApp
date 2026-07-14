@@ -433,8 +433,9 @@ class _MainNavWrapperState extends State<MainNavWrapper>
                                       _broadcastFeedChrome.isLiveScrubbing,
                                   feedLiveSeekPreviewBytes:
                                       _broadcastFeedChrome.liveSeekPreviewBytes,
-                                  feedLiveSeekPreviewTimeLabel: _broadcastFeedChrome
-                                      .liveSeekPreviewTimeLabel,
+                                  feedLiveSeekPreviewTimeLabel:
+                                      _broadcastFeedChrome
+                                          .liveSeekPreviewTimeLabel,
                                   feedLiveSeekPreviewFallbackUrl:
                                       _broadcastFeedChrome
                                           .liveSeekPreviewFallbackUrl,

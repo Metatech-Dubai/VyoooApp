@@ -680,46 +680,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           });
         }
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            if (!_highlightsExpanded) ...[
-              ProfileContentColumnAlign(
-                reserveTabAccessories: true,
-                alignWithFeedPill: true,
-                child: ProfileHighlightsToggleHandle(
-                  expanded: false,
-                  onTap: () => setState(() => _highlightsExpanded = true),
-                ),
-              ),
-            ] else ...[
-              const SizedBox(
-                height: ProfileFigmaTokens.highlightsSectionTopGap,
-              ),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 240),
-                curve: Curves.easeInOut,
-                alignment: Alignment.topCenter,
-                child: _buildOtherUserHighlightsRow(
-                  context,
-                  uid: uid,
-                  highlights: highlights,
-                  loading: loading,
-                ),
-              ),
-              const SizedBox(
-                height: ProfileFigmaTokens.highlightsToggleTopGap,
-              ),
-              ProfileContentColumnAlign(
-                reserveTabAccessories: true,
-                alignWithFeedPill: true,
-                child: ProfileHighlightsToggleHandle(
-                  expanded: true,
-                  onTap: () => setState(() => _highlightsExpanded = false),
-                ),
-              ),
-            ],
-          ],
+        return ProfileHighlightsExpandableSection(
+          expanded: _highlightsExpanded,
+          onToggle: () =>
+              setState(() => _highlightsExpanded = !_highlightsExpanded),
+          highlights: _buildOtherUserHighlightsRow(
+            context,
+            uid: uid,
+            highlights: highlights,
+            loading: loading,
+          ),
         );
       },
     );

@@ -112,16 +112,23 @@ abstract final class ProfileFigmaTokens {
   static const double highlightsToggleTopRadius = 12;
   static const double highlightsToggleTopGap = 8;
   static const double highlightsSectionTopGap = 12;
+  static const Duration profileHighlightsAnimation =
+      Duration(milliseconds: 260);
 
   /// Edit Profile pill fill — near-black per Figma (#1C1C1C).
   static const Color actionButtonFill = Color(0xFF1C1C1C);
 
-  /// Total avatar frame (with story ring) — Figma 130×130.
-  static const double avatarOuterSize = 130;
+  /// Total avatar frame (with story ring) — Figma 131×131 SVG.
+  static const double avatarOuterSize = 131;
+  /// Inner hole diameter of story ring SVG (viewBox 127.671).
+  static const double avatarStoryRingInnerSize = 127.671;
+  /// White gap between story ring and profile photo (Figma 4.66).
+  static const double avatarStoryWhiteGap = avatarRingPadding;
+  /// Profile photo diameter when story ring is shown.
+  static const double avatarStoryPhotoSize =
+      avatarStoryRingInnerSize - 2 * avatarStoryWhiteGap;
   /// White gap between story ring and photo (Figma padding 4.66).
   static const double avatarRingPadding = 4.66;
-  /// Story ring stroke (Figma gap 4.66).
-  static const double avatarRingWidth = 4.66;
 
   /// Horizontal inset — header + content column (Figma 15px left / right).
   static const double profileContentHorizontalPad = 15;
@@ -191,6 +198,10 @@ abstract final class ProfileFigmaTokens {
   static const double musicFontSize = 12;
   /// Bio + music block max width (Figma 338).
   static const double profileBioMusicMaxWidth = 338;
+  /// Collapsed bio preview length before "See more".
+  static const int profileBioCollapsedLength = 30;
+  /// Max bio characters shown when expanded (matches edit profile limit).
+  static const int profileBioMaxDisplayLength = 150;
   /// Bio and music line color (Figma #808080).
   static const Color profileBioMusicColor = Color(0xFF808080);
   /// Gap between bio line and profile music line.
@@ -235,6 +246,11 @@ abstract final class ProfileFigmaTokens {
   /// Collapsed peek tab width (Figma 12×150).
   static const double profileSideRailCollapsedWidth = 12;
   static const double profileSideRailHeight = 150;
+  /// Own-profile avatar + display name band — matches [profileSideRailHeight].
+  static const double profileAvatarNameBandHeight = profileSideRailHeight;
+  /// Compact header avatar (110 + 8 gap + 32 name = 150).
+  static const double profileHeaderAvatarSize = 110;
+  static const double profileHeaderAvatarNameGap = 8;
   /// Right-edge corner radius on the drawer panel (Figma 10).
   static const double profileSideRailRadius = 10;
   /// Drawer fill (#1A1A1A).

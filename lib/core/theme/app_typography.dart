@@ -582,6 +582,16 @@ abstract final class AppTypography {
     color: Color(0xFF808080),
   );
 
+  /// Profile bio "See more" / "See less" — same size, medium weight.
+  static const TextStyle profileBioSeeMore = TextStyle(
+    fontFamily: AppFonts.body,
+    fontSize: 16,
+    fontWeight: FontWeight.w500,
+    height: 20 / 16,
+    letterSpacing: 0,
+    color: Color(0xFF808080),
+  );
+
   /// Profile music line — DM Sans Regular 12 / #808080 (Figma).
   static const TextStyle profileMusicLine = TextStyle(
     fontFamily: AppFonts.body,
