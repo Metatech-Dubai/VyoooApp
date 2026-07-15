@@ -3,6 +3,7 @@ import '../../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'withdrawal_confirmation_screen.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class WithdrawFundsScreen extends StatefulWidget {
   const WithdrawFundsScreen({super.key});
@@ -22,7 +23,6 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -64,9 +64,9 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -74,7 +74,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
           const Text(
             'Available to Withdraw',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -83,13 +83,13 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Text(
               '€ 460325',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 32,
                 fontWeight: FontWeight.w800,
               ),
@@ -104,9 +104,9 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Row(
         children: [
@@ -124,14 +124,16 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
       child: Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected ? AppLightSurface.background : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : Colors.white60,
+            color: selected
+                ? AppLightSurface.primaryText
+                : AppLightSurface.secondaryText,
             fontSize: 14,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -146,7 +148,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
       children: [
         const Text(
           'By selecting Bank Transfer, you agree that funds will be credited to your account within 1–3 business days. A processing fee of 1.5% applies.',
-          style: TextStyle(color: Colors.white38, fontSize: 12, height: 1.5),
+          style: TextStyle(color: AppLightSurface.mutedText, fontSize: 12, height: 1.5),
         ),
         const SizedBox(height: 32),
         _buildAmountInput(),
@@ -237,7 +239,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
         const Center(
           child: Text(
             'Enter Amount',
-            style: TextStyle(color: Colors.white54, fontSize: 13),
+            style: TextStyle(color: AppLightSurface.mutedText, fontSize: 13),
           ),
         ),
         const SizedBox(height: 12),
@@ -248,7 +250,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
             const Text(
               '€',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
               ),
@@ -258,15 +260,15 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
               child: TextField(
                 controller: _amountController,
                 keyboardType: TextInputType.number,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 40,
                   fontWeight: FontWeight.w800,
                 ),
                 decoration: const InputDecoration(
                   border: InputBorder.none,
                   hintText: '0',
-                  hintStyle: TextStyle(color: Colors.white24),
+                  hintStyle: TextStyle(color: AppLightSurface.mutedText),
                 ),
               ),
             ),
@@ -274,7 +276,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
         ),
         const SizedBox(
           width: 180,
-          child: Divider(color: Colors.white24, thickness: 1),
+          child: Divider(color: AppLightSurface.mutedText, thickness: 1),
         ),
         const SizedBox(height: 32),
         Row(
@@ -291,13 +293,13 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                 decoration: BoxDecoration(
                   color: selected
                       ? const Color(0xFFF81945)
-                      : Colors.white.withValues(alpha: 0.06),
+                      : AppLightSurface.cardFill,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   amount,
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.white54,
+                    color: selected ? Colors.white : AppLightSurface.mutedText,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -314,10 +316,10 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: selected ? const Color(0xFFF81945) : Colors.white10,
+          color: selected ? const Color(0xFFF81945) : AppLightSurface.divider,
         ),
       ),
       child: Row(
@@ -343,8 +345,8 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
           const SizedBox(width: 12),
           Text(
             name,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+                    color: AppLightSurface.primaryText,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -352,7 +354,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
           const SizedBox(width: 6),
           Text(
             code,
-            style: const TextStyle(color: Colors.white38, fontSize: 11),
+            style: TextStyle(color: AppLightSurface.mutedText, fontSize: 11),
           ),
         ],
       ),
@@ -363,9 +365,9 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: AppLightSurface.divider),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -379,7 +381,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                 Text(
                   'Important',
                   style: TextStyle(
-                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                     fontWeight: FontWeight.w700,
                     fontSize: 14,
                   ),
@@ -388,7 +390,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                 Text(
                   'Please ensure you select the correct network and enter a valid address. Withdrawals sent to the wrong address or network cannot be recovered.',
                   style: TextStyle(
-                    color: Colors.white38,
+                    color: AppLightSurface.mutedText,
                     fontSize: 12,
                     height: 1.4,
                   ),
@@ -405,7 +407,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
     return Text(
       label,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.5),
+        color: AppLightSurface.secondaryText,
         fontSize: 13,
         fontWeight: FontWeight.w500,
       ),
@@ -420,17 +422,18 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: AppLightSurface.divider),
       ),
       child: TextField(
         maxLines: maxLines,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 15),
         decoration: InputDecoration(
           border: InputBorder.none,
           hintText: hint,
-          hintStyle: const TextStyle(color: Colors.white24),
+          hintStyle: TextStyle(color: AppLightSurface.mutedText),
           suffixIcon: suffixIcon == null
               ? null
               : suffixIcon is FaIconData
@@ -438,12 +441,12 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                       suffixIcon,
                       color: suffixIcon == FontAwesomeIcons.ccMastercard
                           ? Colors.orange
-                          : Colors.white38,
+                          : AppLightSurface.mutedText,
                       size: 20,
                     )
                   : Icon(
                       suffixIcon as IconData,
-                      color: Colors.white38,
+                      color: AppLightSurface.mutedText,
                       size: 20,
                     ),
         ),
@@ -460,7 +463,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
             width: 20,
             height: 20,
             decoration: BoxDecoration(
-              color: _saveCardInfo ? const Color(0xFFF81945) : Colors.white10,
+              color: _saveCardInfo ? const Color(0xFFF81945) : AppLightSurface.divider,
               borderRadius: BorderRadius.circular(6),
             ),
             child: _saveCardInfo
@@ -470,7 +473,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
           const SizedBox(width: 12),
           const Text(
             'Save card information',
-            style: TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: AppLightSurface.mutedText, fontSize: 13),
           ),
         ],
       ),
@@ -491,7 +494,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
       child: Container(
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppLightSurface.primaryText,
           borderRadius: BorderRadius.circular(30),
         ),
         child: const Row(

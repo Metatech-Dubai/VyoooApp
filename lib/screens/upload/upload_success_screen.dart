@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:vyooo/core/theme/app_gradients.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/widgets/app_gradient_background.dart';
 
 /// Shown after content is successfully posted to Firestore.
@@ -65,7 +66,6 @@ class UploadSuccessScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Center(
             child: Padding(
@@ -77,7 +77,7 @@ class UploadSuccessScreen extends StatelessWidget {
                     width: 96,
                     height: 96,
                     decoration: BoxDecoration(
-                      gradient: AppGradients.premiumDarkGradient,
+                      color: AppLightSurface.cardFill,
                       shape: BoxShape.circle,
                       boxShadow: [
                         BoxShadow(
@@ -87,17 +87,17 @@ class UploadSuccessScreen extends StatelessWidget {
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.check_rounded,
-                      color: Colors.white,
+                      color: AppColors.authBrandBurgundy,
                       size: 52,
                     ),
                   ),
                   const SizedBox(height: AppSpacing.xl),
                   Text(
                     title,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                    color: AppLightSurface.primaryText,
                       fontSize: 28,
                       fontWeight: FontWeight.w700,
                     ),
@@ -107,7 +107,7 @@ class UploadSuccessScreen extends StatelessWidget {
                     subtitle,
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.65),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 15,
                     ),
                   ),
@@ -147,7 +147,7 @@ class UploadSuccessScreen extends StatelessWidget {
                     child: Text(
                       'Back to home',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 15,
                       ),
                     ),

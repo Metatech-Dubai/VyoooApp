@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class LiveStreamRevenueScreen extends StatelessWidget {
   const LiveStreamRevenueScreen({super.key});
@@ -47,7 +48,6 @@ class LiveStreamRevenueScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -102,10 +102,10 @@ class _StreamCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 20),
       height: 140,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: AppLightSurface.cardFill,
           width: 1,
         ),
       ),
@@ -139,7 +139,7 @@ class _StreamCard extends StatelessWidget {
                     Text(
                       date,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -190,7 +190,7 @@ class _DetailRow extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: AppLightSurface.secondaryText,
             fontSize: 13,
             fontWeight: FontWeight.w500,
           ),
@@ -198,7 +198,7 @@ class _DetailRow extends StatelessWidget {
         Text(
           value,
           style: TextStyle(
-            color: Colors.white,
+              color: AppLightSurface.primaryText,
             fontSize: 14,
             fontWeight: isValueBold ? FontWeight.w800 : FontWeight.w500,
           ),
@@ -228,7 +228,7 @@ class _ShortDetailRow extends StatelessWidget {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: AppLightSurface.secondaryText,
             fontSize: 13,
             fontWeight: FontWeight.w500,
             height: 1.2,
@@ -240,15 +240,15 @@ class _ShortDetailRow extends StatelessWidget {
             children: [
               TextSpan(
                 text: value,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                 ),
               ),
               TextSpan(
                 text: highlight,
-                style: const TextStyle(
+                style: TextStyle(
                   color: Color(0xFFF43F5E),
                   fontSize: 14,
                   fontWeight: FontWeight.w800,

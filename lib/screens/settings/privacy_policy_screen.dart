@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/widgets/app_gradient_background.dart';
 
@@ -9,7 +10,6 @@ class PrivacyPolicyScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -21,16 +21,16 @@ class PrivacyPolicyScreen extends StatelessWidget {
                     const Text(
                       'VyooO Privacy Statement',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppLightSurface.primaryText,
                         fontSize: 22,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    Text(
+                    const Text(
                       'Last Updated: July 18, 2024',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.45),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                       ),
@@ -76,10 +76,10 @@ class _LegalSection extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: AppLightSurface.border,
           width: 0.5,
         ),
       ),
@@ -88,8 +88,8 @@ class _LegalSection extends StatelessWidget {
         children: [
           Text(
             title,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppLightSurface.primaryText,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -98,7 +98,7 @@ class _LegalSection extends StatelessWidget {
           Text(
             content,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.45),
+              color: AppLightSurface.secondaryText,
               fontSize: 13,
               height: 1.6,
             ),

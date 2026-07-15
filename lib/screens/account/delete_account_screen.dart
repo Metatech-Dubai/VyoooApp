@@ -4,6 +4,7 @@ import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class DeleteAccountScreen extends StatefulWidget {
   const DeleteAccountScreen({super.key});
@@ -19,7 +20,6 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,7 +37,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     const Text(
                       'Your VyooO account will be\npermanently deleted',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         height: 1.2,
@@ -47,7 +47,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                     Text(
                       'All the information and data will be deleted permanently.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                       ),
                     ),
@@ -58,10 +58,10 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                         vertical: 16,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.02),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: AppLightSurface.border,
                           width: 0.5,
                         ),
                       ),
@@ -81,7 +81,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                 const Text(
                                   'Matt Rife',
                                   style: TextStyle(
-                                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                                     fontSize: 16,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -91,17 +91,13 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                                     Icon(
                                       Icons.person,
                                       size: 12,
-                                      color: Colors.white.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      color: AppLightSurface.secondaryText,
                                     ),
                                     const SizedBox(width: 4),
                                     Text(
                                       '@mattrife_x',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.6,
-                                        ),
+                                        color: AppLightSurface.secondaryText,
                                         fontSize: 12,
                                       ),
                                     ),
@@ -136,9 +132,9 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                           OutlinedButton(
                             onPressed: _isDeleting ? null : () => Navigator.pop(context),
                             style: OutlinedButton.styleFrom(
-                              foregroundColor: Colors.white,
+                              foregroundColor: AppLightSurface.primaryText,
                               side: BorderSide(
-                                color: Colors.white.withValues(alpha: 0.2),
+                                color: AppLightSurface.border,
                               ),
                               minimumSize: const Size(64, 32),
                               padding: const EdgeInsets.symmetric(
@@ -151,7 +147,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                             child: Text(
                               'Cancel',
                               style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.8),
+                                color: AppLightSurface.secondaryText,
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                               ),

@@ -5,15 +5,15 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_background_assets.dart';
 import '../../../core/services/auth_service.dart';
 import '../../../core/services/comment_diagnostics.dart';
 import '../../../core/services/comment_post_exception.dart';
 import '../../../core/services/comment_service.dart';
 import '../../../core/services/story_comment_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/user_facing_errors.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../comment_text_styles.dart';
 import '../models/comment.dart';
 import 'comment_tile.dart';
@@ -414,28 +414,28 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
       context: context,
       useRootNavigator: true,
       builder: (context) => AlertDialog(
-        backgroundColor: AppColors.sheetBackground,
+        backgroundColor: AppLightSurface.background,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text(
+        title: Text(
           'Delete comment?',
           style: TextStyle(
-            color: Colors.white,
+            color: AppLightSurface.primaryText,
             fontSize: 18,
             fontWeight: FontWeight.w700,
             letterSpacing: -0.3,
           ),
         ),
-        content: const Text(
+        content: Text(
           'This comment will be removed from the post.',
-          style: TextStyle(color: Color(0x99FFFFFF), fontSize: 15),
+          style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 15),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
-            child: const Text(
+            child: Text(
               'Cancel',
               style: TextStyle(
-                color: Color(0x99FFFFFF),
+                color: AppLightSurface.secondaryText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -522,32 +522,14 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
       context: context,
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF49113B), Color(0xFF210D1D), Color(0xFF0F040C)],
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        ),
+        decoration: AppBottomSheet.decoration(topRadius: 28),
         child: SafeArea(
           top: false,
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const SizedBox(height: 12),
-              Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 8),
+              AppBottomSheet.dragHandle(),
               if (canDelete)
                 ListTile(
                   leading: const Icon(
@@ -568,20 +550,13 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
                   },
                 ),
               if (canReport) ...[
-                if (canDelete)
-                  Divider(
-                    height: 1,
-                    color: Colors.white.withValues(alpha: 0.08),
-                  ),
+                if (canDelete) Divider(height: 1, color: AppLightSurface.divider),
                 ListTile(
-                  leading: Icon(
-                    Icons.flag_outlined,
-                    color: Colors.white.withValues(alpha: 0.8),
-                  ),
+                  leading: Icon(Icons.flag_outlined, color: AppLightSurface.icon),
                   title: Text(
                     'Report comment',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -592,16 +567,13 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
                   },
                 ),
               ],
-              Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+              Divider(height: 1, color: AppLightSurface.divider),
               ListTile(
-                leading: Icon(
-                  Icons.copy_rounded,
-                  color: Colors.white.withValues(alpha: 0.8),
-                ),
+                leading: Icon(Icons.copy_rounded, color: AppLightSurface.icon),
                 title: Text(
                   'Copy text',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -617,16 +589,13 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
                   );
                 },
               ),
-              Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
+              Divider(height: 1, color: AppLightSurface.divider),
               ListTile(
-                leading: Icon(
-                  Icons.close_rounded,
-                  color: Colors.white.withValues(alpha: 0.6),
-                ),
+                leading: Icon(Icons.close_rounded, color: AppLightSurface.mutedText),
                 title: Text(
                   'Cancel',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppLightSurface.mutedText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -672,13 +641,7 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
           child: Padding(
             padding: EdgeInsets.only(bottom: keyboardBottom),
             child: Container(
-              decoration: BoxDecoration(
-                borderRadius: sheetRadius,
-                image: const DecorationImage(
-                  image: AssetImage(AppBackgroundAssets.commentsSection),
-                  fit: BoxFit.cover,
-                ),
-              ),
+              decoration: AppBottomSheet.decoration(topRadius: 16),
               child: LayoutBuilder(
                   builder: (context, constraints) {
                     final ultraCompact = constraints.maxHeight < 130;
@@ -688,18 +651,7 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
 
                     return Column(
                       children: [
-                        if (!hideHandle)
-                          Center(
-                            child: Container(
-                              margin: EdgeInsets.only(top: compact ? 8 : 10),
-                              width: 66,
-                              height: 3,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(100),
-                              ),
-                            ),
-                          ),
+                        if (!hideHandle) AppBottomSheet.dragHandle(),
                         if (!hideTitle)
                           Padding(
                             padding: EdgeInsets.only(
@@ -792,7 +744,7 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
             children: [
               Text(
                 'Could not load comments',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+                style: TextStyle(color: AppLightSurface.secondaryText),
               ),
               const SizedBox(height: 16),
               FilledButton(
@@ -819,13 +771,13 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
 
     // Loading state
     if (_initializing || (_parsing && _comments.isEmpty)) {
-      return const Center(
+      return Center(
         child: SizedBox(
           width: 28,
           height: 28,
           child: CircularProgressIndicator(
             strokeWidth: 2,
-            color: Color(0x80FFFFFF),
+            color: AppLightSurface.mutedText,
           ),
         ),
       );
@@ -859,15 +811,15 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
             // "Load earlier" header
             if (headerRows > 0 && index == 0) {
               if (_loadingOlder) {
-                return const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 14),
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
                   child: Center(
                     child: SizedBox(
                       width: 22,
                       height: 22,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Color(0x60FFFFFF),
+                        color: AppLightSurface.mutedText,
                       ),
                     ),
                   ),
@@ -877,7 +829,6 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
                 onPressed: _loadOlder,
                 style: TextButton.styleFrom(
                   foregroundColor: CommentTextStyles.secondary,
-                  overlayColor: Colors.white.withValues(alpha: 0.08),
                 ),
                 child: const Text(
                   'Load earlier comments',
@@ -912,7 +863,7 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
 
         // Subtle parsing indicator (top-right spinner)
         if (_parsing && _comments.isNotEmpty)
-          const Positioned(
+          Positioned(
             top: 10,
             right: 14,
             child: SizedBox(
@@ -920,7 +871,7 @@ class _CommentsBottomSheetBodyState extends State<_CommentsBottomSheetBody> {
               height: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 1.8,
-                color: Color(0x60FFFFFF),
+                color: AppLightSurface.mutedText,
               ),
             ),
           ),
@@ -1065,7 +1016,7 @@ class _SendButton extends StatelessWidget {
           shape: BoxShape.circle,
           color: onPressed != null
               ? const Color(0xFFDE106B)
-              : const Color(0x1FFFFFFF), // disabled
+              : AppLightSurface.cardFill,
         ),
         child: const Icon(Icons.send_rounded, size: 20, color: Colors.white),
       ),

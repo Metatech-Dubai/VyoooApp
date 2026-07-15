@@ -3,6 +3,7 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
 import '../../core/services/creator_subscription_service.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class CreatorSubscriptionScreen extends StatefulWidget {
   const CreatorSubscriptionScreen({
@@ -94,7 +95,6 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -108,14 +108,14 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                       onPressed: () => Navigator.of(context).pop(),
                       icon: const Icon(
                         Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
+                        color: AppLightSurface.primaryText,
                         size: 20,
                       ),
                     ),
                     const Text(
                       'Subscription',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -135,13 +135,13 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: AppLightSurface.cardFill,
                             width: 1.5,
                           ),
                         ),
                         child: CircleAvatar(
                           radius: 50,
-                          backgroundColor: Colors.white12,
+                          backgroundColor: AppLightSurface.cardFill,
                           backgroundImage: widget.avatarUrl.isNotEmpty
                               ? NetworkImage(widget.avatarUrl)
                               : null,
@@ -151,15 +151,15 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                       Text(
                         'Subscribe to',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 14,
                         ),
                       ),
                       const SizedBox(height: 4),
                       Text(
                         widget.name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                    color: AppLightSurface.primaryText,
                           fontSize: 28,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -0.5,
@@ -172,7 +172,7 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                           Text(
                             widget.handle,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.4),
+                              color: AppLightSurface.secondaryText,
                               fontSize: 14,
                               fontWeight: FontWeight.w500,
                             ),
@@ -189,7 +189,7 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                               child: const Icon(
                                 Icons.check_rounded,
                                 size: 9,
-                                color: Colors.white,
+                                color: AppLightSurface.primaryText,
                               ),
                             ),
                           ],
@@ -252,7 +252,7 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                   child: Container(
                     height: 52,
                     decoration: BoxDecoration(
-                      color: Colors.white,
+                      color: AppLightSurface.primaryText,
                       borderRadius: BorderRadius.circular(12),
                     ),
                     alignment: Alignment.center,
@@ -282,7 +282,7 @@ class _CreatorSubscriptionScreenState extends State<CreatorSubscriptionScreen> {
                   'By tapping Subscribe, you will be charged and your subscription will auto-renew for the same price and package length until you cancel via settings, and you agree to our Terms.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 10,
                     height: 1.5,
                   ),
@@ -324,13 +324,13 @@ class _SubscriptionOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
         decoration: BoxDecoration(
           color: isSelected
-              ? Colors.white.withValues(alpha: 0.08)
-              : Colors.white.withValues(alpha: 0.04),
+              ? AppLightSurface.cardFill
+              : AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(16),
           border: isSelected
               ? Border.all(color: const Color(0xFFF81945), width: 1.5)
               : Border.all(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: AppLightSurface.cardFill,
                   width: 1,
                 ),
           boxShadow: isSelected
@@ -348,7 +348,7 @@ class _SubscriptionOption extends StatelessWidget {
             Text(
               title,
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
@@ -363,7 +363,7 @@ class _SubscriptionOption extends StatelessWidget {
                 ),
                 child: Text(
                   badge!,
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: Colors.black,
                     fontSize: 9,
                     fontWeight: FontWeight.w700,
@@ -374,8 +374,8 @@ class _SubscriptionOption extends StatelessWidget {
             const Spacer(),
             Text(
               price,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                    color: AppLightSurface.primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w700,
               ),
@@ -399,8 +399,8 @@ class _BenefitsCard extends StatelessWidget {
           padding: const EdgeInsets.fromLTRB(20, 32, 20, 20),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-            color: Colors.white.withValues(alpha: 0.02),
+            border: Border.all(color: AppLightSurface.cardFill),
+            color: AppLightSurface.cardFill,
           ),
           child: const Column(
             children: [
@@ -435,12 +435,12 @@ class _BenefitsCard extends StatelessWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF07010F),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+                border: Border.all(color: AppLightSurface.border),
               ),
               child: const Text(
                 'Included with Subscription',
                 style: TextStyle(
-                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),
@@ -477,8 +477,8 @@ class _BenefitItem extends StatelessWidget {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
@@ -487,7 +487,7 @@ class _BenefitItem extends StatelessWidget {
               Text(
                 subtitle,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 13,
                   height: 1.4,
                 ),

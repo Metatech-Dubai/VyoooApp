@@ -323,6 +323,61 @@ class ProfileFigmaActionButton extends StatelessWidget {
   }
 }
 
+/// Follow / Following / Requested — Figma 146×40 pill (#1C1C1C fill when [filled]).
+class ProfileFollowPillButton extends StatelessWidget {
+  const ProfileFollowPillButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.filled = false,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius =
+        BorderRadius.circular(ProfileFigmaTokens.actionButtonRadius);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: radius,
+        child: Ink(
+          width: ProfileFigmaTokens.actionButtonWidth,
+          height: ProfileFigmaTokens.actionButtonHeight,
+          decoration: BoxDecoration(
+            color: filled
+                ? ProfileFigmaTokens.actionButtonFill
+                : Colors.transparent,
+            borderRadius: radius,
+            border: filled
+                ? null
+                : Border.all(
+                    color: ProfileFigmaTokens.profileFollowingBorder,
+                  ),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: filled
+                  ? AppTypography.profileActionButtonLabel
+                  : const TextStyle(
+                      fontFamily: AppFonts.body,
+                      color: ProfileFigmaTokens.primaryText,
+                      fontSize: ProfileFigmaTokens.profileFollowLabelFontSize,
+                      fontWeight: FontWeight.w500,
+                    ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Circular secondary action (Share, Story+) — #E9E8E7 via SVG or fallback.
 class ProfileFigmaIconActionButton extends StatelessWidget {
   const ProfileFigmaIconActionButton({

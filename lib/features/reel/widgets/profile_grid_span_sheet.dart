@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_background_assets.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/profile/profile_grid_models.dart';
 import '../../../core/widgets/profile/profile_grid_span_service.dart';
 import '../../../core/widgets/profile/profile_modular_grid.dart';
@@ -43,64 +44,42 @@ Future<void> showProfileGridSpanSheet({
             );
           }
 
-          return ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-            child: Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage(AppBackgroundAssets.postSettings),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              child: SafeArea(
-                top: false,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    const SizedBox(height: AppSpacing.sm),
-                    Container(
-                      width: 48,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.35),
-                        borderRadius: BorderRadius.circular(100),
+          return AppBottomSheet.shell(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                AppBottomSheet.dragHandle(),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Profile grid size',
+                      style: TextStyle(
+                        color: AppLightSurface.primaryText,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: AppSpacing.md),
-                    const Padding(
-                      padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          'Profile grid size',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    _SpanOption(
-                      label: 'Large Tile (2×2)',
-                      selected:
-                          selected == ProfileGridSpanOverride.double,
-                      onTap: () => apply(ProfileGridSpanOverride.double),
-                    ),
-                    _SpanOption(
-                      label: 'Normal Tile (1×1)',
-                      selected: selected == ProfileGridSpanOverride.unit,
-                      onTap: () => apply(ProfileGridSpanOverride.unit),
-                    ),
-                    _SpanOption(
-                      label: 'Automatic (Views)',
-                      selected: selected == ProfileGridSpanOverride.auto,
-                      onTap: () => apply(ProfileGridSpanOverride.auto),
-                    ),
-                    const SizedBox(height: AppSpacing.sm),
-                  ],
+                  ),
                 ),
-              ),
+                _SpanOption(
+                  label: 'Large Tile (2×2)',
+                  selected: selected == ProfileGridSpanOverride.double,
+                  onTap: () => apply(ProfileGridSpanOverride.double),
+                ),
+                _SpanOption(
+                  label: 'Normal Tile (1×1)',
+                  selected: selected == ProfileGridSpanOverride.unit,
+                  onTap: () => apply(ProfileGridSpanOverride.unit),
+                ),
+                _SpanOption(
+                  label: 'Automatic (Views)',
+                  selected: selected == ProfileGridSpanOverride.auto,
+                  onTap: () => apply(ProfileGridSpanOverride.auto),
+                ),
+                const SizedBox(height: AppSpacing.sm),
+              ],
             ),
           );
         },
@@ -125,12 +104,14 @@ class _SpanOption extends StatelessWidget {
     return ListTile(
       leading: Icon(
         selected ? Icons.radio_button_checked : Icons.radio_button_off,
-        color: selected ? Colors.white : Colors.white54,
+        color: selected ? AppLightSurface.icon : AppLightSurface.mutedText,
       ),
       title: Text(
         label,
         style: TextStyle(
-          color: selected ? Colors.white : Colors.white70,
+          color: selected
+              ? AppLightSurface.primaryText
+              : AppLightSurface.secondaryText,
           fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
         ),
       ),

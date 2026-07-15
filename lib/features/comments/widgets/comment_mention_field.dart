@@ -5,8 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/services/comment_diagnostics.dart';
 import '../../../core/services/user_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/utils/mention_utils.dart';
 import '../comment_text_styles.dart';
 
@@ -203,9 +205,9 @@ class CommentMentionFieldState extends State<CommentMentionField> {
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Material(
-        color: const Color(0xFF2A1B2E),
+        color: AppLightSurface.background,
         elevation: 6,
-        shadowColor: Colors.black.withValues(alpha: 0.4),
+        shadowColor: Colors.black.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(10),
         clipBehavior: Clip.antiAlias,
         child: Column(
@@ -216,7 +218,7 @@ class CommentMentionFieldState extends State<CommentMentionField> {
                 Divider(
                   height: 1,
                   thickness: 1,
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: AppLightSurface.divider,
                 ),
               _SuggestionRow(
                 item: visible[i],
@@ -250,7 +252,7 @@ class _SuggestionRow extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 12,
-                backgroundColor: const Color(0xFF2A2A3A),
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage: hasAvatar
                     ? CachedNetworkImageProvider(item.avatarUrl)
                     : null,
@@ -261,7 +263,7 @@ class _SuggestionRow extends StatelessWidget {
                             ? item.displayName[0].toUpperCase()
                             : '?',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.chatTextPrimary,
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),
@@ -275,7 +277,7 @@ class _SuggestionRow extends StatelessWidget {
                       TextSpan(
                         text: '@${item.username}',
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.chatTextPrimary,
                           fontSize: 13,
                           fontWeight: FontWeight.w600,
                         ),
@@ -286,7 +288,7 @@ class _SuggestionRow extends StatelessWidget {
                         TextSpan(
                           text: '  ${item.displayName}',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
+                            color: AppLightSurface.secondaryText,
                             fontSize: 12,
                             fontWeight: FontWeight.w400,
                           ),

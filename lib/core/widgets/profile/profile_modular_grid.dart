@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../models/reel_count_privacy.dart';
 import '../../../screens/profile/profile_figma_tokens.dart';
 import '../../utils/reel_engagement.dart';
+import 'profile_grid_density_service.dart';
 import 'profile_grid_layout_engine.dart';
 import 'profile_grid_models.dart';
 import 'profile_grid_posts.dart';
@@ -11,7 +12,9 @@ import 'profile_grid_title.dart';
 import 'profile_span_grid_layout.dart';
 
 /// Modular portrait grid (1×1 and optional 2×2) for profile Feed / VR / Saved tabs.
-class ProfileModularGrid extends StatelessWidget {
+///
+/// Pinch with two fingers to change column density (3 → 2 → 1), Instagram-style.
+class ProfileModularGrid extends StatefulWidget {
   const ProfileModularGrid({
     super.key,
     required this.items,
@@ -23,6 +26,7 @@ class ProfileModularGrid extends StatelessWidget {
     this.tileAspectRatio = ProfileFigmaTokens.contentGridTileAspectRatio,
     this.minViewsForDouble = 0,
     this.padding = EdgeInsets.zero,
+    this.enablePinchDensityZoom = true,
   });
 
   final List<ProfileGridItem> items;
@@ -36,16 +40,85 @@ class ProfileModularGrid extends StatelessWidget {
   final int minViewsForDouble;
   final EdgeInsetsGeometry padding;
 
+  /// When true, pinch in/out on the grid toggles between 1–3 columns.
+  final bool enablePinchDensityZoom;
+
+  @override
+  State<ProfileModularGrid> createState() => _ProfileModularGridState();
+}
+
+class _ProfileModularGridState extends State<ProfileModularGrid> {
+  static const _densityAnimationDuration = Duration(milliseconds: 220);
+
+  late int _crossAxisCount;
+  double _pinchScale = 1.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _crossAxisCount = ProfileGridDensityService.clampColumns(
+      widget.crossAxisCount,
+    );
+    if (widget.enablePinchDensityZoom) {
+      _loadSavedDensity();
+    }
+  }
+
+  @override
+  void didUpdateWidget(ProfileModularGrid oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.enablePinchDensityZoom &&
+        widget.crossAxisCount != oldWidget.crossAxisCount) {
+      _crossAxisCount = ProfileGridDensityService.clampColumns(
+        widget.crossAxisCount,
+      );
+    }
+  }
+
+  Future<void> _loadSavedDensity() async {
+    final saved = await ProfileGridDensityService.load();
+    if (!mounted) return;
+    setState(() => _crossAxisCount = saved);
+  }
+
+  void _onScaleStart(ScaleStartDetails details) {
+    if (!widget.enablePinchDensityZoom) return;
+    _pinchScale = 1.0;
+  }
+
+  void _onScaleUpdate(ScaleUpdateDetails details) {
+    if (!widget.enablePinchDensityZoom || details.pointerCount < 2) return;
+    _pinchScale = details.scale;
+  }
+
+  void _onScaleEnd(ScaleEndDetails details) {
+    if (!widget.enablePinchDensityZoom) return;
+
+    final scale = _pinchScale;
+    _pinchScale = 1.0;
+
+    var next = _crossAxisCount;
+    if (scale >= ProfileGridDensityService.pinchOutThreshold) {
+      next = ProfileGridDensityService.clampColumns(_crossAxisCount - 1);
+    } else if (scale <= ProfileGridDensityService.pinchInThreshold) {
+      next = ProfileGridDensityService.clampColumns(_crossAxisCount + 1);
+    }
+
+    if (next == _crossAxisCount) return;
+    setState(() => _crossAxisCount = next);
+    ProfileGridDensityService.save(next);
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (items.isEmpty) return const SizedBox.shrink();
+    if (widget.items.isEmpty) return const SizedBox.shrink();
 
-    final viewsByIndex = List<int>.filled(items.length, 0);
+    final viewsByIndex = List<int>.filled(widget.items.length, 0);
     final spanOverrideByIndex = List<ProfileGridSpanOverride>.filled(
-      items.length,
+      widget.items.length,
       ProfileGridSpanOverride.auto,
     );
-    for (final item in items) {
+    for (final item in widget.items) {
       if (item.sourceIndex >= 0 && item.sourceIndex < viewsByIndex.length) {
         viewsByIndex[item.sourceIndex] = item.views;
         spanOverrideByIndex[item.sourceIndex] = item.spanOverride;
@@ -53,25 +126,25 @@ class ProfileModularGrid extends StatelessWidget {
     }
 
     final placements = ProfileGridLayoutEngine.layout(
-      itemCount: items.length,
+      itemCount: widget.items.length,
       viewsByIndex: viewsByIndex,
-      mode: layoutMode,
-      minViewsForDouble: minViewsForDouble,
+      mode: widget.layoutMode,
+      minViewsForDouble: widget.minViewsForDouble,
       spanOverrideByIndex: spanOverrideByIndex,
     );
 
     final bySourceIndex = <int, ProfileGridItem>{
-      for (final item in items) item.sourceIndex: item,
+      for (final item in widget.items) item.sourceIndex: item,
     };
 
     final slots = ProfileSpanGridLayout.pack(
       placements: placements,
-      crossAxisCount: crossAxisCount,
+      crossAxisCount: _crossAxisCount,
     );
     if (slots.isEmpty) return const SizedBox.shrink();
 
-    return Padding(
-      padding: padding,
+    final grid = Padding(
+      padding: widget.padding,
       child: LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
@@ -80,40 +153,54 @@ class ProfileModularGrid extends StatelessWidget {
           }
 
           final cellWidth =
-              (width - gap * (crossAxisCount - 1)) / crossAxisCount;
-          final cellHeight = cellWidth / tileAspectRatio;
+              (width - widget.gap * (_crossAxisCount - 1)) / _crossAxisCount;
+          final cellHeight = cellWidth / widget.tileAspectRatio;
           final rowCount = ProfileSpanGridLayout.rowCount(slots);
-          final height =
-              rowCount * cellHeight + (rowCount - 1) * gap;
+          final height = rowCount * cellHeight + (rowCount - 1) * widget.gap;
 
-          return SizedBox(
-            height: height,
-            width: width,
-            child: Stack(
-              clipBehavior: Clip.hardEdge,
-              children: [
-                const Positioned.fill(
-                  child: ColoredBox(
-                    color: ProfileFigmaTokens.contentSurface,
+          return AnimatedSize(
+            duration: _densityAnimationDuration,
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: SizedBox(
+              height: height,
+              width: width,
+              child: Stack(
+                clipBehavior: Clip.hardEdge,
+                children: [
+                  const Positioned.fill(
+                    child: ColoredBox(
+                      color: ProfileFigmaTokens.contentSurface,
+                    ),
                   ),
-                ),
-                for (final slot in slots)
-                  _positionedTile(
-                    slot: slot,
-                    cellWidth: cellWidth,
-                    cellHeight: cellHeight,
-                    gap: gap,
-                    gridWidth: width,
-                    gridHeight: height,
-                    crossAxisCount: crossAxisCount,
-                    rowCount: rowCount,
-                    gridItem: bySourceIndex[slot.placement.sourceIndex],
-                  ),
-              ],
+                  for (final slot in slots)
+                    _positionedTile(
+                      slot: slot,
+                      cellWidth: cellWidth,
+                      cellHeight: cellHeight,
+                      gap: widget.gap,
+                      gridWidth: width,
+                      gridHeight: height,
+                      crossAxisCount: _crossAxisCount,
+                      rowCount: rowCount,
+                      gridItem: bySourceIndex[slot.placement.sourceIndex],
+                    ),
+                ],
+              ),
             ),
           );
         },
       ),
+    );
+
+    if (!widget.enablePinchDensityZoom) return grid;
+
+    return GestureDetector(
+      onScaleStart: _onScaleStart,
+      onScaleUpdate: _onScaleUpdate,
+      onScaleEnd: _onScaleEnd,
+      behavior: HitTestBehavior.translucent,
+      child: grid,
     );
   }
 
@@ -142,7 +229,9 @@ class ProfileModularGrid extends StatelessWidget {
         : slot.rowSpan * cellHeight + (slot.rowSpan - 1) * gap;
     final isHero = slot.placement.span == ProfileGridSpan.double;
 
-    return Positioned(
+    return AnimatedPositioned(
+      duration: _densityAnimationDuration,
+      curve: Curves.easeInOut,
       left: left,
       top: top,
       width: tileWidth,
@@ -158,9 +247,9 @@ class ProfileModularGrid extends StatelessWidget {
           isHero: isHero,
           isRepost: gridItem.isRepost,
           gridTitle: gridItem.gridTitle,
-          onTap: () => onItemTap(gridItem.sourceIndex),
-          onLongPress: onItemLongPress != null
-              ? () => onItemLongPress!(gridItem.sourceIndex)
+          onTap: () => widget.onItemTap(gridItem.sourceIndex),
+          onLongPress: widget.onItemLongPress != null
+              ? () => widget.onItemLongPress!(gridItem.sourceIndex)
               : null,
         ),
       ),

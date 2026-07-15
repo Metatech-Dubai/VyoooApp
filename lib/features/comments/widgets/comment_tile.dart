@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../comment_text_styles.dart';
 import '../models/comment.dart';
 import 'comment_text_with_mentions.dart';
@@ -44,7 +46,7 @@ class CommentTile extends StatelessWidget {
       },
       child: Container(
         color: isHighlighted
-            ? Colors.white.withValues(alpha: 0.05)
+            ? AppLightSurface.cardFill
             : Colors.transparent,
         padding: EdgeInsets.fromLTRB(
           isReply ? 65 : 13,
@@ -180,15 +182,15 @@ class _CommentAvatar extends StatelessWidget {
     final fallback = Container(
       width: size,
       height: size,
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: Color(0xFF2A2A3A),
+        color: AppLightSurface.cardFill,
       ),
       alignment: Alignment.center,
       child: Text(
         fallbackInitial,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.9),
+          color: AppColors.chatTextPrimary,
           fontWeight: FontWeight.w500,
           fontSize: size * 0.36,
         ),

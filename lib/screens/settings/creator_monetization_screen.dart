@@ -10,6 +10,7 @@ import '../../core/subscription/subscription_controller.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Lets Creator-plan users enable subscriptions on their public profile.
 class CreatorMonetizationScreen extends StatefulWidget {
@@ -59,7 +60,6 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -69,7 +69,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                   ? const Center(
                       child: Text(
                         'Sign in to manage creator subscriptions.',
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: AppLightSurface.mutedText),
                       ),
                     )
                   : StreamBuilder<AppUserModel?>(
@@ -80,7 +80,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                             ConnectionState.waiting) {
                           return const Center(
                             child: CircularProgressIndicator(
-                              color: Colors.white54,
+                              color: AppLightSurface.mutedText,
                             ),
                           );
                         }
@@ -88,7 +88,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                           return const Center(
                             child: Text(
                               'Profile unavailable.',
-                              style: TextStyle(color: Colors.white70),
+                              style: TextStyle(color: AppLightSurface.mutedText),
                             ),
                           );
                         }
@@ -120,10 +120,10 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                             Container(
                               padding: const EdgeInsets.all(AppSpacing.md),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.05),
+                                color: AppLightSurface.cardFill,
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: AppLightSurface.cardFill,
                                 ),
                               ),
                               child: SwitchListTile(
@@ -131,7 +131,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                                 title: const Text(
                                   'Enable subscriptions',
                                   style: TextStyle(
-                                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                                     fontWeight: FontWeight.w600,
                                   ),
                                 ),
@@ -140,7 +140,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                                       ? 'Fans see Subscribe on your profile and your gold creator badge.'
                                       : 'Your profile shows Follow only until you turn this on.',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.65),
+                                    color: AppLightSurface.secondaryText,
                                     fontSize: 13,
                                     height: 1.35,
                                   ),
@@ -181,8 +181,8 @@ class _MessageCard extends StatelessWidget {
           Text(
             title,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+                    color: AppLightSurface.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
@@ -192,7 +192,7 @@ class _MessageCard extends StatelessWidget {
             body,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: AppLightSurface.secondaryText,
               fontSize: 14,
               height: 1.4,
             ),

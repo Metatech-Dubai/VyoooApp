@@ -6,6 +6,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Lists users blocked by the current account (Firestore: users/{uid}.blockedUsers).
 class BlockedUsersScreen extends StatelessWidget {
@@ -17,7 +18,6 @@ class BlockedUsersScreen extends StatelessWidget {
 
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -31,7 +31,7 @@ class BlockedUsersScreen extends StatelessWidget {
                           child: Text(
                             'Sign in to view and manage blocked accounts.',
                             textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.white70, fontSize: 16),
+                            style: TextStyle(color: AppLightSurface.mutedText, fontSize: 16),
                           ),
                         ),
                       )
@@ -40,7 +40,7 @@ class BlockedUsersScreen extends StatelessWidget {
                         builder: (context, snap) {
                           if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
                             return const Center(
-                              child: CircularProgressIndicator(color: Colors.white54),
+                              child: CircularProgressIndicator(color: AppLightSurface.mutedText),
                             );
                           }
                           final blockedIds = snap.data?.blockedUsers ?? [];
@@ -51,7 +51,7 @@ class BlockedUsersScreen extends StatelessWidget {
                                 child: Text(
                                   'You haven’t blocked anyone yet.',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(color: Colors.white70, fontSize: 16),
+                                  style: TextStyle(color: AppLightSurface.mutedText, fontSize: 16),
                                 ),
                               ),
                             );
@@ -62,7 +62,7 @@ class BlockedUsersScreen extends StatelessWidget {
                             builder: (context, rowSnap) {
                               if (!rowSnap.hasData) {
                                 return const Center(
-                                  child: CircularProgressIndicator(color: Colors.white54),
+                                  child: CircularProgressIndicator(color: AppLightSurface.mutedText),
                                 );
                               }
                               final rows = rowSnap.data!;
@@ -77,12 +77,12 @@ class BlockedUsersScreen extends StatelessWidget {
                                       children: [
                                         CircleAvatar(
                                           radius: 18,
-                                          backgroundColor: Colors.white24,
+                                          backgroundColor: AppLightSurface.mutedText,
                                           backgroundImage: row.avatarUrl.isNotEmpty
                                               ? NetworkImage(row.avatarUrl)
                                               : null,
                                           child: row.avatarUrl.isEmpty
-                                              ? const Icon(Icons.person_rounded, color: Colors.white54)
+                                              ? const Icon(Icons.person_rounded, color: AppLightSurface.mutedText)
                                               : null,
                                         ),
                                         const SizedBox(width: 12),
@@ -94,8 +94,8 @@ class BlockedUsersScreen extends StatelessWidget {
                                             children: [
                                               Text(
                                                 row.title,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                                                   fontSize: 16,
                                                   fontWeight: FontWeight.w600,
                                                   letterSpacing: -0.2,
@@ -105,7 +105,7 @@ class BlockedUsersScreen extends StatelessWidget {
                                                 Text(
                                                   row.subtitle,
                                                   style: TextStyle(
-                                                    color: Colors.white
+                                                    color: AppLightSurface.primaryText
                                                         .withValues(
                                                           alpha: 0.65,
                                                         ),
@@ -128,13 +128,13 @@ class BlockedUsersScreen extends StatelessWidget {
                                                 vertical: 8,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: Colors.white.withValues(alpha: 0.1),
+                                                color: AppLightSurface.cardFill,
                                                 borderRadius: BorderRadius.circular(20),
                                               ),
                                               child: const Text(
                                                 'Unblock',
                                                 style: TextStyle(
-                                                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                                                   fontSize: 13,
                                                   fontWeight: FontWeight.w600,
                                                 ),

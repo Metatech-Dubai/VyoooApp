@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/mock/mock_music_data.dart';
+import '../../core/theme/app_light_surface.dart';
+import '../../core/widgets/app_bottom_sheet.dart';
 
-/// Bottom sheet to pick a music track for profile. Same list as Music library; selection preview with Done/Cancel.
+/// Bottom sheet to pick a music track for profile.
 void showMusicPickerSheet(
   BuildContext context, {
   required ValueChanged<MusicTrack> onDone,
@@ -30,7 +33,7 @@ class _MusicPickerSheet extends StatefulWidget {
 class _MusicPickerSheetState extends State<_MusicPickerSheet> {
   MusicTrack? _selectedTrack;
   bool _isTrimming = false;
-  int _activeTab = 0; // 0 For you, 1 Trending, 2 Saved
+  int _activeTab = 0;
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -63,89 +66,81 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
 
     return FractionallySizedBox(
       heightFactor: 0.94,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E0A1E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        child: SafeArea(
-          top: false,
-          child: Column(
-            children: [
-              const SizedBox(height: 12),
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
+      child: AppBottomSheet.shell(
+        child: Column(
+          children: [
+            AppBottomSheet.dragHandle(),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
+                  fontSize: 14,
                 ),
-              ),
-              const SizedBox(height: 16),
-              // Search
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (_) => setState(() {}),
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                  decoration: InputDecoration(
-                    hintText: 'Search Music',
-                    hintStyle: TextStyle(color: Colors.white38, fontSize: 14),
-                    prefixIcon: const Icon(
-                      Icons.search_rounded,
-                      color: Colors.white38,
-                      size: 20,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.05),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: BorderSide.none,
-                    ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 8,
-                    ),
+                decoration: InputDecoration(
+                  hintText: 'Search Music',
+                  hintStyle: TextStyle(
+                    color: AppLightSurface.mutedText,
+                    fontSize: 14,
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: AppLightSurface.mutedText,
+                    size: 20,
+                  ),
+                  filled: true,
+                  fillColor: AppLightSurface.cardFill,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppLightSurface.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppLightSurface.border),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
                   ),
                 ),
               ),
-              const SizedBox(height: 16),
-              // Tabs
-              _buildTabs(),
-              const SizedBox(height: 8),
-              // List
-              Expanded(
-                child: Stack(
-                  children: [
-                    ListView.builder(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 100,
-                      ),
-                      itemCount: _filteredTracks.length,
-                      itemBuilder: (context, index) {
-                        final track = _filteredTracks[index];
-                        final isSelected = _selectedTrack?.id == track.id;
-                        return _PickerMusicTile(
-                          track: track,
-                          isSelected: isSelected,
-                          onTap: () => setState(() => _selectedTrack = track),
-                        );
-                      },
+            ),
+            const SizedBox(height: 16),
+            _buildTabs(),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Stack(
+                children: [
+                  ListView.builder(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 100,
                     ),
-                    if (_selectedTrack != null)
-                      Positioned(
-                        left: 16,
-                        right: 16,
-                        bottom: 24,
-                        child: _buildFloatingPlaybackBar(),
-                      ),
-                  ],
-                ),
+                    itemCount: _filteredTracks.length,
+                    itemBuilder: (context, index) {
+                      final track = _filteredTracks[index];
+                      final isSelected = _selectedTrack?.id == track.id;
+                      return _PickerMusicTile(
+                        track: track,
+                        isSelected: isSelected,
+                        onTap: () => setState(() => _selectedTrack = track),
+                      );
+                    },
+                  ),
+                  if (_selectedTrack != null)
+                    Positioned(
+                      left: 16,
+                      right: 16,
+                      bottom: 24,
+                      child: _buildFloatingPlaybackBar(),
+                    ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -157,8 +152,9 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
       child: Container(
         height: 36,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppLightSurface.border),
         ),
         child: Row(
           children: [
@@ -178,14 +174,14 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
         onTap: () => setState(() => _activeTab = index),
         child: Container(
           decoration: BoxDecoration(
-            color: active ? const Color(0xFFDE106B) : Colors.transparent,
+            color: active ? AppColors.brandPink : Colors.transparent,
             borderRadius: BorderRadius.circular(10),
           ),
           alignment: Alignment.center,
           child: Text(
             label,
             style: TextStyle(
-              color: active ? Colors.white : Colors.white60,
+              color: active ? Colors.white : AppLightSurface.secondaryText,
               fontSize: 13,
               fontWeight: active ? FontWeight.w600 : FontWeight.w500,
             ),
@@ -200,7 +196,7 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: const Color(0xFFDE106B),
+        color: AppColors.brandPink,
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
@@ -271,22 +267,10 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
     final t = _selectedTrack!;
     return FractionallySizedBox(
       heightFactor: 0.45,
-      child: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E0A1E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
+      child: AppBottomSheet.shell(
         child: Column(
           children: [
-            const SizedBox(height: 12),
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            AppBottomSheet.dragHandle(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
@@ -296,7 +280,7 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
                     onPressed: () => setState(() => _isTrimming = false),
                     child: const Text(
                       'Cancel',
-                      style: TextStyle(color: Color(0xFFDE106B), fontSize: 15),
+                      style: TextStyle(color: AppColors.brandPink, fontSize: 15),
                     ),
                   ),
                   TextButton(
@@ -307,7 +291,7 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
                     child: const Text(
                       'Done',
                       style: TextStyle(
-                        color: Color(0xFFDE106B),
+                        color: AppColors.brandPink,
                         fontSize: 15,
                         fontWeight: FontWeight.bold,
                       ),
@@ -329,15 +313,18 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
             const SizedBox(height: 16),
             Text(
               t.title,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppLightSurface.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
             ),
             Text(
               t.artist,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(
+                color: AppLightSurface.secondaryText,
+                fontSize: 14,
+              ),
             ),
             const Spacer(),
             _buildWaveformTrimmer(),
@@ -359,7 +346,9 @@ class _MusicPickerSheetState extends State<_MusicPickerSheet> {
               margin: const EdgeInsets.symmetric(horizontal: 1),
               height: 20 + (i % 7) * 4.0,
               decoration: BoxDecoration(
-                color: active ? const Color(0xFFDE106B) : Colors.white24,
+                color: active
+                    ? AppColors.brandPink
+                    : AppLightSurface.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -407,8 +396,8 @@ class _PickerMusicTile extends StatelessWidget {
                     track.title,
                     style: TextStyle(
                       color: isSelected
-                          ? const Color(0xFFDE106B)
-                          : Colors.white,
+                          ? AppColors.brandPink
+                          : AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -416,19 +405,21 @@ class _PickerMusicTile extends StatelessWidget {
                   ),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.north_east_rounded,
-                        color: Colors.white38,
+                        color: AppLightSurface.mutedText,
                         size: 12,
                       ),
                       const SizedBox(width: 4),
-                      Text(
-                        '${track.artist} • ${track.duration}',
-                        style: const TextStyle(
-                          color: Colors.white38,
-                          fontSize: 13,
+                      Expanded(
+                        child: Text(
+                          '${track.artist} • ${track.duration}',
+                          style: TextStyle(
+                            color: AppLightSurface.secondaryText,
+                            fontSize: 13,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        overflow: TextOverflow.ellipsis,
                       ),
                     ],
                   ),
@@ -439,7 +430,7 @@ class _PickerMusicTile extends StatelessWidget {
               track.isSaved
                   ? Icons.bookmark_rounded
                   : Icons.bookmark_border_rounded,
-              color: Colors.white70,
+              color: AppLightSurface.icon,
               size: 22,
             ),
           ],

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Video quality options. [isPremium] shows yellow PREMIUM tag.
 const List<VideoQualityOption> kVideoQualityOptions = [
@@ -40,11 +42,6 @@ void showVideoQualitySheet(
   );
 }
 
-abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
-}
-
 class _VideoQualitySheet extends StatelessWidget {
   const _VideoQualitySheet({
     required this.selectedId,
@@ -62,28 +59,17 @@ class _VideoQualitySheet extends StatelessWidget {
       maxChildSize: 0.65,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF49113B), // Deep Magenta
-                Color(0xFF210D1D), 
-                Color(0xFF0F040C),
-              ],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
+          decoration: AppBottomSheet.decoration(topRadius: 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DragHandle(),
+              AppBottomSheet.dragHandle(),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Text(
                   'Video Quality',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
@@ -92,7 +78,10 @@ class _VideoQualitySheet extends StatelessWidget {
               Flexible(
                 child: ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
                   itemCount: kVideoQualityOptions.length,
                   itemBuilder: (context, index) {
                     final option = kVideoQualityOptions[index];
@@ -104,14 +93,16 @@ class _VideoQualitySheet extends StatelessWidget {
                       },
                       borderRadius: BorderRadius.circular(AppRadius.input),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
                               child: Text(
                                 option.label,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: AppLightSurface.primaryText,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -119,10 +110,17 @@ class _VideoQualitySheet extends StatelessWidget {
                             ),
                             if (option.isPremium)
                               Container(
-                                margin: const EdgeInsets.only(right: AppSpacing.sm),
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                margin: const EdgeInsets.only(
+                                  right: AppSpacing.sm,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: AppColors.lightGold.withValues(alpha: 0.25),
+                                  color: AppColors.lightGold.withValues(
+                                    alpha: 0.25,
+                                  ),
                                   borderRadius: BorderRadius.circular(4),
                                 ),
                                 child: Text(
@@ -152,25 +150,6 @@ class _VideoQualitySheet extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.storyItem, bottom: AppSpacing.xs),
-      child: Center(
-        child: Container(
-          width: _Layout.dragHandleWidth,
-          height: _Layout.dragHandleHeight,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      ),
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class LiveStreamMonetisationScreen extends StatefulWidget {
   const LiveStreamMonetisationScreen({super.key});
@@ -18,7 +19,6 @@ class _LiveStreamMonetisationScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,7 +37,7 @@ class _LiveStreamMonetisationScreenState
                       'Set your Price',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 24,
                         fontWeight: FontWeight.w800,
                         letterSpacing: -0.5,
@@ -49,7 +49,7 @@ class _LiveStreamMonetisationScreenState
                       'Choose the amount you want to charge from\nthe subscribers. you can change this price later\nin Live stream monetisation.',
                       textAlign: TextAlign.center,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                         height: 1.5,
                       ),
@@ -59,7 +59,7 @@ class _LiveStreamMonetisationScreenState
                     const Text(
                       'Live video pricing',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 17,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.3,
@@ -69,7 +69,7 @@ class _LiveStreamMonetisationScreenState
                     Text(
                       'Set your per-minute rate for non-subscribers.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -87,7 +87,7 @@ class _LiveStreamMonetisationScreenState
                           return Text(
                             '$val',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: AppLightSurface.secondaryText,
                               fontSize: 11,
                             ),
                           );
@@ -108,7 +108,7 @@ class _LiveStreamMonetisationScreenState
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
         activeTrackColor: const Color(0xFFF81945),
-        inactiveTrackColor: Colors.white.withValues(alpha: 0.15),
+        inactiveTrackColor: AppLightSurface.border,
         thumbColor: Colors.white,
         overlayColor: const Color(0xFFF81945).withValues(alpha: 0.2),
         thumbShape: _CustomThumbShape(currentValue: _sliderValue.round()),
@@ -177,8 +177,8 @@ class _CustomThumbShape extends SliderComponentShape {
     final tp = TextPainter(
       text: TextSpan(
         text: 'c$currentValue',
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+                    color: AppLightSurface.primaryText,
           fontSize: 11,
           fontWeight: FontWeight.w700,
         ),

@@ -14,6 +14,7 @@ import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Collects parent/guardian contact so a minor can send a consent request.
 ///
@@ -55,7 +56,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
         SnackBar(
           content: Text(
             message,
-            style: const TextStyle(height: 1.35, fontSize: 15),
+            style: TextStyle(height: 1.35, fontSize: 15),
           ),
           behavior: SnackBarBehavior.floating,
           margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
@@ -94,7 +95,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
       favorite: const ['GB', 'AE'],
       countryListTheme: CountryListThemeData(
         backgroundColor: const Color(0xFF12081C),
-        textStyle: const TextStyle(color: Colors.white),
+        textStyle: TextStyle(color: AppLightSurface.primaryText),
         inputDecoration: InputDecoration(
           labelText: 'Search country',
           labelStyle: TextStyle(color: AppTheme.secondaryTextColor),
@@ -167,7 +168,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
       controller: _phone,
       focusNode: _phoneFocusNode,
       keyboardType: TextInputType.phone,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: AppLightSurface.primaryText),
       decoration: _decoration(
         'Phone number',
         prefixIcon: Row(
@@ -181,7 +182,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
                 child: Text(
                   '$_selectedCountryFlag +$_selectedCountryDialCode',
-                  style: const TextStyle(
+                  style: TextStyle(
                     color: AppTheme.primary,
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -289,7 +290,6 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
         body: Stack(
           children: [
             AppGradientBackground(
-              type: GradientType.authFlow,
               child: SafeArea(
                 minimum: const EdgeInsets.only(bottom: 20),
                 child: LayoutBuilder(
@@ -324,7 +324,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                                   widget.previousDenied
                                       ? 'Parent declined last time'
                                       : 'Parent or guardian',
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     fontSize: 24,
                                     fontWeight: FontWeight.w600,
                                     color: AppTheme.defaultTextColor,
@@ -338,7 +338,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                                   style: TextStyle(
                                     fontSize: 14,
                                     height: 1.45,
-                                    color: Colors.white.withValues(alpha: 0.82),
+                                    color: AppLightSurface.secondaryText,
                                   ),
                                 ),
                                 const SizedBox(height: 24),
@@ -346,7 +346,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                                   controller: _email,
                                   keyboardType: TextInputType.emailAddress,
                                   autocorrect: false,
-                                  style: const TextStyle(color: Colors.white),
+                                  style: TextStyle(color: AppLightSurface.primaryText),
                                   decoration:
                                       _decoration('Parent email (optional)'),
                                 ),
@@ -357,7 +357,7 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
                                   Text(
                                     key: _errorScrollKey,
                                     _error!,
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       color: AppColors.brandPink,
                                       fontSize: 14,
                                       height: 1.4,
@@ -399,20 +399,20 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
   InputDecoration _decoration(String hint, {Widget? prefixIcon}) {
     return InputDecoration(
       hintText: hint,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
+      hintStyle: TextStyle(color: AppLightSurface.secondaryText),
       prefixIcon: prefixIcon,
       prefixIconConstraints: prefixIcon != null
           ? const BoxConstraints(minWidth: 0, minHeight: 0)
           : null,
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.06),
+      fillColor: AppLightSurface.cardFill,
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+        borderSide: BorderSide(color: AppLightSurface.border),
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.12)),
+        borderSide: BorderSide(color: AppLightSurface.border),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class WithdrawalConfirmationScreen extends StatelessWidget {
   const WithdrawalConfirmationScreen({super.key, this.isCrypto = false});
@@ -11,7 +12,6 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -54,19 +54,19 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
       children: [
         const Text(
           'You will recieve',
-          style: TextStyle(color: Colors.white54, fontSize: 14),
+          style: TextStyle(color: AppLightSurface.mutedText, fontSize: 14),
         ),
         const SizedBox(height: 16),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 20),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(20),
           ),
           child: const Text(
             '€ 493.50',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 32,
               fontWeight: FontWeight.w800,
             ),
@@ -88,7 +88,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
           valueColor: const Color(0xFFF81945),
         ),
         const SizedBox(height: 24),
-        const Divider(color: Colors.white10),
+        const Divider(color: AppLightSurface.divider),
         const SizedBox(height: 24),
         _buildSummaryRow('Net Amount', '€ 493.50', isHeader: true),
       ],
@@ -123,14 +123,14 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
                   Text(
                     'Deutsche Bank',
                     style: TextStyle(
-                      color: Colors.white,
+              color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   Text(
                     'Savings  •  . . . . 4821',
-                    style: TextStyle(color: Colors.white38, fontSize: 12),
+                    style: TextStyle(color: AppLightSurface.mutedText, fontSize: 12),
                   ),
                 ],
               ),
@@ -148,7 +148,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
         const SizedBox(height: 24),
         _buildFieldDisplay('Account Holder', 'Alex Morgan'),
         const SizedBox(height: 32),
-        const Divider(color: Colors.white10),
+        const Divider(color: AppLightSurface.divider),
         const SizedBox(height: 32),
         _buildFieldDisplay('Transfer Type', 'SEPA Transfer'),
         const SizedBox(height: 24),
@@ -168,7 +168,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
         const Text(
           'Ethereum (ERC20)',
           style: TextStyle(
-            color: Colors.white,
+              color: AppLightSurface.primaryText,
             fontSize: 17,
             fontWeight: FontWeight.w600,
           ),
@@ -185,9 +185,9 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: AppLightSurface.divider),
           ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -201,7 +201,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
                     Text(
                       'Irreversible transaction',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontWeight: FontWeight.w700,
                         fontSize: 14,
                       ),
@@ -210,7 +210,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
                     Text(
                       'Crypto transactions cannot be reversed. Please double-check the destination address network. Sending to the wrong network will result in permanent loss of funds.',
                       style: TextStyle(
-                        color: Colors.white38,
+                        color: AppLightSurface.mutedText,
                         fontSize: 12,
                         height: 1.4,
                       ),
@@ -229,7 +229,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
     return Text(
       label,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.3),
+        color: AppLightSurface.border,
         fontSize: 13,
         fontWeight: FontWeight.w600,
       ),
@@ -256,13 +256,13 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         value,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                    color: AppLightSurface.primaryText,
                           fontSize: 14,
                           fontFamily: 'monospace',
                         ),
@@ -275,21 +275,21 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.06),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         value,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                    color: AppLightSurface.primaryText,
                           fontSize: 14,
                         ),
                       ),
                     )
                   : Text(
                       value,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                    color: AppLightSurface.primaryText,
                         fontSize: 17,
                         fontWeight: FontWeight.w500,
                       ),
@@ -297,7 +297,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
             ),
             if (showCopy) ...[
               const SizedBox(width: 8),
-              const Icon(Icons.copy_rounded, color: Colors.white38, size: 18),
+              const Icon(Icons.copy_rounded, color: AppLightSurface.mutedText, size: 18),
             ],
           ],
         ),
@@ -320,21 +320,23 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: isHeader ? Colors.white : Colors.white54,
+                color: isHeader
+                    ? AppLightSurface.primaryText
+                    : AppLightSurface.mutedText,
                 fontSize: isHeader ? 18 : 15,
                 fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
             if (showInfo) ...[
               const SizedBox(width: 8),
-              const Icon(Icons.info_outline, color: Colors.white24, size: 14),
+              const Icon(Icons.info_outline, color: AppLightSurface.mutedText, size: 14),
             ],
           ],
         ),
         Text(
           value,
           style: TextStyle(
-            color: valueColor ?? Colors.white,
+            color: valueColor ?? AppLightSurface.primaryText,
             fontSize: isHeader ? 18 : 15,
             fontWeight: isHeader ? FontWeight.w800 : FontWeight.w600,
           ),
@@ -352,7 +354,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
       child: Container(
         height: 60,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppLightSurface.primaryText,
           borderRadius: BorderRadius.circular(30),
         ),
         child: const Row(

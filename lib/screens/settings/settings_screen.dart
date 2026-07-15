@@ -6,6 +6,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/dob_validation.dart';
@@ -67,7 +68,6 @@ class SettingsScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -366,7 +366,7 @@ class SettingsScreen extends StatelessWidget {
       child: Text(
         title,
         style: AppTypography.caption.copyWith(
-          color: Colors.white.withValues(alpha: 0.55),
+          color: AppLightSurface.mutedText,
           fontWeight: FontWeight.w600,
           letterSpacing: 0.4,
         ),
@@ -377,10 +377,10 @@ class SettingsScreen extends StatelessWidget {
   Widget _settingsGroup(List<Widget> tiles) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: AppLightSurface.border,
         ),
       ),
       child: Column(
@@ -391,7 +391,7 @@ class SettingsScreen extends StatelessWidget {
                 height: 1,
                 thickness: 1,
                 indent: AppSpacing.md + 32 + AppSpacing.sm,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppLightSurface.divider,
               ),
             tiles[i],
           ],
@@ -443,8 +443,8 @@ class _SettingsTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = isLogout
         ? const Color(0xFFE81E57)
-        : Colors.white.withValues(alpha: 0.85);
-    final labelColor = isLogout ? const Color(0xFFE81E57) : Colors.white;
+        : AppLightSurface.primaryText;
+    final labelColor = isLogout ? const Color(0xFFE81E57) : AppLightSurface.primaryText;
 
     return Material(
       color: Colors.transparent,
@@ -506,7 +506,7 @@ class _SettingsTile extends StatelessWidget {
                       Text(
                         subtitle!,
                         style: AppTypography.caption.copyWith(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: AppLightSurface.secondaryText,
                         ),
                       ),
                     ],
@@ -519,7 +519,7 @@ class _SettingsTile extends StatelessWidget {
                   child: Icon(
                     Icons.chevron_right_rounded,
                     size: 20,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: AppLightSurface.chevron,
                   ),
                 ),
             ],

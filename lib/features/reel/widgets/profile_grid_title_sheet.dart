@@ -3,10 +3,11 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
-import '../../../core/theme/app_background_assets.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/profile/profile_grid_thumbnail.dart';
 import '../../../core/widgets/profile/profile_grid_thumbnail_service.dart';
 import '../../../core/widgets/profile/profile_grid_title.dart';
@@ -157,54 +158,35 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
       padding: EdgeInsets.only(
         bottom: MediaQuery.viewInsetsOf(context).bottom,
       ),
-      child: ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(AppBackgroundAssets.postSettings),
-              fit: BoxFit.cover,
-            ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const SizedBox(height: AppSpacing.sm),
-                  Container(
-                    width: 48,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.35),
-                      borderRadius: BorderRadius.circular(100),
+      child: AppBottomSheet.shell(
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppBottomSheet.dragHandle(),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Profile grid',
+                    style: TextStyle(
+                      color: AppLightSurface.primaryText,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: AppSpacing.md),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Profile grid',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: Text(
+                  'Custom thumbnail and title appear on your profile grid only.',
+                  style: AppTypography.authSmallBody.copyWith(
+                    color: AppLightSurface.secondaryText,
                   ),
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                    child: Text(
-                      'Custom thumbnail and title appear on your profile grid only.',
-                      style: AppTypography.authSmallBody.copyWith(
-                        color: Colors.white54,
-                      ),
-                    ),
-                  ),
+                ),
+              ),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
@@ -244,9 +226,11 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
                                 onPressed: _saving || !_hasCustomThumb
                                     ? null
                                     : _resetToDefaultThumbnail,
-                                child: const Text(
+                                child: Text(
                                   'Use default thumbnail',
-                                  style: TextStyle(color: Colors.white54),
+                                  style: TextStyle(
+                                    color: AppLightSurface.mutedText,
+                                  ),
                                 ),
                               ),
                             ],
@@ -256,14 +240,14 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
                     ),
                   ),
                   const SizedBox(height: AppSpacing.md),
-                  const Padding(
-                    padding: EdgeInsets.fromLTRB(16, 0, 16, 4),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 4),
                     child: Align(
                       alignment: Alignment.centerLeft,
                       child: Text(
                         'Grid title',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppLightSurface.primaryText,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -277,7 +261,7 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
                       child: Text(
                         'Up to ${ProfileGridTitle.maxLength} characters. Leave empty to hide.',
                         style: AppTypography.authSmallBody.copyWith(
-                          color: Colors.white54,
+                          color: AppLightSurface.secondaryText,
                         ),
                       ),
                     ),
@@ -288,20 +272,30 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
                       controller: _controller,
                       maxLength: ProfileGridTitle.maxLength,
                       maxLengthEnforcement: MaxLengthEnforcement.enforced,
-                      style: AppTypography.input.copyWith(color: Colors.white),
+                      style: AppTypography.input.copyWith(
+                        color: AppLightSurface.primaryText,
+                      ),
                       decoration: InputDecoration(
                         hintText: 'e.g. Summer tour',
                         hintStyle: AppTypography.input.copyWith(
-                          color: Colors.white38,
+                          color: AppLightSurface.mutedText,
                         ),
                         counterStyle: AppTypography.authSmallBody.copyWith(
-                          color: Colors.white54,
+                          color: AppLightSurface.mutedText,
                         ),
                         filled: true,
-                        fillColor: Colors.white.withValues(alpha: 0.08),
+                        fillColor: AppLightSurface.cardFill,
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
+                          borderSide: const BorderSide(
+                            color: AppLightSurface.border,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: AppLightSurface.border,
+                          ),
                         ),
                       ),
                       textInputAction: TextInputAction.done,
@@ -320,9 +314,9 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
                                   _controller.clear();
                                   _save();
                                 },
-                          child: const Text(
+                          child: Text(
                             'Clear title',
-                            style: TextStyle(color: Colors.white54),
+                            style: TextStyle(color: AppLightSurface.mutedText),
                           ),
                         ),
                         const Spacer(),
@@ -346,16 +340,18 @@ class _ProfileGridTitleSheetBodyState extends State<_ProfileGridTitleSheetBody> 
               ),
             ),
           ),
-        ),
-      ),
     );
   }
 
   Widget _thumbPlaceholder() {
     return ColoredBox(
-      color: Colors.white.withValues(alpha: 0.08),
-      child: const Center(
-        child: Icon(Icons.image_outlined, color: Colors.white38, size: 32),
+      color: AppLightSurface.cardFill,
+      child: Center(
+        child: Icon(
+          Icons.image_outlined,
+          color: AppLightSurface.mutedText,
+          size: 32,
+        ),
       ),
     );
   }

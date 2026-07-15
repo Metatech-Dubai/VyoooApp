@@ -1,10 +1,12 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
-/// "Why you're seeing this post?" bottom sheet: title, body with Learn More link,
-/// then reasons with icons (e.g. You follow X, You've interacted with content about...).
+/// "Why you're seeing this post?" bottom sheet.
 void showWhySeeingThisSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -15,8 +17,6 @@ void showWhySeeingThisSheet(BuildContext context) {
 }
 
 abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
   static const double reasonIconSize = 40;
 }
 
@@ -26,44 +26,26 @@ class _WhySeeingThisSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF49113B), // Deep Magenta
-            Color(0xFF210D1D), 
-            Color(0xFF0F040C),
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      decoration: AppBottomSheet.decoration(topRadius: 28),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(AppSpacing.md, 0, AppSpacing.md, AppSpacing.xl),
+            padding: const EdgeInsets.fromLTRB(
+              AppSpacing.md,
+              0,
+              AppSpacing.md,
+              AppSpacing.xl,
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(top: AppSpacing.storyItem, bottom: AppSpacing.sm),
-                  child: Center(
-                    child: Container(
-                      width: _Layout.dragHandleWidth,
-                      height: _Layout.dragHandleHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                const Text(
+                AppBottomSheet.dragHandle(),
+                Text(
                   "Why you're seeing this post?",
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppLightSurface.primaryText,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
@@ -72,7 +54,7 @@ class _WhySeeingThisSheet extends StatelessWidget {
                 RichText(
                   text: TextSpan(
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 15,
                       height: 1.4,
                       fontWeight: FontWeight.w400,
@@ -84,8 +66,8 @@ class _WhySeeingThisSheet extends StatelessWidget {
                       ),
                       TextSpan(
                         text: 'Learn More',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppColors.brandPink,
                           fontWeight: FontWeight.w600,
                         ),
                         recognizer: TapGestureRecognizer()
@@ -99,13 +81,14 @@ class _WhySeeingThisSheet extends StatelessWidget {
                 const SizedBox(height: AppSpacing.xl),
                 _ReasonRow(
                   icon: Icons.person_outline_rounded,
-                  label: "You follow Robert Thank",
-                  avatarUrl: 'https://i.pravatar.cc/100?img=12', // Slightly larger high-quality avatar
+                  label: 'You follow Robert Thank',
+                  avatarUrl: 'https://i.pravatar.cc/100?img=12',
                 ),
                 const SizedBox(height: 24),
                 _ReasonRow(
-                  icon: Icons.access_time_rounded, // Improved clock icon matching mockup
-                  label: "You've interacted with content about travel and more.",
+                  icon: Icons.access_time_rounded,
+                  label:
+                      "You've interacted with content about travel and more.",
                 ),
                 const SizedBox(height: AppSpacing.sm),
               ],
@@ -137,8 +120,9 @@ class _ReasonRow extends StatelessWidget {
           width: _Layout.reasonIconSize,
           height: _Layout.reasonIconSize,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.12),
+            color: AppLightSurface.cardFill,
             shape: BoxShape.circle,
+            border: Border.all(color: AppLightSurface.border),
           ),
           child: avatarUrl != null
               ? ClipOval(
@@ -152,7 +136,7 @@ class _ReasonRow extends StatelessWidget {
               : Icon(
                   icon ?? Icons.autorenew_rounded,
                   size: 22,
-                  color: Colors.white70,
+                  color: AppLightSurface.icon,
                 ),
         ),
         const SizedBox(width: AppSpacing.md),
@@ -161,8 +145,8 @@ class _ReasonRow extends StatelessWidget {
             padding: const EdgeInsets.only(top: 8),
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppLightSurface.primaryText,
                 fontSize: 15,
                 height: 1.35,
                 fontWeight: FontWeight.w400,

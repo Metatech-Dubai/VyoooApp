@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Playback speed options: 0.25x, 0.5x, 1x (Normal), 1.5x, 2x.
 const List<PlaybackSpeedOption> kPlaybackSpeedOptions = [
@@ -35,11 +37,6 @@ void showPlaybackSpeedSheet(
   );
 }
 
-abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
-}
-
 class _PlaybackSpeedSheet extends StatelessWidget {
   const _PlaybackSpeedSheet({
     required this.selectedId,
@@ -57,28 +54,17 @@ class _PlaybackSpeedSheet extends StatelessWidget {
       maxChildSize: 0.6,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF49113B), // Deep Magenta
-                Color(0xFF210D1D), 
-                Color(0xFF0F040C),
-              ],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
+          decoration: AppBottomSheet.decoration(topRadius: 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DragHandle(),
+              AppBottomSheet.dragHandle(),
               Padding(
                 padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
                 child: Text(
                   'Playback Speed',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
@@ -87,7 +73,10 @@ class _PlaybackSpeedSheet extends StatelessWidget {
               Flexible(
                 child: ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.xs),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: AppSpacing.md,
+                    vertical: AppSpacing.xs,
+                  ),
                   itemCount: kPlaybackSpeedOptions.length,
                   itemBuilder: (context, index) {
                     final option = kPlaybackSpeedOptions[index];
@@ -99,14 +88,16 @@ class _PlaybackSpeedSheet extends StatelessWidget {
                       },
                       borderRadius: BorderRadius.circular(AppRadius.input),
                       child: Padding(
-                        padding: const EdgeInsets.symmetric(vertical: AppSpacing.sm),
+                        padding: const EdgeInsets.symmetric(
+                          vertical: AppSpacing.sm,
+                        ),
                         child: Row(
                           children: [
                             Expanded(
                               child: Text(
                                 option.label,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                                  color: AppLightSurface.primaryText,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w400,
                                 ),
@@ -130,25 +121,6 @@ class _PlaybackSpeedSheet extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: AppSpacing.storyItem, bottom: AppSpacing.xs),
-      child: Center(
-        child: Container(
-          width: _Layout.dragHandleWidth,
-          height: _Layout.dragHandleHeight,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(2),
-          ),
-        ),
-      ),
     );
   }
 }

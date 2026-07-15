@@ -11,6 +11,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/notification_preferences_service.dart';
 import '../../core/services/push_messaging_service.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
@@ -136,7 +137,6 @@ class _NotificationSettingsScreenState
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -174,7 +174,7 @@ class _NotificationSettingsScreenState
                     const Text(
                       'Push Notifications',
                       style: TextStyle(
-                        color: Colors.white60,
+                        color: AppLightSurface.secondaryText,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -183,10 +183,10 @@ class _NotificationSettingsScreenState
                     Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: AppLightSurface.cardFill,
                         ),
                       ),
                       child: Column(
@@ -274,7 +274,7 @@ class _NotificationSettingsScreenState
                       Text(
                         'Saving…',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 12,
                         ),
                       ),
@@ -296,7 +296,7 @@ class _NotificationSettingsScreenState
     return Divider(
       height: 24,
       thickness: 1,
-      color: Colors.white.withValues(alpha: 0.1),
+      color: AppLightSurface.cardFill,
     );
   }
 }
@@ -330,7 +330,7 @@ class _PermissionBanner extends StatelessWidget {
                 const Text(
                   'Notifications are off in system Settings',
                   style: TextStyle(
-                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -339,7 +339,7 @@ class _PermissionBanner extends StatelessWidget {
                 Text(
                   'Turn them on to receive push alerts from Vyooo.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12,
                     height: 1.35,
                   ),
@@ -397,8 +397,8 @@ class _NotificationSwitch extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 17,
                     fontWeight: FontWeight.w600,
                   ),
@@ -407,7 +407,7 @@ class _NotificationSwitch extends StatelessWidget {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12,
                     height: 1.3,
                   ),

@@ -10,6 +10,7 @@ import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/wrappers/auth_wrapper.dart';
 import '../auth/sign_in_screen.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class SwitchAccountsScreen extends StatefulWidget {
   const SwitchAccountsScreen({super.key});
@@ -88,7 +89,6 @@ class _SwitchAccountsScreenState extends State<SwitchAccountsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -142,9 +142,9 @@ class _SwitchAccountsScreenState extends State<SwitchAccountsScreen> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Column(
         children: [
@@ -153,7 +153,7 @@ class _SwitchAccountsScreenState extends State<SwitchAccountsScreen> {
               Divider(
                 height: 1,
                 thickness: 1,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppLightSurface.cardFill,
               ),
             _AccountRow(
               account: accounts[i],
@@ -205,7 +205,7 @@ class _AccountRow extends StatelessWidget {
                     Text(
                       account.label,
                       style: AppTypography.authDialogOption.copyWith(
-                        color: Colors.white,
+                        color: AppLightSurface.primaryText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -215,7 +215,7 @@ class _AccountRow extends StatelessWidget {
                       Text(
                         account.displayName,
                         style: AppTypography.caption.copyWith(
-                          color: Colors.white.withValues(alpha: 0.55),
+                          color: AppLightSurface.secondaryText,
                         ),
                       ),
                     ],
@@ -224,7 +224,7 @@ class _AccountRow extends StatelessWidget {
                       Text(
                         'Sign in again to switch',
                         style: AppTypography.caption.copyWith(
-                          color: Colors.white.withValues(alpha: 0.45),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 11,
                         ),
                       ),
@@ -241,7 +241,7 @@ class _AccountRow extends StatelessWidget {
               else if (isActive)
                 Icon(
                   Icons.check_circle_rounded,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppLightSurface.secondaryText,
                   size: 22,
                 ),
             ],
@@ -263,7 +263,7 @@ class _AccountAvatar extends StatelessWidget {
     final fallback = label.isNotEmpty ? label[0].toUpperCase() : '?';
     return CircleAvatar(
       radius: 22,
-      backgroundColor: Colors.white.withValues(alpha: 0.12),
+      backgroundColor: AppLightSurface.cardFill,
       backgroundImage: url.isNotEmpty ? CachedNetworkImageProvider(url) : null,
       child: url.isEmpty
           ? Text(
@@ -296,9 +296,9 @@ class _AddAccountButton extends StatelessWidget {
             vertical: AppSpacing.md,
           ),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+            border: Border.all(color: AppLightSurface.cardFill),
           ),
           child: Row(
             children: [
@@ -308,20 +308,20 @@ class _AddAccountButton extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.35),
+                    color: AppLightSurface.border,
                     width: 1.5,
                   ),
                 ),
                 child: Icon(
                   Icons.add_rounded,
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: AppLightSurface.secondaryText,
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
               Text(
                 'Add account',
                 style: AppTypography.authDialogOption.copyWith(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -349,7 +349,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               'No saved accounts yet',
               style: AppTypography.authDialogOption.copyWith(
-                color: Colors.white.withValues(alpha: 0.8),
+                color: AppLightSurface.secondaryText,
                 fontWeight: FontWeight.w600,
               ),
               textAlign: TextAlign.center,
@@ -358,7 +358,7 @@ class _EmptyState extends StatelessWidget {
             Text(
               'Log in to save an account on this device, then switch between accounts here.',
               style: AppTypography.caption.copyWith(
-                color: Colors.white.withValues(alpha: 0.55),
+                color: AppLightSurface.secondaryText,
               ),
               textAlign: TextAlign.center,
             ),

@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/theme/app_gradients.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../subscription/subscription_screen.dart';
 
 /// "Download now with Subscription" prompt shown when a standard user taps Download.
-/// Matches Figma: title, description, gradient "Subscribe Now" button with crown icon.
 void showDownloadSubscriptionSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -18,45 +18,25 @@ void showDownloadSubscriptionSheet(BuildContext context) {
   );
 }
 
-abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
-}
-
 class _DownloadSubscriptionSheet extends StatelessWidget {
   const _DownloadSubscriptionSheet();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.sheetBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.pill)),
-      ),
+      decoration: AppBottomSheet.decoration(topRadius: AppRadius.pill),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.storyItem, bottom: AppSpacing.xs),
-              child: Center(
-                child: Container(
-                  width: _Layout.dragHandleWidth,
-                  height: _Layout.dragHandleHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
+            AppBottomSheet.dragHandle(),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Download now with Subscription',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white,
+                color: AppLightSurface.primaryText,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
@@ -68,7 +48,7 @@ class _DownloadSubscriptionSheet extends StatelessWidget {
                 'Subscribe today to unlock offline access and uninterrupted viewing. Enjoy seamless, high-quality entertainment that travels with you wherever you go.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 15,
                   height: 1.4,
                   fontWeight: FontWeight.w400,
@@ -99,7 +79,7 @@ class _DownloadSubscriptionSheet extends StatelessWidget {
                         borderRadius: BorderRadius.circular(AppRadius.button),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.2),
+                            color: Colors.black.withValues(alpha: 0.12),
                             blurRadius: 8,
                             offset: const Offset(0, 2),
                           ),
@@ -114,7 +94,7 @@ class _DownloadSubscriptionSheet extends StatelessWidget {
                             size: 20,
                           ),
                           const SizedBox(width: AppSpacing.sm),
-                          Text(
+                          const Text(
                             'Subscribe Now',
                             style: TextStyle(
                               color: Colors.white,

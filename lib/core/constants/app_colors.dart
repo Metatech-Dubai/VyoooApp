@@ -89,9 +89,9 @@ class AppColors {
   static const Color brandBlack = Color(0xFF020109);
   static const Color lightGold = Color(0xFFF7CA39);
 
-  /// Bottom sheets (comments, share)
-  static const Color sheetBackground = Color(0xFF2A1B2E);
-  static const Color sheetBackgroundShare = Color(0xFF2A2530);
+  /// Bottom sheets (comments, share, profile options).
+  static const Color sheetBackground = Color(0xFFFFFFFF);
+  static const Color sheetBackgroundShare = Color(0xFFFFFFFF);
 
   /// Actions / semantic
   static const Color deleteRed = Color(0xFFE53935);

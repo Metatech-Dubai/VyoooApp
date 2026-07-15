@@ -260,7 +260,6 @@ class VrScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.feed,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [

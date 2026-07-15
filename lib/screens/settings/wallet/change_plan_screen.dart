@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
 import 'package:vyooo/core/widgets/settings/settings_inner_app_bar.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class ChangePlanScreen extends StatefulWidget {
   const ChangePlanScreen({
@@ -63,7 +64,6 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
 
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -79,7 +79,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                     const Text(
                       'Select New Plan',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -123,13 +123,13 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
           children: [
             CircleAvatar(
               radius: 48,
-              backgroundColor: Colors.white12,
+              backgroundColor: AppLightSurface.cardFill,
               backgroundImage: hasImage ? NetworkImage(widget.image.trim()) : null,
               child: hasImage
                   ? null
                   : const Icon(
                       Icons.person_rounded,
-                      color: Colors.white70,
+                      color: AppLightSurface.mutedText,
                       size: 36,
                     ),
             ),
@@ -141,8 +141,8 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
           children: [
             Text(
               widget.name,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                    color: AppLightSurface.primaryText,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
               ),
@@ -155,7 +155,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
         Text(
           widget.handle,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.3),
+            color: AppLightSurface.border,
             fontSize: 14,
           ),
         ),
@@ -183,8 +183,8 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
               const SizedBox(width: 8),
               Text(
                 '${widget.currentPlan} Plan - € ${widget.currentRate}/mo',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
                 ),
@@ -206,12 +206,12 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
       child: Container(
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected
                 ? const Color(0xFFF81945)
-                : Colors.white.withValues(alpha: 0.08),
+                : AppLightSurface.cardFill,
             width: 2,
           ),
           boxShadow: selected
@@ -230,8 +230,8 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
               children: [
                 Text(
                   plan['title'],
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
@@ -251,7 +251,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                     ),
                     child: Text(
                       plan['label'],
-                      style: const TextStyle(
+                      style: TextStyle(
                         color: Colors.black,
                         fontSize: 10,
                         fontWeight: FontWeight.w800,
@@ -263,8 +263,8 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                 const Spacer(),
                 Text(
                   '€ ${plan['price']}/M',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
@@ -299,7 +299,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                   Text(
                     '€ ${plan['total']} Total',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.3),
+                      color: AppLightSurface.border,
                       fontSize: 13,
                     ),
                   ),
@@ -342,15 +342,15 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
       height: 56,
       decoration: BoxDecoration(
         color: isCurrentPlan
-            ? Colors.white.withValues(alpha: 0.2)
-            : Colors.white,
+            ? AppLightSurface.cardFill
+            : const Color(0xFFF81945),
         borderRadius: BorderRadius.circular(12),
       ),
       alignment: Alignment.center,
       child: Text(
         label,
         style: TextStyle(
-          color: isCurrentPlan ? Colors.white54 : Colors.black,
+          color: isCurrentPlan ? AppLightSurface.mutedText : Colors.white,
           fontSize: 18,
           fontWeight: FontWeight.w700,
         ),
@@ -365,7 +365,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
         textAlign: TextAlign.center,
         text: TextSpan(
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.3),
+            color: AppLightSurface.border,
             fontSize: 11,
             height: 1.4,
           ),
@@ -377,7 +377,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
             TextSpan(
               text: 'Terms',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
+                color: AppLightSurface.secondaryText,
                 decoration: TextDecoration.underline,
               ),
             ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class SubscriptionRevenueScreen extends StatelessWidget {
   const SubscriptionRevenueScreen({super.key});
@@ -42,7 +43,6 @@ class SubscriptionRevenueScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -61,10 +61,10 @@ class SubscriptionRevenueScreen extends StatelessWidget {
                         vertical: 24,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: AppLightSurface.cardFill,
                           width: 1,
                         ),
                       ),
@@ -73,8 +73,8 @@ class SubscriptionRevenueScreen extends StatelessWidget {
                         children: [
                           Text(
                             item['month']!,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                    color: AppLightSurface.primaryText,
                               fontSize: 19,
                               fontWeight: FontWeight.w700,
                               letterSpacing: -0.3,
@@ -84,7 +84,7 @@ class SubscriptionRevenueScreen extends StatelessWidget {
                           Text(
                             item['range']!,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.5),
+                              color: AppLightSurface.secondaryText,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                             ),
@@ -96,15 +96,15 @@ class SubscriptionRevenueScreen extends StatelessWidget {
                               Text(
                                 'Earnings',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.7),
+                                  color: AppLightSurface.secondaryText,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w500,
                                 ),
                               ),
                               Text(
                                 item['earnings']!,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                                   fontSize: 15,
                                   fontWeight: FontWeight.w800,
                                 ),

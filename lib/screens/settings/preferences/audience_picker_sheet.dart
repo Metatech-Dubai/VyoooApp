@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/models/user_app_preferences.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
-import '../../../core/theme/app_background_assets.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 Future<String?> showAudiencePickerSheet(
   BuildContext context, {
@@ -14,53 +16,36 @@ Future<String?> showAudiencePickerSheet(
     context: context,
     backgroundColor: Colors.transparent,
     builder: (ctx) {
-      return ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        child: Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(AppBackgroundAssets.commentsSection),
-              fit: BoxFit.cover,
+      return AppBottomSheet.shell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBottomSheet.dragHandle(),
+            Padding(
+              padding: const EdgeInsets.all(AppSpacing.md),
+              child: Text(
+                title,
+                style: AppTypography.onboardingSectionTitle.copyWith(
+                  fontSize: 18,
+                  color: AppLightSurface.primaryText,
+                ),
+              ),
             ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: AppSpacing.sm),
-                Container(
-                  width: 48,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(100),
+            for (final value in AudienceOption.values)
+              ListTile(
+                title: Text(
+                  AudienceOption.labels[value] ?? value,
+                  style: AppTypography.authDialogOption.copyWith(
+                    color: AppLightSurface.primaryText,
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(AppSpacing.md),
-                  child: Text(
-                    title,
-                    style: AppTypography.onboardingSectionTitle.copyWith(
-                      fontSize: 18,
-                    ),
-                  ),
-                ),
-                for (final value in AudienceOption.values)
-                  ListTile(
-                    title: Text(
-                      AudienceOption.labels[value] ?? value,
-                      style: AppTypography.authDialogOption,
-                    ),
-                    trailing: currentValue == value
-                        ? const Icon(Icons.check_rounded, color: Color(0xFFF81945))
-                        : null,
-                    onTap: () => Navigator.pop(ctx, value),
-                  ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
-            ),
-          ),
+                trailing: currentValue == value
+                    ? const Icon(Icons.check_rounded, color: AppColors.brandPink)
+                    : null,
+                onTap: () => Navigator.pop(ctx, value),
+              ),
+            const SizedBox(height: AppSpacing.sm),
+          ],
         ),
       );
     },

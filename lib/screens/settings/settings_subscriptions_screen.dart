@@ -5,6 +5,7 @@ import '../../core/widgets/app_gradient_background.dart';
 
 import 'live_stream_monetisation_screen.dart';
 import 'manage_subscriptions_screen.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class SettingsSubscriptionsScreen extends StatelessWidget {
   const SettingsSubscriptionsScreen({super.key});
@@ -13,7 +14,6 @@ class SettingsSubscriptionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -27,10 +27,10 @@ class SettingsSubscriptionsScreen extends StatelessWidget {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.02),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: AppLightSurface.border,
                           width: 0.5,
                         ),
                       ),
@@ -79,7 +79,7 @@ class SettingsSubscriptionsScreen extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      color: Colors.white.withValues(alpha: 0.1),
+      color: AppLightSurface.cardFill,
       indent: 0,
       endIndent: 0,
     );
@@ -105,8 +105,8 @@ class _SubscriptionRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.2,
@@ -115,7 +115,7 @@ class _SubscriptionRow extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppLightSurface.secondaryText,
                 size: 18,
               ),
             ],

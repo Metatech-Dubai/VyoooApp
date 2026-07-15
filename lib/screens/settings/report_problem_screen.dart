@@ -3,6 +3,7 @@ import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class ReportProblemScreen extends StatefulWidget {
   const ReportProblemScreen({super.key});
@@ -35,7 +36,6 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -51,7 +51,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                       const Text(
                         'Describe the problem you have\nencountered.',
                         style: TextStyle(
-                          color: Colors.white,
+              color: AppLightSurface.primaryText,
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
                           height: 1.3,
@@ -63,7 +63,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                             ? 'Please be as specific as possible'
                             : 'Provide details to help us understand the problem',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.45),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 13,
                           fontWeight: FontWeight.w500,
                         ),
@@ -74,24 +74,24 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                         height: 240,
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.05),
+                          color: AppLightSurface.cardFill,
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: AppLightSurface.cardFill,
                             width: 1,
                           ),
                         ),
                         child: TextField(
                           controller: _controller,
                           maxLines: null,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                    color: AppLightSurface.primaryText,
                             fontSize: 15,
                             height: 1.4,
                           ),
                           decoration: const InputDecoration(
                             hintText: 'Type your issue....',
-                            hintStyle: TextStyle(color: Colors.white38),
+                            hintStyle: TextStyle(color: AppLightSurface.mutedText),
                             border: InputBorder.none,
                             enabledBorder: InputBorder.none,
                             focusedBorder: InputBorder.none,
@@ -110,7 +110,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                               color: Colors.transparent,
                               borderRadius: BorderRadius.circular(16),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: AppLightSurface.cardFill,
                                 width: 1,
                               ),
                             ),
@@ -119,14 +119,14 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                               children: [
                                 Icon(
                                   Icons.add_photo_alternate_outlined,
-                                  color: Colors.white60,
+                                  color: AppLightSurface.secondaryText,
                                   size: 24,
                                 ),
                                 SizedBox(height: 8),
                                 Text(
                                   'Upload Images',
                                   style: TextStyle(
-                                    color: Colors.white60,
+                                    color: AppLightSurface.secondaryText,
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -149,19 +149,15 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                                     width: 80,
                                     margin: const EdgeInsets.only(right: 12),
                                     decoration: BoxDecoration(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.05,
-                                      ),
+                                      color: AppLightSurface.cardFill,
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.1,
-                                        ),
+                                        color: AppLightSurface.border,
                                       ),
                                     ),
                                     child: const Icon(
                                       Icons.add_rounded,
-                                      color: Colors.white54,
+                                      color: AppLightSurface.mutedText,
                                     ),
                                   ),
                                 );
@@ -194,7 +190,7 @@ class _ReportProblemScreenState extends State<ReportProblemScreen> {
                                         ),
                                         child: const Icon(
                                           Icons.close_rounded,
-                                          color: Colors.white,
+                                          color: AppLightSurface.primaryText,
                                           size: 16,
                                         ),
                                       ),

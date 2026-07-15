@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/services/auth_service.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_padding.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
@@ -31,7 +32,6 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.profile,
         child: SafeArea(
           child: Column(
             children: [
@@ -41,10 +41,10 @@ class HomeScreen extends StatelessWidget {
                   padding: AppPadding.card,
                   child: TextButton.icon(
                     onPressed: () => _logout(context),
-                    icon: const Icon(Icons.logout, color: Colors.white70, size: 20),
-                    label: const Text(
+                    icon: Icon(Icons.logout, color: AppLightSurface.mutedText, size: 20),
+                    label: Text(
                       'Logout',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(color: AppLightSurface.mutedText, fontSize: 14),
                     ),
                   ),
                 ),

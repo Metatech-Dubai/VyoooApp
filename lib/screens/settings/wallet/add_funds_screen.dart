@@ -3,6 +3,7 @@ import '../../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class AddFundsScreen extends StatefulWidget {
   const AddFundsScreen({super.key});
@@ -40,7 +41,6 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -92,7 +92,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         const Text(
           'Select Network',
           style: TextStyle(
-            color: Colors.white60,
+            color: AppLightSurface.secondaryText,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -114,7 +114,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         const Text(
           'Select Token',
           style: TextStyle(
-            color: Colors.white60,
+            color: AppLightSurface.secondaryText,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -123,7 +123,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFF81945), width: 1),
           ),
@@ -132,7 +132,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               Text(
                 'USDC',
                 style: TextStyle(
-                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -140,10 +140,10 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               SizedBox(width: 4),
               Text(
                 '(USD Coin)',
-                style: TextStyle(color: Colors.white38, fontSize: 14),
+                style: TextStyle(color: AppLightSurface.mutedText, fontSize: 14),
               ),
               Spacer(),
-              Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white),
+              Icon(Icons.keyboard_arrow_down_rounded, color: AppLightSurface.primaryText),
             ],
           ),
         ),
@@ -151,7 +151,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.05),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: Colors.yellow.withValues(alpha: 0.2),
@@ -166,8 +166,8 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               Expanded(
                 child: RichText(
                   text: TextSpan(
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: TextStyle(
+                      color: AppLightSurface.mutedText,
                       fontSize: 13,
                       height: 1.5,
                     ),
@@ -175,7 +175,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                       const TextSpan(
                         text: 'Important\n',
                         style: TextStyle(
-                          color: Colors.white,
+              color: AppLightSurface.primaryText,
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
                         ),
@@ -205,7 +205,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         const Text(
           'Deposit Address',
           style: TextStyle(
-            color: Colors.white60,
+            color: AppLightSurface.secondaryText,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -214,10 +214,10 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         Container(
           padding: const EdgeInsets.all(24),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               width: 1,
             ),
           ),
@@ -225,7 +225,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             children: [
               const Text(
                 'Scan QR or Copy Address',
-                style: TextStyle(color: Colors.white38, fontSize: 13),
+                style: TextStyle(color: AppLightSurface.mutedText, fontSize: 13),
               ),
               const SizedBox(height: 16),
               Container(
@@ -233,7 +233,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 height: 160,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Image.network(
@@ -250,7 +250,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                   color: Colors.black.withValues(alpha: 0.3),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.05),
+                    color: AppLightSurface.cardFill,
                     width: 1,
                   ),
                 ),
@@ -260,13 +260,13 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                       child: Text(
                         '0x71c4a8f3. . . e9b2976F',
                         style: TextStyle(
-                          color: Colors.white70,
+                          color: AppLightSurface.mutedText,
                           fontSize: 14,
                           fontFamily: 'monospace',
                         ),
                       ),
                     ),
-                    Icon(Icons.copy_rounded, color: Colors.white38, size: 18),
+                    Icon(Icons.copy_rounded, color: AppLightSurface.mutedText, size: 18),
                   ],
                 ),
               ),
@@ -295,7 +295,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         const Center(
           child: Text(
             'OR',
-            style: TextStyle(color: Colors.white24, fontSize: 13),
+            style: TextStyle(color: AppLightSurface.mutedText, fontSize: 13),
           ),
         ),
         const SizedBox(height: 24),
@@ -303,7 +303,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           height: 64,
           padding: const EdgeInsets.symmetric(horizontal: 16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppLightSurface.primaryText,
             borderRadius: BorderRadius.circular(32),
           ),
           child: Row(
@@ -317,7 +317,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 ),
                 child: const Icon(
                   Icons.account_balance_wallet,
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   size: 20,
                 ),
               ),
@@ -355,12 +355,12 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: selected
               ? const Color(0xFFF81945)
-              : Colors.white.withValues(alpha: 0.08),
+              : AppLightSurface.cardFill,
           width: 1,
         ),
       ),
@@ -390,15 +390,15 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             children: [
               Text(
                 name,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                 ),
               ),
               Text(
                 code,
-                style: const TextStyle(color: Colors.white38, fontSize: 12),
+                style: TextStyle(color: AppLightSurface.mutedText, fontSize: 12),
               ),
             ],
           ),
@@ -425,7 +425,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(
+            style: TextStyle(
               color: Color(0xFFF81945),
               fontSize: 14,
               fontWeight: FontWeight.w600,
@@ -446,7 +446,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             const Text(
               'Gas fee (est.)',
               style: TextStyle(
-                color: Colors.white54,
+                color: AppLightSurface.mutedText,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
@@ -455,7 +455,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             const Text(
               '~\$0.42  ',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 15,
                 fontWeight: FontWeight.w700,
               ),
@@ -478,7 +478,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           ],
         ),
         const SizedBox(height: 24),
-        const Divider(color: Colors.white10, height: 1),
+        const Divider(color: AppLightSurface.divider, height: 1),
         const SizedBox(height: 24),
         const Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -486,7 +486,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             Text(
               'Total',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
@@ -495,7 +495,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             Text(
               '\$25.42',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
@@ -515,10 +515,10 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
     return Container(
       height: 44,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: AppLightSurface.cardFill,
           width: 0.5,
         ),
       ),
@@ -534,7 +534,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               width: MediaQuery.of(context).size.width * 0.45,
               margin: const EdgeInsets.all(3),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppLightSurface.primaryText,
                 borderRadius: BorderRadius.circular(20),
                 boxShadow: [
                   BoxShadow(
@@ -557,7 +557,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                       style: TextStyle(
                         color: _selectedCurrencyIndex == 0
                             ? Colors.black
-                            : Colors.white.withValues(alpha: 0.5),
+                            : AppLightSurface.mutedText,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -575,7 +575,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                       style: TextStyle(
                         color: _selectedCurrencyIndex == 1
                             ? Colors.black
-                            : Colors.white.withValues(alpha: 0.5),
+                            : AppLightSurface.mutedText,
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
@@ -596,7 +596,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         const Text(
           'Enter Amount',
           style: TextStyle(
-            color: Colors.white60,
+            color: AppLightSurface.secondaryText,
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.5,
@@ -611,7 +611,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             const Text(
               '€',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 32,
                 fontWeight: FontWeight.w700,
               ),
@@ -622,8 +622,8 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 controller: _amountController,
                 keyboardType: TextInputType.number,
                 textAlign: TextAlign.start,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 54,
                   fontWeight: FontWeight.w800,
                   letterSpacing: -1,
@@ -651,7 +651,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             gradient: LinearGradient(
               colors: [
                 Colors.white.withValues(alpha: 0),
-                Colors.white.withValues(alpha: 0.3),
+                AppLightSurface.border,
                 Colors.white.withValues(alpha: 0),
               ],
             ),
@@ -683,12 +683,12 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               decoration: BoxDecoration(
                 color: selected
                     ? const Color(0xFFF81945)
-                    : Colors.white.withValues(alpha: 0.06),
+                    : AppLightSurface.cardFill,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: selected
                       ? Colors.transparent
-                      : Colors.white.withValues(alpha: 0.1),
+                      : AppLightSurface.cardFill,
                   width: 1,
                 ),
               ),
@@ -696,7 +696,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               child: Text(
                 '€ $amount',
                 style: TextStyle(
-                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                   fontSize: 15,
                   fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                 ),
@@ -715,7 +715,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         const Text(
           'Payment Method',
           style: TextStyle(
-            color: Colors.white60,
+            color: AppLightSurface.secondaryText,
             fontSize: 16,
             fontWeight: FontWeight.w600,
             letterSpacing: -0.2,
@@ -757,12 +757,12 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected
                 ? const Color(0xFFF81945)
-                : Colors.white.withValues(alpha: 0.08),
+                : AppLightSurface.cardFill,
             width: 1.5,
           ),
         ),
@@ -772,7 +772,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               width: 36,
               height: 36,
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: AppLightSurface.cardFill,
                 borderRadius: BorderRadius.circular(10),
               ),
               child: icon is FaIconData
@@ -783,8 +783,8 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -798,7 +798,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 border: Border.all(
                   color: selected
                       ? const Color(0xFFF81945)
-                      : Colors.white.withValues(alpha: 0.3),
+                      : AppLightSurface.border,
                   width: 2,
                 ),
               ),
@@ -872,7 +872,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 decoration: BoxDecoration(
                   color: _saveCardInfo
                       ? const Color(0xFFF81945)
-                      : Colors.white10,
+                      : AppLightSurface.divider,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: _saveCardInfo
@@ -883,7 +883,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               const Text(
                 'Save card information',
                 style: TextStyle(
-                  color: Colors.white70,
+                  color: AppLightSurface.mutedText,
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -899,7 +899,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
     return Text(
       label,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.5),
+        color: AppLightSurface.secondaryText,
         fontSize: 13,
         fontWeight: FontWeight.w500,
       ),
@@ -909,17 +909,17 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
   Widget _buildTextField({required String hint, Object? suffixIcon}) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: AppLightSurface.cardFill,
           width: 1,
         ),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: TextField(
-        style: const TextStyle(
-          color: Colors.white,
+        style: TextStyle(
+                    color: AppLightSurface.primaryText,
           fontSize: 15,
           fontWeight: FontWeight.w500,
         ),
@@ -927,7 +927,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           border: InputBorder.none,
           hintText: hint,
           hintStyle: TextStyle(
-            color: Colors.white.withValues(alpha: 0.2),
+            color: AppLightSurface.border,
             fontWeight: FontWeight.w400,
           ),
           suffixIcon: suffixIcon == null
@@ -955,7 +955,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           showInfo: true,
         ),
         const SizedBox(height: 20),
-        const Divider(color: Colors.white10, height: 1),
+        const Divider(color: AppLightSurface.divider, height: 1),
         const SizedBox(height: 20),
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -963,7 +963,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             const Text(
               'Total',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
@@ -971,8 +971,8 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
             ),
             Text(
               '€ ${total.toStringAsFixed(2)}',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                    color: AppLightSurface.primaryText,
                 fontSize: 22,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.5,
@@ -990,7 +990,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.5),
+            color: AppLightSurface.secondaryText,
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
@@ -999,15 +999,15 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           const SizedBox(width: 8),
           Icon(
             Icons.info_outline_rounded,
-            color: Colors.white.withValues(alpha: 0.3),
+            color: AppLightSurface.border,
             size: 16,
           ),
         ],
         const Spacer(),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+                    color: AppLightSurface.primaryText,
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),

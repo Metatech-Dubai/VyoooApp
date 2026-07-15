@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
+import 'profile_figma_tokens.dart';
 
 class PersonalInformationScreen extends StatefulWidget {
   const PersonalInformationScreen({
@@ -115,7 +117,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     DateTime selected = initial;
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       builder: (context) {
         return SafeArea(
           child: SizedBox(
@@ -129,11 +131,20 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.pop(context),
-                        child: const Text('Cancel'),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: ProfileFigmaTokens.secondaryText),
+                        ),
                       ),
                       TextButton(
                         onPressed: () => Navigator.pop(context, selected),
-                        child: const Text('Done'),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(
+                            color: Color(0xFFDE106B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -164,7 +175,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     DateTime selected = initial;
     final picked = await showModalBottomSheet<DateTime>(
       context: context,
-      backgroundColor: const Color(0xFF1E1E1E),
+      backgroundColor: ProfileFigmaTokens.screenBackground,
       builder: (context) {
         return SafeArea(
           child: SizedBox(
@@ -178,11 +189,20 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child: const Text('Cancel'),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(color: ProfileFigmaTokens.secondaryText),
+                        ),
                       ),
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(selected),
-                        child: const Text('Done'),
+                        child: const Text(
+                          'Done',
+                          style: TextStyle(
+                            color: Color(0xFFDE106B),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -354,7 +374,6 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.profile,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -382,9 +401,19 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
             ? const SizedBox(
                 width: 18,
                 height: 18,
-                child: CircularProgressIndicator(strokeWidth: 2),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Color(0xFFDE106B),
+                ),
               )
-            : const Text('Save'),
+            : const Text(
+                'Save',
+                style: TextStyle(
+                  color: Color(0xFFDE106B),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                ),
+              ),
       ),
     );
   }
@@ -392,7 +421,9 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
   Widget _buildLoading() {
     return const Padding(
       padding: EdgeInsets.only(top: 64),
-      child: Center(child: CircularProgressIndicator()),
+      child: Center(
+        child: CircularProgressIndicator(color: Color(0xFFDE106B)),
+      ),
     );
   }
 
@@ -403,8 +434,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         const SizedBox(height: AppSpacing.md),
         Text(
           'Provide your personal information, even if the account is for something such as a business or pet. It won\'t be part of your public profile.',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
+          style: const TextStyle(
+            color: ProfileFigmaTokens.secondaryText,
             fontSize: 15,
             height: 1.4,
           ),
@@ -412,8 +443,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         const SizedBox(height: AppSpacing.lg),
         Text(
           'To keep your account secure, don\'t enter an email address or phone number that belongs to someone else.',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
+          style: const TextStyle(
+            color: ProfileFigmaTokens.secondaryText,
             fontSize: 15,
             height: 1.4,
           ),
@@ -450,8 +481,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
         const SizedBox(height: AppSpacing.lg),
         Text(
           'Interests',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.9),
+          style: const TextStyle(
+            color: ProfileFigmaTokens.primaryText,
             fontSize: 16,
             fontWeight: FontWeight.w600,
           ),
@@ -476,11 +507,19 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   }
                 });
               },
-              selectedColor: Colors.pink.withValues(alpha: 0.35),
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
-              checkmarkColor: Colors.white,
-              labelStyle: const TextStyle(color: Colors.white),
-              side: BorderSide(color: Colors.white.withValues(alpha: 0.18)),
+              selectedColor: AppColors.brandPink.withValues(alpha: 0.2),
+              backgroundColor: ProfileFigmaTokens.cardBackground,
+              checkmarkColor: const Color(0xFFDE106B),
+              labelStyle: TextStyle(
+                color: isSelected
+                    ? const Color(0xFFDE106B)
+                    : ProfileFigmaTokens.primaryText,
+              ),
+              side: BorderSide(
+                color: isSelected
+                    ? const Color(0xFFDE106B)
+                    : ProfileFigmaTokens.profileFollowingBorder,
+              ),
             );
           }).toList(),
         ),
@@ -488,8 +527,8 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
           const SizedBox(height: AppSpacing.lg),
           Text(
             'Organization details',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
+            style: const TextStyle(
+              color: ProfileFigmaTokens.primaryText,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -542,17 +581,17 @@ class _EditableFieldRow extends StatelessWidget {
         controller: controller,
         maxLines: maxLines,
         maxLength: maxLength,
-        style: const TextStyle(color: Colors.white),
+        style: const TextStyle(color: ProfileFigmaTokens.primaryText),
         decoration: InputDecoration(
           labelText: label,
           hintText: hint,
-          labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+          labelStyle: const TextStyle(color: ProfileFigmaTokens.primaryText),
+          hintStyle: const TextStyle(color: ProfileFigmaTokens.secondaryText),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
           ),
-          focusedBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+          focusedBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: Color(0xFFDE106B)),
           ),
         ),
       ),
@@ -580,18 +619,22 @@ class _DatePickerFieldRow extends StatelessWidget {
         child: IgnorePointer(
           child: TextField(
             controller: controller,
-            style: const TextStyle(color: Colors.white),
+            style: const TextStyle(color: ProfileFigmaTokens.primaryText),
             decoration: InputDecoration(
               labelText: label,
               hintText: 'YYYY-MM-DD',
-              suffixIcon: const Icon(Icons.calendar_today, color: Colors.white70, size: 18),
-              labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45)),
-              enabledBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+              suffixIcon: const Icon(
+                Icons.calendar_today,
+                color: ProfileFigmaTokens.secondaryText,
+                size: 18,
               ),
-              focusedBorder: UnderlineInputBorder(
-                borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+              labelStyle: const TextStyle(color: ProfileFigmaTokens.primaryText),
+              hintStyle: const TextStyle(color: ProfileFigmaTokens.secondaryText),
+              enabledBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
+              ),
+              focusedBorder: const UnderlineInputBorder(
+                borderSide: BorderSide(color: Color(0xFFDE106B)),
               ),
             ),
           ),
@@ -610,22 +653,26 @@ class _AccountTypeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InputDecorator(
-      decoration: InputDecoration(
+      decoration: const InputDecoration(
         labelText: 'Account type',
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+        labelStyle: TextStyle(color: ProfileFigmaTokens.primaryText),
         enabledBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+          borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
         ),
         focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.6)),
+          borderSide: BorderSide(color: Color(0xFFDE106B)),
         ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: value,
-          dropdownColor: const Color(0xFF2A0030),
-          style: const TextStyle(color: Colors.white),
+          dropdownColor: ProfileFigmaTokens.screenBackground,
+          style: const TextStyle(color: ProfileFigmaTokens.primaryText),
           isExpanded: true,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: ProfileFigmaTokens.secondaryText,
+          ),
           items: const <DropdownMenuItem<String>>[
             DropdownMenuItem(value: 'private', child: Text('Private')),
             DropdownMenuItem(value: 'public', child: Text('Public')),

@@ -8,8 +8,10 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/subscription/subscription_controller.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_bottom_sheet.dart';
 import '../../features/subscription/subscription_screen.dart';
 import 'user_profile_screen.dart';
 
@@ -354,16 +356,14 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
   void _showRemoveFollowerModal(BuildContext context, _ConnectionUser user) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.sheetBackground,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AppBottomSheet.shell(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              AppBottomSheet.dragHandle(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -372,7 +372,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 16,
                       ),
                     ),
@@ -414,10 +414,10 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                 ],
               ),
               const SizedBox(height: AppSpacing.sm),
-              const Text(
+              Text(
                 'Remove this follower?',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -425,7 +425,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               const SizedBox(height: AppSpacing.lg),
               CircleAvatar(
                 radius: 40,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage:
                     Uri.tryParse(user.avatarUrl)?.isAbsolute == true
                     ? NetworkImage(user.avatarUrl)
@@ -434,15 +434,15 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     ? Icon(
                         Icons.person_rounded,
                         size: 40,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.mutedText,
                       )
                     : null,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 user.name,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -453,7 +453,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                 child: Text(
                   'This account will be removed from your followers. They won\'t be notified that you removed them.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
@@ -470,16 +470,14 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
   void _showRemoveFollowingModal(BuildContext context, _ConnectionUser user) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.sheetBackground,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AppBottomSheet.shell(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              AppBottomSheet.dragHandle(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -488,7 +486,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 16,
                       ),
                     ),
@@ -532,7 +530,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               const Text(
                 'Remove from following?',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -540,7 +538,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               const SizedBox(height: AppSpacing.lg),
               CircleAvatar(
                 radius: 40,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage:
                     Uri.tryParse(user.avatarUrl)?.isAbsolute == true
                     ? NetworkImage(user.avatarUrl)
@@ -549,15 +547,15 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     ? Icon(
                         Icons.person_rounded,
                         size: 40,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.mutedText,
                       )
                     : null,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 user.name,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -568,7 +566,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                 child: Text(
                   'We won\'t tell @${user.username} that you stopped following them.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
@@ -588,16 +586,14 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
   ) {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.sheetBackground,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AppBottomSheet.shell(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              AppBottomSheet.dragHandle(),
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -606,7 +602,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     child: Text(
                       'Cancel',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 16,
                       ),
                     ),
@@ -624,7 +620,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               const Text(
                 'Remove Subscription?',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -632,7 +628,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               const SizedBox(height: AppSpacing.lg),
               CircleAvatar(
                 radius: 40,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage:
                     Uri.tryParse(user.avatarUrl)?.isAbsolute == true
                     ? NetworkImage(user.avatarUrl)
@@ -641,15 +637,15 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     ? Icon(
                         Icons.person_rounded,
                         size: 40,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.mutedText,
                       )
                     : null,
               ),
               const SizedBox(height: AppSpacing.sm),
               Text(
                 user.name,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -660,7 +656,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                 child: Text(
                   'We won\'t tell @${user.username} that you stopped subscribing them.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
@@ -679,124 +675,117 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
     final uid = AuthService().currentUser?.uid;
 
     return Scaffold(
-      backgroundColor: Colors.transparent,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF14001F), Color(0xFF4A003F), Color(0xFFDE106B)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.sm,
-                  vertical: AppSpacing.xs,
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.white,
-                        size: 22,
-                      ),
+      backgroundColor: AppLightSurface.background,
+      body: SafeArea(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.sm,
+                vertical: AppSpacing.xs,
+              ),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    icon: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: AppLightSurface.icon,
+                      size: 22,
                     ),
-                    Expanded(
-                      child: uid != null
-                          ? FutureBuilder<String>(
-                              future: UserService()
-                                  .getUser(uid)
-                                  .then(
-                                    (u) => u?.username?.isNotEmpty == true
-                                        ? '@${u!.username}'
-                                        : (AuthService().currentUser?.email ??
-                                              '@user'),
-                                  ),
-                              builder: (_, snap) => Text(
-                                snap.data ?? '@lexilongbottom',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
+                  ),
+                  Expanded(
+                    child: uid != null
+                        ? FutureBuilder<String>(
+                            future: UserService()
+                                .getUser(uid)
+                                .then(
+                                  (u) => u?.username?.isNotEmpty == true
+                                      ? '@${u!.username}'
+                                      : (AuthService().currentUser?.email ??
+                                            '@user'),
                                 ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            )
-                          : const Text(
-                              '@lexilongbottom',
+                            builder: (_, snap) => Text(
+                              snap.data ?? '@lexilongbottom',
                               style: TextStyle(
-                                color: Colors.white,
+                                color: AppLightSurface.primaryText,
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                    ),
-                    IconButton(
-                      onPressed: () {},
-                      icon: const Icon(
-                        Icons.menu_rounded,
-                        color: Colors.white,
-                        size: 26,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              _buildTabs(),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.md,
-                  vertical: AppSpacing.sm,
-                ),
-                child: Container(
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(AppRadius.input),
+                          )
+                        : Text(
+                            '@lexilongbottom',
+                            style: TextStyle(
+                              color: AppLightSurface.primaryText,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                   ),
-                  child: TextField(
-                    controller: _searchController,
-                    style: const TextStyle(color: Colors.white, fontSize: 16),
-                    decoration: InputDecoration(
-                      hintText: 'Search for users',
-                      hintStyle: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 16,
-                      ),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: Colors.white.withValues(alpha: 0.6),
-                        size: 22,
-                      ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      disabledBorder: InputBorder.none,
-                      errorBorder: InputBorder.none,
-                      focusedErrorBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: AppSpacing.md,
-                        vertical: 12,
-                      ),
+                  IconButton(
+                    onPressed: () {},
+                    icon: Icon(
+                      Icons.menu_rounded,
+                      color: AppLightSurface.icon,
+                      size: 26,
                     ),
                   ),
+                ],
+              ),
+            ),
+            _buildTabs(),
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.md,
+                vertical: AppSpacing.sm,
+              ),
+              child: Container(
+                height: 44,
+                decoration: BoxDecoration(
+                  color: AppLightSurface.cardFill,
+                  borderRadius: BorderRadius.circular(AppRadius.input),
+                  border: Border.all(color: AppLightSurface.border),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
+                    fontSize: 16,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Search for users',
+                    hintStyle: TextStyle(
+                      color: AppLightSurface.secondaryText,
+                      fontSize: 16,
+                    ),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: AppLightSurface.mutedText,
+                      size: 22,
+                    ),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    focusedErrorBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: AppSpacing.md,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
               ),
-              Expanded(
-                child: _selectedTabIndex == 2
-                    ? _buildSubscriptionsContent(context)
-                    : _buildUserList(context),
-              ),
-            ],
-          ),
+            ),
+            Expanded(
+              child: _selectedTabIndex == 2
+                  ? _buildSubscriptionsContent(context)
+                  : _buildUserList(context),
+            ),
+          ],
         ),
       ),
     );
@@ -824,9 +813,9 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     child: Text(
                       labels[index],
                       style: TextStyle(
-                        color: Colors.white.withValues(
-                          alpha: isSelected ? 1.0 : 0.7,
-                        ),
+                        color: isSelected
+                            ? AppLightSurface.primaryText
+                            : AppLightSurface.secondaryText,
                         fontSize: 14,
                         fontWeight: isSelected
                             ? FontWeight.w600
@@ -839,7 +828,9 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                   Container(
                     height: 2,
                     decoration: BoxDecoration(
-                      color: isSelected ? Colors.white : Colors.transparent,
+                      color: isSelected
+                          ? AppColors.brandPink
+                          : Colors.transparent,
                       borderRadius: BorderRadius.circular(1),
                     ),
                   ),
@@ -872,8 +863,9 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
           Container(
             padding: const EdgeInsets.all(AppSpacing.lg),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               borderRadius: BorderRadius.circular(AppRadius.input),
+              border: Border.all(color: AppLightSurface.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -881,7 +873,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                 Text(
                   'Want to Subscribe? Become a Member!',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.95),
+                    color: AppLightSurface.primaryText,
                     fontSize: 18,
                     fontWeight: FontWeight.w700,
                   ),
@@ -891,7 +883,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                 Text(
                   'Subscribe today to access exclusive content from top creators. Enjoy a premium, seamless viewing experience wherever you are.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                   ),
                   textAlign: TextAlign.center,
@@ -979,12 +971,12 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
         vertical: AppSpacing.sm,
       ),
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: AppSpacing.sm),
+        Padding(
+          padding: const EdgeInsets.only(bottom: AppSpacing.sm),
           child: Text(
             'Recommended for you',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 16,
               fontWeight: FontWeight.w600,
             ),
@@ -1006,14 +998,14 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                   children: [
                     CircleAvatar(
                       radius: 32,
-                      backgroundColor: Colors.white.withValues(alpha: 0.2),
+                      backgroundColor: AppLightSurface.cardFill,
                       backgroundImage: u.avatarUrl.isNotEmpty
                           ? NetworkImage(u.avatarUrl)
                           : null,
                       child: u.avatarUrl.isEmpty
-                          ? const Icon(
+                          ? Icon(
                               Icons.person_rounded,
-                              color: Colors.white54,
+                              color: AppLightSurface.mutedText,
                             )
                           : null,
                     ),
@@ -1021,7 +1013,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                     Text(
                       u.name,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1076,8 +1068,8 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
 
   Widget _buildUserList(BuildContext context) {
     if (_loadingLists) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white54),
+      return Center(
+        child: CircularProgressIndicator(color: AppColors.brandPink),
       );
     }
 
@@ -1091,14 +1083,14 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
               Icon(
                 Icons.lock_outline_rounded,
                 size: 48,
-                color: Colors.white.withValues(alpha: 0.45),
+                color: AppLightSurface.mutedText,
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
                 _privateConnectionsGate!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 16,
                   height: 1.35,
                 ),
@@ -1135,7 +1127,7 @@ class _FollowersFollowingScreenState extends State<FollowersFollowingScreen> {
                       : 'Not following anyone yet.'),
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: AppLightSurface.secondaryText,
               fontSize: 16,
             ),
           ),
@@ -1313,7 +1305,7 @@ class _ConnectionRowState extends State<_ConnectionRow> {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.08),
+      color: AppLightSurface.cardFill,
       borderRadius: BorderRadius.circular(AppRadius.input),
       child: InkWell(
         onTap: widget.onTap,
@@ -1328,7 +1320,7 @@ class _ConnectionRowState extends State<_ConnectionRow> {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: AppLightSurface.background,
                 backgroundImage:
                     Uri.tryParse(widget.user.avatarUrl)?.isAbsolute == true
                     ? NetworkImage(widget.user.avatarUrl)
@@ -1336,7 +1328,7 @@ class _ConnectionRowState extends State<_ConnectionRow> {
                 child: Uri.tryParse(widget.user.avatarUrl)?.isAbsolute != true
                     ? Icon(
                         Icons.person_rounded,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.mutedText,
                       )
                     : null,
               ),
@@ -1348,8 +1340,8 @@ class _ConnectionRowState extends State<_ConnectionRow> {
                   children: [
                     Text(
                       widget.user.name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppLightSurface.primaryText,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1358,7 +1350,7 @@ class _ConnectionRowState extends State<_ConnectionRow> {
                     Text(
                       '@${widget.user.username}',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -1366,16 +1358,12 @@ class _ConnectionRowState extends State<_ConnectionRow> {
                   ],
                 ),
               ),
-              GestureDetector(
-                onTap: () {},
-                behavior: HitTestBehavior.opaque,
-                child: _FollowingButton(
-                  isFollowing: _isFollowing,
-                  pendingFollowRequest: _pendingFollowRequest,
-                  accountType: widget.user.accountType,
-                  busy: _followBusy,
-                  onTap: _onFollowTap,
-                ),
+              _FollowingButton(
+                isFollowing: _isFollowing,
+                pendingFollowRequest: _pendingFollowRequest,
+                accountType: widget.user.accountType,
+                busy: _followBusy,
+                onTap: _onFollowTap,
               ),
             ],
           ),
@@ -1400,7 +1388,7 @@ class _SubscriptionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white.withValues(alpha: 0.08),
+      color: AppLightSurface.cardFill,
       borderRadius: BorderRadius.circular(AppRadius.input),
       child: InkWell(
         onTap: onTap,
@@ -1414,7 +1402,7 @@ class _SubscriptionRow extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 24,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: AppLightSurface.background,
                 backgroundImage:
                     Uri.tryParse(user.avatarUrl)?.isAbsolute == true
                     ? NetworkImage(user.avatarUrl)
@@ -1422,7 +1410,7 @@ class _SubscriptionRow extends StatelessWidget {
                 child: Uri.tryParse(user.avatarUrl)?.isAbsolute != true
                     ? Icon(
                         Icons.person_rounded,
-                        color: Colors.white.withValues(alpha: 0.6),
+                        color: AppLightSurface.mutedText,
                       )
                     : null,
               ),
@@ -1434,8 +1422,8 @@ class _SubscriptionRow extends StatelessWidget {
                   children: [
                     Text(
                       user.name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppLightSurface.primaryText,
                         fontSize: 15,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1444,7 +1432,7 @@ class _SubscriptionRow extends StatelessWidget {
                     Text(
                       '@${user.username}',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.65),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -1453,12 +1441,16 @@ class _SubscriptionRow extends StatelessWidget {
                 ),
               ),
               Material(
-                color: const Color(0xFF2A1B2E),
+                color: AppLightSurface.background,
                 borderRadius: BorderRadius.circular(AppRadius.pill),
                 child: InkWell(
                   onTap: onRemove,
                   borderRadius: BorderRadius.circular(AppRadius.pill),
-                  child: Padding(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(AppRadius.pill),
+                      border: Border.all(color: AppLightSurface.border),
+                    ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
@@ -1469,7 +1461,7 @@ class _SubscriptionRow extends StatelessWidget {
                         Text(
                           'Subscribed',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.95),
+                            color: AppLightSurface.primaryText,
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
                           ),
@@ -1478,7 +1470,7 @@ class _SubscriptionRow extends StatelessWidget {
                         Icon(
                           Icons.close,
                           size: 14,
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: AppLightSurface.mutedText,
                         ),
                       ],
                     ),
@@ -1562,8 +1554,11 @@ class _FollowingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final background = isFollowing || _isRequested
-        ? Colors.white.withValues(alpha: 0.12)
+        ? AppLightSurface.background
         : AppColors.brandPink;
+    final foreground = isFollowing || _isRequested
+        ? AppLightSurface.primaryText
+        : Colors.white;
 
     return Material(
       color: Colors.transparent,
@@ -1578,17 +1573,19 @@ class _FollowingButton extends StatelessWidget {
           decoration: BoxDecoration(
             color: background,
             borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: _isRequested
-                ? Border.all(color: Colors.white.withValues(alpha: 0.35))
+            border: isFollowing || _isRequested
+                ? Border.all(color: AppLightSurface.border)
                 : null,
           ),
           child: busy
-              ? const SizedBox(
+              ? SizedBox(
                   width: 18,
                   height: 18,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white,
+                    color: isFollowing || _isRequested
+                        ? AppColors.brandPink
+                        : Colors.white,
                   ),
                 )
               : isFollowing
@@ -1598,7 +1595,7 @@ class _FollowingButton extends StatelessWidget {
                     Text(
                       _label,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.95),
+                        color: foreground,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1607,14 +1604,14 @@ class _FollowingButton extends StatelessWidget {
                     Icon(
                       Icons.close,
                       size: 14,
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppLightSurface.mutedText,
                     ),
                   ],
                 )
               : Text(
                   _label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: foreground,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),

@@ -7,8 +7,10 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/utils/user_facing_errors.dart';
 import '../../../core/models/app_user_model.dart';
 import '../../../core/services/giphy_gif_service.dart';
@@ -573,21 +575,12 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A0A2E), Color(0xFF0D0518)],
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 12),
-              Padding(
+      builder: (ctx) => AppBottomSheet.shell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBottomSheet.dragHandle(),
+            Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -608,13 +601,10 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               const SizedBox(height: 8),
               if (_canReplyTo(msg))
                 ListTile(
-                  leading: const Icon(
-                    Icons.reply_rounded,
-                    color: Colors.white70,
-                  ),
-                  title: const Text(
+                  leading: Icon(Icons.reply_rounded, color: AppLightSurface.icon),
+                  title: Text(
                     'Reply',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppLightSurface.primaryText),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -626,9 +616,9 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
                   Icons.delete_outline,
                   color: AppColors.deleteRed,
                 ),
-                title: const Text(
+                title: Text(
                   'Delete message',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppLightSurface.primaryText),
                 ),
                 onTap: () {
                   Navigator.pop(ctx);
@@ -639,7 +629,6 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
             ],
           ),
         ),
-      ),
     );
   }
 

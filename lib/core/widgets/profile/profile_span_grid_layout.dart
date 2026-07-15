@@ -21,6 +21,30 @@ class ProfileSpanGridSlot {
 abstract final class ProfileSpanGridLayout {
   ProfileSpanGridLayout._();
 
+  /// 2×2 heroes need at least two columns; single-column grids use 1×1 only.
+  static ProfileGridSpan effectiveSpan(
+    ProfileGridSpan span,
+    int crossAxisCount,
+  ) {
+    if (span == ProfileGridSpan.double && crossAxisCount < 2) {
+      return ProfileGridSpan.unit;
+    }
+    return span;
+  }
+
+  static List<ProfileGridPlacement> coercePlacements(
+    List<ProfileGridPlacement> placements,
+    int crossAxisCount,
+  ) {
+    return [
+      for (final placement in placements)
+        ProfileGridPlacement(
+          sourceIndex: placement.sourceIndex,
+          span: effectiveSpan(placement.span, crossAxisCount),
+        ),
+    ];
+  }
+
   static List<ProfileSpanGridSlot> pack({
     required List<ProfileGridPlacement> placements,
     required int crossAxisCount,
@@ -30,8 +54,12 @@ abstract final class ProfileSpanGridLayout {
     final columnHeights = List<int>.filled(crossAxisCount, 0);
     final slots = <ProfileSpanGridSlot>[];
 
-    for (final placement in placements) {
-      final span = placement.span == ProfileGridSpan.double ? 2 : 1;
+    for (final placement in coercePlacements(placements, crossAxisCount)) {
+      final span =
+          effectiveSpan(placement.span, crossAxisCount) ==
+              ProfileGridSpan.double
+          ? 2
+          : 1;
       final position = _findPosition(
         columnHeights: columnHeights,
         crossAxisCount: crossAxisCount,

@@ -11,6 +11,7 @@ import '../../core/utils/establishment_date_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
+import '../../core/theme/app_light_surface.dart';
 
 const List<String> _monthNames = [
   'January',
@@ -160,7 +161,6 @@ class _SelectEstablishmentDateScreenState
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.authFlow,
             backgroundAsset: AppBackgroundAssets.otpScreen,
             child: SingleChildScrollView(
               child: Padding(
@@ -344,7 +344,7 @@ class _SelectEstablishmentDateScreenState
                 height: _pickerItemExtent,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(10),
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: AppLightSurface.cardFill,
                 ),
               ),
             ),

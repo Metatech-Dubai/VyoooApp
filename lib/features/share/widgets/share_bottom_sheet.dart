@@ -1,10 +1,10 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../../core/config/deep_link_config.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 /// Opens a share sheet with repost (optional), native share, and copy link.
 Future<void> showShareBottomSheet(
@@ -77,55 +77,39 @@ class _ShareSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-        child: Container(
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.75),
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-              width: 0.5,
+    return AppBottomSheet.shell(
+      topRadius: 32,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AppBottomSheet.dragHandle(),
+          _TopBar(onClose: () => Navigator.of(context).pop()),
+          if (thumbnailUrl != null)
+            _ContentHeader(
+              thumbnailUrl: thumbnailUrl,
+              authorName: authorName,
             ),
-          ),
-          child: SafeArea(
-            top: false,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _DragHandle(),
-                _TopBar(onClose: () => Navigator.of(context).pop()),
-                if (thumbnailUrl != null)
-                  _ContentHeader(
-                    thumbnailUrl: thumbnailUrl,
-                    authorName: authorName,
-                  ),
-                if (showRepost) ...[
-                  const SizedBox(height: AppSpacing.xs),
-                  _RepostTile(
-                    isReposted: isReposted,
-                    onRepost: onRepost,
-                    onRemoveRepost: onRemoveRepost,
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.sm),
-                _ShareActionTile(
-                  icon: Icons.ios_share_rounded,
-                  label: 'Share Link',
-                  onTap: () => _openNativeShare(context),
-                ),
-                _ShareActionTile(
-                  icon: Icons.link_rounded,
-                  label: 'Copy Link',
-                  onTap: () => _copyLink(context),
-                ),
-                const SizedBox(height: AppSpacing.md),
-              ],
+          if (showRepost) ...[
+            const SizedBox(height: AppSpacing.xs),
+            _RepostTile(
+              isReposted: isReposted,
+              onRepost: onRepost,
+              onRemoveRepost: onRemoveRepost,
             ),
+          ],
+          const SizedBox(height: AppSpacing.sm),
+          _ShareActionTile(
+            icon: Icons.ios_share_rounded,
+            label: 'Share Link',
+            onTap: () => _openNativeShare(context),
           ),
-        ),
+          _ShareActionTile(
+            icon: Icons.link_rounded,
+            label: 'Copy Link',
+            onTap: () => _copyLink(context),
+          ),
+          const SizedBox(height: AppSpacing.md),
+        ],
       ),
     );
   }
@@ -152,13 +136,13 @@ class _ShareActionTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           child: Row(
             children: [
-              Icon(icon, color: Colors.white, size: 24),
+              Icon(icon, color: AppLightSurface.icon, size: 24),
               const SizedBox(width: 16),
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -166,7 +150,7 @@ class _ShareActionTile extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.4),
+                color: AppLightSurface.chevron,
                 size: 22,
               ),
             ],
@@ -202,8 +186,11 @@ class _RepostTile extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Material(
-        color: Colors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
+        color: AppLightSurface.cardFill,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: const BorderSide(color: AppLightSurface.border),
+        ),
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
           onTap: () => _handleTap(context),
@@ -213,7 +200,7 @@ class _RepostTile extends StatelessWidget {
               children: [
                 Icon(
                   isReposted ? Icons.undo_rounded : Icons.repeat_rounded,
-                  color: Colors.white,
+                  color: AppLightSurface.icon,
                   size: 26,
                 ),
                 const SizedBox(width: 14),
@@ -222,8 +209,8 @@ class _RepostTile extends StatelessWidget {
                     isReposted
                         ? 'Remove repost from your profile'
                         : 'Repost to your profile',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                     ),
@@ -231,25 +218,6 @@ class _RepostTile extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(top: 12, bottom: 8),
-      child: Center(
-        child: Container(
-          width: 36,
-          height: 4,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.4),
-            borderRadius: BorderRadius.circular(2),
           ),
         ),
       ),
@@ -268,10 +236,10 @@ class _TopBar extends StatelessWidget {
       child: Row(
         children: [
           const Spacer(),
-          const Text(
+          Text(
             'Share',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w500,
             ),
@@ -282,10 +250,11 @@ class _TopBar extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.12),
+                color: AppLightSurface.cardFill,
                 shape: BoxShape.circle,
+                border: Border.all(color: AppLightSurface.border),
               ),
-              child: const Icon(Icons.close, color: Colors.white, size: 20),
+              child: Icon(Icons.close, color: AppLightSurface.icon, size: 20),
             ),
           ),
         ],
@@ -313,8 +282,9 @@ class _ContentHeader extends StatelessWidget {
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppLightSurface.border),
       ),
       child: Row(
         children: [
@@ -322,7 +292,7 @@ class _ContentHeader extends StatelessWidget {
             width: 52,
             height: 52,
             decoration: BoxDecoration(
-              color: Colors.grey[900],
+              color: AppLightSurface.divider,
               borderRadius: BorderRadius.circular(12),
               image: hasValidThumb
                   ? DecorationImage(
@@ -332,7 +302,7 @@ class _ContentHeader extends StatelessWidget {
                   : null,
             ),
             child: !hasValidThumb
-                ? const Icon(Icons.videocam, color: Colors.white24)
+                ? Icon(Icons.videocam, color: AppLightSurface.mutedText)
                 : null,
           ),
           const SizedBox(width: 16),
@@ -342,8 +312,8 @@ class _ContentHeader extends StatelessWidget {
               children: [
                 Text(
                   'Video from $authorName',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -351,7 +321,7 @@ class _ContentHeader extends StatelessWidget {
                 Text(
                   'Vyooo',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: AppLightSurface.mutedText,
                     fontSize: 14,
                   ),
                 ),
