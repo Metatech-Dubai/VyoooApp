@@ -14,7 +14,6 @@ import 'bottom_nav_create_menu.dart';
 import 'feed_reel_progress_bar.dart';
 import 'live_feed_scrub_preview.dart';
 import 'live_feed_stream_progress_bar.dart';
-import '../../screens/profile/profile_figma_tokens.dart';
 
 /// Custom bottom nav wrapper matching the VyooO design language.
 /// Index: 0 Home, 1 Go Live (broadcast), 2 Create (+), 3 Messages, 4 Profile.
@@ -93,8 +92,9 @@ class AppBottomNavigation extends StatelessWidget {
   /// VR / Post / Reel / Story / Live picks from the create menu.
   final ValueChanged<BottomNavCreateAction>? onCreateAction;
 
-  static const Color _iconColor = ProfileFigmaTokens.primaryText;
-  static const Color _navBarFill = BottomNavFigmaTokens.pillFill;
+  // TEST: inverted bottom nav — revert before release.
+  static const Color _iconColor = Colors.white;
+  static const Color _navBarFill = Colors.black;
   static const Color _splashColor = Color(0x33750047);
 
   /// Scaled bar height for the current screen (Figma 64px @ 375pt).
@@ -710,6 +710,7 @@ class _NavSvgIcon extends StatelessWidget {
           assetPath,
           fit: BoxFit.contain,
           alignment: Alignment.center,
+          colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
         ),
       ),
     );
