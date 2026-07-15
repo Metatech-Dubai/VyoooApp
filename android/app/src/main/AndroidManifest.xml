@@ -80,6 +80,18 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Insta360 camera over USB. Attaching a camera listed in @xml/device_filter offers to
+                 open Vyooo and grants USB permission up-front — without that grant the SDK's open
+                 handshake times out with error 2002. Mirrors the SDK demo's manifest
+                 (SDKs/Android-SDK-V1.10.1/sdkdemo/app/src/main/AndroidManifest.xml:61-63); we also
+                 add the matching intent-filter action, which the demo omits (its meta-data alone is
+                 inert). -->
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"/>
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
             <intent-filter android:autoVerify="true">
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />

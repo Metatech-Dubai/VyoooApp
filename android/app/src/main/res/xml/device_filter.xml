@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  USB devices this app will be offered for on attach (android.hardware.usb.action.USB_DEVICE_ATTACHED).
+  Attaching a matching device raises the "Open Vyooo?" dialog, which also grants USB permission — the
+  grant whose absence produces SDK error 2002 ("CHECK_TYPE status timeout").
+
+  Ported verbatim from the Insta360 SDK's own filter: sdkcamera-1.10.1 AAR → res/xml/device_filter.xml
+  (referenced by the SDK demo's AndroidManifest.xml:61-63). This app-level copy overrides the library
+  resource of the same name so extra vendor/product ids can be added without patching the AAR.
+
+  ⚠️ UNVERIFIED FOR THE INSTA360 X4 AIR (the client's camera). These two entries are all the SDK
+  ships, and we have only an X4 locally. If a client's X4 Air enumerates with a different VID/PID it
+  will NOT match this filter (no attach dialog) — the in-app pre-flight in Insta360UsbManager still
+  requests permission, so connecting keeps working, but the attach-time grant is lost.
+  To confirm: attach the camera to the client's phone and read logcat tag `Insta360Usb` — every
+  attached device is logged as `vid=0x… pid=0x…`. Add the reported values below.
+-->
+<resources>
+    <usb-device vendor-id="0x2e1a" product-id="0x2" />
+    <usb-device vendor-id="0x4255" />
+</resources>
