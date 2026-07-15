@@ -528,7 +528,11 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 1920, height: 960),
           frameRate: 15,
-          bitrate: 6000,
+          // Lowered 6000 -> 3500 for testing: keeps the full 1920x960 (2K) resolution while ~halving
+          // the downlink demand, so viewers who couldn't sustain ~6 Mbps can receive the feed. The
+          // forward mask blacks out the rear ~44% (near-zero entropy), so the visible region still
+          // gets most of the budget. Resolution is unchanged; only the bitrate cap moved.
+          bitrate: 3500,
           orientationMode: OrientationMode.orientationModeFixedLandscape,
           degradationPreference: DegradationPreference.maintainResolution,
         ),
