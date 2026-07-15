@@ -5,6 +5,7 @@ import android.os.Build
 import android.util.Log
 import com.arashivision.sdkcamera.InstaCameraSDK
 import com.arashivision.sdkmedia.InstaMediaSDK
+import com.vyooo.insta360.Insta360UsbManager
 
 /**
  * Application entry point.
@@ -24,6 +25,11 @@ class VyoooApplication : Application() {
             try {
                 InstaCameraSDK.init(this)
                 InstaMediaSDK.init(this)
+                // USB permission pre-flight (SDK demo: InstaApp → UsbMgr.init). Registers the
+                // attach/detach receiver and pre-requests permission for an already-plugged camera,
+                // so the grant is cached long before openCamera() runs — the missing grant is what
+                // produces the intermittent 2002 ("CHECK_TYPE status timeout").
+                Insta360UsbManager.init(this)
                 Log.i(TAG, "Insta360 SDK initialised")
             } catch (t: Throwable) {
                 // Never let SDK init crash app startup — degrade to "feature unavailable".
