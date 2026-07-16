@@ -264,8 +264,10 @@ abstract final class ProfileFigmaTokens {
   static const double profileSideRailTop = profileHeaderTop;
   /// Tap target height for each drawer icon row.
   static const double profileSideRailTapHeight = 42;
+  /// Invisible touch strip when collapsed — wider than [profileSideRailCollapsedWidth].
+  static const double profileSideRailMinGestureWidth = 28;
   static const Duration profileSideDrawerAnimation =
-      Duration(milliseconds: 260);
+      Duration(milliseconds: 220);
 
   // — Profile “More” end drawer (Figma 341×874 artboard, slides from right) —
   static const double profileMoreDrawerWidth = 341;

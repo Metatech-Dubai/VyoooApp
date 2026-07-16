@@ -35,7 +35,7 @@ class AlbumPickerDropdown extends StatefulWidget {
 }
 
 class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
-  final LayerLink _layerLink = LayerLink();
+  final GlobalKey _triggerKey = GlobalKey();
   OverlayEntry? _overlayEntry;
   bool _isOpen = false;
 
@@ -62,6 +62,28 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
   }
 
   void _showOverlay() {
+    final triggerContext = _triggerKey.currentContext;
+    if (triggerContext == null) return;
+    final box = triggerContext.findRenderObject();
+    if (box is! RenderBox || !box.hasSize) return;
+
+    final triggerTopLeft = box.localToGlobal(Offset.zero);
+    final triggerSize = box.size;
+    final menuWidth = AppSizes.uploadAlbumPickerMenuWidth;
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    const edgePad = 8.0;
+
+    // Center the menu under the Recents + chevron row so it sits by the arrow.
+    final idealLeft =
+        triggerTopLeft.dx + (triggerSize.width - menuWidth) / 2;
+    final left = idealLeft.clamp(
+      edgePad,
+      (screenWidth - menuWidth - edgePad).clamp(edgePad, screenWidth),
+    );
+    final top = triggerTopLeft.dy +
+        triggerSize.height +
+        AppSizes.uploadAlbumPickerMenuOffsetY;
+
     final overlay = Overlay.of(context);
     _overlayEntry = OverlayEntry(
       builder: (overlayContext) {
@@ -74,12 +96,9 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
                 child: const ColoredBox(color: Colors.transparent),
               ),
             ),
-            CompositedTransformFollower(
-              link: _layerLink,
-              showWhenUnlinked: false,
-              targetAnchor: Alignment.bottomLeft,
-              followerAnchor: Alignment.topLeft,
-              offset: const Offset(0, AppSizes.uploadAlbumPickerMenuOffsetY),
+            Positioned(
+              left: left,
+              top: top,
               child: _AlbumPickerMenuPanel(
                 onSelected: (option) {
                   _removeOverlay();
@@ -106,25 +125,23 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
     final chevronColor =
         widget.chevronColor ?? AppColors.chatAppBarActionIcon;
 
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: _toggleMenu,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(widget.value, style: labelStyle),
-            const SizedBox(width: AppSpacing.xs),
-            Icon(
-              _isOpen
-                  ? Icons.keyboard_arrow_up_rounded
-                  : Icons.keyboard_arrow_down_rounded,
-              color: chevronColor,
-              size: AppSizes.uploadAlbumPickerChevron,
-            ),
-          ],
-        ),
+    return GestureDetector(
+      key: _triggerKey,
+      behavior: HitTestBehavior.opaque,
+      onTap: _toggleMenu,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(widget.value, style: labelStyle),
+          const SizedBox(width: AppSpacing.xs),
+          Icon(
+            _isOpen
+                ? Icons.keyboard_arrow_up_rounded
+                : Icons.keyboard_arrow_down_rounded,
+            color: chevronColor,
+            size: AppSizes.uploadAlbumPickerChevron,
+          ),
+        ],
       ),
     );
   }

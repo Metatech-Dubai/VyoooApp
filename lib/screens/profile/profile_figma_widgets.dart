@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
@@ -1513,6 +1515,19 @@ class ProfileFigmaBioMusicSection extends StatelessWidget {
   }
 }
 
+/// Imperative handle so parents can close [ProfileSideDrawer] from outside.
+class ProfileSideDrawerHandle {
+  _ProfileSideDrawerState? _state;
+
+  void _attach(_ProfileSideDrawerState state) => _state = state;
+
+  void _detach(_ProfileSideDrawerState state) {
+    if (_state == state) _state = null;
+  }
+
+  void close() => _state?.close();
+}
+
 /// Left-edge drawer rail — collapsed 12px peek → expanded 43px with icons.
 class ProfileSideDrawer extends StatefulWidget {
   const ProfileSideDrawer({
@@ -1520,11 +1535,15 @@ class ProfileSideDrawer extends StatefulWidget {
     required this.onWalletTap,
     required this.onChatTap,
     required this.onRevenueTap,
+    this.handle,
+    this.onExpandedChanged,
   });
 
   final VoidCallback onWalletTap;
   final VoidCallback onChatTap;
   final VoidCallback onRevenueTap;
+  final ProfileSideDrawerHandle? handle;
+  final ValueChanged<bool>? onExpandedChanged;
 
   @override
   State<ProfileSideDrawer> createState() => _ProfileSideDrawerState();
@@ -1534,13 +1553,22 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   double _dragOrigin = 0;
+  bool _wasScrimVisible = false;
+  bool _isDragging = false;
+  bool _suppressTap = false;
 
   static const List<double> _iconCenterYs = <double>[33, 75, 118];
+  static const double _openSnapThreshold = 0.32;
+  static const double _velocitySnapThreshold = 350;
+  static const double _dragSensitivity = 2.4;
 
   static double get _expandedWidth => ProfileFigmaTokens.profileSideRailWidth;
 
   static double get _collapsedWidth =>
       ProfileFigmaTokens.profileSideRailCollapsedWidth;
+
+  static double get _minGestureWidth =>
+      ProfileFigmaTokens.profileSideRailMinGestureWidth;
 
   @override
   void initState() {
@@ -1550,25 +1578,91 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
       duration: ProfileFigmaTokens.profileSideDrawerAnimation,
       value: 0,
     );
+    _controller.addListener(_notifyExpandedChanged);
+    _controller.addStatusListener(_onAnimationStatus);
+    widget.handle?._attach(this);
+  }
+
+  @override
+  void didUpdateWidget(covariant ProfileSideDrawer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.handle != widget.handle) {
+      oldWidget.handle?._detach(this);
+      widget.handle?._attach(this);
+    }
   }
 
   @override
   void dispose() {
+    widget.handle?._detach(this);
+    _controller.removeStatusListener(_onAnimationStatus);
+    _controller.removeListener(_notifyExpandedChanged);
     _controller.dispose();
     super.dispose();
   }
 
-  bool get _isExpanded => _controller.value >= 0.5;
+  bool get _isExpanded => _controller.value >= _openSnapThreshold;
 
-  void _toggle() {
-    if (_isExpanded) {
-      _controller.reverse();
-    } else {
-      _controller.forward();
+  void close() {
+    if (_controller.value > 0) {
+      _setScrimVisible(false);
+      _animateOpen(false);
     }
   }
 
+  void _animateOpen(bool open) {
+    _controller.animateTo(
+      open ? 1 : 0,
+      duration: ProfileFigmaTokens.profileSideDrawerAnimation,
+      curve: open ? Curves.easeOutCubic : Curves.easeInCubic,
+    );
+  }
+
+  void _setScrimVisible(bool visible) {
+    if (_wasScrimVisible == visible) return;
+    _wasScrimVisible = visible;
+    widget.onExpandedChanged?.call(visible);
+  }
+
+  void _onAnimationStatus(AnimationStatus status) {
+    if (_isDragging) return;
+    switch (status) {
+      case AnimationStatus.completed:
+        _setScrimVisible(true);
+      case AnimationStatus.reverse:
+      case AnimationStatus.dismissed:
+        _setScrimVisible(false);
+      case AnimationStatus.forward:
+        break;
+    }
+  }
+
+  void _notifyExpandedChanged() {
+    // Keep scrim hidden while the user is actively dragging.
+    if (_isDragging && _wasScrimVisible) {
+      _setScrimVisible(false);
+    }
+  }
+
+  void _scheduleTapSuppressionReset() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      Future<void>.delayed(const Duration(milliseconds: 200), () {
+        if (mounted) _suppressTap = false;
+      });
+    });
+  }
+
+  void _toggle() {
+    if (_suppressTap || _isDragging) return;
+    _animateOpen(!_isExpanded);
+  }
+
   void _onDragStart(DragStartDetails details) {
+    _isDragging = true;
+    _suppressTap = true;
+    _setScrimVisible(false);
+    _controller.stop();
     _dragOrigin = _controller.value;
   }
 
@@ -1576,23 +1670,23 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
     final delta = details.primaryDelta ?? 0;
     final travel = _expandedWidth - _collapsedWidth;
     if (travel <= 0) return;
-    _controller.value = (_dragOrigin + delta / travel).clamp(0.0, 1.0);
+    _controller.value =
+        (_dragOrigin + (delta * _dragSensitivity) / travel).clamp(0.0, 1.0);
   }
 
   void _onDragEnd(DragEndDetails details) {
+    _isDragging = false;
+    _suppressTap = true;
+    _scheduleTapSuppressionReset();
+
     final velocity = details.primaryVelocity ?? 0;
-    if (velocity.abs() > 280) {
-      if (velocity > 0) {
-        _controller.forward();
-      } else {
-        _controller.reverse();
-      }
-      return;
-    }
-    if (_controller.value >= 0.5) {
-      _controller.forward();
+    final openByPosition = _controller.value >= _openSnapThreshold;
+    if (velocity > _velocitySnapThreshold) {
+      _animateOpen(true);
+    } else if (velocity < -_velocitySnapThreshold) {
+      _animateOpen(false);
     } else {
-      _controller.reverse();
+      _animateOpen(openByPosition);
     }
   }
 
@@ -1612,6 +1706,7 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
         final t = Curves.easeInOutCubic.transform(_controller.value);
         final outerWidth =
             _collapsedWidth + (_expandedWidth - _collapsedWidth) * t;
+        final gestureWidth = math.max(outerWidth, _minGestureWidth);
         final iconOpacity = t.clamp(0.0, 1.0);
 
         return GestureDetector(
@@ -1621,57 +1716,64 @@ class _ProfileSideDrawerState extends State<ProfileSideDrawer>
           onTap: t < 0.85 ? _toggle : null,
           behavior: HitTestBehavior.translucent,
           child: SizedBox(
-            width: outerWidth,
+            width: gestureWidth,
             height: height,
-            child: ClipRect(
-              child: Stack(
-                alignment: Alignment.centerLeft,
-                clipBehavior: Clip.hardEdge,
-                children: [
-                  Opacity(
-                    opacity: 1 - iconOpacity,
-                    child: SvgPicture.asset(
-                      ProfileAssets.profileSideDrawerCollapsed,
-                      width: _collapsedWidth,
-                      height: height,
-                      fit: BoxFit.fill,
-                    ),
-                  ),
-                  SizedBox(
-                    width: _expandedWidth,
-                    height: height,
-                    child: Opacity(
-                      opacity: iconOpacity,
-                      child: Stack(
-                        children: [
-                          SvgPicture.asset(
-                            ProfileAssets.profileSideDrawer,
-                            width: _expandedWidth,
-                            height: height,
-                            fit: BoxFit.fill,
-                          ),
-                          IgnorePointer(
-                            ignoring: t < 0.85,
-                            child: Stack(
-                              children: [
-                                for (var i = 0; i < callbacks.length; i++)
-                                  Positioned(
-                                    top: _iconCenterYs[i] - tapHeight / 2,
-                                    left: 0,
-                                    width: _expandedWidth,
-                                    height: tapHeight,
-                                    child: _ProfileSideDrawerTapZone(
-                                      onTap: callbacks[i],
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: SizedBox(
+                width: outerWidth,
+                height: height,
+                child: ClipRect(
+                  child: Stack(
+                    alignment: Alignment.centerLeft,
+                    clipBehavior: Clip.hardEdge,
+                    children: [
+                      Opacity(
+                        opacity: 1 - iconOpacity,
+                        child: SvgPicture.asset(
+                          ProfileAssets.profileSideDrawerCollapsed,
+                          width: _collapsedWidth,
+                          height: height,
+                          fit: BoxFit.fill,
+                        ),
                       ),
-                    ),
+                      SizedBox(
+                        width: _expandedWidth,
+                        height: height,
+                        child: Opacity(
+                          opacity: iconOpacity,
+                          child: Stack(
+                            children: [
+                              SvgPicture.asset(
+                                ProfileAssets.profileSideDrawer,
+                                width: _expandedWidth,
+                                height: height,
+                                fit: BoxFit.fill,
+                              ),
+                              IgnorePointer(
+                                ignoring: t < 0.85,
+                                child: Stack(
+                                  children: [
+                                    for (var i = 0; i < callbacks.length; i++)
+                                      Positioned(
+                                        top: _iconCenterYs[i] - tapHeight / 2,
+                                        left: 0,
+                                        width: _expandedWidth,
+                                        height: tapHeight,
+                                        child: _ProfileSideDrawerTapZone(
+                                          onTap: callbacks[i],
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

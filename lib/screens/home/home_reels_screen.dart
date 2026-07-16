@@ -243,29 +243,24 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
   }) =>
       AppBottomNavigation.totalHeightFor(
         context,
-        feedChrome: true,
         includeReelProgressBand: includeReelProgressBand,
       );
 
-  double _feedShellBottomInset(BuildContext context) =>
-      _feedNavHeight(
-        context,
-        includeReelProgressBand: _showHomeReelProgressBar(),
-      );
-
-  /// Figma [bottom-content] — sits just above feed nav chrome.
+  /// Figma [bottom-content] — sits just above floating nav chrome.
   double _feedOverlayBottom(BuildContext context) {
-    return AppBottomNavigation.totalHeightFor(
+    return _feedNavHeight(
           context,
-          feedChrome: true,
           includeReelProgressBand: _showHomeReelProgressBar(),
         ) +
         AppSpacing.feedReelBottomContentNavGap;
   }
 
-  /// Right action column — anchored to feed chrome, independent of caption overlay.
+  /// Right action column — anchored above floating nav, independent of caption overlay.
   double _feedInteractionBottom(BuildContext context) =>
-      _feedShellBottomInset(context) +
+      _feedNavHeight(
+        context,
+        includeReelProgressBand: _showHomeReelProgressBar(),
+      ) +
       AppSpacing.sm +
       AppSpacing.reelActionColumnNavGap;
 
@@ -1519,34 +1514,8 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       backgroundColor: Colors.black,
       body: Stack(
         children: [
-          ValueListenableBuilder<bool>(
-            valueListenable: MainNavWrapper.createMenuOpenNotifier,
-            builder: (context, createMenuOpen, _) {
-              final feedBottomInset = AppBottomNavigation.totalHeightFor(
-                context,
-                feedChrome: !createMenuOpen,
-                includeReelProgressBand:
-                    !createMenuOpen && _showHomeReelProgressBar(),
-              );
-              return Stack(
-                children: [
-                  if (!createMenuOpen)
-                    Positioned(
-                      left: 0,
-                      right: 0,
-                      bottom: 0,
-                      height: feedBottomInset,
-                      child: const ColoredBox(color: AppColors.feedBottomChrome),
-                    ),
-                  Positioned.fill(
-                    top: 0,
-                    bottom: createMenuOpen ? 0 : feedBottomInset,
-                    child: _buildFeedClipArea(),
-                  ),
-                ],
-              );
-            },
-          ),
+          const Positioned.fill(child: ColoredBox(color: Colors.black)),
+          Positioned.fill(child: _buildReelsFeed()),
           _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
             if (isFollowing)
               if (collapseT < 0.999)
@@ -1677,27 +1646,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
     );
   }
 
-  Widget _buildFeedClipArea() {
-    final radius = AppRadius.feedPostBottomRadius;
-    return ClipRRect(
-      borderRadius: radius,
-      clipBehavior: Clip.antiAlias,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.black,
-          borderRadius: radius,
-        ),
-        child: _buildReelsFeed(),
-      ),
-    );
-  }
-
   Widget _buildReelsFeed() {
     final reels = _currentReels;
     if (_feedRefreshInProgress && reels.isEmpty && _reelsLoadError == null) {
-      return FeedReelsLoadingSkeleton(
-        borderRadius: AppRadius.feedPostBottomRadius,
-      );
+      return const FeedReelsLoadingSkeleton();
     }
     if (_reelsLoadError != null && reels.isEmpty) {
       return _buildFeedLoadErrorPlaceholder(_reelsLoadError!);

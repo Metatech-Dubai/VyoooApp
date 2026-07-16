@@ -88,6 +88,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   };
   int _selectedTabIndex = 0;
   bool _highlightsExpanded = false;
+  bool _sideDrawerOpen = false;
+  final ProfileSideDrawerHandle _sideDrawerHandle = ProfileSideDrawerHandle();
   final LiveStreamService _liveStreamService = LiveStreamService();
   String? _highlightsStreamUid;
   Stream<List<StoryHighlightModel>>? _highlightsStream;
@@ -738,10 +740,22 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
           ],
         ),
+        if (_sideDrawerOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _sideDrawerHandle.close,
+              behavior: HitTestBehavior.translucent,
+            ),
+          ),
         Positioned(
           left: 0,
           top: ProfileFigmaTokens.profileSideRailTop,
           child: ProfileSideDrawer(
+            handle: _sideDrawerHandle,
+            onExpandedChanged: (open) {
+              if (_sideDrawerOpen == open) return;
+              setState(() => _sideDrawerOpen = open);
+            },
             onWalletTap: () => _openWalletFromRail(context),
             onChatTap: () => _openChatFromRail(context),
             onRevenueTap: () => _openRevenueFromRail(context),
