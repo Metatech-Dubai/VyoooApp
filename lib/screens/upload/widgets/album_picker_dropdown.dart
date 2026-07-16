@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/theme/bottom_nav_figma_tokens.dart';
+import '../../../core/widgets/create_menu_style_row.dart';
 
-/// Figma album picker drawer for post upload — Recents / Favourites / All Albums.
+/// Album picker for post upload — Recents / Favourites / All Albums.
+/// Menu rows match the bottom-nav create hub pill style.
 class AlbumPickerDropdown extends StatefulWidget {
   const AlbumPickerDropdown({
     super.key,
@@ -21,14 +23,14 @@ class AlbumPickerDropdown extends StatefulWidget {
   final TextStyle? labelStyle;
   final Color? chevronColor;
 
-  static const String assetPath =
-      'assets/vyooO_icons/Upload_Story_Live/album_picker_menu.svg';
-
-  static const List<String> options = [
-    'Recents',
-    'Favourites',
-    'All Albums',
+  static const List<({String label, IconData icon})> options = [
+    (label: 'Recents', icon: Icons.photo_library_outlined),
+    (label: 'Favourites', icon: Icons.favorite_border_rounded),
+    (label: 'All Albums', icon: Icons.grid_view_outlined),
   ];
+
+  /// Wider than the create hub so longer album labels fit.
+  static const double menuDesignWidth = 149;
 
   @override
   State<AlbumPickerDropdown> createState() => _AlbumPickerDropdownState();
@@ -67,13 +69,13 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
     final box = triggerContext.findRenderObject();
     if (box is! RenderBox || !box.hasSize) return;
 
+    final layout = BottomNavLayout.of(context);
     final triggerTopLeft = box.localToGlobal(Offset.zero);
     final triggerSize = box.size;
-    final menuWidth = AppSizes.uploadAlbumPickerMenuWidth;
+    final menuWidth = layout.s(AlbumPickerDropdown.menuDesignWidth);
     final screenWidth = MediaQuery.sizeOf(context).width;
     const edgePad = 8.0;
 
-    // Center the menu under the Recents + chevron row so it sits by the arrow.
     final idealLeft =
         triggerTopLeft.dx + (triggerSize.width - menuWidth) / 2;
     final left = idealLeft.clamp(
@@ -82,7 +84,7 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
     );
     final top = triggerTopLeft.dy +
         triggerSize.height +
-        AppSizes.uploadAlbumPickerMenuOffsetY;
+        AppSpacing.xs;
 
     final overlay = Overlay.of(context);
     _overlayEntry = OverlayEntry(
@@ -100,6 +102,8 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
               left: left,
               top: top,
               child: _AlbumPickerMenuPanel(
+                layout: layout,
+                menuWidth: menuWidth,
                 onSelected: (option) {
                   _removeOverlay();
                   widget.onChanged(option);
@@ -148,57 +152,38 @@ class _AlbumPickerDropdownState extends State<AlbumPickerDropdown> {
 }
 
 class _AlbumPickerMenuPanel extends StatelessWidget {
-  const _AlbumPickerMenuPanel({required this.onSelected});
+  const _AlbumPickerMenuPanel({
+    required this.layout,
+    required this.menuWidth,
+    required this.onSelected,
+  });
 
+  final BottomNavLayout layout;
+  final double menuWidth;
   final ValueChanged<String> onSelected;
 
   @override
   Widget build(BuildContext context) {
+    final rowGap = layout.s(BottomNavFigmaTokens.createMenuRowGap);
+
     return Material(
       color: Colors.transparent,
       child: SizedBox(
-        width: AppSizes.uploadAlbumPickerMenuWidth,
-        height: AppSizes.uploadAlbumPickerMenuHeight,
-        child: Stack(
+        width: menuWidth,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            SvgPicture.asset(
-              AlbumPickerDropdown.assetPath,
-              width: AppSizes.uploadAlbumPickerMenuWidth,
-              height: AppSizes.uploadAlbumPickerMenuHeight,
-              fit: BoxFit.fill,
-            ),
-            Column(
-              children: [
-                for (var i = 0; i < AlbumPickerDropdown.options.length; i++)
-                  _AlbumPickerMenuRow(
-                    onTap: () => onSelected(AlbumPickerDropdown.options[i]),
-                  ),
-              ],
-            ),
+            for (var i = 0; i < AlbumPickerDropdown.options.length; i++) ...[
+              if (i > 0) SizedBox(height: rowGap),
+              CreateMenuStyleRow(
+                layout: layout,
+                width: menuWidth,
+                label: AlbumPickerDropdown.options[i].label,
+                icon: AlbumPickerDropdown.options[i].icon,
+                onTap: () => onSelected(AlbumPickerDropdown.options[i].label),
+              ),
+            ],
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AlbumPickerMenuRow extends StatelessWidget {
-  const _AlbumPickerMenuRow({required this.onTap});
-
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: AppSizes.uploadAlbumPickerMenuRowHeight,
-      width: AppSizes.uploadAlbumPickerMenuWidth,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          splashColor: Colors.white24,
-          highlightColor: Colors.white12,
-          child: const SizedBox.expand(),
         ),
       ),
     );

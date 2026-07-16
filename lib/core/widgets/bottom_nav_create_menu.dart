@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 
 import '../constants/bottom_nav_assets.dart';
-import '../theme/app_fonts.dart';
 import '../theme/bottom_nav_figma_tokens.dart';
+import 'create_menu_style_row.dart';
 
 /// Animated create hub menu above the bottom nav pill (Figma 100×212 stack).
 class BottomNavCreateMenu extends StatelessWidget {
@@ -45,7 +44,7 @@ class BottomNavCreateMenu extends StatelessWidget {
       children: [
         for (var i = 0; i < _items.length; i++) ...[
           if (i > 0) SizedBox(height: rowGap),
-          _CreateMenuRow(
+          CreateMenuStyleRow(
             layout: layout,
             label: _items[i].label,
             iconAsset: _items[i].icon,
@@ -92,83 +91,5 @@ class BottomNavCreateMenu extends StatelessWidget {
     if (span <= 0) return master >= 1 ? 1 : 0;
     if (master <= start) return 0;
     return ((master - start) / span).clamp(0.0, 1.0);
-  }
-}
-
-class _CreateMenuRow extends StatelessWidget {
-  const _CreateMenuRow({
-    required this.layout,
-    required this.label,
-    required this.iconAsset,
-    required this.progress,
-    required this.onTap,
-  });
-
-  final BottomNavLayout layout;
-  final String label;
-  final String iconAsset;
-  final double progress;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final slideY = (1 - progress) * layout.s(-6);
-    final rowHeight = layout.s(BottomNavFigmaTokens.createMenuRowHeight);
-    final rowRadius = layout.s(BottomNavFigmaTokens.createMenuRowRadius);
-    final iconCircleSize = layout.s(BottomNavFigmaTokens.createMenuIconCircleSize);
-    final iconInset = layout.s(BottomNavFigmaTokens.createMenuIconInset);
-
-    return Transform.translate(
-      offset: Offset(0, slideY),
-      child: Opacity(
-        opacity: progress.clamp(0.0, 1.0),
-        child: Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(rowRadius),
-            child: Ink(
-              height: rowHeight,
-              decoration: BoxDecoration(
-                color: BottomNavFigmaTokens.createMenuRowFill,
-                borderRadius: BorderRadius.circular(rowRadius),
-                boxShadow: BottomNavFigmaTokens.createMenuRowShadow,
-              ),
-              child: Row(
-                children: [
-                  SizedBox(width: iconInset),
-                  Container(
-                    width: iconCircleSize,
-                    height: iconCircleSize,
-                    decoration: const BoxDecoration(
-                      color: BottomNavFigmaTokens.createMenuIconCircleFill,
-                      shape: BoxShape.circle,
-                    ),
-                    alignment: Alignment.center,
-                    child: SvgPicture.asset(
-                      iconAsset,
-                      width: layout.s(18),
-                      height: layout.s(18),
-                      fit: BoxFit.contain,
-                    ),
-                  ),
-                  SizedBox(width: layout.s(8)),
-                  Text(
-                    label,
-                    style: TextStyle(
-                      fontFamily: AppFonts.body,
-                      fontSize: layout.s(BottomNavFigmaTokens.createMenuLabelFontSize),
-                      fontWeight: BottomNavFigmaTokens.createMenuLabelWeight,
-                      color: BottomNavFigmaTokens.createMenuLabelColor,
-                      height: 1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
   }
 }
