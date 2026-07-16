@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
 import '../theme/app_background_assets.dart';
-import '../theme/app_gradients.dart';
+import '../theme/app_light_surface.dart';
 
-/// Background for [PostFeedScreen] (`assets/bgImages/2.png`).
+/// Background for [PostFeedScreen] — white fallback when asset missing.
 class PostFeedScreenBackground extends StatelessWidget {
   const PostFeedScreenBackground({super.key});
 
@@ -15,11 +15,7 @@ class PostFeedScreenBackground extends StatelessWidget {
       width: double.infinity,
       height: double.infinity,
       errorBuilder: (context, error, stackTrace) {
-        return const DecoratedBox(
-          decoration: BoxDecoration(
-            gradient: AppGradients.feedGradient,
-          ),
-        );
+        return const ColoredBox(color: AppLightSurface.background);
       },
     );
   }

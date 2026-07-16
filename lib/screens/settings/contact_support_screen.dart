@@ -8,6 +8,7 @@ import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'chat_support_screen.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class ContactSupportScreen extends StatelessWidget {
   const ContactSupportScreen({super.key});
@@ -44,7 +45,7 @@ class ContactSupportScreen extends StatelessWidget {
 
   Widget _buildSupportContactText(BuildContext context) {
     const baseStyle = TextStyle(
-      color: Colors.white,
+      color: AppLightSurface.primaryText,
       fontSize: 16,
       height: 1.6,
     );
@@ -57,7 +58,7 @@ class ContactSupportScreen extends StatelessWidget {
     return Text.rich(
       textAlign: TextAlign.center,
       TextSpan(
-        style: baseStyle.copyWith(color: Colors.white.withValues(alpha: 0.8)),
+        style: baseStyle.copyWith(color: AppLightSurface.secondaryText),
         children: [
           const TextSpan(text: 'We’re here to help. Call '),
           TextSpan(
@@ -83,7 +84,6 @@ class ContactSupportScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.authFlow,
         backgroundAsset: AppBackgroundAssets.contactSupport,
         child: SafeArea(
           child: Column(
@@ -133,7 +133,7 @@ class ContactSupportScreen extends StatelessWidget {
                               height: 130,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+                                border: Border.all(color: AppLightSurface.border, width: 1.5),
                                 gradient: const RadialGradient(
                                   colors: [Color(0xFFF81945), Color(0xFF21002B)],
                                   stops: [0.0, 1.0],
@@ -143,7 +143,7 @@ class ContactSupportScreen extends StatelessWidget {
                                 child: Text(
                                   '?',
                                   style: TextStyle(
-                                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                                     fontSize: 80,
                                     fontWeight: FontWeight.w700,
                                   ),
@@ -161,7 +161,7 @@ class ContactSupportScreen extends StatelessWidget {
                   'How can we help\nyou today?',
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                     fontSize: 42,
                     fontWeight: FontWeight.w700,
                     height: 1.1,
@@ -181,14 +181,14 @@ class ContactSupportScreen extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.1),
+                      color: AppLightSurface.cardFill,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      border: Border.all(color: AppLightSurface.cardFill),
                     ),
                     child: const Text(
                       'Start Chat..',
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: AppLightSurface.mutedText,
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                       ),

@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../core/services/comment_service.dart';
 import '../../../core/services/story_comment_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/utils/user_facing_errors.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../models/comment.dart';
 
 /// Bottom sheet: pick a reason and write to `comment_reports`.
-/// Provide exactly one of [reelId] or [storyId].
 Future<void> showReportCommentSheet(
   BuildContext context, {
   String? reelId,
@@ -51,11 +52,11 @@ class _ReportCommentBody extends StatefulWidget {
 
 class _ReportCommentBodyState extends State<_ReportCommentBody> {
   static const _reasons = [
-    "Spam or misleading",
-    "Harassment or hate",
-    "Nudity or sexual content",
-    "Violence or dangerous acts",
-    "Something else",
+    'Spam or misleading',
+    'Harassment or hate',
+    'Nudity or sexual content',
+    'Violence or dangerous acts',
+    'Something else',
   ];
 
   bool _submitting = false;
@@ -103,41 +104,20 @@ class _ReportCommentBodyState extends State<_ReportCommentBody> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF49113B),
-            Color(0xFF210D1D),
-            Color(0xFF0F040C),
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      decoration: AppBottomSheet.decoration(topRadius: 28),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const SizedBox(height: 12),
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
+            AppBottomSheet.dragHandle(),
             Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
               child: Text(
                 'Report @${widget.comment.username}',
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -150,7 +130,7 @@ class _ReportCommentBodyState extends State<_ReportCommentBody> {
                 maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 14,
                   height: 1.35,
                 ),
@@ -158,15 +138,15 @@ class _ReportCommentBodyState extends State<_ReportCommentBody> {
             ),
             const SizedBox(height: 16),
             if (_submitting)
-              const Padding(
-                padding: EdgeInsets.all(AppSpacing.xl),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.xl),
                 child: Center(
                   child: SizedBox(
                     width: 28,
                     height: 28,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white54,
+                      color: AppLightSurface.mutedText,
                     ),
                   ),
                 ),
@@ -178,22 +158,19 @@ class _ReportCommentBodyState extends State<_ReportCommentBody> {
                   children: [
                     for (var i = 0; i < _reasons.length; i++) ...[
                       if (i > 0)
-                        Divider(
-                          height: 1,
-                          color: Colors.white.withValues(alpha: 0.08),
-                        ),
+                        Divider(height: 1, color: AppLightSurface.divider),
                       ListTile(
                         title: Text(
                           _reasons[i],
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppLightSurface.primaryText,
                             fontSize: 16,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         trailing: Icon(
                           Icons.chevron_right,
-                          color: Colors.white.withValues(alpha: 0.4),
+                          color: AppLightSurface.chevron,
                         ),
                         onTap: () => _submit(_reasons[i]),
                       ),

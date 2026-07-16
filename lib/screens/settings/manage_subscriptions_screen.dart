@@ -9,6 +9,7 @@ import '../../core/services/user_service.dart';
 import '../../core/subscription/subscription_controller.dart';
 import 'wallet/change_plan_screen.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class ManageSubscriptionsScreen extends StatefulWidget {
   const ManageSubscriptionsScreen({super.key});
@@ -39,7 +40,6 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -129,7 +129,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                                   image: avatarUrl,
                                   statusColor: isActive
                                       ? const Color(0xFFF81945)
-                                      : Colors.white.withValues(alpha: 0.2),
+                                      : AppLightSurface.border,
                                   isCancelled: !isActive,
                                   onChangePlan: () {
                                     Navigator.push(
@@ -171,7 +171,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                                   image: record.creatorAvatarUrl,
                                   statusColor: record.isActive
                                       ? const Color(0xFFF81945)
-                                      : Colors.white.withValues(alpha: 0.2),
+                                      : AppLightSurface.border,
                                   isPaused: record.isPaused,
                                   isCancelled: record.isCancelled,
                                   onChangePlan: null,
@@ -206,9 +206,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                                     child: Text(
                                       emptyMessage,
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.7,
-                                        ),
+                                        color: AppLightSurface.secondaryText,
                                         fontSize: 14,
                                       ),
                                     ),
@@ -260,18 +258,20 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: selected
-                      ? Colors.white.withValues(alpha: 0.05)
+                      ? AppLightSurface.cardFill
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: selected ? const Color(0xFFF81945) : Colors.white10,
+                    color: selected ? const Color(0xFFF81945) : AppLightSurface.border,
                     width: 1,
                   ),
                 ),
                 child: Text(
                   _tabs[index],
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.white60,
+                    color: selected
+                        ? AppLightSurface.primaryText
+                        : AppLightSurface.secondaryText,
                     fontSize: 14,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -304,10 +304,10 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: AppLightSurface.cardFill,
           width: 1,
         ),
       ),
@@ -317,13 +317,13 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
             children: [
               CircleAvatar(
                 radius: 20,
-                backgroundColor: Colors.white12,
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage: hasImage ? NetworkImage(image.trim()) : null,
                 child: hasImage
                     ? null
                     : const Icon(
                         Icons.person_rounded,
-                        color: Colors.white70,
+                        color: AppLightSurface.mutedText,
                         size: 18,
                       ),
               ),
@@ -334,8 +334,8 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                   children: [
                     Text(
                       name,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                    color: AppLightSurface.primaryText,
                         fontSize: 16,
                         fontWeight: FontWeight.w700,
                       ),
@@ -343,7 +343,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                     Text(
                       handle,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.3),
+                        color: AppLightSurface.border,
                         fontSize: 12,
                       ),
                     ),
@@ -361,8 +361,8 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                 ),
                 child: Text(
                   status,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                   ),
@@ -381,27 +381,29 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                     Text(
                       'Plan :',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       plan,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 13),
                     ),
                     const SizedBox(height: 12),
                     Text(
                       'Rate :',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.4),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                       ),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       rate,
-                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 13),
                     ),
                   ],
                 ),
@@ -414,15 +416,15 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                       Text(
                         'Next Billing :',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 13,
                         ),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         nextBilling ?? '',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                    color: AppLightSurface.primaryText,
                           fontSize: 13,
                         ),
                       ),
@@ -492,8 +494,8 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
         alignment: Alignment.center,
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+                    color: AppLightSurface.primaryText,
             fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
@@ -511,15 +513,15 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.white10),
+          border: Border.all(color: AppLightSurface.divider),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+                    color: AppLightSurface.primaryText,
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
@@ -545,7 +547,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFF1C1C1E),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: AppLightSurface.divider),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -553,7 +555,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
               const Text(
                 'Remove Subscription?',
                 style: TextStyle(
-                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -561,21 +563,21 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
               const SizedBox(height: 20),
               CircleAvatar(
                 radius: 24,
-                backgroundColor: Colors.white12,
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage: hasImage ? NetworkImage(image.trim()) : null,
                 child: hasImage
                     ? null
                     : const Icon(
                         Icons.person_rounded,
-                        color: Colors.white70,
+                        color: AppLightSurface.mutedText,
                       ),
               ),
               const SizedBox(height: 20),
               RichText(
                 textAlign: TextAlign.center,
                 text: TextSpan(
-                  style: const TextStyle(
-                    color: Colors.white38,
+                  style: TextStyle(
+                    color: AppLightSurface.mutedText,
                     fontSize: 13,
                     height: 1.5,
                   ),
@@ -586,8 +588,8 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                     ),
                     TextSpan(
                       text: handle,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                    color: AppLightSurface.primaryText,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -599,7 +601,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                 ),
               ),
               const SizedBox(height: 32),
-              const Divider(color: Colors.white10, height: 1),
+              const Divider(color: AppLightSurface.divider, height: 1),
               IntrinsicHeight(
                 child: Row(
                   children: [
@@ -609,13 +611,13 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                         child: const Text(
                           'No, keep',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: AppLightSurface.mutedText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                    const VerticalDivider(color: Colors.white10, thickness: 1),
+                    const VerticalDivider(color: AppLightSurface.divider, thickness: 1),
                     Expanded(
                       child: TextButton(
                         onPressed: () async {
@@ -662,7 +664,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
           decoration: BoxDecoration(
             color: const Color(0xFF1C1C1E),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.white10),
+            border: Border.all(color: AppLightSurface.divider),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -674,7 +676,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                     const Text(
                       'Resume Subscription?',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                       ),
@@ -684,14 +686,14 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                       children: [
                         CircleAvatar(
                           radius: 20,
-                          backgroundColor: Colors.white12,
+                          backgroundColor: AppLightSurface.cardFill,
                           backgroundImage:
                               hasImage ? NetworkImage(image.trim()) : null,
                           child: hasImage
                               ? null
                               : const Icon(
                                   Icons.person_rounded,
-                                  color: Colors.white70,
+                                  color: AppLightSurface.mutedText,
                                 ),
                         ),
                         const SizedBox(width: 12),
@@ -701,8 +703,8 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                             children: [
                               Text(
                                 name,
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -710,7 +712,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                               Text(
                                 handle,
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.3),
+                                  color: AppLightSurface.border,
                                   fontSize: 12,
                                 ),
                               ),
@@ -726,13 +728,13 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                     const SizedBox(height: 12),
                     _buildResumeRow('Date', date),
                     const SizedBox(height: 24),
-                    const Divider(color: Colors.white10),
+                    const Divider(color: AppLightSurface.divider),
                     const SizedBox(height: 16),
                     _buildResumeRow('TOTAL', rate, isTotal: true),
                   ],
                 ),
               ),
-              const Divider(color: Colors.white10, height: 1),
+              const Divider(color: AppLightSurface.divider, height: 1),
               IntrinsicHeight(
                 child: Row(
                   children: [
@@ -742,13 +744,13 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                         child: const Text(
                           'No, Pause',
                           style: TextStyle(
-                            color: Colors.white70,
+                            color: AppLightSurface.mutedText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                       ),
                     ),
-                    const VerticalDivider(color: Colors.white10, thickness: 1),
+                    const VerticalDivider(color: AppLightSurface.divider, thickness: 1),
                     Expanded(
                       child: TextButton(
                         onPressed: () async {
@@ -783,7 +785,9 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
         Text(
           label,
           style: TextStyle(
-            color: isTotal ? Colors.white : Colors.white38,
+            color: isTotal
+                ? AppLightSurface.primaryText
+                : AppLightSurface.mutedText,
             fontSize: isTotal ? 16 : 14,
             fontWeight: isTotal ? FontWeight.w600 : FontWeight.w500,
           ),
@@ -791,7 +795,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
         Text(
           value,
           style: TextStyle(
-            color: Colors.white,
+              color: AppLightSurface.primaryText,
             fontSize: isTotal ? 16 : 14,
             fontWeight: isTotal ? FontWeight.w800 : FontWeight.w600,
           ),

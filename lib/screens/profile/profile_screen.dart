@@ -24,8 +24,10 @@ import '../../core/services/reels_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/subscription/subscription_controller.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../core/utils/verification_badge.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
@@ -86,6 +88,8 @@ class _ProfileScreenState extends State<ProfileScreen>
   };
   int _selectedTabIndex = 0;
   bool _highlightsExpanded = false;
+  bool _sideDrawerOpen = false;
+  final ProfileSideDrawerHandle _sideDrawerHandle = ProfileSideDrawerHandle();
   final LiveStreamService _liveStreamService = LiveStreamService();
   String? _highlightsStreamUid;
   Stream<List<StoryHighlightModel>>? _highlightsStream;
@@ -736,10 +740,22 @@ class _ProfileScreenState extends State<ProfileScreen>
         ),
           ],
         ),
+        if (_sideDrawerOpen)
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: _sideDrawerHandle.close,
+              behavior: HitTestBehavior.translucent,
+            ),
+          ),
         Positioned(
           left: 0,
           top: ProfileFigmaTokens.profileSideRailTop,
           child: ProfileSideDrawer(
+            handle: _sideDrawerHandle,
+            onExpandedChanged: (open) {
+              if (_sideDrawerOpen == open) return;
+              setState(() => _sideDrawerOpen = open);
+            },
             onWalletTap: () => _openWalletFromRail(context),
             onChatTap: () => _openChatFromRail(context),
             onRevenueTap: () => _openRevenueFromRail(context),
@@ -1345,34 +1361,31 @@ class _ProfileScreenState extends State<ProfileScreen>
     final content = Container(
       padding: const EdgeInsets.all(AppSpacing.lg),
       decoration: BoxDecoration(
-        color: const Color(0xFF1E0025),
+        color: isModal ? AppLightSurface.background : const Color(0xFF1E0025),
         borderRadius: isModal
             ? const BorderRadius.vertical(top: Radius.circular(24))
             : BorderRadius.circular(AppRadius.input * 1.5),
-        gradient: isModal
-            ? const LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [Color(0xFF2A002E), Color(0xFF14001F)],
-              )
-            : null,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(
-            width: 40,
-            height: 4,
-            margin: const EdgeInsets.only(bottom: 32),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(2),
+          if (isModal) AppBottomSheet.dragHandle(),
+          if (!isModal)
+            Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 32),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
           Text.rich(
             TextSpan(
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: isModal
+                    ? AppLightSurface.primaryText
+                    : Colors.white,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
@@ -1392,7 +1405,9 @@ class _ProfileScreenState extends State<ProfileScreen>
             child: Text(
               'Become our member to start posting your content. Unlock full access and showcase your creativity today and you can also "monetize your content"',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
+                color: isModal
+                    ? AppLightSurface.secondaryText
+                    : Colors.white.withValues(alpha: 0.6),
                 fontSize: 14,
                 height: 1.5,
               ),

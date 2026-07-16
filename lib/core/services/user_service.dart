@@ -700,12 +700,10 @@ class UserService {
     required String targetUid,
   }) async {
     if (requesterUid.isEmpty || targetUid.isEmpty) return;
-    try {
-      await _firestore
-          .collection(_followRequestsCollection)
-          .doc(followRequestDocId(requesterUid, targetUid))
-          .delete();
-    } catch (_) {}
+    await _firestore
+        .collection(_followRequestsCollection)
+        .doc(followRequestDocId(requesterUid, targetUid))
+        .delete();
   }
 
   /// Private-account owner accepts [requesterUid]. Cloud Function adds the follow edge.

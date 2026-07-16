@@ -8,7 +8,9 @@ import '../../core/moderation/content_moderation.dart';
 import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/story_service.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/utils/story_playback_limits.dart';
+import '../../core/widgets/app_bottom_sheet.dart';
 import '../comments/widgets/comments_bottom_sheet.dart';
 import '../moderation/widgets/report_moderation_cover.dart';
 import '../reel/widgets/report_sheet.dart';
@@ -361,32 +363,30 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF2A1B2E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (ctx) {
-        return SafeArea(
+        return AppBottomSheet.shell(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              const Padding(
-                padding: EdgeInsets.all(16),
+              AppBottomSheet.dragHandle(),
+              Padding(
+                padding: const EdgeInsets.all(16),
                 child: Text(
                   'Add to highlight',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppLightSurface.primaryText,
                     fontSize: 18,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
               ListTile(
-                leading: const Icon(Icons.add, color: Colors.white70),
-                title: const Text(
+                leading: Icon(Icons.add, color: AppLightSurface.icon),
+                title: Text(
                   'New highlight',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppLightSurface.primaryText),
                 ),
                 onTap: () async {
                   Navigator.pop(ctx);
@@ -451,7 +451,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                     return ListTile(
                       title: Text(
                         h.title,
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppLightSurface.primaryText),
                       ),
                       onTap: () async {
                         Navigator.pop(ctx);
@@ -508,19 +508,17 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     if (!_isOwnStory) return;
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF2A1B2E),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
-      builder: (ctx) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AppBottomSheet.shell(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            AppBottomSheet.dragHandle(),
             ListTile(
-              leading: const Icon(Icons.add_circle_outline, color: Colors.white),
-              title: const Text(
+              leading: Icon(Icons.add_circle_outline, color: AppLightSurface.icon),
+              title: Text(
                 'Add another story',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppLightSurface.primaryText),
               ),
               onTap: () {
                 Navigator.pop(ctx);
@@ -528,19 +526,25 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               },
             ),
             ListTile(
-              leading: const Icon(Icons.collections_bookmark_outlined,
-                  color: Colors.white),
-              title: const Text('Add to highlight',
-                  style: TextStyle(color: Colors.white)),
+              leading: Icon(
+                Icons.collections_bookmark_outlined,
+                color: AppLightSurface.icon,
+              ),
+              title: Text(
+                'Add to highlight',
+                style: TextStyle(color: AppLightSurface.primaryText),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 _openHighlightPicker();
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.white70),
-              title: const Text('Delete story',
-                  style: TextStyle(color: Color(0xFFFF2D55))),
+              leading: Icon(Icons.delete_outline, color: AppLightSurface.mutedText),
+              title: const Text(
+                'Delete story',
+                style: TextStyle(color: Color(0xFFFF2D55)),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 _confirmDeleteStory();

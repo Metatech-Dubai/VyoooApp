@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/constants/app_colors.dart';
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// "Not interested" confirmation sheet. Shown when user taps Not Interested in more-options.
 void showNotInterestedSheet(BuildContext context, {String? reelId}) {
@@ -14,44 +15,24 @@ void showNotInterestedSheet(BuildContext context, {String? reelId}) {
   );
 }
 
-abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
-}
-
 class _NotInterestedSheet extends StatelessWidget {
   const _NotInterestedSheet();
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.sheetBackground,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.pill)),
-      ),
+      decoration: AppBottomSheet.decoration(topRadius: AppRadius.pill),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Padding(
-              padding: const EdgeInsets.only(top: AppSpacing.storyItem, bottom: AppSpacing.xs),
-              child: Center(
-                child: Container(
-                  width: _Layout.dragHandleWidth,
-                  height: _Layout.dragHandleHeight,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
+            AppBottomSheet.dragHandle(),
             const SizedBox(height: AppSpacing.sm),
-            const Text(
+            Text(
               'Not interested?',
               style: TextStyle(
-                color: Colors.white,
+                color: AppLightSurface.primaryText,
                 fontSize: 20,
                 fontWeight: FontWeight.w700,
               ),
@@ -63,7 +44,7 @@ class _NotInterestedSheet extends StatelessWidget {
                 "We'll show less content like this in your feed.",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.85),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 15,
                   height: 1.4,
                   fontWeight: FontWeight.w400,
@@ -78,16 +59,17 @@ class _NotInterestedSheet extends StatelessWidget {
                 child: TextButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: TextButton.styleFrom(
-                    backgroundColor: Colors.white.withValues(alpha: 0.15),
+                    backgroundColor: AppLightSurface.cardFill,
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(AppRadius.button),
+                      side: BorderSide(color: AppLightSurface.border),
                     ),
                   ),
-                  child: const Text(
+                  child: Text(
                     'Got it',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

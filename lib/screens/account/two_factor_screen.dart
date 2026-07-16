@@ -3,6 +3,7 @@ import '../../core/widgets/settings/settings_inner_app_bar.dart';
 
 import '../auth/verify_code_screen.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class _CountryDial {
   const _CountryDial({
@@ -86,7 +87,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                         child: Text(
                           'Country / region',
                           style: TextStyle(
-                            color: Colors.white,
+              color: AppLightSurface.primaryText,
                             fontSize: 18,
                             fontWeight: FontWeight.w700,
                           ),
@@ -94,7 +95,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                       ),
                       IconButton(
                         onPressed: () => Navigator.pop(ctx),
-                        icon: const Icon(Icons.close_rounded, color: Colors.white70),
+                        icon: const Icon(Icons.close_rounded, color: AppLightSurface.mutedText),
                       ),
                     ],
                   ),
@@ -105,30 +106,30 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     itemCount: _kPhoneCountryDials.length,
                     separatorBuilder: (_, _) => Divider(
                       height: 1,
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppLightSurface.cardFill,
                     ),
                     itemBuilder: (context, i) {
                       final c = _kPhoneCountryDials[i];
                       final isSel = c.dialCode == _selected.dialCode &&
                           c.name == _selected.name;
                       return ListTile(
-                        leading: Text(c.flagEmoji, style: const TextStyle(fontSize: 26)),
+                        leading: Text(c.flagEmoji, style: TextStyle(fontSize: 26)),
                         title: Text(
                           c.name,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                    color: AppLightSurface.primaryText,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
                         trailing: Text(
                           c.dialCode,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.75),
+                            color: AppLightSurface.secondaryText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
                         selected: isSel,
-                        selectedTileColor: Colors.white.withValues(alpha: 0.06),
+                        selectedTileColor: AppLightSurface.cardFill,
                         onTap: () => Navigator.pop(ctx, c),
                       );
                     },
@@ -149,7 +150,6 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -165,7 +165,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     const Text(
                       'Help us protect your account',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.5,
@@ -175,7 +175,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     Text(
                       "Set up two factor authentication and we'll send you a\nnotification to check if it's you if someone logs in from\nanother device that we don't recognise.",
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -184,7 +184,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     const Text(
                       'Add Phone number',
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: 18,
                         fontWeight: FontWeight.w700,
                         letterSpacing: -0.5,
@@ -194,7 +194,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     Text(
                       'This phone number is required to send you authentication\ncodes to ensure complete protection to your account.',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                         height: 1.4,
                       ),
@@ -205,7 +205,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     if (_errorMessage != null) ...[
                       Text(
                         _errorMessage!,
-                        style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                        style: TextStyle(color: Colors.redAccent, fontSize: 12),
                       ),
                       const SizedBox(height: 10),
                     ],
@@ -240,7 +240,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                       child: Text(
                         'Cancel',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),
@@ -263,7 +263,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   Widget _buildPhoneInput() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: const Color(0xFFDE106B).withValues(alpha: 0.5),
@@ -282,12 +282,12 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(_selected.flagEmoji, style: const TextStyle(fontSize: 20)),
+                    Text(_selected.flagEmoji, style: TextStyle(fontSize: 20)),
                     const SizedBox(width: 8),
                     Text(
                       _selected.dialCode,
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.9),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 15,
                         fontWeight: FontWeight.w500,
                       ),
@@ -295,7 +295,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                     const SizedBox(width: 4),
                     Icon(
                       Icons.keyboard_arrow_down_rounded,
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppLightSurface.secondaryText,
                       size: 18,
                     ),
                   ],
@@ -310,12 +310,13 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
                 if (_errorMessage == null) return;
                 setState(() => _errorMessage = null);
               },
-              style: const TextStyle(color: Colors.white, fontSize: 15),
+              style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 15),
               keyboardType: TextInputType.phone,
               decoration: InputDecoration(
                 hintText: 'Enter phone number',
                 hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),

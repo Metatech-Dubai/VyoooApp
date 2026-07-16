@@ -228,7 +228,7 @@ class AppBottomNavigation extends StatelessWidget {
       context,
       iosInsetFactor: _iosSafeAreaBottomFactor,
     );
-    final progressBand = feedChrome && includeReelProgressBand
+    final progressBand = includeReelProgressBand
         ? (liveProgressBand
             ? feedLiveProgressBandHeight()
             : feedReelProgressBandHeight())
@@ -417,11 +417,88 @@ class AppBottomNavigation extends StatelessWidget {
     );
   }
 
+  Widget? _buildFeedProgressBand() {
+    final reelProgressListenable = feedReelProgress;
+    if (reelProgressListenable != null) {
+      return ValueListenableBuilder<double?>(
+        valueListenable: reelProgressListenable,
+        builder: (context, progress, _) {
+          return _buildProgressScrubBand(
+            onSeekUpdate: onFeedReelSeekUpdate,
+            progressBar: _buildChromeProgressBar(
+              progress: progress ?? 0,
+              isLive: false,
+            ),
+          );
+        },
+      );
+    }
+
+    final liveProgressListenable = feedLiveProgress;
+    if (liveProgressListenable != null) {
+      return ListenableBuilder(
+        listenable: Listenable.merge([
+          liveProgressListenable,
+          ?feedLiveScrubbing,
+          ?feedLiveSeekPreviewBytes,
+          ?feedLiveSeekPreviewTimeLabel,
+          ?feedLiveSeekPreviewFallbackUrl,
+        ]),
+        builder: (context, _) {
+          final progress = liveProgressListenable.value ?? 1;
+          final isScrubbing = feedLiveScrubbing?.value ?? false;
+          return _buildProgressScrubBand(
+            isLive: true,
+            progress: progress,
+            showLivePreview: isScrubbing,
+            previewBytes: feedLiveSeekPreviewBytes?.value,
+            previewTimeLabel: feedLiveSeekPreviewTimeLabel?.value,
+            previewFallbackUrl: feedLiveSeekPreviewFallbackUrl?.value,
+            onSeekStart: onFeedLiveSeekStart,
+            onSeekEnd: onFeedLiveSeekEnd,
+            onSeekUpdate: onFeedLiveSeekUpdate,
+            progressBar: _buildChromeProgressBar(
+              progress: progress,
+              isLive: true,
+              showLiveScrubThumb: isScrubbing,
+            ),
+          );
+        },
+      );
+    }
+
+    return null;
+  }
+
   Widget _buildFloatingPill(BottomNavLayout layout, double bottomInset) {
-    return _buildNavChromeBody(
-      layout: layout,
-      bottomInset: bottomInset,
-      includeTopPadding: false,
+    final progressBand = _buildFeedProgressBand();
+    if (progressBand == null) {
+      return _buildNavChromeBody(
+        layout: layout,
+        bottomInset: bottomInset,
+        includeTopPadding: false,
+      );
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Center(child: _buildCreateMenuStack(layout)),
+        progressBand,
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            _horizontalMargin(layout),
+            0,
+            _horizontalMargin(layout),
+            bottomInset,
+          ),
+          child: _buildPill(
+            layout: layout,
+            child: _buildNavRow(layout),
+          ),
+        ),
+      ],
     );
   }
 
@@ -520,10 +597,7 @@ class AppBottomNavigation extends StatelessWidget {
   }
 
   Widget _buildFeedChromePill(BottomNavLayout layout, double bottomInset) {
-    final reelProgressListenable = feedReelProgress;
-    final liveProgressListenable = feedLiveProgress;
-    final hasChromeProgress =
-        reelProgressListenable != null || liveProgressListenable != null;
+    final progressBand = _buildFeedProgressBand();
     final chromeBottomRadius = squareChromeBottomCorners
         ? BorderRadius.zero
         : AppRadius.feedBottomChromeRadius;
@@ -542,7 +616,7 @@ class AppBottomNavigation extends StatelessWidget {
             ),
           ),
         ),
-        child: !hasChromeProgress
+        child: progressBand == null
             ? _buildNavChromeBody(
                 layout: layout,
                 bottomInset: bottomInset,
@@ -553,51 +627,7 @@ class AppBottomNavigation extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Center(child: _buildCreateMenuStack(layout)),
-                  if (reelProgressListenable != null)
-                    ValueListenableBuilder<double?>(
-                      valueListenable: reelProgressListenable,
-                      builder: (context, progress, _) {
-                        return _buildProgressScrubBand(
-                          onSeekUpdate: onFeedReelSeekUpdate,
-                          progressBar: _buildChromeProgressBar(
-                            progress: progress ?? 0,
-                            isLive: false,
-                          ),
-                        );
-                      },
-                    )
-                  else if (liveProgressListenable != null)
-                    ListenableBuilder(
-                      listenable: Listenable.merge([
-                        liveProgressListenable,
-                        ?feedLiveScrubbing,
-                        ?feedLiveSeekPreviewBytes,
-                        ?feedLiveSeekPreviewTimeLabel,
-                        ?feedLiveSeekPreviewFallbackUrl,
-                      ]),
-                      builder: (context, _) {
-                        final progress = liveProgressListenable.value ?? 1;
-                        final isScrubbing = feedLiveScrubbing?.value ?? false;
-                        return _buildProgressScrubBand(
-                          isLive: true,
-                          progress: progress,
-                          showLivePreview: isScrubbing,
-                          previewBytes: feedLiveSeekPreviewBytes?.value,
-                          previewTimeLabel:
-                              feedLiveSeekPreviewTimeLabel?.value,
-                          previewFallbackUrl:
-                              feedLiveSeekPreviewFallbackUrl?.value,
-                          onSeekStart: onFeedLiveSeekStart,
-                          onSeekEnd: onFeedLiveSeekEnd,
-                          onSeekUpdate: onFeedLiveSeekUpdate,
-                          progressBar: _buildChromeProgressBar(
-                            progress: progress,
-                            isLive: true,
-                            showLiveScrubThumb: isScrubbing,
-                          ),
-                        );
-                      },
-                    ),
+                  progressBand,
                   Padding(
                     padding: EdgeInsets.fromLTRB(
                       _horizontalMargin(layout),

@@ -11,6 +11,7 @@ import '../theme/app_typography.dart';
 import 'app_gradient_background.dart';
 import 'auth/auth_primary_button.dart';
 import 'vyooo_brand_logo.dart';
+import '../theme/app_light_surface.dart';
 
 /// Full-screen gate when a force update is required.
 class AppForceUpdateScreen extends StatelessWidget {
@@ -49,7 +50,6 @@ class AppForceUpdateScreen extends StatelessWidget {
     return PopScope(
       canPop: false,
       child: AppGradientBackground(
-        type: GradientType.authFlow,
         child: Padding(
           padding: AppPadding.authFormHorizontal,
           child: Column(
@@ -59,13 +59,17 @@ class AppForceUpdateScreen extends StatelessWidget {
               AppPadding.sectionGap,
               Text(
                 policy.title,
-                style: AppTypography.authHeadline,
+                style: AppTypography.authHeadline.copyWith(
+                  color: AppLightSurface.primaryText,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: AppSpacing.md),
               Text(
                 policy.message,
-                style: AppTypography.input.copyWith(color: AppTheme.secondaryTextColor),
+                style: AppTypography.input.copyWith(
+                  color: AppLightSurface.secondaryText,
+                ),
                 textAlign: TextAlign.center,
               ),
               if (result.installedVersion != null) ...[
@@ -73,7 +77,9 @@ class AppForceUpdateScreen extends StatelessWidget {
                 Text(
                   'Installed: ${result.installedVersion}'
                   '${result.targetVersionLabel != null ? ' · Required: ${result.targetVersionLabel}' : ''}',
-                  style: AppTypography.caption,
+                  style: AppTypography.caption.copyWith(
+                    color: AppLightSurface.mutedText,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],

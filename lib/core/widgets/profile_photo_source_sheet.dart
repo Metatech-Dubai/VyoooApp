@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
-import '../theme/app_gradients.dart';
+import '../theme/app_light_surface.dart';
 import '../theme/app_spacing.dart';
-import '../theme/app_theme.dart';
 import '../theme/app_typography.dart';
 
 /// Where the user chose to pick a profile photo from.
@@ -30,7 +29,7 @@ Future<ProfilePhotoPickSource?> showProfilePhotoSourceSheet(
   );
 }
 
-/// Same purple stack as [AppGradientBackground] auth / add-profile onboarding.
+/// White sheet backdrop for profile photo picker.
 class _AuthFlowSheetBackdrop extends StatelessWidget {
   const _AuthFlowSheetBackdrop({required this.child});
 
@@ -38,26 +37,9 @@ class _AuthFlowSheetBackdrop extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.passthrough,
-      children: [
-        const ColoredBox(color: AppColors.brandPurple),
-        const Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: AppGradients.authRadialMainGlow,
-            ),
-          ),
-        ),
-        const Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: AppGradients.authRadialTopLeftGlow,
-            ),
-          ),
-        ),
-        child,
-      ],
+    return ColoredBox(
+      color: AppLightSurface.background,
+      child: child,
     );
   }
 }
@@ -82,7 +64,7 @@ class _ProfilePhotoSourceSheet extends StatelessWidget {
                 width: 36,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.28),
+                  color: AppLightSurface.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -98,7 +80,7 @@ class _ProfilePhotoSourceSheet extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 1,
-                color: Colors.white.withValues(alpha: 0.12),
+                color: AppLightSurface.divider,
                 indent: AppSpacing.md,
                 endIndent: AppSpacing.md,
               ),
@@ -113,7 +95,7 @@ class _ProfilePhotoSourceSheet extends StatelessWidget {
               Divider(
                 height: 1,
                 thickness: 1,
-                color: Colors.white.withValues(alpha: 0.12),
+                color: AppLightSurface.divider,
               ),
               _CancelRow(
                 onTap: () => Navigator.pop(context),
@@ -157,7 +139,7 @@ class _SourceRow extends StatelessWidget {
                   label,
                   style: AppTypography.input.copyWith(
                     fontWeight: FontWeight.w500,
-                    color: AppTheme.defaultTextColor,
+                    color: AppLightSurface.primaryText,
                   ),
                 ),
               ),
@@ -187,7 +169,7 @@ class _CancelRow extends StatelessWidget {
               'Cancel',
               style: AppTypography.input.copyWith(
                 fontWeight: FontWeight.w600,
-                color: AppTheme.defaultTextColor.withValues(alpha: 0.85),
+                color: AppLightSurface.secondaryText,
               ),
             ),
           ),

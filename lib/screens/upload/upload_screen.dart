@@ -319,6 +319,31 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
     );
   }
 
+  Future<void> _onAlbumChanged(String v) async {
+    if (v == 'All Albums') {
+      if (_paths.isEmpty) return;
+      final path = await Navigator.of(context).push<AssetPathEntity>(
+        MaterialPageRoute<AssetPathEntity>(
+          builder: (_) => AllAlbumsScreen(paths: _paths),
+        ),
+      );
+      if (!mounted) return;
+      if (path != null) {
+        setState(() {
+          _pathOverride = path;
+          _selectedAlbum = path.name;
+        });
+        await _loadAssetsForCurrentPath();
+      }
+      return;
+    }
+    setState(() {
+      _pathOverride = null;
+      _selectedAlbum = v;
+    });
+    await _loadAssetsForCurrentPath();
+  }
+
   Widget _buildHeader(BuildContext context) {
     final isPost = _bottomSegment == 1;
     return Padding(
@@ -333,53 +358,24 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
           children: [
             Align(
               alignment: Alignment.centerLeft,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  UploadPostCloseButton(
-                    onTap: () => Navigator.of(context).pop(),
-                  ),
-                  if (isPost)
-                    AlbumPickerDropdown(
-                      value: _selectedAlbum,
-                      onChanged: (v) async {
-                        if (v == 'All Albums') {
-                          if (_paths.isEmpty) return;
-                          final path = await Navigator.of(context)
-                              .push<AssetPathEntity>(
-                            MaterialPageRoute<AssetPathEntity>(
-                              builder: (_) => AllAlbumsScreen(paths: _paths),
-                            ),
-                          );
-                          if (!mounted) return;
-                          if (path != null) {
-                            setState(() {
-                              _pathOverride = path;
-                              _selectedAlbum = path.name;
-                            });
-                            await _loadAssetsForCurrentPath();
-                          }
-                          return;
-                        }
-                        setState(() {
-                          _pathOverride = null;
-                          _selectedAlbum = v;
-                        });
-                        await _loadAssetsForCurrentPath();
-                      },
-                    )
-                  else
-                    Text(
-                      _bottomSegment == 2 ? 'Live' : 'Story',
-                      style: AppTypography.chatTileName.copyWith(
-                        color: AppColors.chatTextPrimary,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                ],
+              child: UploadPostCloseButton(
+                onTap: () => Navigator.of(context).pop(),
               ),
             ),
+            if (isPost)
+              AlbumPickerDropdown(
+                value: _selectedAlbum,
+                onChanged: _onAlbumChanged,
+              )
+            else
+              Text(
+                _bottomSegment == 2 ? 'Live' : 'Story',
+                style: AppTypography.chatTileName.copyWith(
+                  color: AppColors.chatTextPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             Align(
               alignment: Alignment.centerRight,
               child: isPost

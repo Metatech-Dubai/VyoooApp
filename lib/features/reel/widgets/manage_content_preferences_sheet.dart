@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// "Manage Content Preferences" bottom sheet with four toggles.
-/// State is local to the sheet; persist via preferences/API as needed.
 void showManageContentPreferencesSheet(BuildContext context) {
   showModalBottomSheet<void>(
     context: context,
@@ -11,11 +12,6 @@ void showManageContentPreferencesSheet(BuildContext context) {
     backgroundColor: Colors.transparent,
     builder: (context) => const _ManageContentPreferencesSheet(),
   );
-}
-
-abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
 }
 
 class _ManageContentPreferencesSheet extends StatefulWidget {
@@ -36,18 +32,7 @@ class _ManageContentPreferencesSheetState
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF49113B), // Deep Magenta
-            Color(0xFF210D1D),
-            Color(0xFF0F040C),
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      decoration: AppBottomSheet.decoration(topRadius: 28),
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
@@ -62,26 +47,11 @@ class _ManageContentPreferencesSheetState
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Padding(
-                  padding: const EdgeInsets.only(
-                    top: AppSpacing.storyItem,
-                    bottom: AppSpacing.sm,
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: _Layout.dragHandleWidth,
-                      height: _Layout.dragHandleHeight,
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                ),
-                const Text(
+                AppBottomSheet.dragHandle(),
+                Text(
                   'Manage Content Preferences',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppLightSurface.primaryText,
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                   ),
@@ -137,8 +107,8 @@ class _PreferenceSwitch extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppLightSurface.primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
               ),
@@ -147,12 +117,7 @@ class _PreferenceSwitch extends StatelessWidget {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeThumbColor: Colors.white,
-            activeTrackColor: const Color(
-              0xFF22C55E,
-            ), // Accurate WhatsApp Green
-            inactiveThumbColor: Colors.white54,
-            inactiveTrackColor: Colors.white.withValues(alpha: 0.1),
+            activeTrackColor: const Color(0xFF22C55E),
           ),
         ],
       ),

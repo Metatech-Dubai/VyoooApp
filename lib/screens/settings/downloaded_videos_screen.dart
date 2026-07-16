@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../../core/services/reel_download_service.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class DownloadedVideosScreen extends StatefulWidget {
   const DownloadedVideosScreen({super.key});
@@ -33,7 +34,6 @@ class _DownloadedVideosScreenState extends State<DownloadedVideosScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -44,7 +44,7 @@ class _DownloadedVideosScreenState extends State<DownloadedVideosScreen> {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: CircularProgressIndicator(color: Colors.white54),
+                      child: CircularProgressIndicator(color: AppLightSurface.mutedText),
                     );
                   }
                   final items = snapshot.data ?? [];
@@ -54,7 +54,7 @@ class _DownloadedVideosScreenState extends State<DownloadedVideosScreen> {
                         'No downloaded videos yet.\nUse Download on a reel (subscription required).',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 15,
                           height: 1.4,
                         ),
@@ -70,7 +70,7 @@ class _DownloadedVideosScreenState extends State<DownloadedVideosScreen> {
                       final file = File(e.localPath);
                       final exists = file.existsSync();
                       return Material(
-                        color: Colors.white.withValues(alpha: 0.06),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(12),
                         child: ListTile(
                           contentPadding: const EdgeInsets.symmetric(
@@ -96,8 +96,8 @@ class _DownloadedVideosScreenState extends State<DownloadedVideosScreen> {
                             'Reel ${e.reelId}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                    color: AppLightSurface.primaryText,
                               fontWeight: FontWeight.w600,
                               fontSize: 15,
                             ),
@@ -107,13 +107,13 @@ class _DownloadedVideosScreenState extends State<DownloadedVideosScreen> {
                                 ? 'On this device'
                                 : 'File missing (re-download from feed)',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
+                              color: AppLightSurface.secondaryText,
                               fontSize: 13,
                             ),
                           ),
                           trailing: IconButton(
                             icon: const Icon(Icons.delete_outline,
-                                color: Colors.white70),
+                                color: AppLightSurface.mutedText),
                             onPressed: () async {
                               await ReelDownloadService.instance
                                   .removeDownload(e.reelId);

@@ -11,6 +11,7 @@ import '../../core/services/storage_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/services/verification_request_service.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class VerificationRequestScreen extends StatefulWidget {
   const VerificationRequestScreen({super.key});
@@ -206,7 +207,6 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
         _status == 'in_review';
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -214,7 +214,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
             Expanded(
               child: _loading
                   ? const Center(
-                      child: CircularProgressIndicator(color: Colors.white54),
+                      child: CircularProgressIndicator(color: AppLightSurface.mutedText),
                     )
                   : ListView(
                       padding: const EdgeInsets.symmetric(
@@ -269,7 +269,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
                                 : 'Your request is under review by admin.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.75),
+                              color: AppLightSurface.secondaryText,
                               fontSize: 13,
                             ),
                           ),
@@ -293,9 +293,9 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: AppLightSurface.border),
       ),
       child: Row(
         children: [
@@ -304,8 +304,8 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
           Expanded(
             child: Text(
               'Verification status: $text',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                    color: AppLightSurface.primaryText,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -326,19 +326,19 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
       controller: controller,
       enabled: enabled,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: AppLightSurface.primaryText),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+        labelStyle: TextStyle(color: AppLightSurface.secondaryText),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
+        fillColor: AppLightSurface.cardFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+          borderSide: BorderSide(color: AppLightSurface.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+          borderSide: BorderSide(color: AppLightSurface.border),
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
@@ -356,19 +356,19 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
           .map((type) => DropdownMenuItem(value: type, child: Text(type)))
           .toList(),
       dropdownColor: const Color(0xFF1A0A24),
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: AppLightSurface.primaryText),
       decoration: InputDecoration(
         labelText: 'ID type',
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+        labelStyle: TextStyle(color: AppLightSurface.secondaryText),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
+        fillColor: AppLightSurface.cardFill,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+          borderSide: BorderSide(color: AppLightSurface.border),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.14)),
+          borderSide: BorderSide(color: AppLightSurface.border),
         ),
       ),
     );
@@ -378,20 +378,20 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+        border: Border.all(color: AppLightSurface.border),
       ),
       child: Row(
         children: [
-          const Icon(Icons.picture_as_pdf_rounded, color: Colors.white),
+          const Icon(Icons.picture_as_pdf_rounded, color: AppLightSurface.primaryText),
           const SizedBox(width: 10),
           Expanded(
             child: Text(
               _pdfName == null ? 'No PDF attached' : _pdfName!,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
+                color: AppLightSurface.secondaryText,
                 fontSize: 14,
               ),
             ),

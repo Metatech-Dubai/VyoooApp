@@ -12,6 +12,7 @@ import '../../core/services/user_service.dart';
 import '../../core/theme/app_theme.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Minor waits here until a parent approves or denies in [ParentalApprovalsScreen].
 class ParentalPendingScreen extends StatefulWidget {
@@ -151,7 +152,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
         Text(
           'Email: $email',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.9),
+            color: AppLightSurface.secondaryText,
             fontSize: 14,
             height: 1.4,
           ),
@@ -165,7 +166,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
           child: Text(
             'Phone: $phone',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppLightSurface.secondaryText,
               fontSize: 14,
               height: 1.4,
             ),
@@ -187,7 +188,6 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
         body: Stack(
           children: [
             AppGradientBackground(
-              type: GradientType.authFlow,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 28),
                 child: Column(
@@ -210,7 +210,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                     style: TextStyle(
                       fontSize: 14,
                       height: 1.45,
-                      color: Colors.white.withValues(alpha: 0.82),
+                      color: AppLightSurface.secondaryText,
                     ),
                   ),
                   const SizedBox(height: 24),
@@ -235,7 +235,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                   else if (uid.isEmpty)
                     const Text(
                       'Sign in again to see your request status.',
-                      style: TextStyle(color: Colors.white70, fontSize: 14),
+                      style: TextStyle(color: AppLightSurface.mutedText, fontSize: 14),
                     )
                   else
                     StreamBuilder<AppUserModel?>(
@@ -255,10 +255,10 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                               width: double.infinity,
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.08),
+                                color: AppLightSurface.cardFill,
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: Colors.white.withValues(alpha: 0.12),
+                                  color: AppLightSurface.border,
                                 ),
                               ),
                               child: Column(
@@ -268,7 +268,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                                     Text(
                                       'Request sent to',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(alpha: 0.7),
+                                        color: AppLightSurface.secondaryText,
                                         fontSize: 12,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 0.3,
@@ -279,14 +279,14 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                                     const SizedBox(height: 14),
                                     Divider(
                                       height: 1,
-                                      color: Colors.white.withValues(alpha: 0.12),
+                                      color: AppLightSurface.border,
                                     ),
                                     const SizedBox(height: 14),
                                   ],
                                   Text(
                                     'Request status: ${_statusLabel(_consentLiveStatus)}',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                    color: AppLightSurface.primaryText,
                                       fontSize: 15,
                                       fontWeight: FontWeight.w600,
                                     ),
@@ -295,7 +295,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                                   Text(
                                     'Your account: ${_accountLabel(accountSt.isEmpty ? null : accountSt)}',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.85),
+                                      color: AppLightSurface.secondaryText,
                                       fontSize: 14,
                                       height: 1.4,
                                     ),
@@ -319,7 +319,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                                               height: 22,
                                               child: CircularProgressIndicator(
                                                 strokeWidth: 2,
-                                                color: Colors.white,
+                                                color: AppLightSurface.primaryText,
                                               ),
                                             )
                                           : const Text('Sync now'),
@@ -358,7 +358,7 @@ class _ParentalPendingScreenState extends State<ParentalPendingScreen> {
                                     child: Text(
                                       'Waiting for your parent to approve in their app…',
                                       style: TextStyle(
-                                        color: Colors.white70,
+                                        color: AppLightSurface.mutedText,
                                         fontSize: 15,
                                       ),
                                     ),

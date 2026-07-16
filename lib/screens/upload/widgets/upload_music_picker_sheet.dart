@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:photo_manager/photo_manager.dart';
 
+import '../../../core/constants/app_colors.dart';
 import '../../../core/mock/mock_music_data.dart';
 import '../../../core/services/jamendo_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../music/add_audio_trim_screen.dart';
 
 abstract final class UploadMusicPickerAssets {
@@ -44,7 +46,6 @@ class UploadMusicPickerSheet extends StatefulWidget {
 
 class _UploadMusicPickerSheetState extends State<UploadMusicPickerSheet> {
   static const List<String> _tabs = ['For you', 'Trending', 'Saved'];
-  static const Color _sheetBackground = Color(0xFF1C1C1E);
 
   final TextEditingController _searchController = TextEditingController();
   final AudioPlayer _player = AudioPlayer();
@@ -197,20 +198,12 @@ class _UploadMusicPickerSheetState extends State<UploadMusicPickerSheet> {
     return FractionallySizedBox(
       heightFactor: 0.94,
       child: DecoratedBox(
-        decoration: const BoxDecoration(
-          color: _sheetBackground,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
+        decoration: AppBottomSheet.decoration(),
         child: SafeArea(
           top: false,
           child: Column(
             children: [
-              const SizedBox(height: AppSpacing.sm),
-              SvgPicture.asset(
-                UploadMusicPickerAssets.grabHandle,
-                width: AppSizes.musicPickerGrabHandleWidth,
-                height: AppSizes.musicPickerGrabHandleHeight,
-              ),
+              AppBottomSheet.dragHandle(),
               const SizedBox(height: AppSpacing.md),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md),
@@ -239,8 +232,8 @@ class _UploadMusicPickerSheetState extends State<UploadMusicPickerSheet> {
 
   Widget _buildTrackList(double bottomInset) {
     if (_loading) {
-      return const Center(
-        child: CircularProgressIndicator(color: Colors.white54),
+      return Center(
+        child: CircularProgressIndicator(color: AppLightSurface.mutedText),
       );
     }
 
@@ -249,7 +242,9 @@ class _UploadMusicPickerSheetState extends State<UploadMusicPickerSheet> {
       return Center(
         child: Text(
           _activeTab == 2 ? 'No saved tracks yet' : 'No tracks found',
-          style: AppTypography.musicPickerTrackMeta,
+          style: AppTypography.musicPickerTrackMeta.copyWith(
+            color: AppLightSurface.secondaryText,
+          ),
         ),
       );
     }
@@ -314,49 +309,38 @@ class _MusicPickerSearchField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final height = AppSizes.musicPickerSearchFieldHeight *
-            (width / AppSizes.musicPickerSearchFieldWidth);
-
-        return SizedBox(
-          height: height,
-          child: Stack(
-            alignment: Alignment.centerLeft,
-            children: [
-              SvgPicture.asset(
-                UploadMusicPickerAssets.searchField,
-                width: width,
-                height: height,
-                fit: BoxFit.fill,
-              ),
-              Positioned.fill(
-                child: TextField(
-                  controller: controller,
-                  onChanged: onChanged,
-                  style: AppTypography.musicPickerSearchInput,
-                  cursorColor: Colors.white,
-                  decoration: InputDecoration(
-                    hintText: 'Search Music',
-                    hintStyle: AppTypography.musicPickerSearchHint,
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: const Color(0x99EBEBF5),
-                      size: 18,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: AppSpacing.sm,
-                      vertical: AppSpacing.xs,
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      style: AppTypography.musicPickerSearchInput.copyWith(
+        color: AppLightSurface.primaryText,
+      ),
+      cursorColor: AppColors.brandPink,
+      decoration: InputDecoration(
+        hintText: 'Search Music',
+        hintStyle: AppTypography.musicPickerSearchHint.copyWith(
+          color: AppLightSurface.mutedText,
+        ),
+        prefixIcon: Icon(
+          Icons.search_rounded,
+          color: AppLightSurface.mutedText,
+          size: 18,
+        ),
+        filled: true,
+        fillColor: AppLightSurface.cardFill,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppLightSurface.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppLightSurface.border),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.sm,
+          vertical: AppSpacing.xs,
+        ),
+      ),
     );
   }
 }
@@ -372,68 +356,40 @@ class _MusicPickerTabs extends StatelessWidget {
   final int activeIndex;
   final ValueChanged<int> onChanged;
 
-  static const List<double> _tabPillLefts = [1.86914, 113.121, 224.371];
-
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        final height = AppSizes.musicPickerTabsBarHeight *
-            (width / AppSizes.musicPickerTabsBarWidth);
-        final scale = width / AppSizes.musicPickerTabsBarWidth;
-        final pillWidth = AppSizes.musicPickerTabPillWidth * scale;
-        final pillLeft = _tabPillLefts[activeIndex] * scale;
-
-        return SizedBox(
-          height: height,
-          child: Stack(
-            children: [
-              SvgPicture.asset(
-                UploadMusicPickerAssets.tabsBar,
-                width: width,
-                height: height,
-                fit: BoxFit.fill,
-              ),
-              AnimatedPositioned(
-                duration: const Duration(milliseconds: 200),
-                curve: Curves.easeOut,
-                left: pillLeft,
-                top: 1.86987 * scale,
-                width: pillWidth,
-                height: 22.4372 * scale,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1A1A1A),
-                    borderRadius: BorderRadius.circular(6.54419 * scale),
+    return Container(
+      height: 36,
+      decoration: BoxDecoration(
+        color: AppLightSurface.cardFill,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppLightSurface.border),
+      ),
+      child: Row(
+        children: List.generate(tabs.length, (index) {
+          final active = index == activeIndex;
+          return Expanded(
+            child: GestureDetector(
+              onTap: () => onChanged(index),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: active ? AppColors.brandPink : Colors.transparent,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  tabs[index],
+                  style: AppTypography.musicPickerTabLabel(active: active).copyWith(
+                    color: active
+                        ? Colors.white
+                        : AppLightSurface.secondaryText,
                   ),
                 ),
               ),
-              Row(
-                children: List.generate(tabs.length, (index) {
-                  return Expanded(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () => onChanged(index),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Center(
-                          child: Text(
-                            tabs[index],
-                            style: AppTypography.musicPickerTabLabel(
-                              active: index == activeIndex,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-            ],
-          ),
-        );
-      },
+            ),
+          );
+        }),
+      ),
     );
   }
 }
@@ -458,8 +414,13 @@ class _MusicPickerTrackRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: isSelected ? const Color(0xFF3A3A3C) : Colors.transparent,
-      borderRadius: BorderRadius.circular(8),
+      color: isSelected ? AppLightSurface.cardFill : Colors.transparent,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: isSelected
+            ? const BorderSide(color: AppLightSurface.border)
+            : BorderSide.none,
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(8),
@@ -488,7 +449,9 @@ class _MusicPickerTrackRow extends StatelessWidget {
                         Expanded(
                           child: Text(
                             track.title,
-                            style: AppTypography.musicPickerTrackTitle,
+                            style: AppTypography.musicPickerTrackTitle.copyWith(
+                              color: AppLightSurface.primaryText,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -501,13 +464,15 @@ class _MusicPickerTrackRow extends StatelessWidget {
                         const Icon(
                           Icons.north_east_rounded,
                           size: 12,
-                          color: Color(0xFFB3B3B3),
+                          color: AppLightSurface.mutedText,
                         ),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
                             '${track.artist} • ${track.duration}',
-                            style: AppTypography.musicPickerTrackMeta,
+                            style: AppTypography.musicPickerTrackMeta.copyWith(
+                              color: AppLightSurface.secondaryText,
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -521,7 +486,7 @@ class _MusicPickerTrackRow extends StatelessWidget {
                 onPressed: onBookmarkTap,
                 icon: Icon(
                   isSaved ? Icons.bookmark : Icons.bookmark_border,
-                  color: Colors.white,
+                  color: AppLightSurface.icon,
                   size: 22,
                 ),
               ),
@@ -538,8 +503,8 @@ class _MusicPickerTrackRow extends StatelessWidget {
       return Container(
         width: size,
         height: size,
-        color: Colors.white24,
-        child: const Icon(Icons.music_note, color: Colors.white, size: 24),
+        color: AppLightSurface.cardFill,
+        child: Icon(Icons.music_note, color: AppLightSurface.mutedText, size: 24),
       );
     }
     return Image.network(
@@ -550,8 +515,8 @@ class _MusicPickerTrackRow extends StatelessWidget {
       errorBuilder: (_, __, ___) => Container(
         width: size,
         height: size,
-        color: Colors.white24,
-        child: const Icon(Icons.music_note, color: Colors.white, size: 24),
+        color: AppLightSurface.cardFill,
+        child: Icon(Icons.music_note, color: AppLightSurface.mutedText, size: 24),
       ),
     );
   }
@@ -581,7 +546,7 @@ class _EqualizerBars extends StatelessWidget {
         width: 2,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppColors.brandPink,
           borderRadius: BorderRadius.circular(1),
         ),
       );
@@ -604,9 +569,8 @@ class _MusicPickerMiniPlayer extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xFF2C2C2E),
+        color: AppColors.brandPink,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Padding(
         padding: const EdgeInsets.all(AppSpacing.sm),
@@ -637,13 +601,16 @@ class _MusicPickerMiniPlayer extends StatelessWidget {
                     track.title,
                     style: AppTypography.musicPickerTrackTitle.copyWith(
                       fontSize: 16,
+                      color: Colors.white,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
                   Text(
                     track.artist,
-                    style: AppTypography.musicPickerTrackMeta,
+                    style: AppTypography.musicPickerTrackMeta.copyWith(
+                      color: Colors.white70,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_gradients.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_radius.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
@@ -15,9 +15,7 @@ class WalletComingSoonView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: AppGradients.personalProfileBackgroundGradient,
-      ),
+      color: AppLightSurface.background,
       child: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,9 +35,9 @@ class WalletComingSoonView extends StatelessWidget {
                         height: 88,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.08),
+                          color: AppLightSurface.cardFill,
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.18),
+                            color: AppLightSurface.border,
                           ),
                         ),
                         child: Center(
@@ -47,7 +45,7 @@ class WalletComingSoonView extends StatelessWidget {
                             'assets/vyooO_icons/Settings/Wallet.png',
                             width: 44,
                             height: 44,
-                            color: Colors.white.withValues(alpha: 0.92),
+                            color: AppLightSurface.icon,
                           ),
                         ),
                       ),
@@ -55,13 +53,17 @@ class WalletComingSoonView extends StatelessWidget {
                       Text(
                         'Coming Soon',
                         textAlign: TextAlign.center,
-                        style: AppTypography.onboardingSectionTitle,
+                        style: AppTypography.onboardingSectionTitle.copyWith(
+                          color: AppLightSurface.primaryText,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.sm),
                       Text(
                         'Vyooo coin and your wallet balance are on the way.\nStay tuned!',
                         textAlign: TextAlign.center,
-                        style: AppTypography.onboardingPrivacyBody,
+                        style: AppTypography.onboardingPrivacyBody.copyWith(
+                          color: AppLightSurface.secondaryText,
+                        ),
                       ),
                       const SizedBox(height: AppSpacing.lg),
                       Container(
@@ -70,16 +72,16 @@ class WalletComingSoonView extends StatelessWidget {
                           vertical: AppSpacing.sm,
                         ),
                         decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: AppLightSurface.cardFill,
                           borderRadius: AppRadius.pillRadius,
                           border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.2),
+                            color: AppLightSurface.border,
                           ),
                         ),
                         child: Text(
                           'Vyooo coin',
                           style: AppTypography.caption.copyWith(
-                            color: Colors.white.withValues(alpha: 0.85),
+                            color: AppLightSurface.mutedText,
                             fontWeight: FontWeight.w600,
                             letterSpacing: 1.2,
                           ),

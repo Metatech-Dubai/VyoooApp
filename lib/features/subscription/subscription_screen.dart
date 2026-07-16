@@ -11,6 +11,7 @@ import '../../core/config/app_links.dart';
 import '../../core/subscription/membership_tier.dart';
 import '../../core/subscription/subscription_controller.dart';
 import '../../core/subscription/subscription_package_mapper.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key, this.showRestoreButton = true});
@@ -194,7 +195,6 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.premiumDark,
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final isCompact =
@@ -220,7 +220,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               child: const Text(
                                 'Restore',
                                 style: TextStyle(
-                                  color: Colors.white70,
+                                  color: AppLightSurface.mutedText,
                                   fontSize: 13,
                                 ),
                               ),
@@ -229,7 +229,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             const SizedBox.shrink(),
                           IconButton(
                             onPressed: () => Navigator.of(context).pop(false),
-                            icon: const Icon(Icons.close, color: Colors.white),
+                            icon: const Icon(Icons.close, color: AppLightSurface.primaryText),
                           ),
                         ],
                       ),
@@ -269,7 +269,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             //         TextSpan(
                             //           text: 'Vyoo',
                             //           style: TextStyle(
-                            //             color: Colors.white,
+                            //             color: AppLightSurface.primaryText,
                             //             fontSize: logoSize,
                             //             fontWeight: FontWeight.w700,
                             //             letterSpacing: -1,
@@ -278,7 +278,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                             //         TextSpan(
                             //           text: 'O',
                             //           style: TextStyle(
-                            //             color: Colors.white,
+                            //             color: AppLightSurface.primaryText,
                             //             fontSize: logoSize,
                             //             fontWeight: FontWeight.w400,
                             //             letterSpacing: -1,
@@ -296,7 +296,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               child: Text(
                                 'Choose your plan',
                                 style: TextStyle(
-                                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                                   fontSize: titleSize,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -310,7 +310,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                               child: Text(
                                 'Stream Exclusive Live streams, Immersive VR\nContent, also Monetize Content and many more',
                                 style: TextStyle(
-                                  color: Colors.white.withValues(alpha: 0.8),
+                                  color: AppLightSurface.secondaryText,
                                   fontSize: subtitleSize,
                                   height: 1.4,
                                 ),
@@ -323,7 +323,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                 child: LinearProgressIndicator(
                                   minHeight: 3,
                                   color: Color(0xFFDE106B),
-                                  backgroundColor: Colors.white12,
+                                  backgroundColor: AppLightSurface.cardFill,
                                 ),
                               ),
                             ],
@@ -357,9 +357,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                               ? 'We couldn’t reach the store for plans. Check your connection and try again.'
                                               : 'Subscription products aren’t available yet from the store. Confirm RevenueCat offerings or try again shortly.',
                                           style: TextStyle(
-                                            color: Colors.white.withValues(
-                                              alpha: 0.9,
-                                            ),
+                                            color: AppLightSurface.secondaryText,
                                             fontSize: isCompact ? 12.0 : 13.0,
                                             height: 1.35,
                                           ),
@@ -445,21 +443,17 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                     child: Text(
                                       'Privacy Policy',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.85,
-                                        ),
+                                        color: AppLightSurface.secondaryText,
                                         fontSize: legalSize + 1,
                                         decoration: TextDecoration.underline,
-                                        decorationColor: Colors.white54,
+                                        decorationColor: AppLightSurface.mutedText,
                                       ),
                                     ),
                                   ),
                                   Text(
                                     '·',
                                     style: TextStyle(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.4,
-                                      ),
+                                      color: AppLightSurface.mutedText,
                                       fontSize: legalSize + 2,
                                     ),
                                   ),
@@ -469,12 +463,10 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                                     child: Text(
                                       'Terms of Use',
                                       style: TextStyle(
-                                        color: Colors.white.withValues(
-                                          alpha: 0.85,
-                                        ),
+                                        color: AppLightSurface.secondaryText,
                                         fontSize: legalSize + 1,
                                         decoration: TextDecoration.underline,
-                                        decorationColor: Colors.white54,
+                                        decorationColor: AppLightSurface.mutedText,
                                       ),
                                     ),
                                   ),
@@ -687,7 +679,7 @@ class _PlanCard extends StatelessWidget {
                     child: Text(
                       badge!,
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: compact ? 7 : 8,
                         fontWeight: FontWeight.w600,
                       ),
@@ -706,7 +698,7 @@ class _PlanCard extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: priceSize,
                         fontWeight: FontWeight.w700,
                       ),
@@ -717,7 +709,7 @@ class _PlanCard extends StatelessWidget {
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: Colors.white,
+              color: AppLightSurface.primaryText,
                         fontSize: titleSize + 2,
                         fontWeight: FontWeight.w700,
                         height: 1.15,
@@ -760,7 +752,7 @@ class _SubscriptionLegalFooter extends StatelessWidget {
       body,
       textAlign: TextAlign.center,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.55),
+        color: AppLightSurface.secondaryText,
         fontSize: fontSize,
         height: 1.35,
       ),
@@ -798,7 +790,7 @@ class _FeatureComparisonTable extends StatelessWidget {
               ],
             ),
           ),
-          const Divider(height: 1, color: Colors.white12),
+          const Divider(height: 1, color: AppLightSurface.cardFill),
           // Intrinsic-height rows: parent [SingleChildScrollView] scrolls the full list
           // (Monetize / Offer subscriptions / Video Quality, etc.).
           _FeatureRow('Watch live content', true, true, true, compact: compact),
@@ -839,7 +831,7 @@ class _FeatureComparisonTable extends StatelessWidget {
         label,
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.white,
+              color: AppLightSurface.primaryText,
           fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w500,
         ),
@@ -877,7 +869,7 @@ class _FeatureRow extends StatelessWidget {
             child: Text(
               feature,
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: compact ? 11 : 12,
                 fontWeight: FontWeight.w400,
               ),
@@ -895,14 +887,14 @@ class _FeatureRow extends StatelessWidget {
     Widget content;
     if (value is bool) {
       content = value
-          ? Icon(Icons.check, color: Colors.white, size: compact ? 14 : 16)
-          : Icon(Icons.close, color: Colors.white, size: compact ? 14 : 16);
+          ? Icon(Icons.check, color: AppLightSurface.primaryText, size: compact ? 14 : 16)
+          : Icon(Icons.close, color: AppLightSurface.primaryText, size: compact ? 14 : 16);
     } else {
       content = Text(
         value.toString(),
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.white,
+              color: AppLightSurface.primaryText,
           fontSize: compact ? 9 : 10,
           fontWeight: FontWeight.w400,
         ),
@@ -938,7 +930,7 @@ class _UpgradeButton extends StatelessWidget {
         child: Container(
           height: compact ? 44 : 48,
           decoration: BoxDecoration(
-            color: disabled ? Colors.white54 : Colors.white,
+            color: disabled ? AppLightSurface.mutedText : AppLightSurface.primaryText,
             borderRadius: BorderRadius.circular(12),
           ),
           child: isLoading

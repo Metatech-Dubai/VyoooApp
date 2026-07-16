@@ -1,3 +1,4 @@
+export 'profile_grid_density_service.dart';
 export 'profile_grid_layout_engine.dart';
 export 'profile_grid_models.dart';
 export 'profile_grid_posts.dart';

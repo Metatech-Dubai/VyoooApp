@@ -4,6 +4,7 @@ import '../../core/controllers/reels_controller.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../content/post_feed_screen.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Only the signed-in user can open this screen; data comes from [privateSavedReels].
 class SavedPostsScreen extends StatelessWidget {
@@ -13,7 +14,6 @@ class SavedPostsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -24,7 +24,7 @@ class SavedPostsScreen extends StatelessWidget {
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(
-                      child: CircularProgressIndicator(color: Colors.white54),
+                      child: CircularProgressIndicator(color: AppLightSurface.mutedText),
                     );
                   }
                   if (snapshot.hasError) {
@@ -35,7 +35,7 @@ class SavedPostsScreen extends StatelessWidget {
                           'Could not load saved posts.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.7),
+                            color: AppLightSurface.secondaryText,
                             fontSize: 15,
                           ),
                         ),
@@ -49,7 +49,7 @@ class SavedPostsScreen extends StatelessWidget {
                         'No private saves yet.\nUse ⋯ → Save privately on a reel.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 15,
                           height: 1.4,
                         ),
@@ -107,7 +107,7 @@ class SavedPostsScreen extends StatelessWidget {
                                     padding: EdgeInsets.all(4),
                                     child: Icon(
                                       Icons.play_arrow_rounded,
-                                      color: Colors.white70,
+                                      color: AppLightSurface.mutedText,
                                       size: 18,
                                     ),
                                   ),

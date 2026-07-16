@@ -3,6 +3,7 @@ import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/theme/app_gradients.dart';
 import 'wallet/withdraw_funds_screen.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class PayoutScreen extends StatefulWidget {
   const PayoutScreen({super.key});
@@ -19,7 +20,6 @@ class _PayoutScreenState extends State<PayoutScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -59,9 +59,9 @@ class _PayoutScreenState extends State<PayoutScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,7 +72,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
               const Text(
                 'Total Earnings',
                 style: TextStyle(
-                  color: Colors.white,
+              color: AppLightSurface.primaryText,
                   fontSize: 18,
                   fontWeight: FontWeight.w700,
                 ),
@@ -85,13 +85,13 @@ class _PayoutScreenState extends State<PayoutScreen> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Text(
               '€ 460325',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
               ),
@@ -108,20 +108,20 @@ class _PayoutScreenState extends State<PayoutScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: AppLightSurface.divider),
       ),
       child: Row(
         children: [
           Text(
             _selectedPeriod,
-            style: const TextStyle(color: Colors.white70, fontSize: 13),
+            style: TextStyle(color: AppLightSurface.mutedText, fontSize: 13),
           ),
           const SizedBox(width: 8),
           const Icon(
             Icons.keyboard_arrow_down_rounded,
-            color: Colors.white38,
+            color: AppLightSurface.mutedText,
             size: 18,
           ),
         ],
@@ -147,7 +147,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
         child: const Text(
           'Withdraw Funds',
           style: TextStyle(
-            color: Colors.white,
+              color: AppLightSurface.primaryText,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -192,9 +192,9 @@ class _PayoutScreenState extends State<PayoutScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -211,15 +211,15 @@ class _PayoutScreenState extends State<PayoutScreen> {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppLightSurface.secondaryText,
               fontSize: 13,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             amount,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+                    color: AppLightSurface.primaryText,
               fontSize: 20,
               fontWeight: FontWeight.w800,
             ),
@@ -227,7 +227,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           const SizedBox(height: 4),
           Text(
             growth,
-            style: const TextStyle(
+            style: TextStyle(
               color: Color(0xFF4ADE80),
               fontSize: 11,
               fontWeight: FontWeight.w500,
@@ -242,9 +242,9 @@ class _PayoutScreenState extends State<PayoutScreen> {
     return Container(
       height: 52,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(26),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Row(
         children: [
@@ -262,14 +262,16 @@ class _PayoutScreenState extends State<PayoutScreen> {
       child: Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: selected ? Colors.white : Colors.transparent,
+          color: selected ? AppLightSurface.background : Colors.transparent,
           borderRadius: BorderRadius.circular(22),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.black : Colors.white60,
+            color: selected
+                ? AppLightSurface.primaryText
+                : AppLightSurface.secondaryText,
             fontSize: 15,
             fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -285,13 +287,13 @@ class _PayoutScreenState extends State<PayoutScreen> {
           width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Text(
             'Payout Summary',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w700,
             ),
@@ -332,7 +334,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           valueColor: const Color(0xFFF81945).withValues(alpha: 0.7),
         ),
         const SizedBox(height: 32),
-        const Divider(color: Colors.white10),
+        const Divider(color: AppLightSurface.divider),
         const SizedBox(height: 24),
         _buildSummaryRow(
           'Estimated Payout',
@@ -353,7 +355,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
             const Text(
               'Recent Activity',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w700,
               ),
@@ -361,7 +363,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
             Text(
               'View All >',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3),
+                color: AppLightSurface.border,
                 fontSize: 13,
               ),
             ),
@@ -411,8 +413,8 @@ class _PayoutScreenState extends State<PayoutScreen> {
           label,
           style: TextStyle(
             color: isSubRow
-                ? Colors.white.withValues(alpha: 0.4)
-                : Colors.white,
+                ? AppLightSurface.mutedText
+                : AppLightSurface.primaryText,
             fontSize: isHeader ? 16 : 14,
             fontWeight: isHeader ? FontWeight.w700 : FontWeight.w500,
           ),
@@ -420,7 +422,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
         Text(
           value,
           style: TextStyle(
-            color: valueColor ?? Colors.white,
+            color: valueColor ?? AppLightSurface.primaryText,
             fontSize: isHeader ? 16 : 14,
             fontWeight: isHeader ? FontWeight.w800 : FontWeight.w600,
           ),
@@ -442,9 +444,9 @@ class _PayoutScreenState extends State<PayoutScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppLightSurface.cardFill),
       ),
       child: Row(
         children: [
@@ -466,8 +468,8 @@ class _PayoutScreenState extends State<PayoutScreen> {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -476,7 +478,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
                 Text(
                   subtitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 13,
                   ),
                 ),
@@ -489,7 +491,9 @@ class _PayoutScreenState extends State<PayoutScreen> {
               Text(
                 amount,
                 style: TextStyle(
-                  color: isWithdrawal ? const Color(0xFF4ADE80) : Colors.white,
+                  color: isWithdrawal
+                      ? const Color(0xFF4ADE80)
+                      : AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
                 ),
@@ -498,7 +502,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
               Text(
                 status,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: AppLightSurface.border,
                   fontSize: 12,
                 ),
               ),

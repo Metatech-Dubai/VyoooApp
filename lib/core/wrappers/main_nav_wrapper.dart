@@ -402,8 +402,7 @@ class _MainNavWrapperState extends State<MainNavWrapper>
                                   createMenuProgress: _createMenuAnimation.value,
                                   onCreateMenuToggle: _toggleCreateMenu,
                                   onCreateAction: _onCreateAction,
-                                  useFeedChrome:
-                                      _currentIndex == 0 || _currentIndex == 1,
+                                  useFeedChrome: _currentIndex == 1,
                                   feedReelProgress: showReelProgress
                                       ? _homeFeedChrome.progress
                                       : null,

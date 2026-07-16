@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../core/theme/app_light_surface.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/widgets/app_bottom_sheet.dart';
 
 /// Shows the three-dots "more options" bottom sheet: Download, Report, Not Interested,
 /// then Captions, Playback speed, Quality, Manage preferences, Why you're seeing this.
@@ -42,11 +44,6 @@ Future<void> showReelMoreOptionsSheet(
       onAutoScrollChanged: onAutoScrollChanged,
     ),
   );
-}
-
-abstract final class _Layout {
-  static const double dragHandleWidth = 36;
-  static const double dragHandleHeight = 4;
 }
 
 class _ReelMoreOptionsSheet extends StatefulWidget {
@@ -103,22 +100,11 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
       maxChildSize: 0.75,
       builder: (context, scrollController) {
         return Container(
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF49113B), // Deep Magenta
-                Color(0xFF210D1D),
-                Color(0xFF0F040C),
-              ],
-            ),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-          ),
+          decoration: AppBottomSheet.decoration(topRadius: 28),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _DragHandle(),
+              AppBottomSheet.dragHandle(),
               Padding(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
@@ -172,19 +158,17 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                   ),
                   children: [
                     _Section(
-                      backgroundColor: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: 16,
-                  children: [
-                    if (widget.onSavePrivately != null)
-                      _SettingTile(
-                        icon: Icons.bookmark_add_outlined,
-                        label: 'Save Privately',
-                        onTap: () {
-                          Navigator.of(context).pop();
-                          widget.onSavePrivately?.call();
-                        },
-                      ),
-                    _AutoScrollTile(
+                      children: [
+                        if (widget.onSavePrivately != null)
+                          _SettingTile(
+                            icon: Icons.bookmark_add_outlined,
+                            label: 'Save Privately',
+                            onTap: () {
+                              Navigator.of(context).pop();
+                              widget.onSavePrivately?.call();
+                            },
+                          ),
+                        _AutoScrollTile(
                           enabled: _autoScroll,
                           onChanged: (value) {
                             setState(() => _autoScroll = value);
@@ -209,8 +193,7 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                           },
                         ),
                         _SettingTile(
-                          icon: Icons
-                              .tune_rounded, // Better icon for Quality matching Figma
+                          icon: Icons.tune_rounded,
                           label: 'Quality',
                           trailing: widget.quality,
                           onTap: () {
@@ -222,8 +205,6 @@ class _ReelMoreOptionsSheetState extends State<_ReelMoreOptionsSheet> {
                     ),
                     const SizedBox(height: AppSpacing.sm),
                     _Section(
-                      backgroundColor: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: 16,
                       children: [
                         _SettingTile(
                           icon: Icons.shuffle_rounded,
@@ -272,14 +253,14 @@ class _AutoScrollTile extends StatelessWidget {
             Icon(
               Icons.play_circle_outline_rounded,
               size: 22,
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppLightSurface.icon,
             ),
             const SizedBox(width: 16),
-            const Expanded(
+            Expanded(
               child: Text(
                 'Auto scroll',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
@@ -296,28 +277,6 @@ class _AutoScrollTile extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DragHandle extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(
-        top: AppSpacing.storyItem,
-        bottom: AppSpacing.xs,
-      ),
-      child: Center(
-        child: Container(
-          width: _Layout.dragHandleWidth,
-          height: _Layout.dragHandleHeight,
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.5),
-            borderRadius: BorderRadius.circular(2),
-          ),
         ),
       ),
     );
@@ -341,11 +300,14 @@ class _ActionButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = iconColor ?? Colors.white;
-    final textColor = labelColor ?? Colors.white;
+    final color = iconColor ?? AppLightSurface.icon;
+    final textColor = labelColor ?? AppLightSurface.primaryText;
     return Material(
-      color: Colors.white.withValues(alpha: 0.05),
-      borderRadius: BorderRadius.circular(16),
+      color: AppLightSurface.cardFill,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: const BorderSide(color: AppLightSurface.border),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -376,22 +338,17 @@ class _ActionButton extends StatelessWidget {
 }
 
 class _Section extends StatelessWidget {
-  const _Section({
-    required this.backgroundColor,
-    required this.borderRadius,
-    required this.children,
-  });
+  const _Section({required this.children});
 
-  final Color backgroundColor;
-  final double borderRadius;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: BorderRadius.circular(borderRadius),
+        color: AppLightSurface.cardFill,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppLightSurface.border),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: children),
     );
@@ -419,13 +376,13 @@ class _SettingTile extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, size: 22, color: Colors.white.withValues(alpha: 0.9)),
+            Icon(icon, size: 22, color: AppLightSurface.icon),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
@@ -435,7 +392,7 @@ class _SettingTile extends StatelessWidget {
               Text(
                 trailing!,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: AppLightSurface.mutedText,
                   fontSize: 14,
                 ),
               ),
@@ -444,7 +401,7 @@ class _SettingTile extends StatelessWidget {
             Icon(
               Icons.chevron_right,
               size: 20,
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppLightSurface.chevron,
             ),
           ],
         ),

@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_light_surface.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../app_gradient_background.dart';
 import 'settings_inner_app_bar.dart';
 
-/// Standard settings sub-page: gradient + back title + scroll body.
+/// Standard settings sub-page: white background + back title + scroll body.
 class SettingsPageShell extends StatelessWidget {
   const SettingsPageShell({
     super.key,
@@ -21,8 +22,8 @@ class SettingsPageShell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppLightSurface.background,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -39,7 +40,7 @@ class SettingsPageShell extends StatelessWidget {
                   child: Text(
                     subtitle!,
                     style: AppTypography.caption.copyWith(
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: AppLightSurface.secondaryText,
                       height: 1.35,
                     ),
                   ),
@@ -72,9 +73,9 @@ class SettingsGroupCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppLightSurface.border),
       ),
       child: Column(
         children: [
@@ -84,7 +85,7 @@ class SettingsGroupCard extends StatelessWidget {
                 height: 1,
                 thickness: 1,
                 indent: AppSpacing.md,
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppLightSurface.divider,
               ),
             children[i],
           ],
@@ -120,6 +121,7 @@ class SettingsSwitchTile extends StatelessWidget {
       title: Text(
         title,
         style: AppTypography.authDialogOption.copyWith(
+          color: AppLightSurface.primaryText,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -128,7 +130,7 @@ class SettingsSwitchTile extends StatelessWidget {
           : Text(
               subtitle!,
               style: AppTypography.caption.copyWith(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppLightSurface.secondaryText,
               ),
             ),
       value: value,
@@ -162,6 +164,7 @@ class SettingsNavTile extends StatelessWidget {
       title: Text(
         title,
         style: AppTypography.authDialogOption.copyWith(
+          color: AppLightSurface.primaryText,
           fontWeight: FontWeight.w500,
         ),
       ),
@@ -170,7 +173,7 @@ class SettingsNavTile extends StatelessWidget {
           : Text(
               subtitle!,
               style: AppTypography.caption.copyWith(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppLightSurface.secondaryText,
               ),
             ),
       trailing: Row(
@@ -180,12 +183,12 @@ class SettingsNavTile extends StatelessWidget {
             Text(
               trailing!,
               style: AppTypography.caption.copyWith(
-                color: Colors.white.withValues(alpha: 0.6),
+                color: AppLightSurface.mutedText,
               ),
             ),
           Icon(
             Icons.chevron_right_rounded,
-            color: Colors.white.withValues(alpha: 0.45),
+            color: AppLightSurface.chevron,
           ),
         ],
       ),

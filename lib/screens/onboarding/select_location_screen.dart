@@ -14,6 +14,7 @@ import '../../core/widgets/auth/auth_widgets.dart';
 import '../../core/widgets/onboarding_progress_bar.dart';
 import '../../core/widgets/vyooo_brand_logo.dart';
 import '../upload/location_picker_sheet.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Profile location: map preview, editable address, search sheet, GPS.
 class SelectLocationScreen extends StatefulWidget {
@@ -200,7 +201,6 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.authFlow,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: _horizontalPadding),
               child: Column(
@@ -314,18 +314,18 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
     bool showLoading = false,
   }) {
     return Container(
-      color: Colors.white.withValues(alpha: 0.06),
+      color: AppLightSurface.cardFill,
       alignment: Alignment.center,
       padding: const EdgeInsets.all(AppSpacing.md),
       child: showLoading
-          ? const CircularProgressIndicator(color: Colors.white24)
+          ? const CircularProgressIndicator(color: AppLightSurface.mutedText)
           : Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Icon(
                   Icons.map_outlined,
                   size: 40,
-                  color: Colors.white.withValues(alpha: 0.35),
+                  color: AppLightSurface.border,
                 ),
                 if (message.isNotEmpty) ...[
                   const SizedBox(height: AppSpacing.sm),
@@ -347,9 +347,9 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
         Expanded(
           child: Container(
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               borderRadius: AppRadius.inputRadius,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+              border: Border.all(color: AppLightSurface.border),
             ),
             child: TextField(
               controller: _addressController,
@@ -385,16 +385,16 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
           width: 52,
           height: 52,
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppLightSurface.cardFill,
             shape: BoxShape.circle,
-            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
+            border: Border.all(color: AppLightSurface.border),
           ),
           child: _gpsLoading
               ? const Padding(
                   padding: EdgeInsets.all(14),
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    color: Colors.white54,
+                    color: AppLightSurface.mutedText,
                   ),
                 )
               : const Icon(
@@ -412,7 +412,7 @@ class _SelectLocationScreenState extends State<SelectLocationScreen> {
       onPressed: _saving ? null : _openSearchSheet,
       style: OutlinedButton.styleFrom(
         foregroundColor: AppTheme.defaultTextColor,
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+        side: BorderSide(color: AppLightSurface.border),
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
         shape: RoundedRectangleBorder(borderRadius: AppRadius.inputRadius),
       ),

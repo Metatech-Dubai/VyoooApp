@@ -6,7 +6,9 @@ import 'package:flutter/material.dart';
 import '../../core/controllers/reels_controller.dart';
 import '../../core/models/reel_media_item.dart';
 import '../../core/models/video_360_metadata.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/widgets/app_bottom_navigation.dart';
 import '../../core/widgets/post_media_carousel.dart';
 import '../../core/widgets/double_tap_like_overlay.dart';
@@ -560,17 +562,19 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
       final sourceId = ReelEngagement.sourceReelId(post);
       showModalBottomSheet<void>(
         context: context,
-        backgroundColor: const Color(0xFF141414),
-        builder: (ctx) => SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.undo_rounded, color: Colors.white),
-                title: const Text(
-                  'Remove repost from profile',
-                  style: TextStyle(color: Colors.white),
-                ),
+        backgroundColor: Colors.transparent,
+        builder: (ctx) => AppBottomSheet.shell(
+          child: SafeArea(
+            top: false,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ListTile(
+                  leading: Icon(Icons.undo_rounded, color: AppLightSurface.icon),
+                  title: Text(
+                    'Remove repost from profile',
+                    style: TextStyle(color: AppLightSurface.primaryText),
+                  ),
                 onTap: () {
                   Navigator.of(ctx).pop();
                   _onRepostToggle(post);
@@ -600,6 +604,7 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
               ),
             ],
           ),
+        ),
         ),
       );
       return;

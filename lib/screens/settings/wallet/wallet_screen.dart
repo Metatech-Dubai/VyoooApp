@@ -5,6 +5,7 @@ import '../../../core/widgets/app_gradient_background.dart';
 import 'add_funds_screen.dart';
 import '../manage_subscriptions_screen.dart';
 import 'transaction_history_screen.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class WalletScreen extends StatelessWidget {
   const WalletScreen({super.key});
@@ -13,7 +14,6 @@ class WalletScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -49,10 +49,10 @@ class WalletScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(24),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: AppLightSurface.cardFill,
           width: 1,
         ),
         boxShadow: [
@@ -69,7 +69,7 @@ class WalletScreen extends StatelessWidget {
           const Text(
             'Current Balance',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 18,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.5,
@@ -80,13 +80,13 @@ class WalletScreen extends StatelessWidget {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               borderRadius: BorderRadius.circular(16),
             ),
             child: const Text(
               '€ 0.00',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 36,
                 fontWeight: FontWeight.w800,
                 letterSpacing: -1,
@@ -122,7 +122,7 @@ class WalletScreen extends StatelessWidget {
                   Text(
                     'Add Funds',
                     style: TextStyle(
-                      color: Colors.white,
+              color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.2,
@@ -177,7 +177,7 @@ class WalletScreen extends StatelessWidget {
     return const Text(
       'Recent Activity',
       style: TextStyle(
-        color: Colors.white60,
+        color: AppLightSurface.secondaryText,
         fontSize: 16,
         fontWeight: FontWeight.w600,
         letterSpacing: -0.2,
@@ -190,10 +190,10 @@ class WalletScreen extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.08),
+          color: AppLightSurface.cardFill,
           width: 1,
         ),
       ),
@@ -201,7 +201,7 @@ class WalletScreen extends StatelessWidget {
         'No wallet activity yet',
         textAlign: TextAlign.center,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
+          color: AppLightSurface.secondaryText,
           fontSize: 14,
           fontWeight: FontWeight.w500,
         ),
@@ -232,10 +232,10 @@ class _ActionButton extends StatelessWidget {
           height: 100,
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
+              color: AppLightSurface.cardFill,
               width: 1,
             ),
           ),
@@ -245,17 +245,17 @@ class _ActionButton extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: AppLightSurface.cardFill,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: Colors.white, size: 24),
+                child: Icon(icon, color: AppLightSurface.primaryText, size: 24),
               ),
               const SizedBox(height: 10),
               Text(
                 label,
                 textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                    color: AppLightSurface.primaryText,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                   letterSpacing: -0.1,

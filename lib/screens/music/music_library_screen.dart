@@ -4,6 +4,7 @@ import '../../core/mock/mock_music_data.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Full Music library: search, For you / Trending / Saved tabs, track list, mini-player at bottom.
 /// Same list data as music picker; can be opened from profile/menu for browsing.
@@ -52,7 +53,6 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -63,20 +63,21 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 child: TextField(
                   controller: _searchController,
                   onChanged: (_) => setState(() {}),
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 16),
                   decoration: InputDecoration(
                     hintText: 'Search Music',
                     hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 16,
                     ),
                     prefixIcon: Icon(
                       Icons.search_rounded,
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppLightSurface.secondaryText,
                       size: 22,
                     ),
                     filled: true,
-                    fillColor: Colors.white.withValues(alpha: 0.12),
+                    fillColor: AppLightSurface.border,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(AppRadius.input),
                       borderSide: BorderSide.none,
@@ -130,7 +131,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               size: 22,
             ),
           ),
@@ -138,7 +139,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
             child: Text(
               'Music',
               style: TextStyle(
-                color: Colors.white,
+              color: AppLightSurface.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -179,14 +180,14 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                           : null,
                       color: isSelected
                           ? null
-                          : Colors.white.withValues(alpha: 0.1),
+                          : AppLightSurface.cardFill,
                       borderRadius: BorderRadius.circular(AppRadius.pill),
                     ),
                     child: Center(
                       child: Text(
                         _tabs[index],
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                    color: AppLightSurface.primaryText,
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -237,8 +238,8 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
               children: [
                 Text(
                   t.title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -247,7 +248,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
                 Text(
                   t.artist,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12,
                   ),
                   overflow: TextOverflow.ellipsis,
@@ -259,7 +260,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
             onPressed: () => setState(() => _isPlaying = !_isPlaying),
             icon: Icon(
               _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               size: 28,
             ),
           ),
@@ -267,7 +268,7 @@ class _MusicLibraryScreenState extends State<MusicLibraryScreen> {
             onPressed: () {},
             icon: const Icon(
               Icons.skip_next_rounded,
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               size: 28,
             ),
           ),
@@ -323,8 +324,8 @@ class _MusicListTile extends StatelessWidget {
                   children: [
                     Text(
                       track.title,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                    color: AppLightSurface.primaryText,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -333,7 +334,7 @@ class _MusicListTile extends StatelessWidget {
                     Text(
                       '${track.artist} • ${track.duration}',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.75),
+                        color: AppLightSurface.secondaryText,
                         fontSize: 13,
                       ),
                       overflow: TextOverflow.ellipsis,
@@ -349,7 +350,7 @@ class _MusicListTile extends StatelessWidget {
                       : Icons.bookmark_border_rounded,
                   color: track.isSaved
                       ? const Color(0xFFDE106B)
-                      : Colors.white.withValues(alpha: 0.7),
+                      : AppLightSurface.mutedText,
                   size: 24,
                 ),
               ),

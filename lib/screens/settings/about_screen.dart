@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/strings/app_strings.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'privacy_policy_screen.dart';
 import 'terms_service_screen.dart';
@@ -12,7 +13,6 @@ class AboutScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -27,10 +27,10 @@ class AboutScreen extends StatelessWidget {
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
+                          color: AppLightSurface.border,
                           width: 1,
                         ),
                       ),
@@ -46,10 +46,10 @@ class AboutScreen extends StatelessWidget {
                               );
                             },
                           ),
-                          Divider(
+                          const Divider(
                             height: 1,
                             thickness: 1,
-                            color: Colors.white.withValues(alpha: 0.1),
+                            color: AppLightSurface.divider,
                           ),
                           _AboutTile(
                             label: AppStrings.termsOfService,
@@ -98,8 +98,8 @@ class _AboutTile extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -107,7 +107,7 @@ class _AboutTile extends StatelessWidget {
               ),
               const Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white,
+                color: AppLightSurface.chevron,
                 size: 20,
               ),
             ],

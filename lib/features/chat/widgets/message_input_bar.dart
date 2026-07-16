@@ -7,9 +7,11 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_sizes.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import '../utils/chat_constants.dart';
 
 enum MediaAction {
@@ -229,30 +231,13 @@ class _MessageInputBarState extends State<MessageInputBar> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
-      builder: (_) => Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A0A2E), Color(0xFF0D0518)],
-          ),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(height: 10),
-              Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.white24,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              const SizedBox(height: 16),
-              _sheetTile(
+      builder: (_) => AppBottomSheet.shell(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppBottomSheet.dragHandle(),
+            const SizedBox(height: 8),
+            _sheetTile(
                 Icons.photo_library_outlined,
                 'Photo from Gallery',
                 MediaAction.galleryPhoto,
@@ -275,7 +260,7 @@ class _MessageInputBarState extends State<MessageInputBar> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Divider(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: AppLightSurface.divider,
                   height: 1,
                 ),
               ),
@@ -293,7 +278,6 @@ class _MessageInputBarState extends State<MessageInputBar> {
             ],
           ),
         ),
-      ),
     );
   }
 
@@ -303,14 +287,18 @@ class _MessageInputBarState extends State<MessageInputBar> {
         width: 36,
         height: 36,
         decoration: BoxDecoration(
-          color: const Color(0xFF2A1540),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: AppLightSurface.border),
         ),
-        child: Icon(icon, color: Colors.white70, size: 20),
+        child: Icon(icon, color: AppLightSurface.icon, size: 20),
       ),
       title: Text(
         label,
-        style: const TextStyle(color: Colors.white, fontSize: 15),
+        style: TextStyle(
+          color: AppLightSurface.primaryText,
+          fontSize: 15,
+        ),
       ),
       onTap: () {
         Navigator.of(context).pop();

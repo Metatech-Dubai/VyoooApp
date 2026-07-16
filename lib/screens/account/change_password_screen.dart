@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class ChangePasswordScreen extends StatefulWidget {
   const ChangePasswordScreen({super.key});
@@ -109,7 +110,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -125,7 +125,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       const Text(
                         'Change\npassword',
                         style: TextStyle(
-                          color: Colors.white,
+              color: AppLightSurface.primaryText,
                           fontSize: 48,
                           fontWeight: FontWeight.w700,
                           height: 1.05,
@@ -136,7 +136,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                       Text(
                         'Your new password should be 8 characters long and\nmust contain one special character.',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 14,
                           height: 1.5,
                         ),
@@ -189,7 +189,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                         child: const Text(
                           'Forgot Password?',
                           style: TextStyle(
-                            color: Colors.white,
+              color: AppLightSurface.primaryText,
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -257,10 +257,10 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
       children: [
         Container(
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.1),
+            color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(24),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.1),
+              color: AppLightSurface.cardFill,
               width: 1.0,
             ),
           ),
@@ -268,11 +268,12 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             controller: controller,
             obscureText: obscure,
             onChanged: (_) => onChanged(),
-            style: const TextStyle(color: Colors.white, fontSize: 16),
+            style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 16),
             decoration: InputDecoration(
               hintText: hint,
               hintStyle: TextStyle(
-                color: Colors.white.withValues(alpha: 0.4),
+                color: AppLightSurface.secondaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
@@ -296,7 +297,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 onPressed: () => onToggle(!obscure),
                 icon: Icon(
                   obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                  color: Colors.white.withValues(alpha: 0.5),
+                  color: AppLightSurface.secondaryText,
                   size: 20,
                 ),
               ),
@@ -309,7 +310,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
             padding: const EdgeInsets.only(left: 8),
             child: Text(
               errorText,
-              style: const TextStyle(
+              style: TextStyle(
                 color: Color(0xFFF56A79),
                 fontSize: 13,
                 fontWeight: FontWeight.w500,

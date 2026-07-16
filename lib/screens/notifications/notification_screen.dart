@@ -13,6 +13,7 @@ import '../../core/widgets/app_network_avatar.dart';
 import '../../core/widgets/profile/profile_reel_grid_navigation.dart';
 import '../../features/comments/widgets/comments_bottom_sheet.dart';
 import '../profile/profile_figma_tokens.dart';
+import '../profile/profile_figma_widgets.dart';
 import '../profile/user_profile_screen.dart';
 
 /// Notifications tab: grouped by Today / Yesterday / Last 7 days.
@@ -142,9 +143,9 @@ class _NotificationScreenState extends State<NotificationScreen>
                 final isFollowRequested = targetUid.isNotEmpty &&
                     _pendingFollowBackTargets.contains(targetUid);
                 final isFollowed = targetUid.isNotEmpty &&
-                    (followedUserIds.contains(targetUid) ||
-                        _followBackInFlight.contains(targetUid));
-                final isFollowingInProgress = _followBackInFlight.contains(targetUid);
+                    followedUserIds.contains(targetUid);
+                final isFollowingInProgress =
+                    _followBackInFlight.contains(targetUid);
                 if (item.type == AppNotificationType.followRequest) {
                   final rid = item.recipientId.trim();
                   final sid = item.senderId.trim();
@@ -392,17 +393,29 @@ class _NotificationScreenState extends State<NotificationScreen>
     final targetUid = item.senderId.trim();
     if (me.isEmpty || targetUid.isEmpty || me == targetUid) return;
     if (_followBackInFlight.contains(targetUid)) return;
-    if (_pendingFollowBackTargets.contains(targetUid)) return;
-    final alreadyFollowing = await UserService().isFollowingUser(
+
+    final svc = UserService();
+    final alreadyFollowing = await svc.isFollowingUser(
       currentUid: me,
       targetUid: targetUid,
     );
     if (alreadyFollowing) return;
-    setState(() => _followBackInFlight.add(targetUid));
+
+    final wasPending = _pendingFollowBackTargets.contains(targetUid);
+    setState(() {
+      _followBackInFlight.add(targetUid);
+      if (wasPending) {
+        _pendingFollowBackTargets.remove(targetUid);
+      }
+    });
+
     try {
-      await UserService().followUser(currentUid: me, targetUid: targetUid);
+      if (wasPending) {
+        await svc.cancelFollowRequest(requesterUid: me, targetUid: targetUid);
+      } else {
+        await svc.followUser(currentUid: me, targetUid: targetUid);
+      }
       if (!mounted) return;
-      final svc = UserService();
       final nowFollowing = await svc.isFollowingUser(
         currentUid: me,
         targetUid: targetUid,
@@ -425,20 +438,23 @@ class _NotificationScreenState extends State<NotificationScreen>
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            nowFollowing
-                ? 'Followed back.'
-                : pending
-                    ? 'Follow request sent.'
-                    : 'Could not follow back right now.',
+            wasPending
+                ? 'Follow request cancelled.'
+                : nowFollowing
+                    ? 'Followed back.'
+                    : pending
+                        ? 'Follow request sent.'
+                        : 'Could not follow back right now.',
           ),
           behavior: SnackBarBehavior.floating,
         ),
       );
-    } catch (_) {
+    } catch (e) {
       if (!mounted) return;
+      await _refreshPendingFollowBackFor(me, targetUid);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Could not follow back right now.'),
+        SnackBar(
+          content: Text(messageForFirestore(e)),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -449,6 +465,22 @@ class _NotificationScreenState extends State<NotificationScreen>
         _followBackInFlight.remove(targetUid);
       }
     }
+  }
+
+  Future<void> _refreshPendingFollowBackFor(String me, String targetUid) async {
+    final pending = await UserService().outgoingFollowRequestPending(
+      requesterUid: me,
+      targetUid: targetUid,
+      server: true,
+    );
+    if (!mounted) return;
+    setState(() {
+      if (pending) {
+        _pendingFollowBackTargets.add(targetUid);
+      } else {
+        _pendingFollowBackTargets.remove(targetUid);
+      }
+    });
   }
 
   Future<void> _handleReply(AppNotification item) async {
@@ -519,6 +551,7 @@ class _NotificationScreenState extends State<NotificationScreen>
         .where((id) => id.isNotEmpty)
         .where((id) => !followedUserIds.contains(id))
         .where((id) => !_pendingFollowBackTargets.contains(id))
+        .where((id) => !_followBackInFlight.contains(id))
         .toSet();
     if (targets.isEmpty) return;
     Future.microtask(() async {
@@ -732,21 +765,35 @@ class _NotifTile extends StatelessWidget {
   Widget _buildActionButton() {
     switch (item.type.name) {
       case 'follow':
+        if (isFollowingInProgress) {
+          return SizedBox(
+            width: ProfileFigmaTokens.actionButtonWidth,
+            height: ProfileFigmaTokens.actionButtonHeight,
+            child: const Center(
+              child: SizedBox(
+                width: 18,
+                height: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            ),
+          );
+        }
         if (isFollowed) {
-          return _OutlinePillButton(
-            label: isFollowingInProgress ? 'Following...' : 'Followed',
-            onTap: null,
+          return ProfileFollowPillButton(
+            label: 'Followed',
+            onPressed: () {},
           );
         }
         if (isFollowRequested) {
-          return const _OutlinePillButton(
+          return ProfileFollowPillButton(
             label: 'Requested',
-            onTap: null,
+            onPressed: onFollowBack ?? () {},
           );
         }
-        return _PinkPillButton(
+        return ProfileFollowPillButton(
           label: 'Follow Back',
-          onTap: onFollowBack ?? onOpenProfile,
+          filled: true,
+          onPressed: onFollowBack ?? onOpenProfile,
         );
       case 'followRequest':
         if (!showFollowRequestActions) {

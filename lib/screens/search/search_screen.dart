@@ -14,11 +14,14 @@ import '../../core/services/user_service.dart';
 import '../../core/widgets/live_now_strip.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_typography.dart';
 import '../../core/utils/hashtag_utils.dart';
 import '../../core/utils/user_facing_errors.dart';
 import '../../features/vr/vr_reels_feed_view.dart';
 import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
+import '../profile/profile_figma_tokens.dart';
+import '../profile/profile_figma_widgets.dart';
 import '../profile/user_profile_screen.dart';
 import '../upload/creator_live_route.dart';
 
@@ -486,6 +489,16 @@ class SearchScreenState extends State<SearchScreen>
         await _userService.unfollowUser(currentUid: me, targetUid: user.uid);
         _myFollowingIds.remove(user.uid);
       } else if (pending) {
+        if (mounted) {
+          setState(() {
+            final idx = _allUsers.indexWhere((u) => u.uid == user.uid);
+            if (idx >= 0) {
+              _allUsers[idx] = _allUsers[idx].copyWith(
+                outgoingFollowRequestPending: false,
+              );
+            }
+          });
+        }
         await _userService.cancelFollowRequest(
           requesterUid: me,
           targetUid: user.uid,
@@ -510,6 +523,7 @@ class SearchScreenState extends State<SearchScreen>
           : await _userService.outgoingFollowRequestPending(
               requesterUid: me,
               targetUid: user.uid,
+              server: true,
             );
       if (!mounted) return;
       setState(() {
@@ -977,25 +991,15 @@ class SearchScreenState extends State<SearchScreen>
             ),
           ),
           const SizedBox(height: 28),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.brandMagenta,
-              foregroundColor: Colors.white,
-              minimumSize: const Size(200, 48),
-              shape: RoundedRectangleBorder(
-                borderRadius: AppRadius.buttonRadius,
-              ),
-            ),
+          _SearchDarkPillButton(
+            label: 'Go Live',
             onPressed: () => openCreatorLiveScreen(context),
-            child: const Text(
-              'Go Live',
-              style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-            ),
           ),
           const SizedBox(height: 12),
           TextButton(
             style: TextButton.styleFrom(
-              foregroundColor: AppColors.brandPink,
+              foregroundColor: ProfileFigmaTokens.primaryText,
+              backgroundColor: Colors.transparent,
               minimumSize: const Size(200, 44),
             ),
             onPressed: () => _selectSearchTab(1),
@@ -1570,7 +1574,7 @@ class SearchScreenState extends State<SearchScreen>
 
   Widget _buildTabs(_SearchChrome chrome) {
     return Container(
-      height: 44,
+      height: 46,
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(3),
       decoration: BoxDecoration(
@@ -1584,7 +1588,7 @@ class SearchScreenState extends State<SearchScreen>
       ),
       child: Row(
         children: [
-          for (int index = 0; index < _tabs.length; index++) ...[
+          for (int index = 0; index < _tabs.length; index++)
             Expanded(
               child: GestureDetector(
                 onTap: () {
@@ -1597,14 +1601,12 @@ class SearchScreenState extends State<SearchScreen>
                 },
                 child: Container(
                   decoration: BoxDecoration(
-                    gradient: index == _selectedTabIndex
-                        ? const LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [Color(0xFFDE106B), Color(0xFFF81945)],
-                          )
-                        : null,
-                    borderRadius: BorderRadius.circular(10),
+                    color: index == _selectedTabIndex
+                        ? ProfileFigmaTokens.actionButtonFill
+                        : Colors.transparent,
+                    borderRadius: BorderRadius.circular(
+                      ProfileFigmaTokens.actionButtonRadius,
+                    ),
                   ),
                   alignment: Alignment.center,
                   child: Text(
@@ -1615,24 +1617,13 @@ class SearchScreenState extends State<SearchScreen>
                           : (chrome.onDecorBackground
                               ? Colors.white.withValues(alpha: 0.9)
                               : AppColors.chatTextSecondary),
-                      fontSize: 14,
-                      fontWeight: index == _selectedTabIndex
-                          ? FontWeight.w700
-                          : FontWeight.w500,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ),
               ),
             ),
-            if (index < _tabs.length - 1)
-              Container(
-                width: 1,
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                color: chrome.onDecorBackground
-                    ? Colors.white.withValues(alpha: 0.16)
-                    : AppColors.chatDivider,
-              ),
-          ],
         ],
       ),
     );
@@ -2262,6 +2253,45 @@ class _UserSearchResultTile extends StatelessWidget {
   }
 }
 
+/// Figma action pill — 146×40 #1C1C1C fill, white label (search tabs / Go Live).
+class _SearchDarkPillButton extends StatelessWidget {
+  const _SearchDarkPillButton({
+    required this.label,
+    required this.onPressed,
+    this.width = ProfileFigmaTokens.actionButtonWidth,
+    this.height = ProfileFigmaTokens.actionButtonHeight,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final double width;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    final radius =
+        BorderRadius.circular(ProfileFigmaTokens.actionButtonRadius);
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPressed,
+        borderRadius: radius,
+        child: Ink(
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: ProfileFigmaTokens.actionButtonFill,
+            borderRadius: radius,
+          ),
+          child: Center(
+            child: Text(label, style: AppTypography.profileActionButtonLabel),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// Follow / Following / Requested pill for search user rows (Figma Users tab).
 class _SearchUserFollowButton extends StatelessWidget {
   const _SearchUserFollowButton({
@@ -2289,50 +2319,24 @@ class _SearchUserFollowButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isFollowing = user.isFollowing;
-    final background = isFollowing || _isRequested
-        ? chrome.searchBarFill
-        : AppColors.brandPink;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: isBusy ? () {} : onTap,
-        borderRadius: BorderRadius.circular(AppRadius.pill),
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: background,
-            borderRadius: BorderRadius.circular(AppRadius.pill),
-            border: _isRequested
-                ? Border.all(
-                    color: chrome.onDecorBackground
-                        ? Colors.white.withValues(alpha: 0.35)
-                        : AppColors.chatDivider,
-                  )
-                : null,
+    if (isBusy) {
+      return SizedBox(
+        width: ProfileFigmaTokens.actionButtonWidth,
+        height: ProfileFigmaTokens.actionButtonHeight,
+        child: const Center(
+          child: SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
           ),
-          child: isBusy
-              ? const SizedBox(
-                  width: 16,
-                  height: 16,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                  ),
-                )
-              : Text(
-                  _label,
-                  style: TextStyle(
-                    color: (isFollowing || _isRequested) && !chrome.onDecorBackground
-                        ? AppColors.chatTextPrimary
-                        : Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
         ),
-      ),
+      );
+    }
+
+    return ProfileFollowPillButton(
+      label: _label,
+      filled: !user.isFollowing && !_isRequested,
+      onPressed: onTap ?? () {},
     );
   }
 }

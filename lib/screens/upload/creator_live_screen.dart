@@ -2172,7 +2172,6 @@ class _LiveSettingsSheetState extends State<_LiveSettingsSheet> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             children: [

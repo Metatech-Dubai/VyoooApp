@@ -11,6 +11,7 @@ import 'change_password_screen.dart';
 import '../profile/personal_information_screen.dart';
 import 'two_factor_screen.dart';
 import 'verification_request_screen.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Account screen: Current Plan, Login & Security.
 class AccountScreen extends StatelessWidget {
@@ -20,7 +21,6 @@ class AccountScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -48,10 +48,10 @@ class AccountScreen extends StatelessWidget {
                     const SizedBox(height: 16),
                     Container(
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.02),
+                        color: AppLightSurface.cardFill,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.15),
+                          color: AppLightSurface.border,
                           width: 0.5,
                         ),
                       ),
@@ -130,8 +130,8 @@ class AccountScreen extends StatelessWidget {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: const TextStyle(
-        color: Colors.white,
+      style: TextStyle(
+                    color: AppLightSurface.primaryText,
         fontSize: 18,
         fontWeight: FontWeight.w700,
         letterSpacing: -0.2,
@@ -143,7 +143,7 @@ class AccountScreen extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.5),
+        color: AppLightSurface.secondaryText,
         fontSize: 13,
         letterSpacing: -0.2,
       ),
@@ -154,7 +154,7 @@ class AccountScreen extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      color: Colors.white.withValues(alpha: 0.1),
+      color: AppLightSurface.cardFill,
       indent: 0,
       endIndent: 0,
     );
@@ -167,10 +167,10 @@ class AccountScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.02),
+        color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.15),
+          color: AppLightSurface.border,
           width: 0.5,
         ),
       ),
@@ -182,8 +182,8 @@ class AccountScreen extends StatelessWidget {
               children: [
                 Text(
                   _planSubtitle(tier),
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.2,
@@ -193,7 +193,7 @@ class AccountScreen extends StatelessWidget {
                 Text(
                   _planPriceLine(tier),
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 13,
                     letterSpacing: -0.1,
                   ),
@@ -281,8 +281,8 @@ class _AccountRow extends StatelessWidget {
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.2,
@@ -291,7 +291,7 @@ class _AccountRow extends StatelessWidget {
               ),
               Icon(
                 Icons.chevron_right_rounded,
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppLightSurface.secondaryText,
                 size: 18,
               ),
             ],

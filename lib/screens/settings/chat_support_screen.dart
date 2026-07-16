@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class ChatSupportScreen extends StatefulWidget {
   const ChatSupportScreen({super.key});
@@ -16,7 +17,6 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             children: [
@@ -34,7 +34,7 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                       child: Row(
                         children: [
                           const Expanded(
-                            child: Divider(color: Colors.white24, thickness: 1),
+                            child: Divider(color: AppLightSurface.mutedText, thickness: 1),
                           ),
                           Container(
                             padding: const EdgeInsets.symmetric(
@@ -42,20 +42,20 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
                               vertical: 4,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
+                              color: AppLightSurface.border,
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Text(
                               'Today',
                               style: TextStyle(
-                                color: Colors.white60,
+                                color: AppLightSurface.secondaryText,
                                 fontSize: 12,
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
                           ),
                           const Expanded(
-                            child: Divider(color: Colors.white24, thickness: 1),
+                            child: Divider(color: AppLightSurface.mutedText, thickness: 1),
                           ),
                         ],
                       ),
@@ -105,24 +105,25 @@ class _ChatSupportScreenState extends State<ChatSupportScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.12),
+          color: AppLightSurface.border,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: AppLightSurface.cardFill),
         ),
         child: Row(
           children: [
             Expanded(
               child: TextField(
                 controller: _controller,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(
+                    color: AppLightSurface.primaryText, fontSize: 16),
                 decoration: const InputDecoration(
                   hintText: 'Type...',
-                  hintStyle: TextStyle(color: Colors.white54),
+                  hintStyle: TextStyle(color: AppLightSurface.mutedText),
                   border: InputBorder.none,
                 ),
               ),
             ),
-            const Icon(Icons.send_rounded, color: Colors.white70, size: 24),
+            const Icon(Icons.send_rounded, color: AppLightSurface.mutedText, size: 24),
           ],
         ),
       ),
@@ -159,7 +160,7 @@ class _ChatBubble extends StatelessWidget {
             child: Text(
               senderName,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: isUser ? 0.3 : 0.5),
+                color: AppLightSurface.secondaryText,
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -174,19 +175,21 @@ class _ChatBubble extends StatelessWidget {
               decoration: BoxDecoration(
                 color: isUser
                     ? const Color(0xFFF81945)
-                    : Colors.white.withValues(alpha: 0.08),
+                    : AppLightSurface.cardFill,
                 borderRadius: BorderRadius.circular(16),
                 border: isUser
                     ? null
-                    : Border.all(color: Colors.white.withValues(alpha: 0.05)),
+                    : Border.all(color: AppLightSurface.cardFill),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
                     message,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: isUser
+                          ? Colors.white
+                          : AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       height: 1.3,
@@ -197,9 +200,11 @@ class _ChatBubble extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (showTicks) ...[
-                        const Icon(
+                        Icon(
                           Icons.done_all_rounded,
-                          color: Colors.white70,
+                          color: isUser
+                              ? Colors.white.withValues(alpha: 0.75)
+                              : AppLightSurface.mutedText,
                           size: 14,
                         ),
                         const SizedBox(width: 4),
@@ -207,7 +212,9 @@ class _ChatBubble extends StatelessWidget {
                       Text(
                         time,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: isUser
+                              ? Colors.white.withValues(alpha: 0.75)
+                              : AppLightSurface.secondaryText,
                           fontSize: 10,
                           fontWeight: FontWeight.w500,
                         ),

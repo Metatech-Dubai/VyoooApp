@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class TransactionHistoryScreen extends StatefulWidget {
   const TransactionHistoryScreen({super.key});
@@ -23,7 +24,6 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -128,17 +128,17 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 decoration: BoxDecoration(
                   color: selected
                       ? const Color(0xFFF81945)
-                      : Colors.white.withValues(alpha: 0.05),
+                      : AppLightSurface.cardFill,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: selected ? Colors.transparent : Colors.white10,
+                    color: selected ? Colors.transparent : AppLightSurface.divider,
                     width: 1,
                   ),
                 ),
                 child: Text(
                   _tabs[index],
                   style: TextStyle(
-                    color: selected ? Colors.white : Colors.white60,
+                    color: selected ? Colors.white : AppLightSurface.secondaryText,
                     fontSize: 14,
                     fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   ),
@@ -160,20 +160,20 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
+              color: AppLightSurface.cardFill,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: Colors.white10),
+              border: Border.all(color: AppLightSurface.divider),
             ),
             child: const Row(
               children: [
                 Text(
                   'This month',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  style: TextStyle(color: AppLightSurface.mutedText, fontSize: 13),
                 ),
                 SizedBox(width: 8),
                 Icon(
                   Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white38,
+                  color: AppLightSurface.mutedText,
                   size: 18,
                 ),
               ],
@@ -181,13 +181,13 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
           ),
           RichText(
             text: const TextSpan(
-              style: TextStyle(color: Colors.white60, fontSize: 14),
+              style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 14),
               children: [
                 TextSpan(text: 'Total : '),
                 TextSpan(
                   text: '-€ 245.50',
                   style: TextStyle(
-                    color: Colors.white,
+              color: AppLightSurface.primaryText,
                     fontWeight: FontWeight.w800,
                     fontSize: 16,
                   ),
@@ -205,8 +205,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
       padding: const EdgeInsets.only(bottom: 16),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white38,
+        style: TextStyle(
+          color: AppLightSurface.mutedText,
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
@@ -232,10 +232,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: Colors.white.withValues(alpha: 0.08),
+            color: AppLightSurface.cardFill,
             width: 1,
           ),
         ),
@@ -245,7 +245,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
               CircleAvatar(
                 radius: 24,
                 backgroundImage: NetworkImage(image),
-                backgroundColor: Colors.white10,
+                backgroundColor: AppLightSurface.divider,
               )
             else
               Container(
@@ -254,14 +254,14 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 decoration: BoxDecoration(
                   color: isWithdrawal
                       ? Colors.black
-                      : (accentColor?.withValues(alpha: 0.1) ?? Colors.white10),
+                      : (accentColor?.withValues(alpha: 0.1) ?? AppLightSurface.divider),
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   icon ?? (isCrypto ? Icons.currency_bitcoin : Icons.apple),
                   color:
                       accentColor ??
-                      (isCrypto ? const Color(0xFF627EEA) : Colors.white),
+                      (isCrypto ? const Color(0xFF627EEA) : AppLightSurface.icon),
                   size: 24,
                 ),
               ),
@@ -272,8 +272,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 children: [
                   Text(
                     name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                    color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -282,7 +282,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   Text(
                     type,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 13,
                     ),
                   ),
@@ -297,7 +297,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   style: TextStyle(
                     color: isWithdrawal
                         ? const Color(0xFF4ADE80)
-                        : Colors.white,
+                        : AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
@@ -308,7 +308,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   style: TextStyle(
                     color: status == 'Pending'
                         ? const Color(0xFFFACC15)
-                        : Colors.white.withValues(alpha: 0.3),
+                        : AppLightSurface.border,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -339,7 +339,7 @@ class ReceiptDialog extends StatelessWidget {
         decoration: BoxDecoration(
           color: const Color(0xFF1C1C1E),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white10, width: 1),
+          border: Border.all(color: AppLightSurface.divider, width: 1),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -362,7 +362,7 @@ class ReceiptDialog extends StatelessWidget {
                         Text(
                           'Dana Kim',
                           style: TextStyle(
-                            color: Colors.white,
+              color: AppLightSurface.primaryText,
                             fontSize: 22,
                             fontWeight: FontWeight.w800,
                           ),
@@ -370,7 +370,7 @@ class ReceiptDialog extends StatelessWidget {
                         SizedBox(height: 4),
                         Text(
                           'Subscription',
-                          style: TextStyle(color: Colors.white54, fontSize: 15),
+                          style: TextStyle(color: AppLightSurface.mutedText, fontSize: 15),
                         ),
                       ],
                     ),
@@ -398,7 +398,7 @@ class ReceiptDialog extends StatelessWidget {
             ),
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Divider(color: Colors.white10, height: 1),
+              child: Divider(color: AppLightSurface.divider, height: 1),
             ),
             Padding(
               padding: const EdgeInsets.all(24),
@@ -417,7 +417,7 @@ class ReceiptDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.02),
+                color: AppLightSurface.cardFill,
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(24),
                 ),
@@ -428,7 +428,7 @@ class ReceiptDialog extends StatelessWidget {
                   Text(
                     'TOTAL',
                     style: TextStyle(
-                      color: Colors.white,
+              color: AppLightSurface.primaryText,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.5,
@@ -437,7 +437,7 @@ class ReceiptDialog extends StatelessWidget {
                   Text(
                     '€ 7.99',
                     style: TextStyle(
-                      color: Colors.white,
+              color: AppLightSurface.primaryText,
                       fontSize: 18,
                       fontWeight: FontWeight.w800,
                     ),
@@ -457,16 +457,16 @@ class ReceiptDialog extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: Colors.white38,
+          style: TextStyle(
+            color: AppLightSurface.mutedText,
             fontSize: 15,
             fontWeight: FontWeight.w500,
           ),
         ),
         Text(
           value,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+                    color: AppLightSurface.primaryText,
             fontSize: 15,
             fontWeight: FontWeight.w600,
           ),

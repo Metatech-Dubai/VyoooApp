@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../constants/app_colors.dart';
+import '../../theme/app_light_surface.dart';
 import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../vyooo_brand_logo.dart';
@@ -13,7 +13,7 @@ class SettingsInnerAppBar extends StatelessWidget {
     this.onBack,
     this.trailing,
     this.showLogo = true,
-    this.light = false,
+    this.light = true,
   });
 
   final String title;
@@ -38,7 +38,7 @@ class SettingsInnerAppBar extends StatelessWidget {
             behavior: HitTestBehavior.opaque,
             child: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: light ? AppColors.chatTextPrimary : Colors.white,
+              color: light ? AppLightSurface.icon : Colors.white,
               size: 18,
             ),
           ),
@@ -50,7 +50,7 @@ class SettingsInnerAppBar extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: light
                   ? AppTypography.settingsInnerAppBarTitle.copyWith(
-                      color: AppColors.chatTextPrimary,
+                      color: AppLightSurface.primaryText,
                     )
                   : AppTypography.settingsInnerAppBarTitle,
             ),

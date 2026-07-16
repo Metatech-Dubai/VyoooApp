@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 class VerifyCodeScreen extends StatefulWidget {
   const VerifyCodeScreen({super.key});
@@ -26,7 +27,6 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -42,7 +42,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                     onTap: () => Navigator.pop(context),
                     child: const Icon(
                       Icons.arrow_back_ios_new_rounded,
-                      color: Colors.white,
+                      color: AppLightSurface.primaryText,
                       size: 22,
                     ),
                   ),
@@ -60,7 +60,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       child: Text(
                         'VyooO',
                         style: TextStyle(
-                          color: Colors.white,
+              color: AppLightSurface.primaryText,
                           fontSize: 36,
                           fontWeight: FontWeight.w700,
                           letterSpacing: -1,
@@ -72,7 +72,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       child: Text(
                         'Verify Code',
                         style: TextStyle(
-                          color: Colors.white,
+              color: AppLightSurface.primaryText,
                           fontSize: 32,
                           fontWeight: FontWeight.w800,
                         ),
@@ -83,7 +83,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       child: Text(
                         "Please enter the code we've just sent to number",
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.8),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 13,
                         ),
                         textAlign: TextAlign.center,
@@ -109,10 +109,10 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                           width: 56,
                           height: 64,
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
+                            color: AppLightSurface.cardFill,
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                              color: AppLightSurface.cardFill,
                               width: 0.5,
                             ),
                           ),
@@ -121,8 +121,8 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                             keyboardType: TextInputType.number,
                             textAlign: TextAlign.center,
                             maxLength: 1,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                    color: AppLightSurface.primaryText,
                               fontSize: 24,
                               fontWeight: FontWeight.w600,
                             ),
@@ -144,7 +144,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       child: Text(
                         "Didn't receive OTP?",
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: AppLightSurface.secondaryText,
                           fontSize: 13,
                         ),
                       ),
@@ -156,11 +156,11 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                         child: const Text(
                           'Resend Code',
                           style: TextStyle(
-                            color: Colors.white,
+              color: AppLightSurface.primaryText,
                             fontSize: 13,
                             fontWeight: FontWeight.w700,
                             decoration: TextDecoration.underline,
-                            decorationColor: Colors.white,
+                            decorationColor: AppLightSurface.primaryText,
                           ),
                         ),
                       ),

@@ -18,6 +18,7 @@ import '../../services/image_picker_service.dart';
 import '../../services/username_validation.dart';
 import '../music/music_picker_sheet.dart';
 import 'personal_information_screen.dart';
+import 'profile_figma_tokens.dart';
 
 /// Subscriber Edit Profile: avatar, Edit picture, Name/Username/Bio/Music, Personal information settings.
 /// Username shows green check (available) or red X + error text (taken); handles are case-sensitive.
@@ -286,7 +287,6 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.profile,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -328,14 +328,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         children: [
           IconButton(
             onPressed: _isSaving ? null : () => Navigator.of(context).pop(),
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
+            icon: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              color: ProfileFigmaTokens.primaryText,
+              size: 22,
+            ),
           ),
           const SizedBox(width: AppSpacing.sm),
           const Expanded(
             child: Text(
               'Edit Profile',
               style: TextStyle(
-                color: Colors.white,
+                color: ProfileFigmaTokens.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -347,12 +351,17 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                 ? const SizedBox(
                     width: 22,
                     height: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2),
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: Color(0xFFDE106B),
+                    ),
                   )
                 : Text(
                     'Save',
                     style: TextStyle(
-                      color: _canSave ? const Color(0xFFDE106B) : Colors.white38,
+                      color: _canSave
+                          ? const Color(0xFFDE106B)
+                          : ProfileFigmaTokens.secondaryText,
                       fontWeight: FontWeight.w600,
                       fontSize: 16,
                     ),
@@ -418,14 +427,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       children: [
         CircleAvatar(
           radius: 56,
-          backgroundColor: Colors.white.withValues(alpha: 0.2),
+          backgroundColor: ProfileFigmaTokens.cardBackground,
           backgroundImage: hasLocal && file != null
               ? FileImage(file)
               : (avatarUrl != null && avatarUrl.isNotEmpty)
                   ? NetworkImage(avatarUrl)
                   : null,
           child: (avatarUrl == null || avatarUrl.isEmpty) && !hasLocal
-              ? Icon(Icons.person_rounded, size: 56, color: Colors.white.withValues(alpha: 0.6))
+              ? const Icon(
+                  Icons.person_rounded,
+                  size: 56,
+                  color: ProfileFigmaTokens.secondaryText,
+                )
               : null,
         ),
         const SizedBox(height: AppSpacing.sm),
@@ -449,7 +462,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       label: 'Name',
       child: TextField(
         controller: _nameController,
-        style: TextStyle(color: Colors.white.withValues(alpha: 0.95), fontSize: 16),
+        style: const TextStyle(
+          color: ProfileFigmaTokens.primaryText,
+          fontSize: 16,
+        ),
         decoration: _inputDecoration(hint: ''),
       ),
     );
@@ -468,8 +484,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             inputFormatters: [
               FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_.]')),
             ],
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.95),
+            style: const TextStyle(
+              color: ProfileFigmaTokens.primaryText,
               fontSize: 16,
             ),
             decoration: _inputDecoration(hint: 'username').copyWith(
@@ -486,8 +502,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           padding: const EdgeInsets.only(top: 6),
           child: Text(
             'Usernames are case-sensitive (e.g. Alex and alex are different).',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+            style: const TextStyle(
+              color: ProfileFigmaTokens.secondaryText,
               fontSize: 12,
             ),
           ),
@@ -526,7 +542,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             controller: _bioController,
             maxLines: 3,
             maxLength: _bioMaxLength,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.95), fontSize: 16),
+            style: const TextStyle(
+          color: ProfileFigmaTokens.primaryText,
+          fontSize: 16,
+        ),
             decoration: _inputDecoration(hint: 'Add your bio').copyWith(
               counterText: '',
               contentPadding: const EdgeInsets.only(bottom: 20),
@@ -539,8 +558,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             alignment: Alignment.centerRight,
             child: Text(
               '${value.text.length}/$_bioMaxLength',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+              style: const TextStyle(
+                color: ProfileFigmaTokens.secondaryText,
                 fontSize: 12,
               ),
             ),
@@ -577,8 +596,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       padding: const EdgeInsets.only(top: 12),
                       child: Text(
                         'Music',
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.9),
+                        style: const TextStyle(
+                          color: ProfileFigmaTokens.primaryText,
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
                         ),
@@ -591,8 +610,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                       padding: const EdgeInsets.only(top: 4, bottom: 8),
                       child: Text(
                         _musicController.text,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.95),
+                        style: const TextStyle(
+                          color: ProfileFigmaTokens.primaryText,
                           fontSize: 16,
                         ),
                         overflow: TextOverflow.ellipsis,
@@ -604,7 +623,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             ),
           ),
         ),
-        Divider(height: 1, color: Colors.white.withValues(alpha: 0.25)),
+        const Divider(height: 1, color: ProfileFigmaTokens.profileFollowingBorder),
       ],
     );
   }
@@ -612,15 +631,18 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   InputDecoration _inputDecoration({required String hint}) {
     return InputDecoration(
       hintText: hint.isEmpty ? null : hint,
-      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 16),
-      border: UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+      hintStyle: const TextStyle(
+        color: ProfileFigmaTokens.secondaryText,
+        fontSize: 16,
       ),
-      enabledBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.25)),
+      border: const UnderlineInputBorder(
+        borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
       ),
-      focusedBorder: UnderlineInputBorder(
-        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.5)),
+      enabledBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
+      ),
+      focusedBorder: const UnderlineInputBorder(
+        borderSide: BorderSide(color: Color(0xFFDE106B)),
       ),
       contentPadding: const EdgeInsets.only(bottom: 8),
       isDense: true,
@@ -638,12 +660,16 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       },
       child: Row(
         children: [
-          const Icon(Icons.info_outline_rounded, size: 20, color: Colors.white),
+          const Icon(
+            Icons.info_outline_rounded,
+            size: 20,
+            color: ProfileFigmaTokens.primaryText,
+          ),
           const SizedBox(width: AppSpacing.sm),
           const Text(
             'Personal information settings',
             style: TextStyle(
-              color: Colors.white,
+              color: ProfileFigmaTokens.primaryText,
               fontSize: 15,
               fontWeight: FontWeight.w500,
             ),
@@ -672,8 +698,8 @@ class _EditProfileRow extends StatelessWidget {
             padding: const EdgeInsets.only(top: 12),
             child: Text(
               label,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.9),
+              style: const TextStyle(
+                color: ProfileFigmaTokens.primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),

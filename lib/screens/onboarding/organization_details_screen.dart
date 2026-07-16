@@ -4,6 +4,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
+import '../../core/theme/app_light_surface.dart';
 class OrganizationDetailsScreen extends StatefulWidget {
   const OrganizationDetailsScreen({
     super.key,
@@ -145,7 +146,6 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
       body: Stack(
         children: [
           AppGradientBackground(
-            type: GradientType.authFlow,
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
               child: Column(
@@ -154,8 +154,8 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
                   const SizedBox(height: 12),
                   Text(
                   title,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 26,
                     fontWeight: FontWeight.w700,
                   ),
@@ -164,7 +164,7 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
                 Text(
                   stepTitle,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -173,7 +173,7 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
                 Text(
                   'Tell us more about your organization before continuing.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.8),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                   ),
                 ),
@@ -222,7 +222,7 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
                   const SizedBox(height: 12),
                   Text(
                     _error!,
-                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                    style: TextStyle(color: Colors.redAccent, fontSize: 12),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -273,10 +273,10 @@ class _OrganizationDetailsScreenState extends State<OrganizationDetailsScreen> {
       controller: controller,
       keyboardType: keyboardType,
       maxLines: maxLines,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: AppLightSurface.primaryText),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.85)),
+        labelStyle: TextStyle(color: AppLightSurface.secondaryText),
       ),
     );
   }

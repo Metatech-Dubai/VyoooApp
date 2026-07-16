@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 import '../../../core/config/app_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/services/giphy_gif_service.dart';
+import '../../../core/theme/app_light_surface.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 
 class GifPickerSheet extends StatefulWidget {
   const GifPickerSheet({super.key, required this.onGifSelected});
@@ -109,46 +111,36 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
     final height = MediaQuery.of(context).size.height * 0.55;
     return Container(
       height: height,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A0A2E), Color(0xFF0D0518)],
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      decoration: AppBottomSheet.decoration(),
       child: SafeArea(
         top: false,
         child: Column(
           children: [
-            const SizedBox(height: 10),
-            Container(
-              width: 36,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.white24,
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
+            AppBottomSheet.dragHandle(),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white, fontSize: 15),
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
+                  fontSize: 15,
+                ),
                 decoration: InputDecoration(
                   hintText: 'Search GIFs...',
-                  hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.35),
-                  ),
+                  hintStyle: TextStyle(color: AppLightSurface.mutedText),
                   prefixIcon: Icon(
                     Icons.search,
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: AppLightSurface.mutedText,
                   ),
                   filled: true,
-                  fillColor: const Color(0xFF2A1540),
+                  fillColor: AppLightSurface.cardFill,
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(14),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: AppLightSurface.border),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: AppLightSurface.border),
                   ),
                   contentPadding: const EdgeInsets.symmetric(vertical: 0),
                 ),
@@ -160,7 +152,7 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
               child: Text(
                 'Powered by GIPHY',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.25),
+                  color: AppLightSurface.mutedText,
                   fontSize: 10,
                 ),
               ),
@@ -185,7 +177,7 @@ class _GifPickerSheetState extends State<GifPickerSheet> {
             _error!,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+              color: AppLightSurface.secondaryText,
               fontSize: 14,
             ),
           ),

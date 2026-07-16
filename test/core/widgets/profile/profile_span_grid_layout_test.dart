@@ -47,6 +47,25 @@ void main() {
       expect(large.rowSpan, 2);
     });
 
+    test('coerces double spans to unit on single column', () {
+      final placements = [
+        const ProfileGridPlacement(
+          sourceIndex: 0,
+          span: ProfileGridSpan.double,
+        ),
+        const ProfileGridPlacement(
+          sourceIndex: 1,
+          span: ProfileGridSpan.unit,
+        ),
+      ];
+      final slots = ProfileSpanGridLayout.pack(
+        placements: placements,
+        crossAxisCount: 1,
+      );
+      expect(slots.length, 2);
+      expect(slots.every((s) => s.columnSpan == 1 && s.rowSpan == 1), isTrue);
+    });
+
     test('packs multiple doubles in three columns', () {
       final placements = [
         const ProfileGridPlacement(

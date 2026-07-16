@@ -1,5 +1,4 @@
 import 'dart:developer' as dev;
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:share_plus/share_plus.dart';
@@ -10,7 +9,9 @@ import '../../core/profile/creator_monetization.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/constants/feed_interaction_assets.dart';
 import '../../core/constants/profile_assets.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_gradients.dart';
+import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/widgets/profile/profile_screen_background.dart';
 import '../../core/widgets/profile/profile_grid.dart';
 import '../../core/theme/app_theme.dart';
@@ -502,7 +503,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     _pendingFollowSub = UserService()
         .watchOutgoingFollowRequestPending(requesterUid: me, targetUid: target)
         .listen((pending) {
-      if (!mounted) return;
+      if (!mounted || _followActionBusy) return;
       final wasPending = _pendingFollowRequest;
       setState(() => _pendingFollowRequest = pending);
       if (wasPending && !pending) {
@@ -755,14 +756,14 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           Icon(
             Icons.lock_outline_rounded,
             size: 48,
-            color: Colors.white.withValues(alpha: 0.45),
+            color: ProfileFigmaTokens.secondaryText,
           ),
           const SizedBox(height: AppSpacing.md),
           Text(
             'This account is private',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
+            style: const TextStyle(
+              color: ProfileFigmaTokens.primaryText,
               fontSize: 17,
               fontWeight: FontWeight.w600,
             ),
@@ -771,8 +772,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           Text(
             'Follow this account to see their posts, stories, and streams when they accept.',
             textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+            style: const TextStyle(
+              color: ProfileFigmaTokens.secondaryText,
               fontSize: 14,
               height: 1.4,
             ),
@@ -819,8 +820,16 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
           });
         }
       } else if (_pendingFollowRequest) {
-        await svc.cancelFollowRequest(requesterUid: me, targetUid: target);
         if (mounted) setState(() => _pendingFollowRequest = false);
+        await svc.cancelFollowRequest(requesterUid: me, targetUid: target);
+        final stillPending = await svc.outgoingFollowRequestPending(
+          requesterUid: me,
+          targetUid: target,
+          server: true,
+        );
+        if (mounted) {
+          setState(() => _pendingFollowRequest = stillPending);
+        }
       } else {
         await svc.followUser(currentUid: me, targetUid: target);
         if (mounted) {
@@ -845,6 +854,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       if (mounted) await _loadPublicCounts();
     } catch (e) {
       if (mounted) {
+        await _refreshFollowFromFirestore(server: true);
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text(messageForFirestore(e))));
@@ -1190,77 +1200,52 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
       builder: (sheetCtx) {
         return StatefulBuilder(
           builder: (context, setSheetState) {
-            return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2A1B2E).withValues(alpha: 0.92),
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(24),
-                    ),
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.08),
-                    ),
-                  ),
-                  child: SafeArea(
-                    top: false,
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(
-                        AppSpacing.md,
-                        AppSpacing.sm,
-                        AppSpacing.md,
-                        AppSpacing.lg,
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Container(
-                            width: 40,
-                            height: 4,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.25),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.md),
-                          const Text(
-                            'Notifications',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: AppSpacing.lg),
-                          _SubscriptionNotifyOption(
-                            icon: Icons.notifications_none_rounded,
-                            label: 'All',
-                            selected: selected == 0,
-                            onTap: () => setSheetState(() => selected = 0),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SubscriptionNotifyOption(
-                            icon: Icons.notifications_off_outlined,
-                            label: 'None',
-                            selected: selected == 1,
-                            onTap: () => setSheetState(() => selected = 1),
-                          ),
-                          const SizedBox(height: AppSpacing.sm),
-                          _SubscriptionNotifyOption(
-                            icon: Icons.person_remove_alt_1_outlined,
-                            label: 'Unsubscribe',
-                            selected: selected == 2,
-                            onTap: () async {
-                              Navigator.pop(sheetCtx);
-                              await _cancelCreatorSubscription(p);
-                            },
-                          ),
-                        ],
+            return AppBottomSheet.shell(
+              topRadius: 24,
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.md,
+                  0,
+                  AppSpacing.md,
+                  AppSpacing.lg,
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    AppBottomSheet.dragHandle(),
+                    Text(
+                      'Notifications',
+                      style: TextStyle(
+                        color: AppLightSurface.primaryText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
+                    const SizedBox(height: AppSpacing.lg),
+                    _SubscriptionNotifyOption(
+                      icon: Icons.notifications_none_rounded,
+                      label: 'All',
+                      selected: selected == 0,
+                      onTap: () => setSheetState(() => selected = 0),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _SubscriptionNotifyOption(
+                      icon: Icons.notifications_off_outlined,
+                      label: 'None',
+                      selected: selected == 1,
+                      onTap: () => setSheetState(() => selected = 1),
+                    ),
+                    const SizedBox(height: AppSpacing.sm),
+                    _SubscriptionNotifyOption(
+                      icon: Icons.person_remove_alt_1_outlined,
+                      label: 'Unsubscribe',
+                      selected: selected == 2,
+                      onTap: () async {
+                        Navigator.pop(sheetCtx);
+                        await _cancelCreatorSubscription(p);
+                      },
+                    ),
+                  ],
                 ),
               ),
             );
@@ -1331,9 +1316,9 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _ProfileFollowButton(
+              ProfileFollowPillButton(
                 label: followLabel,
-                outlined: followOutlined,
+                filled: !followOutlined && followLabel == 'Follow',
                 onPressed: _followActionBusy ? () {} : _onFollowTap,
               ),
               if (_showSubscribeFeatures(p) && !_isViewingOwnProfile(p)) ...[
@@ -1375,33 +1360,31 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     final canModerate = target != null && target.isNotEmpty && target != me;
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: AppColors.sheetBackground,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => SafeArea(
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => AppBottomSheet.shell(
         child: Padding(
           padding: const EdgeInsets.all(AppSpacing.md),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              AppBottomSheet.dragHandle(),
               if (canModerate) ...[
                 ListTile(
                   leading: Icon(
                     Icons.report_outlined,
-                    color: Colors.white.withValues(alpha: 0.9),
+                    color: AppLightSurface.icon,
                   ),
-                  title: const Text(
+                  title: Text(
                     'Report',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppLightSurface.primaryText,
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   trailing: Icon(
                     Icons.chevron_right,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppLightSurface.chevron,
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -1429,7 +1412,7 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   ),
                   trailing: Icon(
                     Icons.chevron_right,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppLightSurface.chevron,
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -1497,13 +1480,13 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
                   Icon(
                     Icons.info_outline_rounded,
                     size: 48,
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: ProfileFigmaTokens.secondaryText,
                   ),
                   const SizedBox(height: AppSpacing.md),
                   Text(
                     'No posts made yet',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                    style: const TextStyle(
+                      color: ProfileFigmaTokens.secondaryText,
                       fontSize: 16,
                     ),
                   ),
@@ -1547,8 +1530,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
             child: Center(
               child: Text(
                 'No posts made yet',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.6),
+                style: const TextStyle(
+                  color: ProfileFigmaTokens.secondaryText,
                   fontSize: 16,
                 ),
               ),
@@ -1809,8 +1792,8 @@ class _UserProfileScreenState extends State<UserProfileScreen> {
     return Center(
       child: Text(
         'No content yet',
-        style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.6),
+        style: const TextStyle(
+          color: ProfileFigmaTokens.secondaryText,
           fontSize: 16,
         ),
       ),
@@ -1831,57 +1814,6 @@ class _UserProfileStreamItem {
   final String subtitle;
   final bool isLive;
   final int viewCount;
-}
-
-class _ProfileFollowButton extends StatelessWidget {
-  const _ProfileFollowButton({
-    required this.label,
-    required this.outlined,
-    required this.onPressed,
-  });
-
-  final String label;
-  final bool outlined;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final radius = BorderRadius.circular(_profileActionRadius);
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: radius,
-        child: Ink(
-          height: ProfileFigmaTokens.profileFollowButtonHeight,
-          padding: const EdgeInsets.symmetric(
-            horizontal: ProfileFigmaTokens.actionButtonPaddingH,
-          ),
-          decoration: BoxDecoration(
-            color: outlined ? Colors.transparent : _profileAccentMagenta,
-            borderRadius: radius,
-            border: Border.all(
-              color: outlined
-                  ? ProfileFigmaTokens.profileFollowingBorder
-                  : const Color(0xFFC4185A),
-            ),
-          ),
-          child: Center(
-            child: Text(
-              label,
-              style: TextStyle(
-                color: outlined
-                    ? ProfileFigmaTokens.primaryText
-                    : Colors.white,
-                fontSize: ProfileFigmaTokens.profileFollowLabelFontSize,
-                fontWeight: outlined ? FontWeight.w500 : FontWeight.w600,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _ProfileSubscribeButton extends StatelessWidget {
@@ -1963,13 +1895,13 @@ class _SubscriptionNotifyOption extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 6),
           child: Row(
             children: [
-              Icon(icon, color: Colors.white, size: 22),
+              Icon(icon, color: AppLightSurface.icon, size: 22),
               const SizedBox(width: AppSpacing.md),
               Expanded(
                 child: Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
@@ -1984,7 +1916,7 @@ class _SubscriptionNotifyOption extends StatelessWidget {
                   border: Border.all(
                     color: selected
                         ? _profileAccentMagenta
-                        : Colors.white.withValues(alpha: 0.45),
+                        : AppLightSurface.border,
                     width: 2,
                   ),
                 ),

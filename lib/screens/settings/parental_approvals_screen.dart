@@ -9,6 +9,7 @@ import '../../core/services/auth_service.dart';
 import '../../core/services/parental_consent_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/widgets/app_gradient_background.dart';
+import '../../core/theme/app_light_surface.dart';
 
 /// Parent or guardian approves or denies minor account requests.
 class ParentalApprovalsScreen extends StatefulWidget {
@@ -219,7 +220,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                 child: SizedBox(
                   width: 28,
                   height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                  child: CircularProgressIndicator(strokeWidth: 2, color: AppLightSurface.primaryText),
                 ),
               ),
             ),
@@ -251,7 +252,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
             'No pending requests match this account yet.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.9),
+              color: AppLightSurface.secondaryText,
               fontSize: 16,
               fontWeight: FontWeight.w600,
               height: 1.35,
@@ -262,7 +263,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
             'We only show invites that use the same contact as below (must match what your child typed).',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.75),
+              color: AppLightSurface.secondaryText,
               fontSize: 14,
               height: 1.45,
             ),
@@ -271,9 +272,9 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
           Container(
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.06),
+              color: AppLightSurface.cardFill,
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border: Border.all(color: AppLightSurface.cardFill),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,7 +282,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                 Text(
                   emailLine,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.88),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                     height: 1.45,
                   ),
@@ -290,7 +291,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                 Text(
                   phoneLine,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.88),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 14,
                     height: 1.45,
                   ),
@@ -315,7 +316,6 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: AppGradientBackground(
-        type: GradientType.premiumDark,
         child: SafeArea(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -326,13 +326,13 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                   children: [
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white),
+                      icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppLightSurface.primaryText),
                     ),
                     const Expanded(
                       child: Text(
                         'Family approvals',
                         style: TextStyle(
-                          color: Colors.white,
+              color: AppLightSurface.primaryText,
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
                         ),
@@ -348,10 +348,10 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                               height: 22,
                               child: CircularProgressIndicator(
                                 strokeWidth: 2,
-                                color: Colors.white,
+                                color: AppLightSurface.primaryText,
                               ),
                             )
-                          : const Icon(Icons.refresh, color: Colors.white),
+                          : const Icon(Icons.refresh, color: AppLightSurface.primaryText),
                     ),
                   ],
                 ),
@@ -362,7 +362,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                   child: Text(
                     _message!,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 14,
                     ),
                   ),
@@ -384,10 +384,10 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                           return Container(
                             padding: const EdgeInsets.all(16),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.05),
+                              color: AppLightSurface.cardFill,
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.1),
+                                color: AppLightSurface.cardFill,
                               ),
                             ),
                             child: Column(
@@ -395,8 +395,8 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                               children: [
                                 Text(
                                   '@$un',
-                                  style: const TextStyle(
-                                    color: Colors.white,
+                                  style: TextStyle(
+                    color: AppLightSurface.primaryText,
                                     fontSize: 17,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -405,7 +405,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                                 Text(
                                   'wants to use VyooO',
                                   style: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.75),
+                                    color: AppLightSurface.secondaryText,
                                     fontSize: 14,
                                   ),
                                 ),

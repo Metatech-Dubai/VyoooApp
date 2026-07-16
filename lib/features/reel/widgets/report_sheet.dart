@@ -4,7 +4,9 @@ import '../../../core/services/auth_service.dart';
 import '../../../core/services/reels_service.dart';
 import '../../../core/services/story_service.dart';
 import '../../../core/services/user_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/utils/user_facing_errors.dart';
+import '../../../core/widgets/app_bottom_sheet.dart';
 import 'block_user_sheet.dart';
 
 /// Shows the Report flow: starts with reasons, then thank you screen with block/unfollow options.
@@ -76,48 +78,22 @@ class _ReportSheetFlowState extends State<_ReportSheetFlow> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF49113B), // Deep Magenta
-            Color(0xFF210D1D),
-            Color(0xFF0F040C),
-          ],
-        ),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-      ),
+      decoration: AppBottomSheet.decoration(topRadius: 28),
       child: SafeArea(
         top: false,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Drag handle
-            Padding(
-              padding: const EdgeInsets.only(top: 12, bottom: 8),
-              child: Center(
-                child: Container(
-                  width: 36,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-            ),
-            
-            // Header
+            AppBottomSheet.dragHandle(),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Stack(
                 alignment: Alignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Report',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppLightSurface.primaryText,
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -126,7 +102,11 @@ class _ReportSheetFlowState extends State<_ReportSheetFlow> {
                     alignment: Alignment.centerRight,
                     child: IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.close_rounded, color: Colors.white.withValues(alpha: 0.5), size: 24),
+                      icon: Icon(
+                        Icons.close_rounded,
+                        color: AppLightSurface.mutedText,
+                        size: 24,
+                      ),
                     ),
                   ),
                 ],
@@ -199,7 +179,7 @@ class _ReportSheetFlowState extends State<_ReportSheetFlow> {
         const Text(
           'Thanks for your feedback',
           style: TextStyle(
-            color: Colors.white,
+            color: AppLightSurface.primaryText,
             fontSize: 20,
             fontWeight: FontWeight.w700,
           ),
@@ -211,7 +191,7 @@ class _ReportSheetFlowState extends State<_ReportSheetFlow> {
             'We use these reports to show less of this kind of content in the future.',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+              color: AppLightSurface.secondaryText,
               fontSize: 14,
               height: 1.4,
             ),
@@ -233,7 +213,7 @@ class _ReportSheetFlowState extends State<_ReportSheetFlow> {
                       const Text(
                         'Other Actions',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppLightSurface.primaryText,
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -241,7 +221,7 @@ class _ReportSheetFlowState extends State<_ReportSheetFlow> {
                       const Spacer(),
                       Icon(
                         _isOtherActionsExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: AppLightSurface.chevron,
                       ),
                     ],
                   ),
@@ -326,14 +306,14 @@ class _ReasonTile extends StatelessWidget {
             Expanded(
               child: Text(
                 label,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppLightSurface.primaryText,
                   fontSize: 15,
                   fontWeight: FontWeight.w400,
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.white.withValues(alpha: 0.3), size: 20),
+            Icon(Icons.chevron_right_rounded, color: AppLightSurface.chevron, size: 20),
           ],
         ),
       ),
@@ -362,12 +342,12 @@ class _ActionItem extends StatelessWidget {
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 4),
         child: Row(
           children: [
-            Icon(icon, color: labelColor ?? Colors.white.withValues(alpha: 0.7), size: 20),
+            Icon(icon, color: labelColor ?? AppLightSurface.icon, size: 20),
             const SizedBox(width: 12),
             Text(
               label,
               style: TextStyle(
-                color: labelColor ?? Colors.white.withValues(alpha: 0.7),
+                color: labelColor ?? AppLightSurface.secondaryText,
                 fontSize: 15,
                 fontWeight: FontWeight.w500,
               ),
@@ -378,7 +358,7 @@ class _ActionItem extends StatelessWidget {
               height: 18,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1.5),
+                border: Border.all(color: AppLightSurface.border, width: 1.5),
               ),
             ),
           ],
