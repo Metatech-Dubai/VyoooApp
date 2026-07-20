@@ -211,7 +211,7 @@ class AccountScreen extends StatelessWidget {
               );
             },
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFF81945),
+              backgroundColor: AppLightSurface.primaryText,
               foregroundColor: Colors.white,
               minimumSize: const Size(100, 32),
               padding: const EdgeInsets.symmetric(horizontal: 16),

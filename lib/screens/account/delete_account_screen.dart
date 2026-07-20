@@ -109,7 +109,7 @@ class _DeleteAccountScreenState extends State<DeleteAccountScreen> {
                           ElevatedButton(
                             onPressed: _isDeleting ? null : _confirmDelete,
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF81945), // Pink
+                              backgroundColor: AppLightSurface.primaryText,
                               foregroundColor: Colors.white,
                               minimumSize: const Size(64, 32),
                               padding: const EdgeInsets.symmetric(

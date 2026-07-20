@@ -2,7 +2,6 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/theme/app_background_assets.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
@@ -50,7 +49,7 @@ class ContactSupportScreen extends StatelessWidget {
       height: 1.6,
     );
     final linkStyle = baseStyle.copyWith(
-      color: AppColors.brandPink,
+      color: AppLightSurface.primaryText,
       decoration: TextDecoration.underline,
       fontWeight: FontWeight.w600,
     );
@@ -97,62 +96,24 @@ class ContactSupportScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     const Spacer(flex: 2),
-                // Support Icon Stack (3D style as per screenshot)
                 Center(
                   child: Container(
-                    width: 220,
-                    height: 220,
+                    width: 180,
+                    height: 180,
                     decoration: BoxDecoration(
+                      color: AppLightSurface.primaryText,
                       shape: BoxShape.circle,
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFFF81945).withValues(alpha: 0.2),
-                          blurRadius: 40,
-                          spreadRadius: 10,
-                        ),
-                      ],
+                      border: Border.all(color: AppLightSurface.border, width: 1.5),
                     ),
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        // Stylized 3D-ish chat bubble representing the screenshot icon
-                        Container(
-                          width: 180,
-                          height: 180,
-                          decoration: const BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [Color(0xFFDE106B), Color(0xFF490038)],
-                            ),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Container(
-                              width: 130,
-                              height: 130,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                border: Border.all(color: AppLightSurface.border, width: 1.5),
-                                gradient: const RadialGradient(
-                                  colors: [Color(0xFFF81945), Color(0xFF21002B)],
-                                  stops: [0.0, 1.0],
-                                ),
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  '?',
-                                  style: TextStyle(
-              color: AppLightSurface.primaryText,
-                                    fontSize: 80,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
+                    child: const Center(
+                      child: Text(
+                        '?',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 80,
+                          fontWeight: FontWeight.w700,
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),

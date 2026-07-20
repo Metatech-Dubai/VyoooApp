@@ -441,10 +441,8 @@ class _SettingsTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = isLogout
-        ? const Color(0xFFE81E57)
-        : AppLightSurface.primaryText;
-    final labelColor = isLogout ? const Color(0xFFE81E57) : AppLightSurface.primaryText;
+    final accent = AppLightSurface.primaryText;
+    final labelColor = AppLightSurface.primaryText;
 
     return Material(
       color: Colors.transparent,
@@ -486,13 +484,14 @@ class _SettingsTile extends StatelessWidget {
                               vertical: 2,
                             ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFACC15),
+                              color: AppLightSurface.cardFill,
                               borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppLightSurface.border),
                             ),
                             child: Text(
                               'PREMIUM',
                               style: AppTypography.caption.copyWith(
-                                color: Colors.black,
+                                color: AppLightSurface.primaryText,
                                 fontSize: 9,
                                 fontWeight: FontWeight.w700,
                               ),

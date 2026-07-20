@@ -269,9 +269,9 @@ abstract final class ProfileFigmaTokens {
   static const Duration profileSideDrawerAnimation =
       Duration(milliseconds: 220);
 
-  // — Profile “More” end drawer (Figma 341×874 artboard, slides from right) —
+  // — Profile “More” end drawer (Figma 341×704 artboard, slides from right) —
   static const double profileMoreDrawerWidth = 341;
-  static const double profileMoreDrawerDesignHeight = 874;
+  static const double profileMoreDrawerDesignHeight = 704;
   static const double profileMoreDrawerContentHorizontalInset = 15;
   static const double profileMoreDrawerContentWidth = 310;
   static const double profileMoreDrawerLogoutHorizontalInset = 16.5;

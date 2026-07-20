@@ -85,7 +85,7 @@ class WithdrawalConfirmationScreen extends StatelessWidget {
           'Network Fee (1.5%)',
           '-\$7.50',
           showInfo: true,
-          valueColor: const Color(0xFFF81945),
+          valueColor: AppLightSurface.primaryText,
         ),
         const SizedBox(height: 24),
         const Divider(color: AppLightSurface.divider),

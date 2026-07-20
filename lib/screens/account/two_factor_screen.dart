@@ -266,7 +266,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
         color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: const Color(0xFFDE106B).withValues(alpha: 0.5),
+          color: AppLightSurface.primaryText.withValues(alpha: 0.5),
           width: 1.0,
         ),
       ),

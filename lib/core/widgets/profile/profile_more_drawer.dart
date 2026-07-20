@@ -16,12 +16,10 @@ Future<void> showProfileMoreDrawer(
   required VoidCallback onVyoooCoin,
   required VoidCallback onOrders,
   required VoidCallback onSettings,
-  required VoidCallback onUploadStreamVideos,
   required VoidCallback onSwitchAccounts,
   required VoidCallback onPrivacy,
   required VoidCallback onLogout,
   VoidCallback? onRevenue,
-  VoidCallback? onMusicLibrary,
 }) {
   final screenWidth = MediaQuery.sizeOf(context).width;
   final drawerWidth = math.min(
@@ -70,11 +68,6 @@ Future<void> showProfileMoreDrawer(
                 Navigator.pop(dialogContext);
                 onSettings();
               },
-              onMusicLibrary: onMusicLibrary,
-              onUploadStreamVideos: () {
-                Navigator.pop(dialogContext);
-                onUploadStreamVideos();
-              },
               onSwitchAccounts: () {
                 Navigator.pop(dialogContext);
                 onSwitchAccounts();
@@ -109,7 +102,8 @@ Future<void> showProfileMoreDrawer(
   );
 }
 
-/// Figma 341×874 tap rows — coordinates match [profile_more_drawer_panel.svg].
+/// Figma 341×704 tap rows — coordinates match [profile_more_drawer_panel.svg]
+/// after Creator Tools (Music library / Upload Stream) removal.
 typedef _MoreDrawerTapRow = ({
   double top,
   double height,
@@ -129,8 +123,6 @@ class ProfileMoreDrawer extends StatelessWidget {
     this.onRevenue,
     required this.onOrders,
     required this.onSettings,
-    this.onMusicLibrary,
-    required this.onUploadStreamVideos,
     required this.onSwitchAccounts,
     required this.onPrivacy,
     required this.onLogout,
@@ -146,8 +138,6 @@ class ProfileMoreDrawer extends StatelessWidget {
   final VoidCallback? onRevenue;
   final VoidCallback onOrders;
   final VoidCallback onSettings;
-  final VoidCallback? onMusicLibrary;
-  final VoidCallback onUploadStreamVideos;
   final VoidCallback onSwitchAccounts;
   final VoidCallback onPrivacy;
   final VoidCallback onLogout;
@@ -187,44 +177,29 @@ class ProfileMoreDrawer extends StatelessWidget {
           width: _contentWidth,
           onTap: onRevenue ?? onWallet,
         ),
-        if (onMusicLibrary != null)
-          (
-            top: 350,
-            height: 52,
-            horizontalInset: _contentInset,
-            width: _contentWidth,
-            onTap: onMusicLibrary!,
-          ),
         (
-          top: 402,
-          height: 52,
-          horizontalInset: _contentInset,
-          width: _contentWidth,
-          onTap: onUploadStreamVideos,
-        ),
-        (
-          top: 520,
+          top: 350,
           height: 52,
           horizontalInset: _contentInset,
           width: _contentWidth,
           onTap: onSwitchAccounts,
         ),
         (
-          top: 572,
+          top: 402,
           height: 52,
           horizontalInset: _contentInset,
           width: _contentWidth,
           onTap: onSettings,
         ),
         (
-          top: 624,
+          top: 454,
           height: 52,
           horizontalInset: _contentInset,
           width: _contentWidth,
           onTap: onPrivacy,
         ),
         (
-          top: 683.5,
+          top: 513.5,
           height: 57,
           horizontalInset:
               ProfileFigmaTokens.profileMoreDrawerLogoutHorizontalInset,

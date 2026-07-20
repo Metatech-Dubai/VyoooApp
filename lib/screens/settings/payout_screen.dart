@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
-import '../../core/theme/app_gradients.dart';
 import 'wallet/withdraw_funds_screen.dart';
 import 'package:vyooo/core/widgets/app_gradient_background.dart';
 import '../../core/theme/app_light_surface.dart';
@@ -140,14 +139,14 @@ class _PayoutScreenState extends State<PayoutScreen> {
       child: Container(
         height: 56,
         decoration: BoxDecoration(
-          gradient: AppGradients.vrGetStartedButtonGradient,
+          color: AppLightSurface.primaryText,
           borderRadius: BorderRadius.circular(14),
         ),
         alignment: Alignment.center,
         child: const Text(
           'Withdraw Funds',
           style: TextStyle(
-              color: AppLightSurface.primaryText,
+            color: Colors.white,
             fontSize: 16,
             fontWeight: FontWeight.w700,
           ),
@@ -165,7 +164,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
             label: 'Live Stream',
             amount: '€ 8,450',
             growth: '+12.4% this month',
-            accentColor: const Color(0xFFF81945),
+            accentColor: AppLightSurface.primaryText,
           ),
         ),
         const SizedBox(width: 16),
@@ -175,7 +174,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
             label: 'Subscriptions',
             amount: '€ 4,000',
             growth: '+8.1% this month',
-            accentColor: const Color(0xFF627EEA),
+            accentColor: AppLightSurface.primaryText,
           ),
         ),
       ],
@@ -228,7 +227,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           Text(
             growth,
             style: TextStyle(
-              color: Color(0xFF4ADE80),
+              color: AppLightSurface.primaryText,
               fontSize: 11,
               fontWeight: FontWeight.w500,
             ),
@@ -310,28 +309,28 @@ class _PayoutScreenState extends State<PayoutScreen> {
           'Platform & Processing',
           '-€ 3100.40',
           isHeader: true,
-          valueColor: const Color(0xFFF81945),
+          valueColor: AppLightSurface.primaryText,
         ),
         const SizedBox(height: 12),
         _buildSummaryRow(
           'Commission',
           '-€ 900.40',
           isSubRow: true,
-          valueColor: const Color(0xFFF81945).withValues(alpha: 0.7),
+          valueColor: AppLightSurface.primaryText.withValues(alpha: 0.7),
         ),
         const SizedBox(height: 12),
         _buildSummaryRow(
           'Estimated tax',
           '-€ 1002.40',
           isSubRow: true,
-          valueColor: const Color(0xFFF81945).withValues(alpha: 0.7),
+          valueColor: AppLightSurface.primaryText.withValues(alpha: 0.7),
         ),
         const SizedBox(height: 12),
         _buildSummaryRow(
           'Payment processing',
           '-€ 579.66',
           isSubRow: true,
-          valueColor: const Color(0xFFF81945).withValues(alpha: 0.7),
+          valueColor: AppLightSurface.primaryText.withValues(alpha: 0.7),
         ),
         const SizedBox(height: 32),
         const Divider(color: AppLightSurface.divider),
@@ -340,7 +339,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           'Estimated Payout',
           '€ 460325',
           isHeader: true,
-          valueColor: const Color(0xFF4ADE80),
+          valueColor: AppLightSurface.primaryText,
         ),
       ],
     );
@@ -376,7 +375,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           subtitle: 'Live Stream',
           amount: '€ 45.99',
           status: 'Today',
-          accentColor: const Color(0xFFF81945),
+          accentColor: AppLightSurface.primaryText,
         ),
         _buildActivityItem(
           icon: Icons.subscriptions,
@@ -384,7 +383,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
           subtitle: '@jess__d • Annual Plan',
           amount: '€ 102.99',
           status: 'Yesterday',
-          accentColor: const Color(0xFF627EEA),
+          accentColor: AppLightSurface.primaryText,
         ),
         _buildActivityItem(
           icon: Icons.apple,
@@ -492,7 +491,7 @@ class _PayoutScreenState extends State<PayoutScreen> {
                 amount,
                 style: TextStyle(
                   color: isWithdrawal
-                      ? const Color(0xFF4ADE80)
+                      ? AppLightSurface.primaryText
                       : AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w700,

@@ -148,7 +148,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
               ),
             ),
             const SizedBox(width: 6),
-            const Icon(Icons.check_circle, color: Color(0xFFF81945), size: 18),
+            const Icon(Icons.check_circle, color: AppLightSurface.primaryText, size: 18),
           ],
         ),
         const SizedBox(height: 4),
@@ -163,10 +163,10 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFF81945).withValues(alpha: 0.1),
+            color: AppLightSurface.primaryText.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
             border: Border.all(
-              color: const Color(0xFFF81945).withValues(alpha: 0.3),
+              color: AppLightSurface.primaryText.withValues(alpha: 0.3),
             ),
           ),
           child: Row(
@@ -176,7 +176,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                 width: 6,
                 height: 6,
                 decoration: const BoxDecoration(
-                  color: Color(0xFFF81945),
+                  color: AppLightSurface.primaryText,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -210,14 +210,14 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: selected
-                ? const Color(0xFFF81945)
+                ? AppLightSurface.primaryText
                 : AppLightSurface.cardFill,
             width: 2,
           ),
           boxShadow: selected
               ? [
                   BoxShadow(
-                    color: const Color(0xFFF81945).withValues(alpha: 0.2),
+                    color: AppLightSurface.primaryText.withValues(alpha: 0.2),
                     blurRadius: 15,
                     spreadRadius: -2,
                   ),
@@ -245,8 +245,8 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                     ),
                     decoration: BoxDecoration(
                       color: index == 2
-                          ? const Color(0xFFFACC15)
-                          : const Color(0xFF4ADE80),
+                          ? AppLightSurface.primaryText
+                          : AppLightSurface.primaryText,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
@@ -283,7 +283,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
                       ),
                       margin: const EdgeInsets.only(right: 8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF81945),
+                        color: AppLightSurface.primaryText,
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
@@ -316,17 +316,17 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF4ADE80).withValues(alpha: 0.15),
+        color: AppLightSurface.primaryText.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
       ),
       child: const Row(
         children: [
-          Icon(Icons.stars, color: Color(0xFF4ADE80), size: 18),
+          Icon(Icons.stars, color: AppLightSurface.primaryText, size: 18),
           SizedBox(width: 12),
           Text(
             'Switch to Annual and save \$24 a year vs Quarterly',
             style: TextStyle(
-              color: Color(0xFF4ADE80),
+              color: AppLightSurface.primaryText,
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -343,7 +343,7 @@ class _ChangePlanScreenState extends State<ChangePlanScreen> {
       decoration: BoxDecoration(
         color: isCurrentPlan
             ? AppLightSurface.cardFill
-            : const Color(0xFFF81945),
+            : AppLightSurface.primaryText,
         borderRadius: BorderRadius.circular(12),
       ),
       alignment: Alignment.center,

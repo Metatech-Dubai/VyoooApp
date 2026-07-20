@@ -145,7 +145,7 @@ class _NotificationSettingsScreenState
               const Expanded(
                 child: Center(
                   child: CircularProgressIndicator(
-                    color: Color(0xFFF81945),
+                    color: AppLightSurface.primaryText,
                   ),
                 ),
               )
@@ -311,17 +311,17 @@ class _PermissionBanner extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFF81945).withValues(alpha: 0.12),
+        color: AppLightSurface.primaryText.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFF81945).withValues(alpha: 0.35),
+          color: AppLightSurface.primaryText.withValues(alpha: 0.35),
         ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Icon(Icons.notifications_off_outlined,
-              color: Color(0xFFF81945), size: 22),
+              color: AppLightSurface.primaryText, size: 22),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -355,7 +355,7 @@ class _PermissionBanner extends StatelessWidget {
                   child: const Text(
                     'Open Settings',
                     style: TextStyle(
-                      color: Color(0xFFF81945),
+                      color: AppLightSurface.primaryText,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -419,8 +419,8 @@ class _NotificationSwitch extends StatelessWidget {
           Switch.adaptive(
             value: value,
             onChanged: enabled ? onChanged : null,
-            activeThumbColor: const Color(0xFFF81945),
-            activeTrackColor: const Color(0xFFF81945).withValues(alpha: 0.3),
+            activeThumbColor: AppLightSurface.primaryText,
+            activeTrackColor: AppLightSurface.primaryText.withValues(alpha: 0.3),
           ),
         ],
       ),

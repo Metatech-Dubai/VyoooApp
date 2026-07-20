@@ -42,7 +42,7 @@ class VyoooBrandLogo extends StatelessWidget {
   /// Inner settings/account header — smaller slot, less zoom (matches title scale).
   static const double innerHeaderContentScale = 1.55;
 
-  /// Compact wordmark for [SettingsInnerAppBar] and similar inner screens.
+  /// Compact wordmark for [SettingsInnerAppBar] — same SVG as onboarding.
   const VyoooBrandLogo.innerHeader({super.key})
       : width = null,
         size = AppSizes.settingsInnerLogoHeight,
@@ -50,7 +50,7 @@ class VyoooBrandLogo extends StatelessWidget {
         contentScale = innerHeaderContentScale,
         center = false,
         alignment = Alignment.centerRight,
-        svgAssetPath = null;
+        svgAssetPath = wordmarkSvgAssetPath;
 
   /// Auth headers — Figma SVG wordmark (#000000 on light surfaces).
   const VyoooBrandLogo.auth({super.key})

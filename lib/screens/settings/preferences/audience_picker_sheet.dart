@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/models/user_app_preferences.dart';
 import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
@@ -40,7 +39,7 @@ Future<String?> showAudiencePickerSheet(
                   ),
                 ),
                 trailing: currentValue == value
-                    ? const Icon(Icons.check_rounded, color: AppColors.brandPink)
+                    ? const Icon(Icons.check_rounded, color: AppLightSurface.primaryText)
                     : null,
                 onTap: () => Navigator.pop(ctx, value),
               ),

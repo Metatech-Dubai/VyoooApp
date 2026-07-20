@@ -107,10 +107,10 @@ class _LiveStreamMonetisationScreenState
   Widget _buildSlider() {
     return SliderTheme(
       data: SliderTheme.of(context).copyWith(
-        activeTrackColor: const Color(0xFFF81945),
+        activeTrackColor: AppLightSurface.primaryText,
         inactiveTrackColor: AppLightSurface.border,
         thumbColor: Colors.white,
-        overlayColor: const Color(0xFFF81945).withValues(alpha: 0.2),
+        overlayColor: AppLightSurface.primaryText.withValues(alpha: 0.2),
         thumbShape: _CustomThumbShape(currentValue: _sliderValue.round()),
         trackHeight: 3,
         overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
@@ -170,7 +170,7 @@ class _CustomThumbShape extends SliderComponentShape {
       ),
       const Radius.circular(6),
     );
-    final badgePaint = Paint()..color = const Color(0xFFF81945);
+    final badgePaint = Paint()..color = AppLightSurface.primaryText;
     canvas.drawRRect(badgeRect, badgePaint);
 
     // Badge text

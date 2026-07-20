@@ -211,11 +211,11 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildNetworkChip('Ethereum', 'ERC-20', const Color(0xFF627EEA)),
+              _buildNetworkChip('Ethereum', 'ERC-20', AppLightSurface.primaryText),
               const SizedBox(width: 12),
-              _buildNetworkChip('Polygon', 'MATIC', const Color(0xFF8247E5)),
+              _buildNetworkChip('Polygon', 'MATIC', AppLightSurface.primaryText),
               const SizedBox(width: 12),
-              _buildNetworkChip('Solana', 'SOL', const Color(0xFF14F195)),
+              _buildNetworkChip('Solana', 'SOL', AppLightSurface.primaryText),
             ],
           ),
         ),
@@ -292,7 +292,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: selected
-                      ? const Color(0xFFF81945)
+                      ? AppLightSurface.primaryText
                       : AppLightSurface.cardFill,
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -319,7 +319,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
         color: AppLightSurface.cardFill,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: selected ? const Color(0xFFF81945) : AppLightSurface.divider,
+          color: selected ? AppLightSurface.primaryText : AppLightSurface.divider,
         ),
       ),
       child: Row(
@@ -463,7 +463,7 @@ class _WithdrawFundsScreenState extends State<WithdrawFundsScreen> {
             width: 20,
             height: 20,
             decoration: BoxDecoration(
-              color: _saveCardInfo ? const Color(0xFFF81945) : AppLightSurface.divider,
+              color: _saveCardInfo ? AppLightSurface.primaryText : AppLightSurface.divider,
               borderRadius: BorderRadius.circular(6),
             ),
             child: _saveCardInfo

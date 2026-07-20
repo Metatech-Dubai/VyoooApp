@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/models/user_app_preferences.dart';
 import '../../../core/services/user_app_preferences_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 /// Loads/saves [UserAppPreferences] for settings sub-screens.
 mixin UserPreferencesPageMixin<T extends StatefulWidget> on State<T> {
@@ -64,7 +65,7 @@ mixin UserPreferencesPageMixin<T extends StatefulWidget> on State<T> {
     return const Center(
       child: Padding(
         padding: EdgeInsets.all(32),
-        child: CircularProgressIndicator(color: Color(0xFFF81945)),
+        child: CircularProgressIndicator(color: AppLightSurface.primaryText),
       ),
     );
   }

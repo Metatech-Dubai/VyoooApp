@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../../core/widgets/settings/settings_inner_app_bar.dart';
-import 'package:vyooo/core/theme/app_gradients.dart';
 import '../../../core/widgets/app_gradient_background.dart';
 import 'add_funds_screen.dart';
 import '../manage_subscriptions_screen.dart';
@@ -104,15 +103,8 @@ class WalletScreen extends StatelessWidget {
             child: Container(
               height: 56,
               decoration: BoxDecoration(
-                gradient: AppGradients.vrGetStartedButtonGradient,
+                color: AppLightSurface.primaryText,
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFFF81945).withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 5),
-                  ),
-                ],
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -122,7 +114,7 @@ class WalletScreen extends StatelessWidget {
                   Text(
                     'Add Funds',
                     style: TextStyle(
-              color: AppLightSurface.primaryText,
+                      color: Colors.white,
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                       letterSpacing: -0.2,

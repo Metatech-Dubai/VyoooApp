@@ -135,7 +135,8 @@ class SettingsSwitchTile extends StatelessWidget {
             ),
       value: value,
       onChanged: enabled ? onChanged : null,
-      activeThumbColor: const Color(0xFFF81945),
+      activeThumbColor: AppLightSurface.primaryText,
+      activeTrackColor: AppLightSurface.primaryText.withValues(alpha: 0.35),
     );
   }
 }

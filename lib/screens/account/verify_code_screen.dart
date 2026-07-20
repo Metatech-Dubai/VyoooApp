@@ -94,7 +94,7 @@ class _VerifyCodeScreenState extends State<VerifyCodeScreen> {
                       child: Text(
                         '+44 624 *** **7 980',
                         style: TextStyle(
-                          color: Color(0xFFDE106B), // Match bright pink
+                          color: AppLightSurface.primaryText, // Match bright pink
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),

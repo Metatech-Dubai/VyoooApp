@@ -150,7 +150,7 @@ class _CreatorMonetizationScreenState extends State<CreatorMonetizationScreen> {
                                     ? null
                                     : (v) => _onToggle(v, user),
                                 activeThumbColor: Colors.white,
-                                activeTrackColor: const Color(0xFFF81945),
+                                activeTrackColor: AppLightSurface.primaryText,
                               ),
                             ),
                           ],
