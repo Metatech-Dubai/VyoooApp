@@ -20,7 +20,6 @@ import '../../core/models/app_user_model.dart';
 import '../../core/models/story_highlight_model.dart';
 import '../../core/models/story_model.dart';
 import '../../core/services/auth_service.dart';
-import '../../core/services/reels_service.dart';
 import '../../core/services/story_service.dart';
 import '../../core/services/user_service.dart';
 import '../../core/subscription/subscription_controller.dart';
@@ -43,7 +42,6 @@ import '../../core/services/live_stream_service.dart';
 import '../content/live_stream_route.dart';
 import '../content/post_feed_screen.dart';
 import '../content/vr_detail_screen.dart';
-import '../music/music_library_screen.dart';
 import 'personal_information_screen.dart';
 import 'edit_profile_screen.dart';
 import 'followers_following_screen.dart';
@@ -186,116 +184,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Future<void> _showUploadStreamDialog(BuildContext context) async {
-    final controller = TextEditingController();
-    var markAsVR = false;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          backgroundColor: const Color(0xFF1A0020),
-          title: const Text(
-            'Upload Stream videos',
-            style: TextStyle(color: Colors.white),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Paste Cloudflare Stream video IDs (one per line or comma-separated):',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: controller,
-                  maxLines: 6,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: InputDecoration(
-                    hintText: 'abc123\ndef456\n...',
-                    hintStyle: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.4),
-                    ),
-                    border: const OutlineInputBorder(),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.6),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                CheckboxListTile(
-                  value: markAsVR,
-                  onChanged: (v) => setDialogState(() => markAsVR = v ?? false),
-                  title: Text(
-                    'Show in VR tab',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.9),
-                      fontSize: 14,
-                    ),
-                  ),
-                  activeColor: const Color(0xFFDE106B),
-                  controlAffinity: ListTileControlAffinity.leading,
-                  contentPadding: EdgeInsets.zero,
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
-              ),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final text = controller.text.trim();
-                if (text.isEmpty) return;
-                final ids = text
-                    .split(RegExp(r'[\n,;]+'))
-                    .map((e) => e.trim())
-                    .where((e) => e.isNotEmpty)
-                    .toList();
-                if (ids.isEmpty) return;
-                final messenger = ScaffoldMessenger.of(context);
-                Navigator.of(ctx).pop();
-                try {
-                  final added = await ReelsService().seedStreamReels(
-                    ids,
-                    markAsVR: markAsVR,
-                  );
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Uploaded $added reel(s) to Firebase.'),
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                } catch (e) {
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text('Upload failed: $e'),
-                      behavior: SnackBarBehavior.floating,
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFFDE106B),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Upload to Firebase'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Future<void> _openMyStoryComposerOrViewer(
     BuildContext context, {
     required String userId,
@@ -427,12 +315,6 @@ class _ProfileScreenState extends State<ProfileScreen>
           MaterialPageRoute<void>(builder: (_) => const SettingsScreen()),
         );
       },
-      onMusicLibrary: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const MusicLibraryScreen()),
-        );
-      },
-      onUploadStreamVideos: () => _showUploadStreamDialog(context),
       onSwitchAccounts: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(

@@ -6,6 +6,7 @@ import '../../../core/theme/app_spacing.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/widgets/settings/settings_page_shell.dart';
 import 'user_preferences_page_mixin.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class CloseFriendsScreen extends StatefulWidget {
   const CloseFriendsScreen({super.key});
@@ -139,7 +140,8 @@ class _CloseFriendsScreenState extends State<CloseFriendsScreen>
                   IconButton.filled(
                     onPressed: prefsSaving ? null : _addCloseFriend,
                     style: IconButton.styleFrom(
-                      backgroundColor: const Color(0xFFF81945),
+                      backgroundColor: AppLightSurface.primaryText,
+                      foregroundColor: Colors.white,
                     ),
                     icon: const Icon(Icons.person_add_alt_1_rounded),
                   ),

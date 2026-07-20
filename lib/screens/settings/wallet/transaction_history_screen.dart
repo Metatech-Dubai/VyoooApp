@@ -44,7 +44,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       type: 'Live Stream',
                       amount: '€ 45.99',
                       status: 'Settled',
-                      accentColor: const Color(0xFFF81945),
+                      accentColor: AppLightSurface.primaryText,
                       icon: Icons.video_camera_back_rounded,
                       onTap: () => _showReceipt(context),
                     ),
@@ -53,7 +53,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       type: '@jess__d • Annual Plan',
                       amount: '€ 102.99',
                       status: 'Settled',
-                      accentColor: const Color(0xFF627EEA),
+                      accentColor: AppLightSurface.primaryText,
                       icon: Icons.subscriptions,
                       onTap: () => _showReceipt(context),
                     ),
@@ -72,7 +72,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       type: 'Live Stream',
                       amount: '€ 45.99',
                       status: 'Settled',
-                      accentColor: const Color(0xFFF81945),
+                      accentColor: AppLightSurface.primaryText,
                       icon: Icons.video_camera_back_rounded,
                       onTap: () => _showReceipt(context),
                     ),
@@ -81,7 +81,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                       type: '@jess__d • Annual Plan',
                       amount: '€ 102.99',
                       status: 'Settled',
-                      accentColor: const Color(0xFF627EEA),
+                      accentColor: AppLightSurface.primaryText,
                       icon: Icons.subscriptions,
                       onTap: () => _showReceipt(context),
                     ),
@@ -127,7 +127,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                 ),
                 decoration: BoxDecoration(
                   color: selected
-                      ? const Color(0xFFF81945)
+                      ? AppLightSurface.primaryText
                       : AppLightSurface.cardFill,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
@@ -261,7 +261,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   icon ?? (isCrypto ? Icons.currency_bitcoin : Icons.apple),
                   color:
                       accentColor ??
-                      (isCrypto ? const Color(0xFF627EEA) : AppLightSurface.icon),
+                      (isCrypto ? AppLightSurface.primaryText : AppLightSurface.icon),
                   size: 24,
                 ),
               ),
@@ -296,7 +296,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   amount,
                   style: TextStyle(
                     color: isWithdrawal
-                        ? const Color(0xFF4ADE80)
+                        ? AppLightSurface.primaryText
                         : AppLightSurface.primaryText,
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
@@ -307,7 +307,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen> {
                   status,
                   style: TextStyle(
                     color: status == 'Pending'
-                        ? const Color(0xFFFACC15)
+                        ? AppLightSurface.primaryText
                         : AppLightSurface.border,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
@@ -379,14 +379,14 @@ class ReceiptDialog extends StatelessWidget {
                     children: [
                       const Icon(
                         Icons.report_gmailerrorred_rounded,
-                        color: Color(0xFFF81945),
+                        color: AppLightSurface.primaryText,
                         size: 24,
                       ),
                       const SizedBox(height: 4),
                       Text(
                         'Report',
                         style: TextStyle(
-                          color: const Color(0xFFF81945).withValues(alpha: 0.8),
+                          color: AppLightSurface.primaryText.withValues(alpha: 0.8),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),

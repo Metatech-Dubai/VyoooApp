@@ -39,7 +39,7 @@ abstract final class AppStrings {
   // Settings — creator
   static const subscriptions = 'Subscriptions';
   static const creatorSubscriptions = 'Creator Subscriptions';
-  static const vyoooCoin = 'Vyooo Coin';
+  static const vyoooCoin = '';
   static const revenue = 'Revenue';
   static const liveStreamMonetization = 'Live Stream Monetization';
   static const manageSubscriptions = 'Manage Subscriptions';

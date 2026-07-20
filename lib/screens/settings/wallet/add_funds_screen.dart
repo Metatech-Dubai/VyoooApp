@@ -102,11 +102,11 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           scrollDirection: Axis.horizontal,
           child: Row(
             children: [
-              _buildNetworkChip('Ethereum', 'ERC-20', const Color(0xFF627EEA)),
+              _buildNetworkChip('Ethereum', 'ERC-20', AppLightSurface.primaryText),
               const SizedBox(width: 12),
-              _buildNetworkChip('Polygon', 'MATIC', const Color(0xFF8247E5)),
+              _buildNetworkChip('Polygon', 'MATIC', AppLightSurface.primaryText),
               const SizedBox(width: 12),
-              _buildNetworkChip('Solana', 'SOL', const Color(0xFF14F195)),
+              _buildNetworkChip('Solana', 'SOL', AppLightSurface.primaryText),
             ],
           ),
         ),
@@ -125,7 +125,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           decoration: BoxDecoration(
             color: AppLightSurface.cardFill,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFFF81945), width: 1),
+            border: Border.all(color: AppLightSurface.primaryText, width: 1),
           ),
           child: const Row(
             children: [
@@ -359,7 +359,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: selected
-              ? const Color(0xFFF81945)
+              ? AppLightSurface.primaryText
               : AppLightSurface.cardFill,
           width: 1,
         ),
@@ -411,22 +411,22 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
     return Container(
       height: 48,
       decoration: BoxDecoration(
-        color: const Color(0xFFF81945).withValues(alpha: 0.1),
+        color: AppLightSurface.primaryText.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFFF81945).withValues(alpha: 0.3),
+          color: AppLightSurface.primaryText.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(icon, color: const Color(0xFFF81945), size: 18),
+          Icon(icon, color: AppLightSurface.primaryText, size: 18),
           const SizedBox(width: 8),
           Text(
             label,
             style: TextStyle(
-              color: Color(0xFFF81945),
+              color: AppLightSurface.primaryText,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -682,7 +682,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
               height: 46,
               decoration: BoxDecoration(
                 color: selected
-                    ? const Color(0xFFF81945)
+                    ? AppLightSurface.primaryText
                     : AppLightSurface.cardFill,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
@@ -728,13 +728,13 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           _buildPaymentOption(
             'Google Pay',
             FontAwesomeIcons.google,
-            const Color(0xFF4285F4),
+            AppLightSurface.primaryText,
           ),
         const SizedBox(height: 12),
         _buildPaymentOption(
           'Credit / Debit Card',
           Icons.credit_card_rounded,
-          const Color(0xFFFACC15),
+          AppLightSurface.primaryText,
         ),
         AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
@@ -761,7 +761,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected
-                ? const Color(0xFFF81945)
+                ? AppLightSurface.primaryText
                 : AppLightSurface.cardFill,
             width: 1.5,
           ),
@@ -797,7 +797,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 shape: BoxShape.circle,
                 border: Border.all(
                   color: selected
-                      ? const Color(0xFFF81945)
+                      ? AppLightSurface.primaryText
                       : AppLightSurface.border,
                   width: 2,
                 ),
@@ -809,7 +809,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                         height: 11,
                         decoration: const BoxDecoration(
                           shape: BoxShape.circle,
-                          color: Color(0xFFF81945),
+                          color: AppLightSurface.primaryText,
                         ),
                       ),
                     )
@@ -871,7 +871,7 @@ class _AddFundsScreenState extends State<AddFundsScreen> {
                 height: 20,
                 decoration: BoxDecoration(
                   color: _saveCardInfo
-                      ? const Color(0xFFF81945)
+                      ? AppLightSurface.primaryText
                       : AppLightSurface.divider,
                   borderRadius: BorderRadius.circular(6),
                 ),

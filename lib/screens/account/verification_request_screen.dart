@@ -250,7 +250,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
                         ElevatedButton(
                           onPressed: requestLocked || _submitting ? null : _submit,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFFF81945),
+                            backgroundColor: AppLightSurface.primaryText,
                             foregroundColor: Colors.white,
                             minimumSize: const Size(double.infinity, 48),
                             shape: RoundedRectangleBorder(
@@ -342,7 +342,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
         ),
         focusedBorder: const OutlineInputBorder(
           borderRadius: BorderRadius.all(Radius.circular(12)),
-          borderSide: BorderSide(color: Color(0xFFF81945), width: 1.2),
+          borderSide: BorderSide(color: AppLightSurface.primaryText, width: 1.2),
         ),
       ),
     );

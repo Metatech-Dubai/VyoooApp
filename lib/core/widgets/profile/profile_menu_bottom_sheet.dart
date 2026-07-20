@@ -10,8 +10,6 @@ Future<void> showProfileMenuBottomSheet(
   required VoidCallback onVyoooCoin,
   required VoidCallback onRevenue,
   required VoidCallback onSettings,
-  required VoidCallback onMusicLibrary,
-  required VoidCallback onUploadStreamVideos,
   required VoidCallback onSwitchAccounts,
   required VoidCallback onLogout,
 }) {
@@ -24,8 +22,6 @@ Future<void> showProfileMenuBottomSheet(
     onRevenue: onRevenue,
     onOrders: onVyoooCoin,
     onSettings: onSettings,
-    onMusicLibrary: onMusicLibrary,
-    onUploadStreamVideos: onUploadStreamVideos,
     onSwitchAccounts: onSwitchAccounts,
     onPrivacy: onSettings,
     onLogout: onLogout,

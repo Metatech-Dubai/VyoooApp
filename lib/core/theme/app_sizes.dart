@@ -21,8 +21,8 @@ abstract final class AppSizes {
   static const double authLogoHeight = 40;
   static const double feedLogoHeight = 28;
 
-  /// Settings / account inner app bar — compact wordmark on the right.
-  static const double settingsInnerLogoHeight = 20;
+  /// Settings / account inner app bar — onboarding SVG wordmark on the right.
+  static const double settingsInnerLogoHeight = 28;
 
   /// Nav tab chip height — room for DM Sans 15px descenders (g, y).
   static const double feedTabChipHeight = 33;

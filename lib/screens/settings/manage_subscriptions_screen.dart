@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
 import 'package:provider/provider.dart';
-import '../../../core/theme/app_gradients.dart';
 import '../../core/models/app_user_model.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/creator_subscription_service.dart';
@@ -128,7 +127,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                                       isActive ? 'Managed by app store' : null,
                                   image: avatarUrl,
                                   statusColor: isActive
-                                      ? const Color(0xFFF81945)
+                                      ? AppLightSurface.primaryText
                                       : AppLightSurface.border,
                                   isCancelled: !isActive,
                                   onChangePlan: () {
@@ -170,7 +169,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                                       : null,
                                   image: record.creatorAvatarUrl,
                                   statusColor: record.isActive
-                                      ? const Color(0xFFF81945)
+                                      ? AppLightSurface.primaryText
                                       : AppLightSurface.border,
                                   isPaused: record.isPaused,
                                   isCancelled: record.isCancelled,
@@ -262,7 +261,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: selected ? const Color(0xFFF81945) : AppLightSurface.border,
+                    color: selected ? AppLightSurface.primaryText : AppLightSurface.border,
                     width: 1,
                   ),
                 ),
@@ -488,14 +487,14 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          gradient: AppGradients.vrGetStartedButtonGradient,
+          color: AppLightSurface.primaryText,
           borderRadius: BorderRadius.circular(10),
         ),
         alignment: Alignment.center,
         child: Text(
           label,
-          style: TextStyle(
-                    color: AppLightSurface.primaryText,
+          style: const TextStyle(
+            color: Colors.white,
             fontSize: 14,
             fontWeight: FontWeight.w700,
           ),
@@ -629,7 +628,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                         child: const Text(
                           'Yes, Remove',
                           style: TextStyle(
-                            color: Color(0xFFF81945),
+                            color: AppLightSurface.primaryText,
                             fontWeight: FontWeight.w700,
                           ),
                         ),
@@ -762,7 +761,7 @@ class _ManageSubscriptionsScreenState extends State<ManageSubscriptionsScreen> {
                         child: const Text(
                           'Yes, Resume',
                           style: TextStyle(
-                            color: Color(0xFFF81945),
+                            color: AppLightSurface.primaryText,
                             fontWeight: FontWeight.w700,
                           ),
                         ),

@@ -288,7 +288,7 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
                 padding: EdgeInsets.only(left: 20, right: 12),
                 child: Icon(
                   Icons.lock_rounded,
-                  color: Color(0xFFF81945),
+                  color: AppLightSurface.primaryText,
                   size: 20,
                 ),
               ),

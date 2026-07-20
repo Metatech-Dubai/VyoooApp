@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/parental_consent_service.dart';
 import '../../core/services/user_service.dart';
@@ -422,7 +421,7 @@ class _ParentalApprovalsScreenState extends State<ParentalApprovalsScreen> {
                                     Expanded(
                                       child: FilledButton(
                                         style: FilledButton.styleFrom(
-                                          backgroundColor: AppColors.brandPink,
+                                          backgroundColor: AppLightSurface.primaryText,
                                         ),
                                         onPressed: busy ? null : () => _approve(doc.id),
                                         child: busy

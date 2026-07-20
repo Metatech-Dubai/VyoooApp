@@ -5,7 +5,8 @@ import '../../theme/app_spacing.dart';
 import '../../theme/app_typography.dart';
 import '../vyooo_brand_logo.dart';
 
-/// Back + title (left) and [VyoooBrandLogo] (right) for settings/account sub-screens.
+/// Back + title (left) and onboarding [VyoooBrandLogo] (right) for all
+/// settings/account sub-screens that use this bar.
 class SettingsInnerAppBar extends StatelessWidget {
   const SettingsInnerAppBar({
     super.key,
@@ -61,6 +62,7 @@ class SettingsInnerAppBar extends StatelessWidget {
           ],
           if (showLogo) ...[
             const SizedBox(width: AppSpacing.sm),
+            // Same SVG wordmark as onboarding (`VyoooBrandLogo.onboarding`).
             const VyoooBrandLogo.innerHeader(),
           ],
         ],

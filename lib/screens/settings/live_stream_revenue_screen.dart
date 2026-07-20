@@ -249,7 +249,7 @@ class _ShortDetailRow extends StatelessWidget {
               TextSpan(
                 text: highlight,
                 style: TextStyle(
-                  color: Color(0xFFF43F5E),
+                  color: AppLightSurface.primaryText,
                   fontSize: 14,
                   fontWeight: FontWeight.w800,
                 ),

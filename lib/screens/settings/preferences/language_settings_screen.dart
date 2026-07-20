@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/services/local_app_preferences_service.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../../../core/widgets/settings/settings_page_shell.dart';
+import '../../../core/theme/app_light_surface.dart';
 
 class LanguageSettingsScreen extends StatefulWidget {
   const LanguageSettingsScreen({super.key});
@@ -66,7 +67,7 @@ class _LanguageSettingsScreenState extends State<LanguageSettingsScreen> {
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
                 trailing: _selected == entries[i].key
-                    ? const Icon(Icons.check_rounded, color: Color(0xFFF81945))
+                    ? const Icon(Icons.check_rounded, color: AppLightSurface.primaryText)
                     : null,
                 onTap: () => _select(entries[i].key),
               ),

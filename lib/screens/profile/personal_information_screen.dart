@@ -1,9 +1,9 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
-import '../../core/constants/app_colors.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/user_service.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/settings/settings_inner_app_bar.dart';
@@ -141,7 +141,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         child: const Text(
                           'Done',
                           style: TextStyle(
-                            color: Color(0xFFDE106B),
+                            color: AppLightSurface.primaryText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -199,7 +199,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                         child: const Text(
                           'Done',
                           style: TextStyle(
-                            color: Color(0xFFDE106B),
+                            color: AppLightSurface.primaryText,
                             fontWeight: FontWeight.w600,
                           ),
                         ),
@@ -403,13 +403,13 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                 height: 18,
                 child: CircularProgressIndicator(
                   strokeWidth: 2,
-                  color: Color(0xFFDE106B),
+                  color: AppLightSurface.primaryText,
                 ),
               )
             : const Text(
                 'Save',
                 style: TextStyle(
-                  color: Color(0xFFDE106B),
+                  color: AppLightSurface.primaryText,
                   fontWeight: FontWeight.w600,
                   fontSize: 16,
                 ),
@@ -422,7 +422,7 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
     return const Padding(
       padding: EdgeInsets.only(top: 64),
       child: Center(
-        child: CircularProgressIndicator(color: Color(0xFFDE106B)),
+        child: CircularProgressIndicator(color: AppLightSurface.primaryText),
       ),
     );
   }
@@ -507,17 +507,17 @@ class _PersonalInformationScreenState extends State<PersonalInformationScreen> {
                   }
                 });
               },
-              selectedColor: AppColors.brandPink.withValues(alpha: 0.2),
+              selectedColor: AppLightSurface.primaryText.withValues(alpha: 0.2),
               backgroundColor: ProfileFigmaTokens.cardBackground,
-              checkmarkColor: const Color(0xFFDE106B),
+              checkmarkColor: AppLightSurface.primaryText,
               labelStyle: TextStyle(
                 color: isSelected
-                    ? const Color(0xFFDE106B)
+                    ? AppLightSurface.primaryText
                     : ProfileFigmaTokens.primaryText,
               ),
               side: BorderSide(
                 color: isSelected
-                    ? const Color(0xFFDE106B)
+                    ? AppLightSurface.primaryText
                     : ProfileFigmaTokens.profileFollowingBorder,
               ),
             );
@@ -591,7 +591,7 @@ class _EditableFieldRow extends StatelessWidget {
             borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
           ),
           focusedBorder: const UnderlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFFDE106B)),
+            borderSide: BorderSide(color: AppLightSurface.primaryText),
           ),
         ),
       ),
@@ -634,7 +634,7 @@ class _DatePickerFieldRow extends StatelessWidget {
                 borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
               ),
               focusedBorder: const UnderlineInputBorder(
-                borderSide: BorderSide(color: Color(0xFFDE106B)),
+                borderSide: BorderSide(color: AppLightSurface.primaryText),
               ),
             ),
           ),
@@ -660,7 +660,7 @@ class _AccountTypeRow extends StatelessWidget {
           borderSide: BorderSide(color: ProfileFigmaTokens.profileFollowingBorder),
         ),
         focusedBorder: UnderlineInputBorder(
-          borderSide: BorderSide(color: Color(0xFFDE106B)),
+          borderSide: BorderSide(color: AppLightSurface.primaryText),
         ),
       ),
       child: DropdownButtonHideUnderline(
