@@ -6,6 +6,30 @@ import 'package:flutter/services.dart';
 /// How the phone connects to the Insta360 camera.
 enum Insta360ConnectType { usb, wifi }
 
+/// Outcome of a [Insta360LiveService.connect] call.
+///
+/// `connect` is only the *start* of the handshake — the SDK's `openCamera()` is asynchronous, so
+/// [connecting] means "the open was dispatched", not "connected". The real outcome arrives later as
+/// a `connection` or `error` event.
+enum Insta360ConnectOutcome {
+  /// The SDK open was dispatched; wait for the connection event.
+  connecting,
+
+  /// The Android USB permission dialog is up; the open runs once the user accepts.
+  /// Expect a longer wait than a normal connect (the user has to answer a system dialog).
+  awaitingUsbPermission,
+
+  /// A session is already open — the caller must NOT re-enter (a second `openCamera()` at a camera
+  /// mid-session is what leaves the stuck session behind SDK error 4403).
+  alreadyConnected,
+
+  /// A connect is already in flight (e.g. a double-tap on the picker). Same rule as above.
+  alreadyConnecting,
+
+  /// Rejected up-front. [Insta360State.lastError] carries a human-readable cause + remedy.
+  failed,
+}
+
 /// A single extracted, stitched ERP frame (used by the debug Agora preview).
 @immutable
 class Insta360Frame {
@@ -123,15 +147,35 @@ class Insta360LiveService {
     return ok;
   }
 
-  Future<bool> connect(Insta360ConnectType type) async {
+  /// Ask the native bridge to open the camera.
+  ///
+  /// Never throws: a pre-flight rejection (no USB device, not on the camera's Wi-Fi, unsupported
+  /// model) comes back as [Insta360ConnectOutcome.failed] with the remedy in [Insta360State.lastError],
+  /// immediately — not after a timeout.
+  Future<Insta360ConnectOutcome> connect(Insta360ConnectType type) async {
     try {
-      final ok = await _methods.invokeMethod<bool>('connect', {
+      final raw = await _methods.invokeMethod<Map<dynamic, dynamic>>('connect', {
         'type': type == Insta360ConnectType.wifi ? 'wifi' : 'usb',
       });
-      return ok ?? false;
+      switch (raw?['status'] as String?) {
+        case 'awaiting_usb_permission':
+          return Insta360ConnectOutcome.awaitingUsbPermission;
+        case 'already_connected':
+          return Insta360ConnectOutcome.alreadyConnected;
+        case 'already_connecting':
+          return Insta360ConnectOutcome.alreadyConnecting;
+        case 'connecting':
+          return Insta360ConnectOutcome.connecting;
+        default:
+          _update(state.value.copyWith(
+            lastError: 'Could not start the 360 camera connection.',
+          ));
+          return Insta360ConnectOutcome.failed;
+      }
     } on PlatformException catch (e) {
+      // Native already maps SDK/pre-flight codes to a human cause + remedy (T3).
       _update(state.value.copyWith(lastError: e.message ?? e.code));
-      return false;
+      return Insta360ConnectOutcome.failed;
     }
   }
 
@@ -233,9 +277,18 @@ class Insta360LiveService {
           frameCount: (m['count'] as num?)?.toInt() ?? state.value.frameCount,
         ));
       case 'error':
+        // Native maps the raw SDK code to a cause + remedy (T3) and keeps the code in logcat.
+        // Fall back to the raw code only if an older/native path sent no message.
+        final message = m['message'] as String?;
         _update(state.value.copyWith(
-          lastError: 'native error: ${m['scope']} ${m['code']}',
+          lastError: message ?? 'native error: ${m['scope']} ${m['code']}',
         ));
+      case 'connectRetry':
+        // Informational: the native side is retrying a transient handshake failure with backoff.
+        debugPrint(
+          'Insta360: retrying connect after error ${m['code']} '
+          '(attempt ${m['attempt']}/${m['max']})',
+        );
       default:
         break;
     }

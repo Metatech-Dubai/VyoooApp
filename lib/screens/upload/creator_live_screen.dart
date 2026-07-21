@@ -136,6 +136,20 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   void _onInstaState() {
     final connected = _insta.state.value.connected;
     if (connected) _instaConnectTimer?.cancel();
+
+    // Idempotent timeout path: a connection that lands *after* we already gave up (the connect
+    // timeout ran _disableInsta360, or the user switched back to the phone) would otherwise leave
+    // the camera half-open — and a half-open session is exactly what later reports 4403 ("camera
+    // due to occupied", clearable only by power-cycling). Close it fully instead of adopting it.
+    if (connected &&
+        _cameraSource != _CameraSource.insta360 &&
+        !_insta360Switching) {
+      _instaWasConnected = false;
+      _insta.disconnect().catchError((_) {});
+      if (mounted) setState(() {});
+      return;
+    }
+
     final droppedMidSession = _cameraSource == _CameraSource.insta360 &&
         _instaWasConnected &&
         !connected &&
@@ -470,12 +484,33 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       // BLE discovery + connect permissions (Wi-Fi/USB control both rely on these on 12+).
       await Permission.bluetoothScan.request();
       await Permission.bluetoothConnect.request();
+      if (type == Insta360ConnectType.wifi) {
+        // Android only reveals the joined SSID to apps holding a location permission. Without it the
+        // native side cannot tell the camera's AP from the home router (the mis-bind that fails with
+        // -214 ~15 s later), so it falls back to connecting blind. Ask, but never block on it.
+        await Permission.locationWhenInUse.request();
+      }
 
-      final ok = await _insta.connect(type);
-      if (!ok) {
-        // Surfaces the native reason, e.g. "Join the camera's Wi-Fi … in Settings, then try again."
-        _showToast(_insta.state.value.lastError ?? 'Could not connect to the 360 camera');
-        return;
+      final outcome = await _insta.connect(type);
+      switch (outcome) {
+        case Insta360ConnectOutcome.failed:
+          // Native pre-flight rejected it up-front with an actionable reason, e.g. "Join your
+          // camera's Wi-Fi network …" or "Camera is busy. Please power-cycle the camera".
+          _showToast(_insta.state.value.lastError ?? 'Could not connect to the 360 camera');
+          // T7/AC7: never return from a failed connect still bound to the camera's network.
+          await _disableInsta360();
+          return;
+        case Insta360ConnectOutcome.alreadyConnecting:
+          // A connect is already in flight (double-tap on the picker). Re-entering openCamera() is
+          // what leaves the stuck session behind 4403 — so just wait for the one in progress.
+          _showToast('Already connecting to the 360 camera…');
+          return;
+        case Insta360ConnectOutcome.alreadyConnected:
+          // The SDK already holds a session; adopt it rather than opening a second one.
+          break;
+        case Insta360ConnectOutcome.connecting:
+        case Insta360ConnectOutcome.awaitingUsbPermission:
+          break;
       }
 
       // Route the Insta360 ERP frames into Agora as the video source instead of the phone camera.
@@ -493,7 +528,11 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         const VideoEncoderConfiguration(
           dimensions: VideoDimensions(width: 1920, height: 960),
           frameRate: 15,
-          bitrate: 6000,
+          // Lowered 6000 -> 3500 for testing: keeps the full 1920x960 (2K) resolution while ~halving
+          // the downlink demand, so viewers who couldn't sustain ~6 Mbps can receive the feed. The
+          // forward mask blacks out the rear ~44% (near-zero entropy), so the visible region still
+          // gets most of the budget. Resolution is unchanged; only the bitrate cap moved.
+          bitrate: 3500,
           orientationMode: OrientationMode.orientationModeFixedLandscape,
           degradationPreference: DegradationPreference.maintainResolution,
         ),
@@ -508,12 +547,19 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
       // timeout so a camera that never opens falls back to the phone instead of hanging.
       _instaWasConnected = false;
       _instaConnectTimer?.cancel();
-      _instaConnectTimer = Timer(const Duration(seconds: 15), () {
+      // The old flat 15 s was too short once the native side (a) waits for the USB permission dialog
+      // and (b) retries a transient handshake failure with backoff — it aborted attempts that were
+      // still healthy. The "not on the camera's Wi-Fi" case no longer needs this timer at all: it is
+      // rejected up-front by the SSID gate (AC3), so this is now purely a last-resort safety net.
+      final timeout = outcome == Insta360ConnectOutcome.awaitingUsbPermission
+          ? const Duration(seconds: 45) // user has to answer a system dialog
+          : const Duration(seconds: 30);
+      _instaConnectTimer = Timer(timeout, () {
         if (mounted &&
             _cameraSource == _CameraSource.insta360 &&
             !_insta.state.value.connected) {
           _showToast(_insta.state.value.lastError ??
-              '360 camera didn’t start — check it’s on and its Wi-Fi is joined');
+              '360 camera didn’t start — check it’s on, and that the cable or its Wi-Fi is connected');
           _disableInsta360();
         }
       });
