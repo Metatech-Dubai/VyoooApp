@@ -217,6 +217,12 @@ class Insta360LiveService {
   Future<void> setTemporalEnabled(bool enabled) =>
       _methods.invokeMethod<void>('setTemporalEnabled', {'enabled': enabled});
 
+  /// Toggle the M3 heuristic AI decision layer. Off = deterministic fall-open. Its signals and cost
+  /// are read via [getPipelineMetrics] (`aiEnabled`, `aiMotion`, `aiRecommendedScale`,
+  /// `aiOverheadMs`, …). Used for A/B demonstration of adaptive behavior.
+  Future<void> setAiEnabled(bool enabled) =>
+      _methods.invokeMethod<void>('setAiEnabled', {'enabled': enabled});
+
   /// Point the interactive 360 view at an absolute orientation, in degrees. Drives the SDK
   /// player's `setYaw`/`setPitch` so the host can drag to look around. Fire-and-forget.
   Future<void> setViewOrientation(double yaw, double pitch) {
