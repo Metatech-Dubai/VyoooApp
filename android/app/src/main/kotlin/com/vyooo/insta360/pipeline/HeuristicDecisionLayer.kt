@@ -65,8 +65,13 @@ class HeuristicDecisionLayer(private val hints: MutableHints) {
      */
     @Volatile var enabled: Boolean = true
 
-    /** Apply the computed spatial-reduction recommendation to the hint (default off = mapping only). */
-    @Volatile var applyPerceptual: Boolean = false
+    /**
+     * Emit the computed spatial-reduction recommendation as a live hint (M3: "influences spatial
+     * reduction behavior"). **On** → [DownscaleStage] maps the signal to a resolution tier, so the AI
+     * genuinely governs the spatial reduction. Off → the hint is null and the stage pins the full 2K
+     * tier (the deterministic arm for A/B KPI capture).
+     */
+    @Volatile var applyPerceptual: Boolean = true
 
     /** Apply the computed forward orientation to the hint (default off = mapping only). */
     @Volatile var applyOrientation: Boolean = false

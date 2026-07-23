@@ -43,6 +43,7 @@ object Insta360FrameSink {
     @Volatile var streamingEnabled: Boolean = false
 
     // ── The capture-side optimisation pipeline (single source of truth) ──────────
+    private val downscale = DownscaleStage()
     private val forwardMask = ForwardMaskStage()
     private val temporalDedup = TemporalDedupStage()
 
@@ -53,7 +54,7 @@ object Insta360FrameSink {
     val decisionLayer = HeuristicDecisionLayer(hints)
 
     val pipeline = FramePipeline(
-        listOf(DownscaleStage(), PanoramaDetectStage(), forwardMask, temporalDedup),
+        listOf(downscale, PanoramaDetectStage(), forwardMask, temporalDedup),
         hints,
     )
 
@@ -70,6 +71,15 @@ object Insta360FrameSink {
     /** Live AI decision-layer toggle (off = deterministic fall-open) — for A/B / KPI capture. */
     fun setAiEnabled(enabled: Boolean) {
         decisionLayer.enabled = enabled
+    }
+
+    /**
+     * Live AI-driven **spatial** reduction toggle (M3: `perceptualScale` → downscale tier). Off = the
+     * stage pins the full 2K tier, so this is the A/B arm for the spatial-influence KPI.
+     */
+    fun setSpatialAdaptiveEnabled(enabled: Boolean) {
+        decisionLayer.applyPerceptual = enabled
+        downscale.adaptiveEnabled = enabled
     }
 
     private var count: Long = 0
@@ -97,6 +107,7 @@ object Insta360FrameSink {
         lastTransmitNs = 0
         lastTemporalLogNs = 0; lastLogSeen = 0; lastLogKept = 0; lastLogSpans = 0
         pipeline.metrics.reset()
+        downscale.reset()
         temporalDedup.reset()
         decisionLayer.reset()
     }
@@ -107,6 +118,7 @@ object Insta360FrameSink {
         m["fps"] = lastFps
         m["framesOut"] = count
         m.putAll(pipeline.metrics.snapshot())
+        m.putAll(downscale.stats())
         m.putAll(temporalDedup.stats())
         m.putAll(decisionLayer.stats())
         return m
@@ -141,6 +153,9 @@ object Insta360FrameSink {
         val spans = ai["aiMotionSpans"] as Long
         val spansPerSec = (spans - lastLogSpans) / secs
         lastLogSpans = spans
+        val ds = downscale.stats()
+        val stageMs = pipeline.metrics.snapshot()["stagesMs"] as? Map<*, *>
+        val downscaleMs = (stageMs?.get("Downscale") as? Double) ?: 0.0
         Log.i(
             TAG,
             "temporal enabled=${s["temporalEnabled"]} " +
@@ -157,7 +172,14 @@ object Insta360FrameSink {
                 "aiTheta=${"%.1f".format(ai["aiThetaDeg"] as Float)} " +
                 "aiSpans=$spans (${"%.1f".format(spansPerSec)}/s) " +
                 "aiDecisions=${ai["aiDecisions"]} " +
-                "aiMs=${"%.2f".format(ai["aiOverheadMs"] as Double)}",
+                "aiMs=${"%.2f".format(ai["aiOverheadMs"] as Double)} | " +
+                // M3 spatial reduction: the tier the AI actually drove the frame to, the pixel ratio
+                // vs full 2K, switch count, and the resample cost (0 at full tier = zero-copy path).
+                "spatial=${ds["spatialAdaptive"]} " +
+                "res=${ds["spatialWidth"]}x${ds["spatialHeight"]} " +
+                "tierRatio=${"%.2f".format(ds["spatialTierRatio"] as Double)} " +
+                "switches=${ds["spatialSwitches"]} " +
+                "dsMs=${"%.2f".format(downscaleMs)}",
         )
     }
 
