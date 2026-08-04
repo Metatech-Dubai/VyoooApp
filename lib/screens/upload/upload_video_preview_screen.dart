@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:video_player/video_player.dart';
 
@@ -325,7 +327,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
   void _showQuitConfirmation() {
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF1E0A1E).withValues(alpha: 0.95),
+      backgroundColor: AppLightSurface.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -339,7 +341,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: Colors.white24,
+                  color: AppLightSurface.border,
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
@@ -347,7 +349,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
               const Text(
                 'Are you sure you want to quit uploading?',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -359,7 +361,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
                     'assets/vyooO_icons/Upload_Story_Live/continue_uploading.png',
                 onTap: () => Navigator.pop(ctx),
               ),
-              const Divider(color: Colors.white10, height: 1),
+              const Divider(color: AppLightSurface.divider, height: 1),
               _buildQuitOption(
                 label: 'Exit Editing',
                 iconPath:
@@ -393,13 +395,13 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
               iconPath,
               width: 24,
               height: 24,
-              color: isRed ? Colors.red : Colors.white,
+              color: isRed ? Colors.red : AppLightSurface.icon,
             ),
             const SizedBox(width: 16),
             Text(
               label,
               style: TextStyle(
-                color: isRed ? Colors.red : Colors.white,
+                color: isRed ? Colors.red : AppLightSurface.primaryText,
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),

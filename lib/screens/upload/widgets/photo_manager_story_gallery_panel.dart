@@ -4,7 +4,8 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:photo_manager/photo_manager.dart';
 
-import '../../../core/theme/app_gradients.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
 import '../all_albums_screen.dart';
 import '../photo_gallery_permission.dart';
@@ -264,7 +265,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(gradient: AppGradients.premiumDarkGradient),
+      color: AppLightSurface.background,
       child: SafeArea(
         child: Column(
           children: [
@@ -293,7 +294,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
                 'assets/vyooO_icons/Home/chevron_left.png',
                 width: 22,
                 height: 22,
-                color: Colors.white,
+                color: AppLightSurface.icon,
               ),
             ),
           ),
@@ -336,7 +337,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
                       height: 24,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        color: Colors.white,
+                        color: AppColors.brandMagenta,
                       ),
                     ),
                   )
@@ -348,13 +349,13 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
                         vertical: 8,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppColors.authBrandBurgundy,
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: const Text(
                         'Next',
                         style: TextStyle(
-                          color: Colors.black,
+                          color: Colors.white,
                           fontWeight: FontWeight.w700,
                           fontSize: 14,
                         ),
@@ -375,7 +376,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
           child: Text(
             'You already have 10 photos.',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+            style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 16),
           ),
         ),
       );
@@ -392,7 +393,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
                 _permissionError!,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppLightSurface.primaryText,
                   fontSize: 15,
                 ),
               ),
@@ -403,7 +404,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
                 'then return here.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.55),
+                  color: AppLightSurface.secondaryText,
                   fontSize: 13,
                   height: 1.35,
                 ),
@@ -411,8 +412,8 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
               const SizedBox(height: AppSpacing.lg),
               FilledButton(
                 style: FilledButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
+                  backgroundColor: AppColors.authBrandBurgundy,
+                  foregroundColor: Colors.white,
                   minimumSize: const Size(200, 48),
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -428,14 +429,14 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
               const SizedBox(height: AppSpacing.sm),
               TextButton(
                 style: TextButton.styleFrom(
-                  foregroundColor: Colors.white,
+                  foregroundColor: AppLightSurface.primaryText,
                   minimumSize: const Size(200, 48),
                 ),
                 onPressed: _loading ? null : _loadGallery,
                 child: const Text(
                   'Try again',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppLightSurface.primaryText,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -447,7 +448,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
     }
     if (_loading && _assets.isEmpty) {
       return const Center(
-        child: CircularProgressIndicator(color: Colors.white),
+        child: CircularProgressIndicator(color: AppColors.brandMagenta),
       );
     }
     if (_assets.isEmpty) {
@@ -455,7 +456,7 @@ class _PhotoManagerStoryGalleryPanelState extends State<PhotoManagerStoryGallery
         child: Text(
           'No photos or videos',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: AppLightSurface.secondaryText,
             fontSize: 16,
           ),
         ),
@@ -532,13 +533,13 @@ class _GalleryThumbnail extends StatelessWidget {
           return Image.memory(snapshot.data!, fit: BoxFit.cover);
         }
         return Container(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: AppLightSurface.border,
           child: Center(
             child: Image.asset(
               'assets/vyooO_icons/Upload_Story_Live/gallery.png',
               width: 40,
               height: 40,
-              color: Colors.white38,
+              color: AppLightSurface.mutedText,
             ),
           ),
         );
@@ -595,13 +596,13 @@ class _GalleryAlbumPopup extends StatelessWidget {
   Widget build(BuildContext context) {
     return PopupMenuButton<String>(
       offset: const Offset(0, 44),
-      color: const Color(0xFF1E0A1E).withValues(alpha: 0.98),
+      color: AppLightSurface.background,
       elevation: 4,
       shadowColor: Colors.black54,
       surfaceTintColor: Colors.transparent,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+        side: const BorderSide(color: AppLightSurface.border),
       ),
       itemBuilder: (context) => [
         _buildPopupItem('Recents', Icons.photo_library_outlined),
@@ -617,7 +618,7 @@ class _GalleryAlbumPopup extends StatelessWidget {
             Text(
               value,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppLightSurface.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -625,7 +626,7 @@ class _GalleryAlbumPopup extends StatelessWidget {
             const SizedBox(width: 6),
             const Icon(
               Icons.keyboard_arrow_down_rounded,
-              color: Colors.white,
+              color: AppLightSurface.icon,
               size: 24,
             ),
           ],
@@ -640,12 +641,12 @@ class _GalleryAlbumPopup extends StatelessWidget {
       height: 48,
       child: Row(
         children: [
-          Icon(icon, size: 20, color: Colors.white.withValues(alpha: 0.9)),
+          Icon(icon, size: 20, color: AppLightSurface.secondaryText),
           const SizedBox(width: 14),
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 15,
               fontWeight: FontWeight.w500,
             ),

@@ -4,6 +4,8 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/widgets/app_network_avatar.dart';
 import '../models/call_session_model.dart';
 import '../services/call_signaling_service.dart';
@@ -244,14 +246,17 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return Scaffold(
-        backgroundColor: const Color(0xFF07010F),
+        backgroundColor: AppColors.chatBackground,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               const Icon(Icons.error_outline, color: Colors.red, size: 48),
               const SizedBox(height: 16),
-              Text(_error!, style: const TextStyle(color: Colors.white70)),
+              Text(
+                _error!,
+                style: const TextStyle(color: AppLightSurface.secondaryText),
+              ),
               const SizedBox(height: 24),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
@@ -265,14 +270,17 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
 
     if (_initializing) {
       return const Scaffold(
-        backgroundColor: Color(0xFF07010F),
+        backgroundColor: AppColors.chatBackground,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               CircularProgressIndicator(color: Color(0xFFDE106B)),
               SizedBox(height: 16),
-              Text('Connecting...', style: TextStyle(color: Colors.white70)),
+              Text(
+                'Connecting...',
+                style: TextStyle(color: AppLightSurface.secondaryText),
+              ),
             ],
           ),
         ),
@@ -280,7 +288,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
     }
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
+      backgroundColor: _isVideo ? Colors.black : AppColors.chatBackground,
       body: SafeArea(child: _isVideo ? _buildVideoUI() : _buildAudioUI()),
     );
   }
@@ -308,7 +316,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
           ),
           child: CircleAvatar(
             radius: 56,
-            backgroundColor: const Color(0xFF1A0A2E),
+            backgroundColor: AppLightSurface.cardFill,
             child: ClipOval(
               child: AppNetworkAvatar(
                 imageUrl: avatarUrl,
@@ -322,7 +330,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
         Text(
           _displayName,
           style: const TextStyle(
-            color: Colors.white,
+            color: AppLightSurface.primaryText,
             fontSize: 24,
             fontWeight: FontWeight.w600,
           ),
@@ -330,13 +338,13 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
         const SizedBox(height: 8),
         Text(
           statusText,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
+          style: const TextStyle(
+            color: AppLightSurface.secondaryText,
             fontSize: 16,
           ),
         ),
         const Spacer(flex: 3),
-        _buildControls(),
+        _buildControls(onVideo: false),
         const SizedBox(height: 40),
       ],
     );
@@ -351,7 +359,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
           const Center(
             child: Text(
               'Waiting for other participant...',
-              style: TextStyle(color: Colors.white54),
+              style: TextStyle(color: Colors.white70),
             ),
           )
         else if (remoteUids.length == 1)
@@ -406,7 +414,12 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
           ),
         ),
 
-        Positioned(bottom: 40, left: 0, right: 0, child: _buildControls()),
+        Positioned(
+          bottom: 40,
+          left: 0,
+          right: 0,
+          child: _buildControls(onVideo: true),
+        ),
       ],
     );
   }
@@ -437,7 +450,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
     );
   }
 
-  Widget _buildControls() {
+  Widget _buildControls({required bool onVideo}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
@@ -445,6 +458,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
           icon: _callService.micMuted ? Icons.mic_off : Icons.mic,
           label: _callService.micMuted ? 'Unmute' : 'Mute',
           active: _callService.micMuted,
+          onVideo: onVideo,
           onTap: () => _callService.toggleMic(),
         ),
         if (_isVideo)
@@ -454,6 +468,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
                 : Icons.videocam,
             label: 'Camera',
             active: _callService.cameraMuted,
+            onVideo: onVideo,
             onTap: () => _callService.toggleCamera(),
           ),
         if (_isVideo)
@@ -461,12 +476,14 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
             icon: Icons.cameraswitch,
             label: 'Flip',
             active: false,
+            onVideo: onVideo,
             onTap: () => _callService.switchCamera(),
           ),
         _controlButton(
           icon: _callService.speakerOn ? Icons.volume_up : Icons.hearing,
           label: _callService.speakerOn ? 'Speaker' : 'Earpiece',
           active: _callService.speakerOn,
+          onVideo: onVideo,
           onTap: () => _callService.toggleSpeaker(),
         ),
         _controlButton(
@@ -474,6 +491,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
           label: 'End',
           active: false,
           isEnd: true,
+          onVideo: onVideo,
           onTap: _endCall,
         ),
       ],
@@ -484,9 +502,25 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
     required IconData icon,
     required String label,
     required bool active,
+    required bool onVideo,
     required VoidCallback onTap,
     bool isEnd = false,
   }) {
+    final Color buttonColor;
+    if (isEnd) {
+      buttonColor = Colors.red;
+    } else if (onVideo) {
+      buttonColor = active ? Colors.white24 : Colors.white12;
+    } else {
+      buttonColor = active ? AppLightSurface.border : AppLightSurface.cardFill;
+    }
+    final iconColor = onVideo || isEnd
+        ? Colors.white
+        : AppLightSurface.primaryText;
+    final labelColor = onVideo
+        ? Colors.white.withValues(alpha: 0.7)
+        : AppLightSurface.secondaryText;
+
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -496,21 +530,20 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              color: isEnd
-                  ? Colors.red
-                  : active
-                  ? Colors.white24
-                  : Colors.white12,
+              color: buttonColor,
               shape: BoxShape.circle,
+              border: onVideo || isEnd
+                  ? null
+                  : Border.all(color: AppLightSurface.border),
             ),
-            child: Icon(icon, color: Colors.white, size: 28),
+            child: Icon(icon, color: iconColor, size: 28),
           ),
         ),
         const SizedBox(height: 6),
         Text(
           label,
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+            color: labelColor,
             fontSize: 11,
           ),
         ),

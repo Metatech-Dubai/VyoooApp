@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_light_surface.dart';
+
 /// Bottom sheet: brightness slider, then [onApply] with FFmpeg `eq` brightness in \([-1, 1]\).
 class ReelBrightnessSheet extends StatefulWidget {
   const ReelBrightnessSheet({
@@ -59,7 +61,7 @@ class _ReelBrightnessSheetState extends State<ReelBrightnessSheet> {
   Widget build(BuildContext context) {
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF1E0A1E),
+        color: AppLightSurface.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
@@ -77,7 +79,7 @@ class _ReelBrightnessSheetState extends State<ReelBrightnessSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppLightSurface.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -99,7 +101,7 @@ class _ReelBrightnessSheetState extends State<ReelBrightnessSheet> {
               const Text(
                 'Brightness',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                 ),
@@ -125,16 +127,16 @@ class _ReelBrightnessSheetState extends State<ReelBrightnessSheet> {
               ),
             ],
           ),
-          const Divider(color: Colors.white12, height: 1),
+          const Divider(color: AppLightSurface.divider, height: 1),
           const SizedBox(height: 20),
           Row(
             children: [
-              Icon(Icons.brightness_low, color: Colors.white.withValues(alpha: 0.7)),
+              const Icon(Icons.brightness_low, color: AppLightSurface.secondaryText),
               Expanded(
                 child: SliderTheme(
                   data: SliderThemeData(
                     activeTrackColor: _pink,
-                    inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
+                    inactiveTrackColor: AppLightSurface.border,
                     thumbColor: _pink,
                     overlayColor: _pink.withValues(alpha: 0.2),
                   ),
@@ -150,7 +152,7 @@ class _ReelBrightnessSheetState extends State<ReelBrightnessSheet> {
                   ),
                 ),
               ),
-              Icon(Icons.brightness_high, color: Colors.white.withValues(alpha: 0.7)),
+              const Icon(Icons.brightness_high, color: AppLightSurface.secondaryText),
             ],
           ),
           const SizedBox(height: 8),

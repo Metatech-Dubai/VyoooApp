@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_light_surface.dart';
+
 /// Bottom sheet: pick start/end of clip on a [RangeSlider], then [onApply].
 class ReelTrimSheet extends StatefulWidget {
   const ReelTrimSheet({
@@ -102,7 +104,7 @@ class _ReelTrimSheetState extends State<ReelTrimSheet> {
 
     return Container(
       decoration: const BoxDecoration(
-        color: Color(0xFF1E0A1E),
+        color: AppLightSurface.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: EdgeInsets.only(
@@ -120,7 +122,7 @@ class _ReelTrimSheetState extends State<ReelTrimSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppLightSurface.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -142,7 +144,7 @@ class _ReelTrimSheetState extends State<ReelTrimSheet> {
               const Text(
                 'Trim',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontWeight: FontWeight.w700,
                   fontSize: 15,
                 ),
@@ -168,13 +170,13 @@ class _ReelTrimSheetState extends State<ReelTrimSheet> {
               ),
             ],
           ),
-          const Divider(color: Colors.white12, height: 1),
+          const Divider(color: AppLightSurface.divider, height: 1),
           const SizedBox(height: 16),
           Text(
             'Start ${ReelTrimSheet.formatDuration(_startD)}  ·  End ${ReelTrimSheet.formatDuration(_endD)}',
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.85),
+              color: AppLightSurface.secondaryText,
               fontSize: 13,
             ),
           ),
@@ -183,7 +185,7 @@ class _ReelTrimSheetState extends State<ReelTrimSheet> {
             'Length ${ReelTrimSheet.formatDuration(_spanD)}',
             textAlign: TextAlign.center,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 14,
               fontWeight: FontWeight.w600,
             ),
@@ -196,7 +198,7 @@ class _ReelTrimSheetState extends State<ReelTrimSheet> {
               ),
               overlayShape: const RoundSliderOverlayShape(overlayRadius: 14),
               activeTrackColor: pink,
-              inactiveTrackColor: Colors.white.withValues(alpha: 0.25),
+              inactiveTrackColor: AppLightSurface.border,
               thumbColor: pink,
               overlayColor: pink.withValues(alpha: 0.2),
             ),

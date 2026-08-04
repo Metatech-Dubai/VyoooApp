@@ -77,7 +77,7 @@ class ViewOnceMessageWidget extends StatelessWidget {
         decoration: BoxDecoration(
           color: isSent
               ? AppColors.brandDeepMagenta.withValues(alpha: 0.7)
-              : const Color(0xFF2A1B2E),
+              : AppColors.chatIncomingBubble,
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(18),
             topRight: const Radius.circular(18),
@@ -104,7 +104,11 @@ class ViewOnceMessageWidget extends StatelessWidget {
                   icon,
                   color: canOpen
                       ? AppColors.brandMagenta
-                      : Colors.white.withValues(alpha: 0.5),
+                      : (isSent
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : AppColors.chatIncomingBubbleText.withValues(
+                              alpha: 0.5,
+                            )),
                   size: 20,
                 ),
                 const SizedBox(width: 8),
@@ -113,8 +117,14 @@ class ViewOnceMessageWidget extends StatelessWidget {
                     label,
                     style: TextStyle(
                       color: canOpen
-                          ? Colors.white
-                          : Colors.white.withValues(alpha: 0.5),
+                          ? (isSent
+                              ? Colors.white
+                              : AppColors.chatIncomingBubbleText)
+                          : (isSent
+                              ? Colors.white.withValues(alpha: 0.5)
+                              : AppColors.chatIncomingBubbleText.withValues(
+                                  alpha: 0.5,
+                                )),
                       fontSize: 14,
                       fontStyle: (isOpened || isExpired) ? FontStyle.italic : FontStyle.normal,
                     ),
@@ -135,7 +145,11 @@ class ViewOnceMessageWidget extends StatelessWidget {
                 Text(
                   'View once',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.35),
+                    color: isSent
+                        ? Colors.white.withValues(alpha: 0.35)
+                        : AppColors.chatIncomingBubbleText.withValues(
+                            alpha: 0.45,
+                          ),
                     fontSize: 10,
                   ),
                 ),
@@ -143,7 +157,11 @@ class ViewOnceMessageWidget extends StatelessWidget {
                 Text(
                   time,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: isSent
+                        ? Colors.white.withValues(alpha: 0.4)
+                        : AppColors.chatIncomingBubbleText.withValues(
+                            alpha: 0.5,
+                          ),
                     fontSize: 10,
                   ),
                 ),

@@ -433,14 +433,14 @@ class _BenefitsCard extends StatelessWidget {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
               decoration: BoxDecoration(
-                color: const Color(0xFF07010F),
+                color: AppLightSurface.background,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(color: AppLightSurface.border),
               ),
               child: const Text(
                 'Included with Subscription',
                 style: TextStyle(
-              color: AppLightSurface.primaryText,
+                  color: AppLightSurface.primaryText,
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
                 ),

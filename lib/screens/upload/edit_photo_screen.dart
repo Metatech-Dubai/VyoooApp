@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_light_surface.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:photo_manager/photo_manager.dart';
 
@@ -302,7 +304,7 @@ class _ExitSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        color: Color(0xFF1E0A1E),
+        color: AppLightSurface.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
@@ -312,7 +314,7 @@ class _ExitSheet extends StatelessWidget {
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.white24,
+              color: AppLightSurface.border,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -320,7 +322,7 @@ class _ExitSheet extends StatelessWidget {
           const Text(
             'Are you sure you want to quit uploading?',
             style: TextStyle(
-              color: Colors.white,
+              color: AppLightSurface.primaryText,
               fontSize: 16,
               fontWeight: FontWeight.w700,
             ),
@@ -328,10 +330,10 @@ class _ExitSheet extends StatelessWidget {
           ),
           const SizedBox(height: 24),
           ListTile(
-            leading: const Icon(Icons.edit_outlined, color: Colors.white),
+            leading: const Icon(Icons.edit_outlined, color: AppLightSurface.icon),
             title: const Text(
               'Continue Editing',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppLightSurface.primaryText),
             ),
             onTap: onContinue,
           ),

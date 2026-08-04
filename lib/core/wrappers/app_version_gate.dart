@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../services/app_version_update_service.dart';
+import '../theme/app_light_surface.dart';
 import '../widgets/app_update_prompt.dart';
 
 /// Runs version policy checks on launch and when the app resumes.
@@ -83,7 +84,7 @@ class _AppVersionGateState extends State<AppVersionGate>
   Widget build(BuildContext context) {
     if (_checking) {
       return const Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         body: Center(
           child: CircularProgressIndicator(color: Color(0xFFDE106B)),
         ),

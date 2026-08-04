@@ -66,7 +66,7 @@ class _TwoFactorScreenState extends State<TwoFactorScreen> {
   Future<void> _openCountryPicker() async {
     final picked = await showModalBottomSheet<_CountryDial>(
       context: context,
-      backgroundColor: const Color(0xFF1A0A24),
+      backgroundColor: AppLightSurface.background,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),

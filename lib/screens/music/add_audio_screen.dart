@@ -4,6 +4,7 @@ import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/mock/mock_music_data.dart';
 import '../../core/services/jamendo_service.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_spacing.dart';
 import 'add_audio_trim_screen.dart';
 
@@ -120,9 +121,9 @@ class _AddAudioScreenState extends State<AddAudioScreen> {
       backgroundColor: Colors.transparent,
       body: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF1E0A1E).withValues(alpha: 0.98),
+          color: AppLightSurface.background,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+          border: Border.all(color: AppLightSurface.border),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -146,22 +147,22 @@ class _AddAudioScreenState extends State<AddAudioScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(10),
         ),
         child: TextField(
           controller: _searchController,
           onChanged: _search,
-          style: const TextStyle(color: Colors.white, fontSize: 13),
+          style: const TextStyle(color: AppLightSurface.primaryText, fontSize: 13),
           decoration: InputDecoration(
             hintText: 'Search Music',
-            hintStyle: TextStyle(
-              color: Colors.white.withValues(alpha: 0.35),
+            hintStyle: const TextStyle(
+              color: AppLightSurface.mutedText,
               fontSize: 13,
             ),
-            prefixIcon: Icon(
+            prefixIcon: const Icon(
               Icons.search_rounded,
-              color: Colors.white.withValues(alpha: 0.4),
+              color: AppLightSurface.mutedText,
               size: 20,
             ),
             border: InputBorder.none,
@@ -179,7 +180,7 @@ class _AddAudioScreenState extends State<AddAudioScreen> {
         height: 4,
         margin: const EdgeInsets.only(top: 12, bottom: 8),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.2),
+          color: AppLightSurface.border,
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -198,13 +199,13 @@ class _AddAudioScreenState extends State<AddAudioScreen> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 6),
               decoration: BoxDecoration(
-                color: isSelected ? _pink : Colors.white.withValues(alpha: 0.05),
+                color: isSelected ? _pink : AppLightSurface.cardFill,
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
                 _tabs[index],
                 style: TextStyle(
-                  color: isSelected ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                  color: isSelected ? Colors.white : AppLightSurface.secondaryText,
                   fontSize: 12,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 ),
@@ -229,8 +230,8 @@ class _AddAudioScreenState extends State<AddAudioScreen> {
           _selectedTabIndex == 2
               ? 'No saved tracks yet'
               : 'No tracks found',
-          style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.5),
+          style: const TextStyle(
+              color: AppLightSurface.mutedText,
               fontSize: 14),
         ),
       );
@@ -338,8 +339,8 @@ class _AddAudioScreenState extends State<AddAudioScreen> {
   Widget _placeholderArt() => Container(
         width: 48,
         height: 48,
-        color: Colors.white24,
-        child: const Icon(Icons.music_note, color: Colors.white),
+        color: AppLightSurface.cardFill,
+        child: const Icon(Icons.music_note, color: AppLightSurface.mutedText),
       );
 }
 
@@ -386,7 +387,7 @@ class _AddAudioListTile extends StatelessWidget {
                   Text(
                     track.title,
                     style: TextStyle(
-                      color: isSelected ? _pink : Colors.white,
+                      color: isSelected ? _pink : AppLightSurface.primaryText,
                       fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
@@ -399,12 +400,12 @@ class _AddAudioListTile extends StatelessWidget {
                         _buildEqualizerBars(isPlaying),
                         const SizedBox(width: 6),
                       ],
-                      Icon(Icons.north_east_rounded, size: 12, color: Colors.white.withValues(alpha: 0.45)),
+                      const Icon(Icons.north_east_rounded, size: 12, color: AppLightSurface.mutedText),
                       const SizedBox(width: 4),
                       Expanded(
                         child: Text(
                           '${track.artist} • ${track.duration}',
-                          style: TextStyle(color: Colors.white.withValues(alpha: 0.45), fontSize: 11),
+                          style: const TextStyle(color: AppLightSurface.secondaryText, fontSize: 11),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -417,7 +418,7 @@ class _AddAudioListTile extends StatelessWidget {
               onPressed: onBookmarkTap,
               icon: Icon(
                 isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-                color: Colors.white.withValues(alpha: 0.8),
+                color: AppLightSurface.secondaryText,
                 size: 20,
               ),
             ),
@@ -454,10 +455,10 @@ class _AddAudioListTile extends StatelessWidget {
         width: 52,
         height: 52,
         decoration: BoxDecoration(
-          color: Colors.white24,
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(6),
         ),
         child:
-            const Icon(Icons.music_note, color: Colors.white, size: 24),
+            const Icon(Icons.music_note, color: AppLightSurface.mutedText, size: 24),
       );
 }

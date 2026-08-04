@@ -643,23 +643,29 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1B2E),
+        backgroundColor: AppColors.chatBackground,
         title: const Text(
           'Delete message',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppLightSurface.primaryText),
         ),
         content: const Text(
           'Choose how to delete this message.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: AppLightSurface.secondaryText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppLightSurface.secondaryText),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, 'self'),
-            child: const Text('Delete for me'),
+            child: const Text(
+              'Delete for me',
+              style: TextStyle(color: AppLightSurface.primaryText),
+            ),
           ),
           if (canDeleteForEveryone)
             TextButton(
