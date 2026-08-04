@@ -173,7 +173,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -254,7 +254,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
 
   Widget _buildVideo() {
     return Container(
-      color: Colors.black,
+      color: AppLightSurface.background,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -273,7 +273,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
             _buildError()
           else
             const Center(
-              child: CircularProgressIndicator(color: Colors.white54),
+              child: CircularProgressIndicator(color: AppLightSurface.mutedText),
             ),
         ],
       ),
@@ -294,7 +294,7 @@ class _UploadVideoPreviewScreenState extends State<UploadVideoPreviewScreen>
           Text(
             'Could not load video',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: AppLightSurface.secondaryText,
               fontSize: 16,
             ),
           ),

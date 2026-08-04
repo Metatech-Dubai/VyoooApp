@@ -18,13 +18,13 @@ abstract final class AppSystemUi {
     setEdgeToEdgeOverlayStyle();
   }
 
-  /// Transparent system bars; icon brightness only (no deprecated bar colors on Android 15+).
+  /// Transparent system bars; dark icons for light app chrome.
   static void setEdgeToEdgeOverlayStyle() {
     SystemChrome.setSystemUIOverlayStyle(
       const SystemUiOverlayStyle(
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+        systemNavigationBarIconBrightness: Brightness.dark,
         systemNavigationBarContrastEnforced: false,
       ),
     );

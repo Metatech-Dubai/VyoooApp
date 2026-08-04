@@ -254,7 +254,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
-              backgroundColor: Colors.black,
+              backgroundColor: AppLightSurface.background,
               body: SafeArea(child: VrComingSoonView()),
             ),
           ),
@@ -264,7 +264,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
-              backgroundColor: Colors.black,
+              backgroundColor: AppLightSurface.background,
               body: WalletComingSoonView(),
             ),
           ),
@@ -274,7 +274,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
-              backgroundColor: Colors.black,
+              backgroundColor: AppLightSurface.background,
               body: WalletComingSoonView(),
             ),
           ),
@@ -284,7 +284,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
-              backgroundColor: Colors.black,
+              backgroundColor: AppLightSurface.background,
               body: WalletComingSoonView(),
             ),
           ),
@@ -294,7 +294,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
-              backgroundColor: Colors.black,
+              backgroundColor: AppLightSurface.background,
               body: RevenueComingSoonView(),
             ),
           ),
@@ -304,7 +304,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (_) => const Scaffold(
-              backgroundColor: Colors.black,
+              backgroundColor: AppLightSurface.background,
               body: WalletComingSoonView(),
             ),
           ),
@@ -1759,7 +1759,7 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
     final caption = ((currentReel?['caption'] as String?) ?? '').trim();
     final normalizedHandle = ProfileFigmaTokens.displayUsername(handle);
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         children: [
           PageView.builder(
@@ -1800,7 +1800,7 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
                 if (displayUrl.isNotEmpty) {
                   return SizedBox.expand(
                     child: ColoredBox(
-                      color: Colors.black,
+                      color: AppLightSurface.background,
                       child: Image.network(
                         displayUrl,
                         fit: BoxFit.contain,
@@ -1813,7 +1813,7 @@ class _ProfileReelFeedScreenState extends State<_ProfileReelFeedScreen> {
               final videoUrl = (reel['videoUrl'] as String?)?.trim() ?? '';
               if (videoUrl.isEmpty) {
                 return const SizedBox.expand(
-                  child: ColoredBox(color: Colors.black),
+                  child: ColoredBox(color: AppLightSurface.background),
                 );
               }
               return ReelItemWidget(

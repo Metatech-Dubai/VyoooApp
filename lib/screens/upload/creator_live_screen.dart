@@ -5,6 +5,8 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:share_plus/share_plus.dart';
@@ -356,7 +358,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                         color: const Color(0xFFFF2D55),
                         borderRadius: BorderRadius.circular(9),
                         border: Border.all(
-                          color: const Color(0xFF14001F),
+                          color: AppLightSurface.cardFill,
                           width: 1,
                         ),
                       ),
@@ -1017,7 +1019,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       resizeToAvoidBottomInset: false,
       body: Stack(
         fit: StackFit.expand,
@@ -1034,10 +1036,10 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
 
   Widget _buildBackground() {
     if (!_engineReady || !_showAgoraView || _engine == null) {
-      return Container(color: const Color(0xFF0A000F));
+      return Container(color: AppLightSurface.background);
     }
     if (_isVideoOff && _liveState == _LiveState.live) {
-      return Container(color: const Color(0xFF0A000F));
+      return Container(color: AppLightSurface.background);
     }
     return AgoraVideoView(
       key: ValueKey('creator_agora_$_engineVersion'),
@@ -1168,7 +1170,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen>
                 child: const Text(
                   'OFFLINE',
                   style: TextStyle(
-                    color: Colors.black,
+                    color: AppLightSurface.background,
                     fontSize: 11,
                     fontWeight: FontWeight.w800,
                     letterSpacing: 0.5,

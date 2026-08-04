@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_light_surface.dart';
+
 import '../../core/navigation/home_feed_chrome_controller.dart';
 import '../../core/platform/deferred_agora_ios.dart';
 import 'broadcast_live_feed_screen.dart' deferred as broadcast;
@@ -61,12 +63,12 @@ class _BroadcastTabHostState extends State<BroadcastTabHost> {
   @override
   Widget build(BuildContext context) {
     if (!widget.isActive) {
-      return const ColoredBox(color: Color(0xFF0A000F));
+      return const ColoredBox(color: AppLightSurface.background);
     }
 
     if (_loadError != null) {
       return ColoredBox(
-        color: const Color(0xFF0A000F),
+        color: AppLightSurface.background,
         child: Center(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -85,7 +87,7 @@ class _BroadcastTabHostState extends State<BroadcastTabHost> {
 
     if (!_libraryLoaded) {
       return const ColoredBox(
-        color: Color(0xFF0A000F),
+        color: AppLightSurface.background,
         child: Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),

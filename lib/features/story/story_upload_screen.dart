@@ -6,6 +6,8 @@ import 'dart:ui' as ui;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:flutter/services.dart';
 import 'package:image/image.dart' as img;
 import 'package:image_cropper/image_cropper.dart';
@@ -573,7 +575,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     await Navigator.of(context).push<void>(
       MaterialPageRoute<void>(
         builder: (ctx) => Scaffold(
-          backgroundColor: Colors.black,
+          backgroundColor: AppLightSurface.background,
           body: PhotoManagerStoryGalleryPanel(
             existingPhotoCount: existing,
             onBack: () => Navigator.of(ctx).pop(),
@@ -782,7 +784,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     final current = _imageEdits[_previewIdx].filter;
     final picked = await showModalBottomSheet<_StoryFilter>(
       context: context,
-      backgroundColor: const Color(0xFF151515),
+      backgroundColor: AppLightSurface.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -831,7 +833,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     final text = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF171717),
+        backgroundColor: AppLightSurface.cardFill,
         title: Text(
           hasText ? 'Edit Text' : 'Add Text',
           style: const TextStyle(color: Colors.white),
@@ -1231,7 +1233,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     final restore = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF171717),
+        backgroundColor: AppLightSurface.cardFill,
         title: const Text('Resume Draft?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'You have an unfinished story draft.',
@@ -1318,7 +1320,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     final choice = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF171717),
+        backgroundColor: AppLightSurface.cardFill,
         title: const Text('Leave Story?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Save a draft to finish later, or discard.',
@@ -1394,7 +1396,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     ];
     final picked = await showModalBottomSheet<String>(
       context: context,
-      backgroundColor: const Color(0xFF151515),
+      backgroundColor: AppLightSurface.background,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
       ),
@@ -1443,7 +1445,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
     final discard = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF171717),
+        backgroundColor: AppLightSurface.cardFill,
         title: const Text('Discard Video?', style: TextStyle(color: Colors.white)),
         content: const Text(
           'Your clips will be removed.',
@@ -1517,7 +1519,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         await _onVideoPopInvoked(didPop);
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         body: SafeArea(
           bottom: false,
         child: Column(
@@ -1660,25 +1662,25 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
 
   Widget _buildCameraView() {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
           if (_camPermDenied)
             Container(
-              color: Colors.black,
+              color: AppLightSurface.background,
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.camera_alt_rounded, color: Colors.white38, size: 64),
+                      const Icon(Icons.camera_alt_rounded, color: AppLightSurface.mutedText, size: 64),
                       const SizedBox(height: 16),
                       const Text(
                         'Camera access is required to take photos for your story.',
                         textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 14),
                       ),
                       const SizedBox(height: 20),
                       GestureDetector(
@@ -1704,18 +1706,18 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
             )
           else if (_camError != null)
             Container(
-              color: Colors.black,
+              color: AppLightSurface.background,
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 40),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.error_outline_rounded, color: Colors.white38, size: 56),
+                      const Icon(Icons.error_outline_rounded, color: AppLightSurface.mutedText, size: 56),
                       const SizedBox(height: 14),
                       const Text(
                         'Could not start camera.',
-                        style: TextStyle(color: Colors.white70, fontSize: 14),
+                        style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 14),
                         textAlign: TextAlign.center,
                       ),
                       const SizedBox(height: 20),
@@ -1744,9 +1746,9 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
             CameraPreview(_camCtrl!)
           else
             Container(
-              color: Colors.black,
+              color: AppLightSurface.background,
               child: const Center(
-                child: CircularProgressIndicator(color: Colors.white38, strokeWidth: 2),
+                child: CircularProgressIndicator(color: AppLightSurface.mutedText, strokeWidth: 2),
               ),
             ),
           Positioned(
@@ -2100,7 +2102,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
         await _confirmLeavePreview();
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         resizeToAvoidBottomInset: true,
         body: Stack(
           fit: StackFit.expand,
@@ -2118,7 +2120,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                     fit: StackFit.expand,
                     children: [
                       ColoredBox(
-                        color: Colors.black,
+                        color: AppLightSurface.background,
                         child: Center(
                           child: _buildEditedPreviewImage(
                             imageFile: _images[idx],
@@ -2479,7 +2481,7 @@ class _StoryUploadScreenState extends State<StoryUploadScreen>
                             final ok = await showDialog<bool>(
                               context: context,
                               builder: (ctx) => AlertDialog(
-                                backgroundColor: const Color(0xFF171717),
+                                backgroundColor: AppLightSurface.cardFill,
                                 title: const Text(
                                   'Start over?',
                                   style: TextStyle(color: Colors.white),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_light_surface.dart';
+
 import '../../core/models/reel_media_item.dart';
 import '../../core/models/video_360_metadata.dart';
 import '../../core/services/vr_video_cache_service.dart';
@@ -105,7 +107,7 @@ class _VrReelsFeedViewState extends State<VrReelsFeedView> {
       borderRadius: AppRadius.feedPostBottomRadius,
       clipBehavior: Clip.antiAlias,
       child: ColoredBox(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: PageView.builder(
           controller: _pageController,
           scrollDirection: Axis.vertical,
@@ -258,7 +260,7 @@ class _MissingMediaPlaceholder extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: Colors.black,
+      color: AppLightSurface.background,
       child: Center(
         child: Icon(
           Icons.videocam_off_outlined,
