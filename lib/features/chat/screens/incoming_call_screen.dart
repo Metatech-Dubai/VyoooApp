@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/widgets/app_network_avatar.dart';
 import '../models/call_session_model.dart';
 import '../services/call_signaling_service.dart';
@@ -128,7 +130,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
     final remoteUid = widget.callSession.callerId;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
+      backgroundColor: AppColors.chatBackground,
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -144,7 +146,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
               ),
               child: CircleAvatar(
                 radius: 56,
-                backgroundColor: const Color(0xFF1A0A2E),
+                backgroundColor: AppLightSurface.cardFill,
                 child: ClipOval(
                   child: AppNetworkAvatar(
                     imageUrl: avatar,
@@ -158,7 +160,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
             Text(
               name,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppLightSurface.primaryText,
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
               ),
@@ -170,8 +172,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
                   : isVideo
                   ? 'Incoming video call...'
                   : 'Incoming audio call...',
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.6),
+              style: const TextStyle(
+                color: AppLightSurface.secondaryText,
                 fontSize: 16,
               ),
             ),
@@ -233,8 +235,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen> {
         const SizedBox(height: 8),
         Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
+          style: const TextStyle(
+            color: AppLightSurface.secondaryText,
             fontSize: 13,
           ),
         ),

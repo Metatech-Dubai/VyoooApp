@@ -20,6 +20,7 @@ import 'core/services/feed_warmup_service.dart';
 import 'core/services/incoming_call_kit_service.dart';
 import 'core/services/push_messaging_service.dart';
 import 'core/subscription/subscription_controller.dart';
+import 'core/theme/app_light_surface.dart';
 import 'core/theme/app_padding.dart';
 import 'core/theme/app_theme.dart';
 import 'core/wrappers/app_version_gate.dart';
@@ -295,7 +296,7 @@ class _FirebaseInitErrorScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0015),
+      backgroundColor: AppLightSurface.background,
       body: SafeArea(
         child: Padding(
           padding: AppPadding.authFormHorizontal,
@@ -305,13 +306,13 @@ class _FirebaseInitErrorScreen extends StatelessWidget {
               const Icon(
                 Icons.cloud_off_rounded,
                 size: 64,
-                color: Colors.white54,
+                color: AppLightSurface.mutedText,
               ),
               AppPadding.sectionGap,
               const Text(
                 'Firebase couldn’t connect',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 22,
                   fontWeight: FontWeight.w600,
                 ),
@@ -328,7 +329,7 @@ class _FirebaseInitErrorScreen extends StatelessWidget {
                         'Stop the app completely, then run again from your IDE or:\n'
                         'flutter run',
                 style: const TextStyle(
-                  color: Colors.white70,
+                  color: AppLightSurface.secondaryText,
                   fontSize: 14,
                   height: 1.4,
                 ),

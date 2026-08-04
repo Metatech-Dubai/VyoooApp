@@ -14,6 +14,7 @@ import '../../core/services/user_service.dart';
 import '../../core/widgets/live_now_strip.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_typography.dart';
 import '../../core/utils/hashtag_utils.dart';
 import '../../core/utils/user_facing_errors.dart';
@@ -1906,9 +1907,9 @@ class _PostSearchGridCard extends StatelessWidget {
                     thumb,
                     fit: BoxFit.cover,
                     errorBuilder: (_, _, _) =>
-                        Container(color: const Color(0xFF1A0020)),
+                        Container(color: AppLightSurface.cardFill),
                   )
-                : Container(color: const Color(0xFF1A0020)),
+                : Container(color: AppLightSurface.cardFill),
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -2003,7 +2004,7 @@ class _SearchResultGridCard extends StatelessWidget {
               item.thumbnailUrl,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) =>
-                  Container(color: const Color(0xFF1A0020)),
+                  Container(color: AppLightSurface.cardFill),
             ),
             Container(
               decoration: BoxDecoration(
@@ -2454,9 +2455,9 @@ class _LiveCard extends StatelessWidget {
                       item.thumbnailUrl,
                       fit: BoxFit.cover,
                       errorBuilder: (_, e, s) =>
-                          Container(color: const Color(0xFF1A0020)),
+                          Container(color: AppLightSurface.cardFill),
                     )
-                  : Container(color: const Color(0xFF1A0020)),
+                  : Container(color: AppLightSurface.cardFill),
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(

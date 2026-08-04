@@ -3,6 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/app_user_model.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../models/chat_model.dart';
 import '../models/chat_participant.dart';
 import '../services/chat_service.dart';
@@ -71,16 +72,22 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1B2E),
-        title: const Text('Leave group', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.chatBackground,
+        title: const Text(
+          'Leave group',
+          style: TextStyle(color: AppLightSurface.primaryText),
+        ),
         content: const Text(
           'You will no longer receive messages from this group.',
-          style: TextStyle(color: Colors.white70),
+          style: TextStyle(color: AppLightSurface.secondaryText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppLightSurface.secondaryText),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -115,19 +122,22 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1B2E),
+        backgroundColor: AppColors.chatBackground,
         title: const Text(
           'Remove member',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppLightSurface.primaryText),
         ),
         content: Text(
           'Remove ${member.displayName.isNotEmpty ? member.displayName : member.username} from this group?',
-          style: const TextStyle(color: Colors.white70),
+          style: const TextStyle(color: AppLightSurface.secondaryText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppLightSurface.secondaryText),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
@@ -155,169 +165,176 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
     final members = _chat.participantMap.values.toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: RadialGradient(
-            center: Alignment.topCenter,
-            radius: 1.2,
-            colors: [Color(0xFF1A0A2E), Color(0xFF07010F)],
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+      backgroundColor: AppColors.chatBackground,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.arrow_back,
+                      color: AppLightSurface.icon,
                     ),
-                    const Expanded(
-                      child: Center(
-                        child: Text(
-                          'Group Info',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 48),
-                  ],
-                ),
-              ),
-              Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    const SizedBox(height: 16),
-                    Center(
-                      child: Container(
-                        padding: const EdgeInsets.all(3),
-                        decoration: const BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
-                          ),
-                        ),
-                        child: CircleAvatar(
-                          radius: 48,
-                          backgroundColor: const Color(0xFF1A0A2E),
-                          backgroundImage: (_chat.groupImageUrl ?? '').isNotEmpty
-                              ? CachedNetworkImageProvider(_chat.groupImageUrl!)
-                              : null,
-                          child: (_chat.groupImageUrl ?? '').isEmpty
-                              ? const Icon(Icons.group, color: Colors.white54, size: 48)
-                              : null,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (_isAdmin)
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1A0A2E).withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: const Color(0x22DE106B), width: 0.5),
-                        ),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: TextField(
-                                controller: _nameController,
-                                style: const TextStyle(color: Colors.white, fontSize: 18),
-                                decoration: InputDecoration(
-                                  hintText: 'Group name',
-                                  hintStyle: TextStyle(
-                                    color: Colors.white.withValues(alpha: 0.3),
-                                  ),
-                                  border: InputBorder.none,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              icon: const Icon(Icons.check, color: AppColors.brandMagenta),
-                              onPressed: _renameGroup,
-                            ),
-                          ],
-                        ),
-                      )
-                    else
-                      Center(
-                        child: Text(
-                          _chat.groupName ?? 'Group',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    const SizedBox(height: 8),
-                    Center(
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                  const Expanded(
+                    child: Center(
                       child: Text(
-                        '${members.length} members',
+                        'Group Info',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: 14,
+                          color: AppLightSurface.primaryText,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      'Members',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                children: [
+                  const SizedBox(height: 16),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.all(3),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [Color(0xFFDE106B), Color(0xFF6B21A8)],
+                        ),
+                      ),
+                      child: CircleAvatar(
+                        radius: 48,
+                        backgroundColor: AppLightSurface.cardFill,
+                        backgroundImage: (_chat.groupImageUrl ?? '').isNotEmpty
+                            ? CachedNetworkImageProvider(_chat.groupImageUrl!)
+                            : null,
+                        child: (_chat.groupImageUrl ?? '').isEmpty
+                            ? const Icon(
+                                Icons.group,
+                                color: AppLightSurface.mutedText,
+                                size: 48,
+                              )
+                            : null,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                  ),
+                  const SizedBox(height: 16),
+                  if (_isAdmin)
                     Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A0A2E).withValues(alpha: 0.6),
-                        borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0x22DE106B), width: 0.5),
+                        color: AppLightSurface.cardFill,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppLightSurface.border),
                       ),
-                      child: Column(
+                      child: Row(
                         children: [
-                          for (int i = 0; i < members.length; i++) ...[
-                            _buildMemberTile(members[i]),
-                            if (i < members.length - 1)
-                              Padding(
-                                padding: const EdgeInsets.only(left: 54),
-                                child: Divider(
-                                  color: Colors.white.withValues(alpha: 0.06),
-                                  height: 1,
-                                ),
+                          Expanded(
+                            child: TextField(
+                              controller: _nameController,
+                              style: const TextStyle(
+                                color: AppLightSurface.primaryText,
+                                fontSize: 18,
                               ),
-                          ],
+                              decoration: const InputDecoration(
+                                hintText: 'Group name',
+                                hintStyle: TextStyle(
+                                  color: AppLightSurface.mutedText,
+                                ),
+                                border: InputBorder.none,
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.check,
+                              color: AppColors.brandMagenta,
+                            ),
+                            onPressed: _renameGroup,
+                          ),
                         ],
                       ),
-                    ),
-                    const SizedBox(height: 24),
+                    )
+                  else
                     Center(
-                      child: TextButton.icon(
-                        onPressed: _leaveGroup,
-                        icon: const Icon(Icons.exit_to_app, color: AppColors.deleteRed),
-                        label: const Text(
-                          'Leave Group',
-                          style: TextStyle(color: AppColors.deleteRed),
+                      child: Text(
+                        _chat.groupName ?? 'Group',
+                        style: const TextStyle(
+                          color: AppLightSurface.primaryText,
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
+                  const SizedBox(height: 8),
+                  Center(
+                    child: Text(
+                      '${members.length} members',
+                      style: const TextStyle(
+                        color: AppLightSurface.secondaryText,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  const Text(
+                    'Members',
+                    style: TextStyle(
+                      color: AppLightSurface.secondaryText,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: AppLightSurface.cardFill,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppLightSurface.border),
+                    ),
+                    child: Column(
+                      children: [
+                        for (int i = 0; i < members.length; i++) ...[
+                          _buildMemberTile(members[i]),
+                          if (i < members.length - 1)
+                            const Padding(
+                              padding: EdgeInsets.only(left: 54),
+                              child: Divider(
+                                color: AppLightSurface.divider,
+                                height: 1,
+                              ),
+                            ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _leaveGroup,
+                      icon: const Icon(
+                        Icons.exit_to_app,
+                        color: AppColors.deleteRed,
+                      ),
+                      label: const Text(
+                        'Leave Group',
+                        style: TextStyle(color: AppColors.deleteRed),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -337,13 +354,17 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
         children: [
           CircleAvatar(
             radius: 20,
-            backgroundColor: const Color(0xFF2A1540),
+            backgroundColor: AppLightSurface.border,
             backgroundImage: hasAvatar
                 ? CachedNetworkImageProvider(member.avatarUrl)
                 : null,
             child: hasAvatar
                 ? null
-                : const Icon(Icons.person, color: Colors.white54, size: 20),
+                : const Icon(
+                    Icons.person,
+                    color: AppLightSurface.mutedText,
+                    size: 20,
+                  ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -352,7 +373,10 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
               children: [
                 Text(
                   isMe ? '$name (You)' : name,
-                  style: const TextStyle(color: Colors.white, fontSize: 15),
+                  style: const TextStyle(
+                    color: AppLightSurface.primaryText,
+                    fontSize: 15,
+                  ),
                 ),
                 if (isAdm)
                   const Text(
@@ -390,24 +414,34 @@ class _GroupInfoScreenState extends State<GroupInfoScreen> {
   }
 
   Future<void> _makeAdmin(ChatParticipant member) async {
-    final name = member.displayName.isNotEmpty ? member.displayName : member.username;
+    final name =
+        member.displayName.isNotEmpty ? member.displayName : member.username;
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF2A1B2E),
-        title: const Text('Make admin', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppColors.chatBackground,
+        title: const Text(
+          'Make admin',
+          style: TextStyle(color: AppLightSurface.primaryText),
+        ),
         content: Text(
           'Make $name an admin of this group?',
-          style: const TextStyle(color: Colors.white70),
+          style: const TextStyle(color: AppLightSurface.secondaryText),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Cancel'),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppLightSurface.secondaryText),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Confirm', style: TextStyle(color: AppColors.brandMagenta)),
+            child: const Text(
+              'Confirm',
+              style: TextStyle(color: AppColors.brandMagenta),
+            ),
           ),
         ],
       ),

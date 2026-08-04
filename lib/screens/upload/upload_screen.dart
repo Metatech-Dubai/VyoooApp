@@ -231,7 +231,7 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
   Future<bool?> _showCameraModePicker() {
     return showModalBottomSheet<bool>(
       context: context,
-      backgroundColor: const Color(0xFF1E0A1E).withValues(alpha: 0.98),
+      backgroundColor: AppColors.chatBackground,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -244,24 +244,30 @@ class _UploadScreenState extends State<UploadScreen> with WidgetsBindingObserver
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppColors.chatSearchFill,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             const SizedBox(height: 16),
             ListTile(
-              leading: const Icon(Icons.photo_camera_outlined, color: Colors.white),
-              title: const Text(
+              leading: Icon(
+                Icons.photo_camera_outlined,
+                color: AppColors.chatTextPrimary,
+              ),
+              title: Text(
                 'Take Photo',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: AppColors.chatTextPrimary, fontSize: 16),
               ),
               onTap: () => Navigator.of(ctx).pop(false),
             ),
             ListTile(
-              leading: const Icon(Icons.videocam_outlined, color: Colors.white),
-              title: const Text(
+              leading: Icon(
+                Icons.videocam_outlined,
+                color: AppColors.chatTextPrimary,
+              ),
+              title: Text(
                 'Record Video',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: AppColors.chatTextPrimary, fontSize: 16),
               ),
               onTap: () => Navigator.of(ctx).pop(true),
             ),

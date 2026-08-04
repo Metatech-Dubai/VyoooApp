@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_light_surface.dart';
 import '../utils/reaction_helpers.dart';
 
 class MessageReactionsBar extends StatelessWidget {
@@ -46,13 +47,13 @@ class MessageReactionsBar extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                 decoration: BoxDecoration(
                   color: isMine
-                      ? const Color(0xFFDE106B).withValues(alpha: 0.25)
-                      : const Color(0xFF1E0E2E),
+                      ? const Color(0xFFDE106B).withValues(alpha: 0.12)
+                      : AppLightSurface.cardFill,
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color: isMine
-                        ? const Color(0xFFDE106B).withValues(alpha: 0.5)
-                        : Colors.white12,
+                        ? const Color(0xFFDE106B).withValues(alpha: 0.4)
+                        : AppLightSurface.border,
                   ),
                 ),
                 child: Text(

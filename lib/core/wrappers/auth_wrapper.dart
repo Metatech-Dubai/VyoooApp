@@ -26,6 +26,7 @@ import '../../screens/onboarding/organization_details_screen.dart';
 import '../../services/username_validation.dart';
 import '../onboarding/onboarding_gate.dart';
 import '../subscription/subscription_controller.dart';
+import '../theme/app_light_surface.dart';
 import 'main_nav_wrapper.dart';
 
 /// Flow guard: routes to Sign-in, Onboarding, or Home based on Firebase Auth + Firestore user doc.
@@ -119,10 +120,10 @@ class _AuthWrapperState extends State<AuthWrapper> {
             builder: (context, prefSnapshot) {
               if (prefSnapshot.connectionState != ConnectionState.done) {
                 return const Scaffold(
-                  backgroundColor: Color(0xFF0D0015),
+                  backgroundColor: Colors.white,
                   body: Center(
                     child: CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFDE106B)),
                     ),
                   ),
                 );
@@ -160,10 +161,10 @@ class _AuthDeterminingScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Scaffold(
-      backgroundColor: Color(0xFF0D0015),
+      backgroundColor: Colors.white,
       body: Center(
         child: CircularProgressIndicator(
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFDE106B)),
         ),
       ),
     );
@@ -178,7 +179,7 @@ class _ProfileLoadErrorScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0D0015),
+      backgroundColor: Colors.white,
       body: Center(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -189,7 +190,7 @@ class _ProfileLoadErrorScaffold extends StatelessWidget {
                 'Could not set up your profile on the server. Check your connection and try again.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppLightSurface.primaryText,
                   fontSize: 16,
                   height: 1.35,
                 ),
@@ -335,17 +336,17 @@ class _UserDocGateState extends State<_UserDocGate> {
             if (userSnapshot.connectionState == ConnectionState.waiting &&
                 userSnapshot.data == null) {
               return const Scaffold(
-                backgroundColor: Color(0xFF0D0015),
+                backgroundColor: Colors.white,
                 body: Center(
                   child: CircularProgressIndicator(
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFDE106B)),
                   ),
                 ),
               );
             }
             if (userSnapshot.hasError) {
               return Scaffold(
-                backgroundColor: const Color(0xFF0D0015),
+                backgroundColor: Colors.white,
                 body: Center(
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -356,7 +357,7 @@ class _UserDocGateState extends State<_UserDocGate> {
                           'Could not load your profile from the server.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppLightSurface.primaryText,
                             fontSize: 16,
                             height: 1.35,
                           ),
@@ -411,10 +412,10 @@ class _UserDocGateState extends State<_UserDocGate> {
                           _showLoginOtpMethodDialog(appUser);
                         });
                         return const Scaffold(
-                          backgroundColor: Color(0xFF0D0015),
+                          backgroundColor: Colors.white,
                           body: Center(
                             child: CircularProgressIndicator(
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFDE106B)),
                             ),
                           ),
                         );

@@ -355,7 +355,7 @@ class _VerificationRequestScreenState extends State<VerificationRequestScreen> {
       items: _idTypes
           .map((type) => DropdownMenuItem(value: type, child: Text(type)))
           .toList(),
-      dropdownColor: const Color(0xFF1A0A24),
+      dropdownColor: AppLightSurface.background,
       style: TextStyle(color: AppLightSurface.primaryText),
       decoration: InputDecoration(
         labelText: 'ID type',

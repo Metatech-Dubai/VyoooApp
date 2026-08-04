@@ -109,15 +109,20 @@ Future<void> showOptionalAppUpdateDialog(
     barrierDismissible: true,
     builder: (dialogContext) {
       return AlertDialog(
-        backgroundColor: const Color(0xFF1A0A24),
+        backgroundColor: AppLightSurface.background,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           policy.title,
-          style: AppTypography.label.copyWith(fontSize: 20),
+          style: AppTypography.label.copyWith(
+            fontSize: 20,
+            color: AppLightSurface.primaryText,
+          ),
         ),
         content: Text(
           policy.message,
-          style: AppTypography.input.copyWith(color: AppTheme.secondaryTextColor),
+          style: AppTypography.input.copyWith(
+            color: AppLightSurface.secondaryText,
+          ),
         ),
         actions: [
           TextButton(

@@ -5,6 +5,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/models/app_user_model.dart';
 import '../../../core/services/user_service.dart';
+import '../../../core/theme/app_light_surface.dart';
 import '../services/chat_service.dart';
 import '../utils/chat_constants.dart';
 import 'chat_thread_screen.dart';
@@ -158,48 +159,21 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
   Widget build(BuildContext context) {
     final canCreate = _selectedUsers.length >= 2 && !_creating;
     return Scaffold(
-      backgroundColor: const Color(0xFF07010F),
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: [0.0, 0.45, 1.0],
-                  colors: [
-                    Color(0xFF1A0826),
-                    Color(0xFF10041A),
-                    Color(0xFF07010F),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            top: -100,
-            left: -100,
-            right: -100,
-            child: Container(
-              height: 400,
-              decoration: const BoxDecoration(
-                gradient: RadialGradient(
-                  colors: [Color(0x88DE106B), Color(0x00000000)],
-                  radius: 0.75,
-                ),
-              ),
-            ),
-          ),
-          SafeArea(
-            child: Column(
+      backgroundColor: AppColors.chatBackground,
+      body: SafeArea(
+        child: Stack(
+          children: [
+            Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(4, 6, 16, 0),
                   child: Row(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.arrow_back, color: Colors.white),
+                        icon: const Icon(
+                          Icons.arrow_back,
+                          color: AppLightSurface.icon,
+                        ),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: 4),
@@ -207,7 +181,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                         child: Text(
                           'New group',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppLightSurface.primaryText,
                             fontSize: 17,
                             fontWeight: FontWeight.w700,
                           ),
@@ -219,50 +193,50 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                 _buildGroupNameField(),
                 _buildSearchField(),
                 if (_selectedUsers.isNotEmpty) _buildSelectedChips(),
-                Divider(color: Colors.white.withValues(alpha: 0.08), height: 1),
+                const Divider(color: AppLightSurface.divider, height: 1),
                 Expanded(child: _buildUserList()),
               ],
             ),
-          ),
-          Positioned(
-            left: 24,
-            right: 24,
-            bottom: MediaQuery.of(context).padding.bottom + 16,
-            child: GestureDetector(
-              onTap: canCreate ? _createGroup : null,
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                height: 48,
-                decoration: BoxDecoration(
-                  color: canCreate
-                      ? Colors.white
-                      : Colors.white.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(24),
+            Positioned(
+              left: 24,
+              right: 24,
+              bottom: MediaQuery.of(context).padding.bottom + 16,
+              child: GestureDetector(
+                onTap: canCreate ? _createGroup : null,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: canCreate
+                        ? AppColors.authBrandBurgundy
+                        : AppLightSurface.border,
+                    borderRadius: BorderRadius.circular(24),
+                  ),
+                  alignment: Alignment.center,
+                  child: _creating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : Text(
+                          'Create group',
+                          style: TextStyle(
+                            color: canCreate
+                                ? Colors.white
+                                : AppLightSurface.mutedText,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                 ),
-                alignment: Alignment.center,
-                child: _creating
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: AppColors.brandNearBlack,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : Text(
-                        'Create group',
-                        style: TextStyle(
-                          color: canCreate
-                              ? AppColors.brandNearBlack
-                              : Colors.white30,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -273,23 +247,26 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C0B2E),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0x22FFFFFF), width: 0.5),
+          border: Border.all(color: AppLightSurface.border),
         ),
         child: TextField(
           controller: _groupNameController,
-          style: const TextStyle(color: Colors.white, fontSize: 15),
+          style: const TextStyle(
+            color: AppLightSurface.primaryText,
+            fontSize: 15,
+          ),
           cursorColor: AppColors.brandDeepMagenta,
-          decoration: InputDecoration(
+          decoration: const InputDecoration(
             hintText: 'Group Name (optional)',
             hintStyle: TextStyle(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppLightSurface.mutedText,
               fontSize: 15,
             ),
             border: InputBorder.none,
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            contentPadding: EdgeInsets.symmetric(vertical: 12),
           ),
         ),
       ),
@@ -318,7 +295,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                   children: [
                     CircleAvatar(
                       radius: 18,
-                      backgroundColor: const Color(0xFF1A0A2E),
+                      backgroundColor: AppLightSurface.cardFill,
                       backgroundImage: hasAvatar
                           ? CachedNetworkImageProvider(avatar)
                           : null,
@@ -326,7 +303,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                           ? null
                           : const Icon(
                               Icons.person,
-                              color: Colors.white54,
+                              color: AppLightSurface.mutedText,
                               size: 16,
                             ),
                     ),
@@ -340,12 +317,12 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                           width: 16,
                           height: 16,
                           decoration: const BoxDecoration(
-                            color: Colors.white24,
+                            color: AppLightSurface.border,
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(
                             Icons.close,
-                            color: Colors.white,
+                            color: AppLightSurface.primaryText,
                             size: 10,
                           ),
                         ),
@@ -358,7 +335,10 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                   width: 44,
                   child: Text(
                     name.split(' ').first,
-                    style: const TextStyle(color: Colors.white54, fontSize: 10),
+                    style: const TextStyle(
+                      color: AppLightSurface.secondaryText,
+                      fontSize: 10,
+                    ),
                     overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                   ),
@@ -378,27 +358,30 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
         height: 38,
         padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF1C0B2E),
+          color: AppLightSurface.cardFill,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0x22FFFFFF), width: 0.5),
+          border: Border.all(color: AppLightSurface.border),
         ),
         child: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.search,
-              color: Colors.white.withValues(alpha: 0.35),
+              color: AppLightSurface.mutedText,
               size: 18,
             ),
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white, fontSize: 14),
+                style: const TextStyle(
+                  color: AppLightSurface.primaryText,
+                  fontSize: 14,
+                ),
                 cursorColor: AppColors.brandDeepMagenta,
-                decoration: InputDecoration(
+                decoration: const InputDecoration(
                   hintText: 'Search...',
                   hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: AppLightSurface.mutedText,
                     fontSize: 14,
                   ),
                   border: InputBorder.none,
@@ -421,11 +404,11 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
     }
 
     if (_results.isEmpty) {
-      return Center(
+      return const Center(
         child: Text(
           'No users found',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.4),
+            color: AppLightSurface.mutedText,
             fontSize: 15,
           ),
         ),
@@ -437,12 +420,12 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
       itemCount: _results.length + 1,
       itemBuilder: (context, index) {
         if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 6),
+          return const Padding(
+            padding: EdgeInsets.fromLTRB(16, 8, 16, 6),
             child: Text(
               'Suggested',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.5),
+                color: AppLightSurface.secondaryText,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -461,7 +444,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: const Color(0xFF1A0A2E),
+                  backgroundColor: AppLightSurface.cardFill,
                   backgroundImage: hasAvatar
                       ? CachedNetworkImageProvider(item.avatarUrl)
                       : null,
@@ -469,7 +452,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                       ? null
                       : const Icon(
                           Icons.person,
-                          color: Colors.white54,
+                          color: AppLightSurface.mutedText,
                           size: 22,
                         ),
                 ),
@@ -483,7 +466,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppLightSurface.primaryText,
                           fontSize: 15,
                           fontWeight: FontWeight.w500,
                         ),
@@ -492,8 +475,8 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                         '@${item.username}',
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.4),
+                        style: const TextStyle(
+                          color: AppLightSurface.secondaryText,
                           fontSize: 13,
                         ),
                       ),
@@ -511,7 +494,7 @@ class _GroupCreateScreenState extends State<GroupCreateScreen> {
                     border: Border.all(
                       color: selected
                           ? AppColors.brandDeepMagenta
-                          : Colors.white.withValues(alpha: 0.25),
+                          : AppLightSurface.border,
                       width: 2,
                     ),
                   ),

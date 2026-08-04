@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_light_surface.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:video_player/video_player.dart';
@@ -657,17 +659,17 @@ class _ExitSheet extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: const BoxDecoration(
-        color: Color(0xFF1E0A1E),
+        color: AppLightSurface.background,
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: AppLightSurface.border, borderRadius: BorderRadius.circular(2))),
           const SizedBox(height: 24),
           const Text(
             'Are you sure you want to quit uploading?',
-            style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
+            style: TextStyle(color: AppLightSurface.primaryText, fontSize: 16, fontWeight: FontWeight.w700),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 32),
@@ -696,13 +698,20 @@ class _ExitSheet extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: isExit ? Colors.red.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+              color: isExit ? Colors.red.withValues(alpha: 0.15) : AppLightSurface.cardFill,
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: isExit ? Colors.redAccent : Colors.white, size: 20),
+            child: Icon(icon, color: isExit ? Colors.redAccent : AppLightSurface.icon, size: 20),
           ),
           const SizedBox(width: 16),
-          Text(label, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+          Text(
+            label,
+            style: TextStyle(
+              color: isExit ? Colors.redAccent : AppLightSurface.primaryText,
+              fontSize: 15,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       ),
     );

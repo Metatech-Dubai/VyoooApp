@@ -9,7 +9,7 @@ import '../../core/onboarding/parental_submit_handoff.dart';
 import '../../core/services/auth_service.dart';
 import '../../core/services/parental_consent_service.dart';
 import '../../core/services/user_service.dart';
-import '../../core/theme/app_theme.dart' show AppTheme, White24;
+import '../../core/theme/app_theme.dart' show AppTheme;
 import '../../core/utils/dob_validation.dart';
 import '../../core/widgets/app_gradient_background.dart';
 import '../../core/widgets/auth/auth_widgets.dart';
@@ -94,13 +94,13 @@ class _ParentContactScreenState extends State<ParentContactScreen> {
       showPhoneCode: true,
       favorite: const ['GB', 'AE'],
       countryListTheme: CountryListThemeData(
-        backgroundColor: const Color(0xFF12081C),
-        textStyle: TextStyle(color: AppLightSurface.primaryText),
+        backgroundColor: AppLightSurface.background,
+        textStyle: const TextStyle(color: AppLightSurface.primaryText),
         inputDecoration: InputDecoration(
           labelText: 'Search country',
-          labelStyle: TextStyle(color: AppTheme.secondaryTextColor),
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: White24.value),
+          labelStyle: const TextStyle(color: AppLightSurface.secondaryText),
+          enabledBorder: const UnderlineInputBorder(
+            borderSide: BorderSide(color: AppLightSurface.border),
           ),
           focusedBorder: const UnderlineInputBorder(
             borderSide: BorderSide(color: AppTheme.primary),
