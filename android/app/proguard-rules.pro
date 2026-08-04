@@ -16,3 +16,15 @@
 # FFmpegKit (also JNI-heavy; plugin ships rules but app merge is the safe net)
 -keep class com.antonkarpenko.ffmpegkit.** { *; }
 -dontwarn com.antonkarpenko.ffmpegkit.**
+
+# Insta360 / Arashivision SDK (AAR references optional onestreamtarget classes not
+# always present on the classpath; R8 fails release minify without these).
+-keep class com.arashivision.** { *; }
+-keep interface com.arashivision.** { *; }
+-dontwarn com.arashivision.**
+-dontwarn com.arashivision.onestreamtarget.OneStreamTarget$DualShadowObj
+-dontwarn com.arashivision.onestreamtarget.OneStreamTarget$ShadowObj
+-dontwarn com.arashivision.onestreamtarget.OneStreamTarget$StreamExtra
+-dontwarn com.arashivision.onestreamtarget.OneStreamTarget
+-dontwarn com.arashivision.onestreamtarget.StreamShadowTexture$onShadowTexutureListener
+-dontwarn com.arashivision.onestreamtarget.StreamShadowTexture
