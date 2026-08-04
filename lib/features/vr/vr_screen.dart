@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_light_surface.dart';
+
 import '../../core/models/video_360_metadata.dart';
 import '../../core/services/reels_service.dart';
 import '../../core/theme/app_radius.dart';
@@ -100,15 +102,7 @@ class _VrFallbackBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF07111F), Color(0xFF0D2D4A), Color(0xFF1A0030)],
-        ),
-      ),
-    );
+    return const ColoredBox(color: AppLightSurface.background);
   }
 }
 
@@ -287,12 +281,7 @@ class VrComingSoonView extends StatelessWidget {
     return Container(
       margin: EdgeInsets.only(top: compact ? 0 : 8),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF5A1245), Colors.black],
-          stops: [0.0, 0.45],
-        ),
+        color: AppLightSurface.background,
         borderRadius: compact
             ? null
             : const BorderRadius.only(
@@ -304,20 +293,8 @@ class VrComingSoonView extends StatelessWidget {
       child: Stack(
         fit: StackFit.expand,
         children: [
-          const Positioned.fill(child: _VrFallbackBackground()),
-          Positioned.fill(
-            child: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.15),
-                    Colors.black.withValues(alpha: 0.55),
-                  ],
-                ),
-              ),
-            ),
+          const Positioned.fill(
+            child: ColoredBox(color: AppLightSurface.background),
           ),
           Center(
             child: Padding(
@@ -330,9 +307,9 @@ class VrComingSoonView extends StatelessWidget {
                     height: compact ? 72 : 88,
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                      color: Colors.white.withValues(alpha: 0.08),
+                      color: AppLightSurface.cardFill,
                       border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.18),
+                        color: AppLightSurface.border,
                       ),
                     ),
                     child: Center(
@@ -340,7 +317,7 @@ class VrComingSoonView extends StatelessWidget {
                         'assets/vyooO_icons/Home/vr.png',
                         width: compact ? 36 : 44,
                         height: compact ? 36 : 44,
-                        color: Colors.white.withValues(alpha: 0.92),
+                        color: AppLightSurface.icon,
                       ),
                     ),
                   ),
@@ -348,13 +325,17 @@ class VrComingSoonView extends StatelessWidget {
                   Text(
                     'Coming Soon',
                     textAlign: TextAlign.center,
-                    style: titleStyle,
+                    style: titleStyle.copyWith(
+                      color: AppLightSurface.primaryText,
+                    ),
                   ),
                   const SizedBox(height: AppSpacing.sm),
                   Text(
                     'Immersive 360° VR experiences are on the way.\nStay tuned!',
                     textAlign: TextAlign.center,
-                    style: AppTypography.onboardingPrivacyBody,
+                    style: AppTypography.onboardingPrivacyBody.copyWith(
+                      color: AppLightSurface.secondaryText,
+                    ),
                   ),
                   if (!compact) ...[
                     const SizedBox(height: AppSpacing.lg),
@@ -364,16 +345,16 @@ class VrComingSoonView extends StatelessWidget {
                         vertical: AppSpacing.sm,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.1),
+                        color: AppLightSurface.cardFill,
                         borderRadius: AppRadius.pillRadius,
                         border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.2),
+                          color: AppLightSurface.border,
                         ),
                       ),
                       child: Text(
                         'VR',
                         style: AppTypography.caption.copyWith(
-                          color: Colors.white.withValues(alpha: 0.85),
+                          color: AppLightSurface.mutedText,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 1.2,
                         ),

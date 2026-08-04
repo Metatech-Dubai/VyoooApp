@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_light_surface.dart';
+
 import '../theme/app_sizes.dart';
 import '../theme/app_typography.dart';
 
@@ -97,7 +99,7 @@ class LiveFeedScrubPreview extends StatelessWidget {
 
   Widget _placeholder() {
     return ColoredBox(
-      color: const Color(0xFF1A0A24),
+      color: AppLightSurface.cardFill,
       child: Icon(
         Icons.play_circle_outline_rounded,
         color: Colors.white.withValues(alpha: 0.35),

@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:video_360/video_360.dart';
 import 'package:video_player/video_player.dart';
 
@@ -446,14 +448,14 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   Widget _buildLoadingBackground() {
     final thumb = (widget.thumbnailUrl ?? '').trim();
     if (thumb.isEmpty) {
-      return const ColoredBox(color: Colors.black);
+      return const ColoredBox(color: AppLightSurface.background);
     }
     return CachedNetworkImage(
       imageUrl: thumb,
       fit: BoxFit.cover,
       width: double.infinity,
       height: double.infinity,
-      errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
+      errorWidget: (_, _, _) => const ColoredBox(color: AppLightSurface.background),
     );
   }
 
@@ -528,7 +530,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
   Widget build(BuildContext context) {
     if (_showError || !VideoUploadPolicy.isPlayableUrl(widget.videoUrl)) {
       return Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -547,7 +549,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
     if (_useFlatFallback) {
       if (!_flatInitialized || _flatController == null) {
         return Container(
-          color: Colors.black,
+          color: AppLightSurface.background,
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -566,7 +568,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
 
     if (_resolvedUrl == null || !_nativeLayoutReady) {
       return Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -592,7 +594,7 @@ class _Vyooo360VideoPlayerState extends State<Vyooo360VideoPlayer>
       onTap: () => unawaited(_togglePlayPause()),
       onDoubleTap: widget.onDoubleTap,
       child: Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           fit: StackFit.expand,
           children: [

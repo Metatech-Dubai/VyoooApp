@@ -321,7 +321,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0020),
+        backgroundColor: AppLightSurface.background,
         title: const Text('Delete story?',
             style: TextStyle(color: Colors.white)),
         content: const Text(
@@ -394,7 +394,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
                   final name = await showDialog<String>(
                     context: context,
                     builder: (dctx) => AlertDialog(
-                      backgroundColor: const Color(0xFF1A0020),
+                      backgroundColor: AppLightSurface.background,
                       title: const Text('Highlight name',
                           style: TextStyle(color: Colors.white)),
                       content: TextField(
@@ -690,7 +690,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
     final story = _story;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: GestureDetector(
         onTapDown: (_) {
           _didLongPress = false;
@@ -749,7 +749,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
               ownerId: story.userId,
               moderation: story.moderation,
               child: ColoredBox(
-                color: Colors.black,
+                color: AppLightSurface.background,
                 child: Center(
                   child: story.isVideo && story.mediaUrl.isNotEmpty
                       ? _buildVideo(story)
@@ -770,7 +770,7 @@ class _StoryViewerScreenState extends State<StoryViewerScreen>
             AnimatedOpacity(
               duration: const Duration(milliseconds: 200),
               opacity: _isHolding ? 0.3 : 0.0,
-              child: Container(color: Colors.black),
+              child: Container(color: AppLightSurface.background),
             ),
             Positioned(
               top: 0,

@@ -2,6 +2,8 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_light_surface.dart';
+
 /// Circular crop preview for profile picture. Shows image with pan/zoom,
 /// darkened overlay with circular cutout, and 3x3 grid. Save returns [imagePath].
 class CropPhotoScreen extends StatefulWidget {
@@ -29,21 +31,21 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
     final center = Offset(size.width / 2, size.height / 2);
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         leading: IconButton(
           onPressed: () => Navigator.of(context).pop(),
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 22),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: AppLightSurface.icon, size: 22),
         ),
         title: const Text(
           'Crop photo',
-          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(color: AppLightSurface.primaryText, fontSize: 18, fontWeight: FontWeight.w600),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(widget.imagePath),
-            child: const Text('Save', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+            child: const Text('Save', style: TextStyle(color: AppLightSurface.primaryText, fontWeight: FontWeight.w600)),
           ),
         ],
       ),
@@ -58,7 +60,7 @@ class _CropPhotoScreenState extends State<CropPhotoScreen> {
               child: Image.file(
                 File(widget.imagePath),
                 fit: BoxFit.contain,
-                errorBuilder: (_, _, _) => const Icon(Icons.broken_image, color: Colors.white54, size: 80),
+                errorBuilder: (_, _, _) => const Icon(Icons.broken_image, color: AppLightSurface.mutedText, size: 80),
               ),
             ),
           ),

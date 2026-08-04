@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/models/story_highlight_model.dart';
@@ -202,9 +204,9 @@ class _HighlightViewerScreenState extends State<HighlightViewerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       appBar: AppBar(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         title: Text(widget.title),
       ),
       body: _loading
@@ -213,14 +215,14 @@ class _HighlightViewerScreenState extends State<HighlightViewerScreen> {
               ? Center(
                   child: Text(
                     _error!,
-                    style: const TextStyle(color: Colors.white70),
+                    style: const TextStyle(color: AppLightSurface.secondaryText),
                   ),
                 )
               : _items.isEmpty
                   ? const Center(
                       child: Text(
                         'No items in this highlight yet.',
-                        style: TextStyle(color: Colors.white70),
+                        style: TextStyle(color: AppLightSurface.secondaryText),
                       ),
                     )
                   : GestureDetector(
@@ -260,7 +262,7 @@ class _HighlightViewerScreenState extends State<HighlightViewerScreen> {
                             child: Text(
                               '${_index + 1} / ${_items.length}',
                               textAlign: TextAlign.center,
-                              style: const TextStyle(color: Colors.white70),
+                              style: const TextStyle(color: AppLightSurface.secondaryText),
                             ),
                           ),
                         ],
@@ -273,7 +275,7 @@ class _HighlightViewerScreenState extends State<HighlightViewerScreen> {
     if (it.isVideo) {
       final v = _video;
       if (v == null || !v.value.isInitialized) {
-        return const CircularProgressIndicator(color: Colors.white54);
+        return const CircularProgressIndicator(color: AppLightSurface.mutedText);
       }
       return AspectRatio(
         aspectRatio:

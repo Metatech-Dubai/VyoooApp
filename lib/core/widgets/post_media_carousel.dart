@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_light_surface.dart';
+
 import '../models/reel_media_item.dart';
 import '../models/video_360_metadata.dart';
 import '../theme/app_spacing.dart';
@@ -57,7 +59,7 @@ class _PostMediaCarouselState extends State<PostMediaCarousel> {
   @override
   Widget build(BuildContext context) {
     final items = widget.items;
-    if (items.isEmpty) return const ColoredBox(color: Colors.black);
+    if (items.isEmpty) return const ColoredBox(color: AppLightSurface.background);
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -139,17 +141,17 @@ class _PostMediaCarouselState extends State<PostMediaCarousel> {
     return DoubleTapLikeOverlay(
       onDoubleTap: widget.onDoubleTap,
       child: ColoredBox(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Center(
           child: Image.network(
             item.url,
             fit: widget.imageFit,
             width: double.infinity,
             height: double.infinity,
-            errorBuilder: (_, _, _) => Center(
+            errorBuilder: (_, _, _) => const Center(
               child: Icon(
                 Icons.broken_image_outlined,
-                color: Colors.white.withValues(alpha: 0.4),
+                color: AppLightSurface.mutedText,
                 size: 40,
               ),
             ),

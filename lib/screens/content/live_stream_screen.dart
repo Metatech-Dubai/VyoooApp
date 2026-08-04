@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -337,7 +339,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   Widget build(BuildContext context) {
     final doc = _liveDoc ?? widget.stream;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       resizeToAvoidBottomInset: false,
       body: Stack(
         fit: StackFit.expand,
@@ -393,7 +395,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
           // Loading state
           if (!_engineReady)
             Container(
-              color: Colors.black,
+              color: AppLightSurface.background,
               child: const Center(child: CircularProgressIndicator(color: Colors.white)),
             ),
         ],
@@ -405,7 +407,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
     if (!_engineReady || !_hostVideoAvailable || _remoteUid == 0) {
       // No video yet — show host avatar placeholder
       return Container(
-        color: const Color(0xFF0A000F),
+        color: AppLightSurface.background,
         child: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,

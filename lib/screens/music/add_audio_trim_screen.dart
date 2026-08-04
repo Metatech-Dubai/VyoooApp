@@ -1,6 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:photo_manager/photo_manager.dart';
 import 'package:video_player/video_player.dart';
@@ -41,7 +43,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
   double _trimEnd = 0.6;
 
   static const Color _pink = Color(0xFFDE106B);
-  static const Color _darkGrey = Color(0xFF2A2A2E);
+  static const Color _darkGrey = Color(0xFFF5F5F5); // light panel
   static const double _topRadius = 20;
 
   static final List<double> _waveformHeights =
@@ -161,7 +163,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: SafeArea(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -172,8 +174,8 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
                   left: AppSpacing.md, top: AppSpacing.xs, bottom: AppSpacing.xs),
               child: Text(
                 'add audio',
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.75),
+                style: const TextStyle(
+                  color: AppLightSurface.secondaryText,
                   fontSize: 15,
                 ),
               ),
@@ -212,10 +214,10 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
           // X — cancel, go back to music list
           IconButton(
             onPressed: () => Navigator.of(context).pop(false),
-            icon: const Icon(Icons.close, color: Colors.white, size: 26),
+            icon: const Icon(Icons.close, color: AppLightSurface.icon, size: 26),
             style: IconButton.styleFrom(
               backgroundColor: Colors.transparent,
-              foregroundColor: Colors.white,
+              foregroundColor: AppLightSurface.icon,
             ),
           ),
           const Spacer(),
@@ -249,7 +251,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
       borderRadius:
           const BorderRadius.vertical(top: Radius.circular(_topRadius)),
       child: Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -262,7 +264,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
               )
             else
               const Center(
-                  child: CircularProgressIndicator(color: Colors.white54)),
+                  child: CircularProgressIndicator(color: AppLightSurface.mutedText)),
             // Music badge top-right
             Positioned(
               top: 12,
@@ -284,7 +286,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
                       child: Text(
                         widget.track.title,
                         style: const TextStyle(
-                            color: Colors.white, fontSize: 11),
+                            color: AppLightSurface.primaryText, fontSize: 11),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -338,7 +340,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
           height: 48,
           alignment: Alignment.center,
           child: Icon(icon,
-              color: highlighted ? _pink : Colors.white, size: 24),
+              color: highlighted ? _pink : AppLightSurface.icon, size: 24),
         ),
       ),
     );
@@ -390,7 +392,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
                           child: Container(
                             width: 3,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppLightSurface.primaryText,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -419,7 +421,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
                           child: Container(
                             width: 3,
                             decoration: BoxDecoration(
-                              color: Colors.white,
+                              color: AppLightSurface.primaryText,
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -441,7 +443,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
                     overlayColor: Colors.transparent,
                     thumbColor: _pink,
                     activeTrackColor: _pink,
-                    inactiveTrackColor: Colors.white.withValues(alpha: 0.3),
+                    inactiveTrackColor: AppLightSurface.border,
                     trackHeight: 2,
                     thumbShape:
                         const RoundSliderThumbShape(enabledThumbRadius: 5),
@@ -457,7 +459,7 @@ class _AddAudioTrimScreenState extends State<AddAudioTrimScreen>
               ),
               Text(
                 _formatDuration(dur),
-                style: const TextStyle(color: Colors.white, fontSize: 13),
+                style: const TextStyle(color: AppLightSurface.primaryText, fontSize: 13),
               ),
               IconButton(
                 onPressed: () {
@@ -544,7 +546,7 @@ class _WaveformDelegate extends CustomPainter {
         ),
         Paint()
           ..color =
-              inRange ? _pink : Colors.white.withValues(alpha: 0.25),
+              inRange ? _pink : AppLightSurface.border,
       );
     }
   }
