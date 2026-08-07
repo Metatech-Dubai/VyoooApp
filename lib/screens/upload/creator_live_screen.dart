@@ -469,16 +469,38 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           Navigator.of(sheetCtx).pop();
           if (_cameraSource == _CameraSource.insta360) _disableInsta360();
         },
-        onSelectInsta360: (type) {
+        onSelectInsta360: () {
           Navigator.of(sheetCtx).pop();
-          if (_cameraSource == _CameraSource.phone) _enableInsta360(type);
+          // Don't assume a transport: the camera can be on USB or its own Wi-Fi AP, and
+          // each has a different connect flow. Ask before connecting.
+          if (_cameraSource == _CameraSource.phone) _promptInsta360Transport();
         },
       ),
     );
   }
 
+  /// Ask how to reach the Insta360 — over USB or over the camera's Wi-Fi AP — then start
+  /// the matching connect flow. Kept as a follow-up popup (not an auto Wi-Fi connect) so a
+  /// USB-attached camera isn't sent down the Wi-Fi path it can't answer.
+  Future<void> _promptInsta360Transport() async {
+    if (!_engineReady || _insta360Switching) return;
+    final type = await showModalBottomSheet<Insta360ConnectType>(
+      context: context,
+      backgroundColor: const Color(0xFF1A0A1F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetCtx) => _Insta360TransportSheet(
+        onSelect: (t) => Navigator.of(sheetCtx).pop(t),
+      ),
+    );
+    if (type == null || !mounted) return;
+    if (_cameraSource == _CameraSource.phone) _enableInsta360(type);
+  }
+
   Future<void> _enableInsta360(Insta360ConnectType type) async {
     if (_insta360Switching) return;
+    final via = type == Insta360ConnectType.usb ? 'USB' : 'Wi-Fi';
     setState(() => _insta360Switching = true);
     try {
       // BLE discovery + connect permissions (Wi-Fi/USB control both rely on these on 12+).
@@ -564,7 +586,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         }
       });
       setState(() => _cameraSource = _CameraSource.insta360);
-      _showToast('Connecting to 360 camera…');
+      _showToast('Connecting to 360 camera over $via…');
     } catch (e) {
       _showToast('360 switch failed: $e');
       await _disableInsta360();
@@ -2052,7 +2074,8 @@ class _ConfirmDialog extends StatelessWidget {
 
 // ── Camera-source picker sheet ─────────────────────────────────────────────────
 
-/// "Select camera" bottom sheet: phone camera vs Insta360 (360°, USB by default; Wi-Fi optional).
+/// "Select camera" bottom sheet: phone camera vs Insta360 (360°). Picking the Insta360 opens a
+/// follow-up popup to choose the transport (Wi-Fi vs USB) — see [_Insta360TransportSheet].
 class _CameraPickerSheet extends StatelessWidget {
   const _CameraPickerSheet({
     required this.current,
@@ -2064,7 +2087,7 @@ class _CameraPickerSheet extends StatelessWidget {
   final _CameraSource current;
   final bool insta360Supported;
   final VoidCallback onSelectPhone;
-  final void Function(Insta360ConnectType type) onSelectInsta360;
+  final VoidCallback onSelectInsta360;
 
   @override
   Widget build(BuildContext context) {
@@ -2117,43 +2140,10 @@ class _CameraPickerSheet extends StatelessWidget {
                   : 'Requires an arm64 device (Android 10+)',
               selected: current == _CameraSource.insta360,
               enabled: insta360Supported,
-              onTap: insta360Supported
-                  ? () => onSelectInsta360(Insta360ConnectType.wifi)
-                  : null,
+              // Tapping the 360 camera opens the transport-choice popup rather than connecting
+              // straight away — the sheet no longer assumes Wi-Fi.
+              onTap: insta360Supported ? onSelectInsta360 : null,
             ),
-            if (insta360Supported) ...[
-              const SizedBox(height: 10),
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 6),
-                child: Text(
-                  'Join the camera\'s Wi-Fi in Settings first, then connect via Wi-Fi. '
-                  '(USB keeps the phone\'s internet — used for going live.)',
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
-                    fontSize: 12,
-                  ),
-                ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: _connectButton(
-                      icon: Icons.wifi_rounded,
-                      label: 'Wi-Fi',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.wifi),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _connectButton(
-                      icon: Icons.usb_rounded,
-                      label: 'USB',
-                      onTap: () => onSelectInsta360(Insta360ConnectType.usb),
-                    ),
-                  ),
-                ],
-              ),
-            ],
           ],
         ),
       ),
@@ -2219,33 +2209,114 @@ class _CameraPickerSheet extends StatelessWidget {
     );
   }
 
-  Widget _connectButton({
+}
+
+// ── Insta360 transport picker ───────────────────────────────────────────────────
+
+/// Follow-up sheet shown after the creator picks the Insta360 in [_CameraPickerSheet]: choose
+/// whether to reach the camera over its **Wi-Fi** AP or over **USB**. Each maps to a different
+/// [Insta360ConnectType] connect flow, so we ask rather than assume. Matches the picker's style.
+class _Insta360TransportSheet extends StatelessWidget {
+  const _Insta360TransportSheet({required this.onSelect});
+
+  final void Function(Insta360ConnectType type) onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 8, left: 4),
+              child: Text(
+                'Connect the 360 camera',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            // Wi-Fi
+            _option(
+              icon: Icons.wifi_rounded,
+              title: 'Wi-Fi',
+              subtitle: 'Join the camera\'s Wi-Fi in Settings first',
+              onTap: () => onSelect(Insta360ConnectType.wifi),
+            ),
+            const SizedBox(height: 8),
+            // USB
+            _option(
+              icon: Icons.usb_rounded,
+              title: 'USB',
+              subtitle: 'Plug the camera in — keeps the phone\'s internet',
+              onTap: () => onSelect(Insta360ConnectType.usb),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _option({
     required IconData icon,
-    required String label,
+    required String title,
+    required String subtitle,
     required VoidCallback onTap,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.white12),
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: Colors.white, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+            Icon(icon, color: Colors.white, size: 24),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
               ),
             ),
+            const Icon(Icons.chevron_right_rounded,
+                color: Colors.white38, size: 20),
           ],
         ),
       ),
