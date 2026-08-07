@@ -17,6 +17,11 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A1B2C3D4E5F6010203040507 /* AgoraDeferredRegistration.m in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6010203040508 /* AgoraDeferredRegistration.m */; };
+		A360FACE0000000000000101 /* Insta360Support.swift in Sources */ = {isa = PBXBuildFile; fileRef = A360FACE0000000000000001 /* Insta360Support.swift */; };
+		A360FACE0000000000000102 /* Insta360FrameSink.swift in Sources */ = {isa = PBXBuildFile; fileRef = A360FACE0000000000000002 /* Insta360FrameSink.swift */; };
+		A360FACE0000000000000103 /* Insta360ProcessedTexture.swift in Sources */ = {isa = PBXBuildFile; fileRef = A360FACE0000000000000003 /* Insta360ProcessedTexture.swift */; };
+		A360FACE0000000000000104 /* Insta360PreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A360FACE0000000000000004 /* Insta360PreviewView.swift */; };
+		A360FACE0000000000000105 /* Insta360Bridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A360FACE0000000000000005 /* Insta360Bridge.swift */; };
 		AE3D26675A6628A469B4BB39 /* Pods_RunnerTests.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B0F08FC3CD6C77627C425F53 /* Pods_RunnerTests.framework */; };
 		CBA6E8617C06E706FA46E8A7 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3B1E42B99FE5448E5C0AF152 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
@@ -70,6 +75,11 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9F5B732A857B3FDF00E2BBD2 /* GoogleService-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "Runner/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		A1B2C3D4E5F6010203040508 /* AgoraDeferredRegistration.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AgoraDeferredRegistration.m; sourceTree = "<group>"; };
+		A360FACE0000000000000001 /* Insta360Support.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Insta360Support.swift; sourceTree = "<group>"; };
+		A360FACE0000000000000002 /* Insta360FrameSink.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Insta360FrameSink.swift; sourceTree = "<group>"; };
+		A360FACE0000000000000003 /* Insta360ProcessedTexture.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Insta360ProcessedTexture.swift; sourceTree = "<group>"; };
+		A360FACE0000000000000004 /* Insta360PreviewView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Insta360PreviewView.swift; sourceTree = "<group>"; };
+		A360FACE0000000000000005 /* Insta360Bridge.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Insta360Bridge.swift; sourceTree = "<group>"; };
 		A1B2C3D4E5F6010203040509 /* AgoraDeferredRegistration.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AgoraDeferredRegistration.h; sourceTree = "<group>"; };
 		A2B3C4D5E6F7A8B9C0D1E2F3 /* Products.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Products.storekit; sourceTree = "<group>"; };
 		B0F08FC3CD6C77627C425F53 /* Pods_RunnerTests.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_RunnerTests.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -153,8 +163,21 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				A2B3C4D5E6F7A8B9C0D1E2F3 /* Products.storekit */,
 				C1D2E3F4A5B6C7D8E9F0A1B2 /* Runner.entitlements */,
+				A360FACE0000000000000010 /* Insta360 */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		A360FACE0000000000000010 /* Insta360 */ = {
+			isa = PBXGroup;
+			children = (
+				A360FACE0000000000000005 /* Insta360Bridge.swift */,
+				A360FACE0000000000000002 /* Insta360FrameSink.swift */,
+				A360FACE0000000000000004 /* Insta360PreviewView.swift */,
+				A360FACE0000000000000003 /* Insta360ProcessedTexture.swift */,
+				A360FACE0000000000000001 /* Insta360Support.swift */,
+			);
+			path = Insta360;
 			sourceTree = "<group>";
 		};
 		E2AC938509E58F27EA17CBA5 /* Pods */ = {
@@ -433,6 +456,11 @@
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				A1B2C3D4E5F6010203040507 /* AgoraDeferredRegistration.m in Sources */,
+				A360FACE0000000000000105 /* Insta360Bridge.swift in Sources */,
+				A360FACE0000000000000102 /* Insta360FrameSink.swift in Sources */,
+				A360FACE0000000000000104 /* Insta360PreviewView.swift in Sources */,
+				A360FACE0000000000000103 /* Insta360ProcessedTexture.swift in Sources */,
+				A360FACE0000000000000101 /* Insta360Support.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
