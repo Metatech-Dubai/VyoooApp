@@ -65,8 +65,9 @@ needed by our integration.
 ### Native Swift bridge — `ios/Runner/Insta360/`
 - **`Insta360Support.swift`** — device-support gate (arm64 **device**, iOS 15+; simulator disabled) + one-time `setup()` of the shared+usb managers. Mirrors Android `Insta360Support` + `VyoooApplication.onCreate`.
 - **`Insta360Bridge.swift`** — the MethodChannel + both EventChannels. Translates the iOS notification-based connection model into the same `connection`/`error` events; single-slot coalescing frame dispatch (bounds memory like Android); USB pre-flight via `EAAccessoryManager` (→ `usb_no_device`); pipeline toggles stored; `getStatus`/`getPipelineMetrics`.
-- **`Insta360FrameSink.swift`** — BGRA `CVPixelBuffer` → tightly-packed RGBA (handles row padding), fps/stats, 24 fps transmit cap, retains latest buffer for the texture. Mirror of Android `Insta360FrameSink`.
-- **`Insta360ProcessedTexture.swift`** — `FlutterTexture` backing `createProcessedTexture()` (flat-ERP host preview via a `Texture` widget). iOS analogue of Android `Insta360GlRenderer`.
+- **`Insta360FrameSink.swift`** — BGRA `CVPixelBuffer` → tightly-packed RGBA, **runs the full pipeline** (see §4b), then fans the processed frame to the host texture (BGRA) + transmit (RGBA, 24 fps cap); fps/stats; real `getPipelineMetrics`. Mirror of Android `Insta360FrameSink`.
+- **`Insta360/Pipeline/`** (11 files) — the ported optimisation pipeline: `FramePipeline`, `FrameStage`, `PipelineFrame`(+`FrameMeta`), `PipelineHints`, `PipelineMetrics`, the five stages, `HeuristicDecisionLayer`, and the iOS-only `PixelBufferFactory`. Parity table in §4b.
+- **`Insta360ProcessedTexture.swift`** — `FlutterTexture` backing `createProcessedTexture()` (host preview of the **processed** ERP via a `Texture` widget). iOS analogue of Android `Insta360GlRenderer`.
 - **`Insta360PreviewView.swift`** (+ factory) — `FlutterPlatformView` hosting `INSRenderView` + media session + preview player + flat-pano output; emits `previewState`; native pan/pinch look-around (touches reach a UiKitView on iOS, unlike the Android GL SurfaceView).
 
 ### Registration
@@ -103,6 +104,51 @@ Files:
 - `ios/Frameworks/.gitignore`, `ios/Frameworks/README.md`.
 - `ios/scripts/install_insta360_sdk.sh` — copies the 3 xcframeworks from the SDK into `ios/Frameworks/`.
 - `ios/Podfile` — `pod 'INSCameraSDK', :path => 'Frameworks'`.
+
+---
+
+## 4b. Pipeline parity (the milestones now run live on iOS)
+
+The Android capture-side optimisation pipeline is ported to Swift under
+`ios/Runner/Insta360/Pipeline/` and wired into the real frame path: every extracted flat-pano frame is
+converted to RGBA8888, observed by the AI decision layer, and run through the pipeline **before** it
+reaches the host texture / transmit path — replacing the earlier pass-through. `getPipelineMetrics`
+now returns the real `PipelineMetrics.snapshot()` and the `setMask`/`setTemporal`/`setAi` toggles drive
+the real stages.
+
+Android → Swift map (same names for auditability), and the constants mirrored exactly:
+
+| Android (`…/insta360/pipeline/`) | Swift (`…/Insta360/Pipeline/`) | Constants / rules mirrored |
+|---|---|---|
+| `FramePipeline.kt` | `FramePipeline.swift` | Ordered chain **Downscale → PanoramaDetect → ForwardMask → TemporalDedup**; drop-on-nil (records drop, stops); **fall-open on throw** (see note); per-stage + overall latency. |
+| `FrameStage.kt` | `FrameStage.swift` | `process(frame, hints) -> frame?` (declared `throws` so the pipeline can fall open). |
+| `PipelineFrame.kt` / `FrameMeta.kt` | `PipelineFrame.swift` | RGBA8888 tightly packed; `ptsUs` preserved unchanged through every stage; `meta.isPanoramic`, `forwardThetaDeg`. |
+| `PipelineHints.kt` | `PipelineHints.swift` | `DeterministicHints` (all nil) + `MutableHints`. |
+| `PipelineMetrics.kt` | `PipelineMetrics.swift` | EMA α **0.1**; keys `fps, framesIn, framesOut, framesDropped, totalMs, spatialReduction, stagesMs`; ordered `stagesMs`. |
+| `PanoramaDetectStage.kt` | `PanoramaDetectStage.swift` | ERP aspect ~2:1, tolerance **0.15**; AI `isPanoramic` override. |
+| `ForwardMaskStage.kt` | `ForwardMaskStage.swift` | Forward FOV **200°**, feather **6°**; centred keep band `(F/360)·W`; per-column factor table cached; suppressed → opaque black; **no wrap-around** (identical to Android). |
+| `TemporalDedupStage.kt` | `TemporalDedupStage.swift` | `motionThreshold` **0.010**, `staticFps` **10**; PTS-based `minGap = 1e6/staticFps`; keep-if-moving-or-elapsed; 32×18 luma grid; BT.601 int luma `(77,150,29)>>8`; normalised MAD. |
+| `DownscaleStage.kt` | `DownscaleStage.swift` | Tiers **1920×960 / 1600×800 / 1280×640 / 960×480**; `tierFor` thresholds **0.85/0.65/0.45**; dwell **2.5 s** (PTS-based) hysteresis; area-average box filter; reciprocal multiply-shift **RECIP_SHIFT 21**, **MAX_BOX 64**; never upscale; full tier = pass-through. |
+| `HeuristicDecisionLayer.kt` | `HeuristicDecisionLayer.swift` | 32×18 grid; `TOP_FRACTION` **0.15**; EMA α motion **0.4** / detail **0.2** / theta **0.05**; `RECOMMEND_FLOOR` **0.5**; hysteresis enter **0.030** / exit **0.015**, hold **400 ms**, fixed ref lag **250 ms**; `perceptual = clamp(0.5 + 2·detail + 0.5·activity)`; `motion` emitted as decision 1/0; stats keys `aiEnabled…aiThetaDeg`. |
+
+**Deliberate Swift deviations (behaviourally identical, documented):**
+1. `FrameStage.process` is `throws` (Kotlin caught `Throwable`). Swift can't catch fatal traps (e.g.
+   out-of-bounds), so genuine parity for *those* is impossible on any platform; the structural
+   try/catch fall-open is preserved and any thrown error falls open exactly like Android.
+2. `DownscaleStage` allocates the reduced-tier output buffer fresh per resample instead of reusing one
+   persistent buffer — under Swift copy-on-write the reused buffer would alias `frame.pixels` and force
+   the next in-place stage (mask) to copy, which is worse. **Output pixels are identical.**
+3. Timing uses `DispatchTime.uptimeNanoseconds` (monotonic) in place of `System.nanoTime()`.
+4. New iOS-only helper `PixelBufferFactory.swift`: converts processed RGBA → a BGRA `CVPixelBuffer`
+   (pooled per output size) for the Flutter host `Texture`. Android uploads via GL; the pixels match.
+
+**Verifiable on iOS now** via the existing Dart API:
+- `getPipelineMetrics()` → live `spatialReduction`, `framesIn/Out/Dropped`, `stagesMs` per stage, plus
+  `spatial*` (tier/switches/ratio), `temporal*` (keepRatio/motionKeeps/staticDrops), `ai*`
+  (aiMoving/aiActivity/aiMotionSpans/aiRecommendedScale/aiOverheadMs).
+- `setMaskEnabled(false)` → ForwardMask off (full 360° passes); `setTemporalEnabled(false)` → every
+  frame kept (`keepRatio`→1); `setAiEnabled(false)` → hints cleared, Downscale pins full tier and the
+  temporal pacer uses its own deterministic motion metric (the M2 arm).
 
 ---
 
@@ -190,12 +236,14 @@ team (External Accessory + provisioning profile).
    overlap and port the dance if so.
 
 **Feature parity**
-10. **Optimisation pipeline NOT ported.** Android runs Downscale → PanoramaDetect → ForwardMask →
-    TemporalDedup + a heuristic AI layer (`android/.../com/vyooo/insta360/pipeline/*`). On iOS the
-    toggles (`setMaskEnabled`/`setTemporalEnabled`/`setAiEnabled`) only **store state**; frames are
-    forwarded **pass-through** (full-res ERP), and `getPipelineMetrics` returns `pipelinePort:"pending"`.
-    Connect + preview + raw RGBA frames work; the spatial/temporal **bitrate reduction** does not yet.
-    Port the pipeline (Accelerate/vImage or Metal) as a follow-up if the iOS build needs the KPI story.
+10. **Pipeline is ported and wired (§4b) — CPU parity is authored, not yet compiler-verified.** The
+    stages reproduce Android's constants/rules exactly and run on every frame. What remains is Mac-only:
+    (a) confirm it compiles, (b) confirm the pixel-for-pixel output matches Android on a real feed,
+    (c) check CPU headroom at 2K/30 — the mask + box-filter + two channel-swaps are plain-Swift
+    unsafe-pointer loops (chosen for guaranteed parity over vImage, which would change the resampling
+    math). If CPU-bound on device, move the **channel swaps** (not the box filter) to
+    `vImagePermuteChannels_ARGB8888` and/or the mask fill to vImage — those preserve output; the box
+    filter must stay CPU to keep `spatialReduction`/pixels identical.
 11. **Local Network permission (iOS 14+).** Wi-Fi connect to `192.168.42.1` triggers the system Local
     Network prompt; `NSLocalNetworkUsageDescription` is set. If discovery needs Bonjour, add
     `NSBonjourServices`. Confirm the prompt appears and the socket connects on device.
