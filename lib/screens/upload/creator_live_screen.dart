@@ -274,6 +274,17 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
           if (!mounted) return;
           _showToast('Stream error: $msg');
         },
+        // [measure/patent-metrics] Agora local encoder stats → logcat, for the isolated
+        // pipeline-ON-vs-OFF sent-bitrate A/B (M5 §8.2). Grep logcat for "BitrateKPI".
+        onLocalVideoStats: (connection, sourceType, stats) {
+          debugPrint(
+            '[BitrateKPI] mask=$_maskEnabled sentBitrate=${stats.sentBitrate}kbps '
+            'sentFps=${stats.sentFrameRate} '
+            'enc=${stats.encodedFrameWidth}x${stats.encodedFrameHeight} '
+            'encFps=${stats.encoderOutputFrameRate} '
+            'targetBitrate=${stats.targetBitrate}',
+          );
+        },
       ),
     );
 
