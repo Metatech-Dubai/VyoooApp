@@ -76,11 +76,11 @@ class DownscaleStage(
             return (targetWidth.toLong() * targetHeight).toDouble() / src
         }
 
-    /** Extract→active-tier pixel ratio (this stage's own reduction; 1.0 at the full tier). */
+    /** Fraction of the source resolution actually delivered (2K floor ≈ 0.44 … 1.0 at full source). */
     val tierRatio: Double
         get() {
-            val full = (targetWidth.toLong() * targetHeight).coerceAtLeast(1)
-            return (activeWidth.toLong() * activeHeight).toDouble() / full
+            val src = (sourceWidth.toLong() * sourceHeight).coerceAtLeast(1)
+            return (activeWidth.toLong() * activeHeight).toDouble() / src
         }
 
     override fun process(frame: PipelineFrame, hints: PipelineHints): PipelineFrame {
@@ -126,6 +126,36 @@ class DownscaleStage(
             pendingW = 0
             switches++
         }
+    }
+
+    /**
+     * Maps the AI perceptual signal to an output tier in **[2K floor … source ceiling]** — the
+     * capture-side resolution-normalisation target (Patent §2), with 2K as the guaranteed minimum.
+     *
+     * The signal `scale∈[0,1]` (higher = more perceptual detail/motion worth preserving) selects one of
+     * up to four discrete 2:1 tiers between the 2K floor ([TIER_FULL_W]) and the live source width
+     * ([sourceWidth]): a low signal normalises down to 2K (max reduction, min bandwidth); a high signal
+     * keeps resolution near the source. It never returns below 2K and never above the source. Widths are
+     * snapped to multiples of 32 so the halved height stays macroblock-aligned (÷16).
+     */
+    private fun tierFor(scale: Float): Pair<Int, Int> {
+        val floorW = TIER_FULL_W                       // 1920 — hard 2K floor
+        val ceilW = sourceWidth.coerceAtLeast(floorW)  // live source width, e.g. 2880 (never below floor)
+        if (ceilW <= floorW) return floorW to TIER_FULL_H   // no headroom above 2K → pin the floor
+        val s = scale.coerceIn(0f, 1f)
+        val w = when {
+            s < 0.25f -> floorW                        // static / low detail → normalise to 2K
+            s < 0.50f -> lerp32(floorW, ceilW, 1f / 3f)
+            s < 0.75f -> lerp32(floorW, ceilW, 2f / 3f)
+            else -> ceilW                              // rich detail / motion → keep the full source
+        }
+        return w to (w / 2)
+    }
+
+    /** Linear interpolate floor→ceil at fraction [t], snapped to a multiple of 32 (so width/2 is ÷16). */
+    private fun lerp32(floorW: Int, ceilW: Int, t: Float): Int {
+        val w = floorW + ((ceilW - floorW) * t).toInt()
+        return ((w / 32) * 32).coerceIn(floorW, ceilW)
     }
 
     /** Rebuild the per-column source spans; a no-op unless the in/out width pair changed. */
@@ -257,26 +287,9 @@ class DownscaleStage(
             if (n == 0) 0 else (1 shl RECIP_SHIFT) / n + 1
         }
 
-        // Tiers are all exactly 2:1 (ERP) and divisible by 16 (encoder macroblock friendly).
+        // The 2K ERP **floor** — the minimum delivered resolution (the pipeline never goes below this)
+        // and the tier the stage pins when the AI is disabled. 2:1 aspect, encoder-macroblock friendly.
         const val TIER_FULL_W = 1920
         const val TIER_FULL_H = 960
-        const val TIER_HIGH_W = 1600
-        const val TIER_HIGH_H = 800
-        const val TIER_MID_W = 1280
-        const val TIER_MID_H = 640
-        const val TIER_LOW_W = 960
-        const val TIER_LOW_H = 480
-
-        /**
-         * Deterministic signal→tier mapping. Pure and side-effect free: the AI supplies the score, this
-         * fixed table supplies the resolution — the AI never names a resolution itself.
-         */
-        @JvmStatic
-        fun tierFor(scale: Float): Pair<Int, Int> = when {
-            scale >= 0.85f -> TIER_FULL_W to TIER_FULL_H
-            scale >= 0.65f -> TIER_HIGH_W to TIER_HIGH_H
-            scale >= 0.45f -> TIER_MID_W to TIER_MID_H
-            else -> TIER_LOW_W to TIER_LOW_H
-        }
     }
 }

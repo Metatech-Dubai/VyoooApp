@@ -74,6 +74,11 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
   Timer? _instaConnectTimer;
   // Agora-monotonic anchor for pushed-frame timestamps (see [_pushInstaFrame]); null = not yet set.
   int? _pushTsBaseMs;
+  // The resolution Agora's encoder is currently configured for. The AI-governed pipeline varies the
+  // delivered ERP resolution in [2K floor … live source]; we reconfigure Agora to encode at exactly
+  // that resolution (see [_pushInstaFrame]) so viewers receive the AI's choice, not a re-scale.
+  int _encW = 1920;
+  int _encH = 960;
 
   // Interactive 360 view orientation (degrees), driven by host drag on the preview.
   double _viewYaw = 0;
@@ -571,6 +576,8 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         ),
       );
       _pushTsBaseMs = null; // re-anchor the frame timestamps to Agora's clock for this session
+      _encW = 1920; // this session starts at the 2K floor (matches the initial encoder config above)
+      _encH = 960;
       _instaFrameSub = _insta.frames().listen(_pushInstaFrame);
       await _insta.setFrameStreaming(true);
 
@@ -715,6 +722,27 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
 
   Future<void> _pushInstaFrame(Insta360Frame frame) async {
     if (_cameraSource != _CameraSource.insta360) return;
+    // Adaptive spatial reduction: the AI-governed pipeline delivers this frame at a resolution in
+    // [2K floor … live source]. Agora encodes an external source at its configured dimensions, so if
+    // the frame resolution changed we must reconfigure the encoder to match — otherwise Agora would
+    // re-scale the frame back to the old size and the viewer would never see the AI's choice. The
+    // native side dwell-gates tier switches (~2.5 s), so this reconfigure is rare, not per-frame.
+    if (frame.width != _encW || frame.height != _encH) {
+      _encW = frame.width;
+      _encH = frame.height;
+      // Scale the cap with pixel count (2K → 3500 kbps baseline), capped so the uplink stays bounded.
+      final bitrate =
+          (3500 * (_encW * _encH) / (1920 * 960)).round().clamp(3500, 6000);
+      await _engine.setVideoEncoderConfiguration(
+        VideoEncoderConfiguration(
+          dimensions: VideoDimensions(width: _encW, height: _encH),
+          frameRate: 15,
+          bitrate: bitrate,
+          orientationMode: OrientationMode.orientationModeFixedLandscape,
+          degradationPreference: DegradationPreference.maintainResolution,
+        ),
+      );
+    }
     // Align the external-frame timestamp to Agora's monotonic clock (the SDK-recommended source).
     // The capture PTS is 0-based; pushing it raw leaves Agora's A/V-sync trying to reconcile a clock
     // mismatch, which buffers video and adds latency. Anchor the first frame to Agora's clock and
@@ -994,7 +1022,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            const Insta360PreviewView(extractWidth: 1920, extractHeight: 960),
+            const Insta360PreviewView(extractWidth: 2880, extractHeight: 1440),
             ValueListenableBuilder<Insta360State>(
               valueListenable: _insta.state,
               builder: (context, st, _) => st.previewReady
