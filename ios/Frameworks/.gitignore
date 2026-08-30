@@ -1,0 +1,8 @@
+# The Insta360 SDK xcframework binaries are large (~150 MB device-only, GBs with all slices/dSYMs)
+# and must NOT be committed. Copy them in with ios/scripts/install_insta360_sdk.sh before pod install.
+*.xcframework/
+
+# Keep the podspec + this readme tracked.
+!INSCameraSDK.podspec
+!README.md
+!.gitignore

@@ -31,6 +31,11 @@ target 'Runner' do
   # Static linkage avoids dynamic-framework + FFI edge cases (Agora Iris / DartWorker crashes on device).
   use_frameworks! :linkage => :static
 
+  # Insta360 iOS SDK (v1.9.2), vendored as a local pod. The dynamic xcframeworks are copied into
+  # ios/Frameworks by ios/scripts/install_insta360_sdk.sh (NOT committed to git). CocoaPods embeds &
+  # signs the vendored dynamic frameworks automatically even under :static source linkage.
+  pod 'INSCameraSDK', :path => 'Frameworks'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths

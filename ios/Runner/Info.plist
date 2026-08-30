@@ -59,6 +59,9 @@
 		<true/>
 		<key>NSAllowsArbitraryLoadsInWebContent</key>
 		<true/>
+		<!-- Insta360: allow cleartext HTTP to the camera AP (192.168.42.1) and Lightning proxy (localhost:9099). -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>Vyooo needs the camera to record stories, profile photos, live streams, and video calls.</string>
@@ -70,9 +73,30 @@
 	<string>Vyooo needs photo library access to add images to your story and profile.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Vyooo uses your location to tag posts with your current place. Location is only accessed when you tap "Use current location".</string>
+	<!-- ── Insta360 camera integration ──────────────────────────────────────── -->
+	<!-- MFi protocols for USB/Lightning-connected Insta360 cameras (External Accessory framework).
+	     TODO(mac): verify this list against the exact camera models you ship for; USB-C X-series
+	     support over the iOS SDK's usbManager must be confirmed on-device. -->
+	<key>UISupportedExternalAccessoryProtocols</key>
+	<array>
+		<string>com.insta360.camera</string>
+		<string>com.insta360.onecontrol</string>
+		<string>com.insta360.onexcontrol</string>
+		<string>com.insta360.onex2control</string>
+		<string>com.insta360.onercontrol</string>
+		<string>com.insta360.nanoscontrol</string>
+	</array>
+	<!-- Local Network permission (iOS 14+): required to reach the camera's Wi-Fi AP at 192.168.42.1. -->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Vyooo connects to your Insta360 camera over its Wi-Fi network to stream the 360 preview.</string>
+	<!-- Bluetooth is used by the SDK to wake/pair some Insta360 models. -->
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Vyooo uses Bluetooth to connect to and control your Insta360 camera.</string>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>remote-notification</string>
+		<!-- Insta360: keep the External Accessory session alive while the app is backgrounded during capture. -->
+		<string>external-accessory</string>
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>

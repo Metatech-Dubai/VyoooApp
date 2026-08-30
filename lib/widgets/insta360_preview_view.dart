@@ -31,22 +31,35 @@ class Insta360PreviewView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final creationParams = <String, dynamic>{
+      'width': extractWidth,
+      'height': extractHeight,
+    };
+
+    if (defaultTargetPlatform == TargetPlatform.iOS) {
+      // iOS hosts the native `Insta360PreviewView` (INSRenderView + media session). Unlike the
+      // Android GL SurfaceView, touches reach an embedded UiKitView, so the native view uses the
+      // SDK's own pan/pinch gestures for look-around (see Insta360PreviewView.swift).
+      return UiKitView(
+        viewType: _viewType,
+        creationParams: creationParams,
+        creationParamsCodec: const StandardMessageCodec(),
+        gestureRecognizers: const <Factory<OneSequenceGestureRecognizer>>{},
+        hitTestBehavior: PlatformViewHitTestBehavior.opaque,
+      );
+    }
+
     if (defaultTargetPlatform != TargetPlatform.android) {
       return const ColoredBox(
         color: Colors.black,
         child: Center(
           child: Text(
-            'Insta360 preview is Android-only',
+            'Insta360 preview is not supported on this platform',
             style: TextStyle(color: Colors.white70),
           ),
         ),
       );
     }
-
-    final creationParams = <String, dynamic>{
-      'width': extractWidth,
-      'height': extractHeight,
-    };
 
     return PlatformViewLink(
       viewType: _viewType,
