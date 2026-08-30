@@ -1022,7 +1022,7 @@ class _CreatorLiveScreenState extends State<CreatorLiveScreen> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            const Insta360PreviewView(extractWidth: 2880, extractHeight: 1440),
+            const Insta360PreviewView(extractWidth: 2240, extractHeight: 1120),
             ValueListenableBuilder<Insta360State>(
               valueListenable: _insta.state,
               builder: (context, st, _) => st.previewReady

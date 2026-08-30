@@ -40,11 +40,12 @@ class Insta360PreviewView(
     private val player = InstaCapturePlayerView(context)
     private var disposed = false
     private var warmRefreshDone = false
-    // Extract at the full live source (2.9K), so the AI-governed DownscaleStage has headroom to keep
-    // resolution up to the source and normalise down to the 2K floor (never below). The extract target
-    // is fixed (retargeting the SDK extract mid-stream stalls it); the per-frame resample does the rest.
-    private val extractWidth = (creationParams?.get("width") as? Int) ?: 2880
-    private val extractHeight = (creationParams?.get("height") as? Int) ?: 1440
+    // Extract at 2240×1120 (capped below the 2.9K source for real-time), so the AI-governed
+    // DownscaleStage has headroom above the 2K floor while keeping capFps usable. The extract target is
+    // fixed (retargeting the SDK extract mid-stream stalls it); the per-frame resample does the rest.
+    // Must match DownscaleStage.sourceWidth/Height. Raise toward 2880 only with a GPU resample.
+    private val extractWidth = (creationParams?.get("width") as? Int) ?: 2240
+    private val extractHeight = (creationParams?.get("height") as? Int) ?: 1120
 
     init {
         active = this

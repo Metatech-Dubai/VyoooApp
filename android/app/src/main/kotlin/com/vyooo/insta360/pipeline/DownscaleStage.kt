@@ -29,9 +29,12 @@ class DownscaleStage(
     /** Full-resolution tier — the 2K ERP target, and the pinned tier when the AI is disabled. */
     @JvmField var targetWidth: Int = TIER_FULL_W,
     @JvmField var targetHeight: Int = TIER_FULL_H,
-    /** Source live-stream resolution, for the source→extract reduction readout. */
-    @JvmField var sourceWidth: Int = 2880,
-    @JvmField var sourceHeight: Int = 1440,
+    // The extract/source resolution the pipeline runs at — also the AI's top tier (the ceiling above
+    // the 2K floor). Capped at 2240×1120 for real-time: the full 2.9K source (2880×1440) is 2.25× the
+    // 2K pixel cost and drops capFps to ~9, whereas 2240×1120 (~1.36×) keeps live frame-rate usable
+    // while still giving the AI headroom above 2K. Raise toward 2880 only once the resample is on GPU.
+    @JvmField var sourceWidth: Int = 2240,
+    @JvmField var sourceHeight: Int = 1120,
 ) : FrameStage {
 
     override val name: String = "Downscale"
