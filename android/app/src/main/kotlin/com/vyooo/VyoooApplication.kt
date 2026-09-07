@@ -6,6 +6,7 @@ import android.util.Log
 import com.arashivision.sdkcamera.InstaCameraSDK
 import com.arashivision.sdkmedia.InstaMediaSDK
 import com.vyooo.insta360.Insta360UsbManager
+import com.vyooo.viture.VitureUsbManager
 
 /**
  * Application entry point.
@@ -38,6 +39,15 @@ class VyoooApplication : Application() {
             }
         } else {
             Log.i(TAG, "Insta360 SDK skipped (unsupported device: arm64=${Insta360Support.isArm64}, api=${Build.VERSION.SDK_INT})")
+        }
+
+        // VITURE XR viewer: register the USB attach/permission receiver at startup so the glasses'
+        // IMU-endpoint grant is cached before the viewer taps "enter XR". Never crashes app start
+        // (guarded internally); the VITURE SDK itself is only initialised on demand in VitureManager.
+        try {
+            VitureUsbManager.init(this)
+        } catch (t: Throwable) {
+            Log.e(TAG, "VITURE USB init failed; XR viewer may need a manual USB permission grant", t)
         }
     }
 

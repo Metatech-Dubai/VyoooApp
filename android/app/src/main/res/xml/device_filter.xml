@@ -18,4 +18,17 @@
 <resources>
     <usb-device vendor-id="0x2e1a" product-id="0x2" />
     <usb-device vendor-id="0x4255" />
+
+    <!--
+      VITURE Luma XR glasses (XR viewer feature). The glasses connect over USB-C: video via
+      DisplayPort Alt Mode (no filter needed for that), and the IMU over a USB interface the VITURE
+      SDK opens. Listing the glasses here makes attaching them offer to open Vyooo and grants USB
+      permission up-front (same rationale as the Insta360 entries above).
+
+      ⚠️ PLACEHOLDER VID/PID — 0x35ca is VITURE's reported USB vendor id but is UNVERIFIED, and the
+      Luma XR product id is unknown, so no product-id is pinned yet.
+      TODO(hardware): confirm VID/PID — attach the glasses and read logcat tag `VitureUsb`
+      (`vid=0x… pid=0x…`), then set the exact values here and in VitureUsbManager.KNOWN_VENDOR_IDS.
+    -->
+    <usb-device vendor-id="0x35ca" />
 </resources>
