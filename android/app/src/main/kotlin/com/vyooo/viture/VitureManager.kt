@@ -31,9 +31,10 @@ object VitureManager {
 
     private const val TAG = "VitureManager"
 
-    // ── IMU payload layout (documented; verify on hardware) ────────────────────────────────────
-    // Little-endian floats. Euler (radians) at 0/4/8 = roll/pitch/yaw. Quaternion at 20/24/28/32 when
-    // the payload is long enough. We prefer the quaternion (no gimbal issues, cleaner to slerp).
+    // ── IMU payload layout (CONFIRMED against the official VITURESensorDemo) ─────────────────────
+    // BIG-endian floats. Euler (radians) at 0/4/8 = roll/pitch/yaw (roll=front, pitch=left, yaw=up).
+    // Quaternion (W,X,Y,Z) at 20/24/28/32 when the payload is long enough (len >= 36). We prefer the
+    // quaternion (no gimbal issues, cleaner to slerp).
     private const val OFFSET_EULER_ROLL = 0
     private const val OFFSET_EULER_PITCH = 4
     private const val OFFSET_EULER_YAW = 8
@@ -100,23 +101,24 @@ object VitureManager {
         val ctx = context.applicationContext
         appContext = ctx
         return try {
-            // getInstance(context) → init(). init() returns a status int (0 == success). // TODO(hardware): verify
+            // getInstance(context) → init(). Returns Constants.ERROR_INIT_SUCCESS (0) on success, or a
+            // negative code: NO_DEVICE (-1) / NO_PERMISSION (-2) / UNKNOWN (-3). (Confirmed against the
+            // SDK constants and the official sample, which checks `== ERROR_INIT_SUCCESS`.)
             val mgr = ArManager.getInstance(ctx)
             arManager = mgr
+            mgr.setLogOn(true)
             val code = mgr.init()
             if (code != ERR_INIT_SUCCESS) {
-                Log.e(TAG, "ArManager.init() returned $code (expected $ERR_INIT_SUCCESS)")
-                // Some SDK builds return the file descriptor / a positive handle on success; treat only
-                // a negative code as fatal. // TODO(hardware): verify the exact success contract.
-                if (code < 0) {
-                    arManager = null
-                    return false
-                }
+                // Not fatal: usually the glasses aren't attached yet or USB permission is pending. The
+                // SDK's own UsbReceiver re-inits on attach; the caller can retry start() then.
+                Log.w(TAG, "ArManager.init() = $code (glasses not ready) — feature unavailable for now")
+                arManager = null
+                return false
             }
             mgr.registerCallback(callback)
-            // Monoscopic 2D (1920x1080@120Hz). set3D(false) keeps both eyes identical — we are NOT
-            // producing a stereo pair. // TODO(hardware): verify set3D signature / return.
+            // Monoscopic 2D (1920x1080@120Hz): set3D(false) keeps both eyes identical (no stereo pair).
             mgr.set3D(false)
+            mgr.setImuFrequency(2) // Constants.IMU_FREQUENCE_120 = 2 → 120 Hz head-tracking.
             setImuEnabled(true)
             initialized = true
             Log.i(TAG, "VITURE SDK initialised (mono 3DoF)")
@@ -152,11 +154,7 @@ object VitureManager {
             try {
                 mgr.setImuOn(false)
                 mgr.unregisterCallback(callback)
-                // NOTE: we intentionally do NOT call a release()/deInit() here — those are not part of
-                // the documented API surface, and calling a non-existent method would fail to compile.
-                // Unregistering the callback + turning the IMU off is sufficient to idle the SDK.
-                // TODO(hardware): if the shipped AAR exposes an explicit teardown (release/deInit),
-                // call it here to fully free the USB endpoint.
+                mgr.release() // ArManager.release() exists (confirmed) — frees the SDK's USB endpoints.
             } catch (t: Throwable) {
                 Log.e(TAG, "stop error", t)
             }
@@ -197,13 +195,16 @@ object VitureManager {
 
     /** Parse one IMU payload into [orientation] and (throttled) notify Flutter. */
     private fun parseImu(data: ByteArray) {
-        val bb = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN)
+        // The SDK delivers BIG-endian floats: the official VITURESensorDemo uses
+        // ByteBuffer.wrap(...).getFloat(offset) without changing the order, and wrap() defaults to
+        // BIG_ENDIAN. (Confirmed against the shipped sample, not a guess.)
+        val bb = ByteBuffer.wrap(data).order(ByteOrder.BIG_ENDIAN)
         if (data.size >= QUAT_MIN_PAYLOAD) {
-            // Preferred path: a real quaternion is present.
-            val x = bb.getFloat(OFFSET_QUAT)
-            val y = bb.getFloat(OFFSET_QUAT + 4)
-            val z = bb.getFloat(OFFSET_QUAT + 8)
-            val w = bb.getFloat(OFFSET_QUAT + 12)
+            // Quaternion component order is **W, X, Y, Z**: W@20, X@24, Y@28, Z@32 (per the sample).
+            val w = bb.getFloat(OFFSET_QUAT)
+            val x = bb.getFloat(OFFSET_QUAT + 4)
+            val y = bb.getFloat(OFFSET_QUAT + 8)
+            val z = bb.getFloat(OFFSET_QUAT + 12)
             publishQuaternion(x, y, z, w)
         } else if (data.size >= 12) {
             // Fallback: build a quaternion from the Euler angles (radians).
