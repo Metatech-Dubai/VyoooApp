@@ -10,9 +10,11 @@ import '../../core/models/live_chat_message_model.dart';
 import '../../core/models/live_stream_model.dart';
 import '../../core/services/agora_token_service.dart';
 import '../../core/services/live_stream_service.dart';
+import '../../core/services/viture_service.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../widgets/live_360_view.dart';
+import '../../widgets/viewer_sphere_view.dart';
 
 /// Viewer live stream screen.
 /// Pass a [LiveStreamModel] to open any live stream as a viewer.
@@ -40,6 +42,11 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   StreamSubscription<List<LiveChatMessageModel>>? _chatSub;
   List<LiveChatMessageModel> _chatMessages = [];
 
+  // ── VITURE XR viewer ────────────────────────────────────────────────────────────
+  final _viture = VitureService();
+  bool _vitureConnected = false;
+  bool _xrMode = false; // user toggled into the head-tracked glasses view
+
   // ── UI ────────────────────────────────────────────────────────────────────────
   final _chatCtrl = TextEditingController();
   final _chatScrollCtrl = ScrollController();
@@ -52,6 +59,26 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
     super.initState();
     _liveDoc = widget.stream;
     _initAndJoin();
+    _initViture();
+  }
+
+  Future<void> _initViture() async {
+    _viture.start();
+    _viture.state.addListener(_onVitureState);
+    // Cheap capability probe; the actual SDK/USB connect happens when the user enters XR.
+    await _viture.isSupported();
+  }
+
+  void _onVitureState() {
+    if (!mounted) return;
+    final connected = _viture.state.value.connected;
+    if (connected != _vitureConnected) {
+      setState(() {
+        _vitureConnected = connected;
+        // Glasses unplugged mid-session → drop out of XR so the flat view returns.
+        if (!connected) _xrMode = false;
+      });
+    }
   }
 
   @override
@@ -61,8 +88,34 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
     _chatCtrl.dispose();
     _chatScrollCtrl.dispose();
     _toastTimer?.cancel();
+    _viture.state.removeListener(_onVitureState);
+    unawaited(_viture.disconnect().catchError((_) {}));
+    unawaited(_viture.dispose());
     _leaveAndDispose();
     super.dispose();
+  }
+
+  /// XR can be offered when the stream is a 360 (equirect) source and the glasses are connected.
+  bool _canOfferXr(LiveStreamModel doc) =>
+      ViewerSphereView.supportsNative && doc.use360Player && _vitureConnected;
+
+  Future<void> _enterXr() async {
+    // Connect the glasses on demand (USB-permission pre-flight is handled natively). If already
+    // connected this is a no-op that resolves immediately.
+    if (!_vitureConnected) {
+      final ok = await _viture.connect();
+      if (!ok && !_viture.state.value.connected) {
+        _showToast(_viture.state.value.lastError ?? 'Could not connect the XR glasses');
+        return;
+      }
+    }
+    if (!mounted) return;
+    setState(() => _xrMode = true);
+  }
+
+  void _exitXr() {
+    if (!mounted) return;
+    setState(() => _xrMode = false);
   }
 
   Future<void> _leaveAndDispose() async {
@@ -260,6 +313,32 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   @override
   Widget build(BuildContext context) {
     final doc = _liveDoc ?? widget.stream;
+    // In XR mode the sphere is fullscreen and all chat/HUD overlays are hidden — only a minimal
+    // "exit XR" control remains, so the wearer sees a clean 360 view on the glasses.
+    if (_xrMode && _canOfferXr(doc)) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            _buildVideoBackground(doc),
+            SafeArea(
+              child: Align(
+                alignment: Alignment.topRight,
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: _CircleIconButton(
+                    icon: Icons.fullscreen_exit_rounded,
+                    onTap: _exitXr,
+                  ),
+                ),
+              ),
+            ),
+            if (_toast != null) _buildToast(),
+          ],
+        ),
+      );
+    }
     return Scaffold(
       backgroundColor: Colors.black,
       resizeToAvoidBottomInset: false,
@@ -268,6 +347,20 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
         children: [
           _buildVideoBackground(doc),
           _buildGradientOverlay(),
+          // Enter-XR affordance: shown only when the glasses are connected and the stream is 360.
+          if (_canOfferXr(doc))
+            SafeArea(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: _CircleIconButton(
+                    icon: Icons.vrpano_rounded,
+                    onTap: _enterXr,
+                  ),
+                ),
+              ),
+            ),
           SafeArea(
             child: Stack(
               children: [
@@ -303,17 +396,7 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
               ],
             ),
           ),
-          if (_toast != null)
-            Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.72),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(_toast!, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
-              ),
-            ),
+          if (_toast != null) _buildToast(),
           // Loading state
           if (!_engineReady)
             Container(
@@ -326,6 +409,15 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
   }
 
   Widget _buildVideoBackground(LiveStreamModel doc) {
+    // XR mode: VITURE glasses connected + a 360 (equirect) stream → render the live Agora ERP frames
+    // on a native head-tracked sphere, fullscreen. This consumes the Agora remote video directly
+    // (via a video-frame observer inside ViewerSphereView), so it does NOT need the Media Push URL.
+    if (_xrMode && _canOfferXr(doc) && _engineReady) {
+      return ViewerSphereView(
+        engine: _engine,
+        remoteUid: _remoteUid, // 0 = any remote until the host's uid is known
+      );
+    }
     // Interactive 360: when the stream is tagged 360 AND exposes a playable URL
     // (via Media Push), render it on the sphere with gyro/touch. The URL is an
     // independent source, so this doesn't wait on the Agora remote video. Any 360
@@ -374,6 +466,19 @@ class _LiveStreamScreenState extends State<LiveStreamScreen> {
         rtcEngine: _engine,
         canvas: VideoCanvas(uid: _remoteUid),
         connection: RtcConnection(channelId: widget.stream.agoraChannelName),
+      ),
+    );
+  }
+
+  Widget _buildToast() {
+    return Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.72),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(_toast!, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
       ),
     );
   }

@@ -110,6 +110,12 @@ dependencies {
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.core:core-splashscreen:1.0.1")
 
+    // VITURE XR SDK — the proprietary VITURE-SDK-<ver>.aar (package com.viture.sdk) is a local AAR
+    // dropped into `android/app/libs/`. It is NOT committed (proprietary + large — see libs/README.md);
+    // this fileTree picks it up when present. minSdk is already 29 (>= the SDK's required API 28), so
+    // no bump is needed. Until the AAR is added, the com.viture.sdk imports won't resolve — expected.
+    implementation(fileTree(mapOf("dir" to "libs", "include" to listOf("*.aar", "*.jar"))))
+
     // Insta360 capture SDK — camera control + on-device stitched-preview/media (frame extraction).
     // Transitive: okhttp 3.8.1, gson 2.6.2, rxandroid 2.1.1 (mavenCentral) + insbase/basecamera/basemedia/snpe (Insta360 repo).
     implementation("com.arashivision.sdk:sdkcamera:1.10.1")

@@ -1,0 +1,8 @@
+# Proprietary local libraries are NOT committed (large + license-restricted).
+# The VITURE XR SDK (VITURE-SDK-<ver>.aar, package com.viture.sdk) belongs here — see README.md.
+*.aar
+*.jar
+
+# ...but keep this folder (and its docs) in git.
+!.gitignore
+!README.md
