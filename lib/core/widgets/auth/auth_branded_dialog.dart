@@ -147,9 +147,7 @@ class AuthBrandedDialogAction extends StatelessWidget {
             child: Text(
               label,
               style: (style ?? AppTypography.authDialogOption).copyWith(
-                color: isLight
-                    ? (style?.color ?? AppTheme.lightOnSurface)
-                    : style?.color,
+                color: isLight ? AppTheme.lightOnSurface : style?.color,
               ),
             ),
           ),

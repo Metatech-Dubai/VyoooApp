@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../theme/app_spacing.dart';
+import '../../theme/app_theme.dart';
 import '../../theme/app_typography.dart';
 import 'auth_branded_dialog.dart';
 
@@ -69,6 +70,7 @@ class _OptionTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isLight = AppTheme.isLight(context);
     return InkWell(
       onTap: onTap,
       child: Padding(
@@ -78,7 +80,12 @@ class _OptionTile extends StatelessWidget {
         ),
         child: Align(
           alignment: Alignment.centerLeft,
-          child: Text(label, style: AppTypography.authDialogOption),
+          child: Text(
+            label,
+            style: AppTypography.authDialogOption.copyWith(
+              color: isLight ? AppTheme.lightOnSurface : null,
+            ),
+          ),
         ),
       ),
     );

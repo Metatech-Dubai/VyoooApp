@@ -783,6 +783,7 @@ class AuthService {
       // 2) Delete supporting docs created by this user.
       await _deleteQueryDocs(db.collection('verification_requests').where('uid', isEqualTo: uid));
       await _deleteQueryDocs(db.collection('cloudflare_upload_requests').where('userId', isEqualTo: uid));
+      await _deleteQueryDocs(db.collection('r2_upload_requests').where('userId', isEqualTo: uid));
       await _deleteQueryDocs(db.collection('token_requests').where('userId', isEqualTo: uid));
       await _deleteQueryDocs(db.collection('email_otp_send_requests').where('userId', isEqualTo: uid));
       await _deleteQueryDocs(db.collection('email_otp_verify_requests').where('userId', isEqualTo: uid));

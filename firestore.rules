@@ -1008,6 +1008,29 @@ service cloud.firestore {
       allow update: if false;
     }
 
+    // One-time R2 PUT URLs for original 360 / VR masters. The function writes
+    // the signed URL back with the Admin SDK.
+    match /r2_upload_requests/{id} {
+      allow create: if isSignedIn()
+                    && request.resource.data.userId == request.auth.uid
+                    && request.resource.data.status == 'pending'
+                    && request.resource.data.kind in ['video', 'thumbnail']
+                    && request.resource.data.contentType is string
+                    && request.resource.data.contentLength is int
+                    && request.resource.data.contentLength > 0
+                    && (
+                      (request.resource.data.kind == 'video'
+                        && request.resource.data.contentType == 'video/mp4'
+                        && request.resource.data.contentLength <= 8589934592)
+                      || (request.resource.data.kind == 'thumbnail'
+                        && request.resource.data.contentType == 'image/jpeg'
+                        && request.resource.data.contentLength <= 20971520)
+                    );
+      allow read, delete: if isSignedIn()
+                          && resource.data.userId == request.auth.uid;
+      allow update: if false;
+    }
+
     // AI hashtag suggestions (Firestore-triggered Cloud Function; keys stay on server).
     match /hashtag_generation_requests/{requestId} {
       // minCount: accept int or float from clients (SDKs may encode 30 as double).

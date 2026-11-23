@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 
 import '../models/reel_media_item.dart';
 import '../utils/engagement_counts.dart';
+import '../utils/feed_author_mix.dart';
 import '../utils/hashtag_utils.dart';
 import '../utils/video_upload_policy.dart';
 import 'auth_service.dart';
@@ -39,14 +40,23 @@ class ReelsService {
         .toList(growable: false);
   }
 
-  /// Reels for "For You": orderBy createdAt desc.
+  /// How many recent posts to read before mixing authors into one page.
+  ///
+  /// A single account can upload a long burst. The page itself stays [limit]
+  /// items; this window is what gives other accounts a turn.
+  static int feedCandidateLimit(int limit) {
+    final widened = limit * 12;
+    return widened < 120 ? 120 : widened;
+  }
+
+  /// Reels for "For You": newest posts, with accounts taking turns.
   Future<List<Map<String, dynamic>>> getReelsForYou({int limit = 20}) async {
     try {
       final followingIds = await _followingIdsForCurrentUser();
       final q = await _firestore
           .collection(_reelsCollection)
           .orderBy('createdAt', descending: true)
-          .limit(limit * 4)
+          .limit(feedCandidateLimit(limit))
           .get();
       final list = q.docs
           .map((d) => _docToReelMap(d))
@@ -54,9 +64,9 @@ class ReelsService {
               _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
               _isPlayableReel(r) &&
               ReelEngagement.isMainFeedEligible(r))
-          .take(limit)
           .toList();
-      return _withPublicProfileFallback(list, limit: limit, pexels: _pexels.getForYou);
+      final mixed = FeedAuthorMix.interleave(list, limit: limit);
+      return _withPublicProfileFallback(mixed, limit: limit, pexels: _pexels.getForYou);
     } catch (_) {
       final fallback = await getPublicProfileReels(limit: limit);
       if (fallback.isNotEmpty) return fallback;
@@ -86,7 +96,7 @@ class ReelsService {
         final q = await _firestore
             .collection(_reelsCollection)
             .where('userId', whereIn: chunk)
-            .limit(limit * 2)
+            .limit(feedCandidateLimit(limit))
             .get();
         for (final d in q.docs) {
           final r = _docToReelMap(d);
@@ -97,39 +107,47 @@ class ReelsService {
           }
         }
       }
-      list.sort((a, b) {
-        final aTs = (a['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-        final bTs = (b['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
-        return bTs.compareTo(aTs);
-      });
-      if (list.length > limit) {
-        return list.take(limit).toList(growable: false);
-      }
-      if (list.isNotEmpty) return list;
+      final mixed = FeedAuthorMix.interleave(
+        _sortReelsByCreatedAtDesc(list),
+        limit: limit,
+      );
+      if (mixed.isNotEmpty) return mixed;
       return getPublicProfileReels(limit: limit);
     } catch (_) {
       return getPublicProfileReels(limit: limit);
     }
   }
 
-  /// Trending: orderBy viewsCount desc.
+  /// Trending: higher view counts first, with accounts taking turns.
+  ///
+  /// The views query alone can return one account when every new post has 0
+  /// views. A recent-post scan is merged in so other public accounts appear.
   Future<List<Map<String, dynamic>>> getReelsTrending({int limit = 20}) async {
     try {
       final followingIds = await _followingIdsForCurrentUser();
-      final q = await _firestore
+      final candidateLimit = feedCandidateLimit(limit);
+      final viewsQuery = _firestore
           .collection(_reelsCollection)
           .orderBy('viewsCount', descending: true)
-          .limit(limit * 4)
+          .limit(candidateLimit)
           .get();
-      final list = q.docs
-          .map((d) => _docToReelMap(d))
-          .where((r) =>
-              _isDiscoverableToCurrentUser(r, followingIds: followingIds) &&
-              _isPlayableReel(r) &&
-              ReelEngagement.isMainFeedEligible(r))
-          .take(limit)
-          .toList();
-      return _withPublicProfileFallback(list, limit: limit, pexels: _pexels.getTrending);
+      final recentQuery = _firestore
+          .collection(_reelsCollection)
+          .orderBy('createdAt', descending: true)
+          .limit(candidateLimit)
+          .get();
+      final results = await Future.wait([viewsQuery, recentQuery]);
+      bool eligible(Map<String, dynamic> reel) =>
+          _isDiscoverableToCurrentUser(reel, followingIds: followingIds) &&
+          _isPlayableReel(reel) &&
+          ReelEngagement.isMainFeedEligible(reel);
+      final merged = _mergeUniqueReels([
+        ...results[0].docs.map((d) => _docToReelMap(d)).where(eligible),
+        ...results[1].docs.map((d) => _docToReelMap(d)).where(eligible),
+      ]);
+      merged.sort(_compareTrendingRank);
+      final mixed = FeedAuthorMix.interleave(merged, limit: limit);
+      return _withPublicProfileFallback(mixed, limit: limit, pexels: _pexels.getTrending);
     } catch (_) {
       final fallback = await getPublicProfileReels(limit: limit);
       if (fallback.isNotEmpty) return fallback;
@@ -298,6 +316,38 @@ class ReelsService {
       return bTs.compareTo(aTs);
     });
     return list;
+  }
+
+  List<Map<String, dynamic>> _mergeUniqueReels(
+    Iterable<Map<String, dynamic>> reels,
+  ) {
+    final seen = <String>{};
+    final out = <Map<String, dynamic>>[];
+    for (final reel in reels) {
+      final id = (reel['id'] as String?)?.trim() ?? '';
+      final key = id.isNotEmpty
+          ? id
+          : '${reel['userId']}|${reel['videoUrl']}|${reel['imageUrl']}';
+      if (!seen.add(key)) continue;
+      out.add(reel);
+    }
+    return out;
+  }
+
+  int _compareTrendingRank(Map<String, dynamic> a, Map<String, dynamic> b) {
+    final byViews = _reelViewCount(b).compareTo(_reelViewCount(a));
+    if (byViews != 0) return byViews;
+    final aTs = (a['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+    final bTs = (b['createdAt'] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+    return bTs.compareTo(aTs);
+  }
+
+  int _reelViewCount(Map<String, dynamic> reel) {
+    final views = reel['viewsCount'];
+    if (views is num) return views.toInt();
+    final legacy = reel['views'];
+    if (legacy is num) return legacy.toInt();
+    return 0;
   }
 
   /// Copies engagement stats from source reels onto profile/feed repost stubs.
@@ -608,9 +658,8 @@ class ReelsService {
         continue;
       }
       out.add(reel);
-      if (out.length >= limit) break;
     }
-    return out;
+    return FeedAuthorMix.interleave(out, limit: limit);
   }
 
   Future<List<Map<String, dynamic>>> _publicReelsFromPublicUsers({
@@ -649,9 +698,10 @@ class ReelsService {
         list.add(reel);
       }
     }
-    return _sortReelsByCreatedAtDesc(list)
-        .take(limit)
-        .toList(growable: false);
+    return FeedAuthorMix.interleave(
+      _sortReelsByCreatedAtDesc(list),
+      limit: limit,
+    );
   }
 
   Future<Map<String, String>> _fetchAccountTypesForUsers(

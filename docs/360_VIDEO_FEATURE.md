@@ -131,7 +131,7 @@ final video360Meta = Video360Metadata.sanitize(
 'isVR': video360Meta.is360Video,
 ```
 
-Video is uploaded to **Cloudflare Stream** via the existing direct-upload Cloud Function; playback URL is stored as `videoUrl` (HLS manifest). The 360 player resolves MP4 fallbacks from that URL (see below).
+When the 360 switch is on, the original MP4 is uploaded to **Cloudflare R2** (faststart remux only, no re-encode) and `videoUrl` is that file. A JPEG poster is stored beside it in `thumbnailUrl`. Flat reels still go to **Cloudflare Stream**. Older 360 posts that already live on Stream keep their HLS URL; the player still resolves an MP4 fallback for those (see below).
 
 ---
 

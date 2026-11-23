@@ -69,6 +69,9 @@ function absoluteHttpsUrl(raw: unknown): string {
 function streamThumbnailFromVideoUrl(videoUrl: string): string {
   try {
     const uri = new URL(videoUrl);
+    const host = uri.hostname.toLowerCase();
+    const isStream = host === 'videodelivery.net' || host.endsWith('.cloudflarestream.com');
+    if (!isStream) return '';
     const videoId = uri.pathname.split('/').filter(Boolean)[0] ?? '';
     if (!videoId) return '';
     return `https://videodelivery.net/${videoId}/thumbnails/thumbnail.jpg`;

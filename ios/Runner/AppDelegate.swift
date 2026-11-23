@@ -9,13 +9,14 @@ import flutter_callkit_incoming_maintained
 #endif
 
 @main
-@objc class AppDelegate: FlutterAppDelegate, PKPushRegistryDelegate {
+@objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate, PKPushRegistryDelegate {
+  /// Kept so deferred Agora registration uses the scene-created engine, not the app delegate.
+  private weak var flutterPluginRegistry: FlutterPluginRegistry?
+
   override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?
   ) -> Bool {
-    GeneratedPluginRegistrant.register(with: self)
-
     // VoIP push — wakes the app for incoming calls when killed/backgrounded.
     let voipRegistry = PKPushRegistry(queue: DispatchQueue.main)
     voipRegistry.delegate = self
@@ -25,8 +26,16 @@ import flutter_callkit_incoming_maintained
       UNUserNotificationCenter.current().delegate = self
     }
 
-    guard let registrar = self.registrar(forPlugin: "VyoooDeferredNativePlugins") else {
-      return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
+  }
+
+  func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {
+    let registry = engineBridge.pluginRegistry
+    flutterPluginRegistry = registry
+    GeneratedPluginRegistrant.register(with: registry)
+
+    guard let registrar = registry.registrar(forPlugin: "VyoooDeferredNativePlugins") else {
+      return
     }
     let channel = FlutterMethodChannel(
       name: "vyooo/deferred_native_plugins",
@@ -34,17 +43,16 @@ import flutter_callkit_incoming_maintained
     )
     channel.setMethodCallHandler { [weak self] (call: FlutterMethodCall, result: @escaping FlutterResult) in
       if call.method == "registerAgora" {
-        guard let self else {
+        guard let registry = self?.flutterPluginRegistry else {
           result(FlutterError(code: "no_registry", message: nil, details: nil))
           return
         }
-        AgoraDeferredRegistration.register(with: self)
+        AgoraDeferredRegistration.register(with: registry)
         result(nil)
       } else {
         result(FlutterMethodNotImplemented)
       }
     }
-    return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
   func pushRegistry(
