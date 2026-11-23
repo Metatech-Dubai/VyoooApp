@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../core/theme/app_light_surface.dart';
 import 'package:video_player/video_player.dart';
 
 import '../core/navigation/app_route_observer.dart';
@@ -558,7 +560,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     // Show loading/retrying state
     if (_controller == null && !_showError) {
       return Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Center(
           child: Stack(
             fit: StackFit.expand,
@@ -569,14 +571,16 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppLightSurface.mutedText,
+                      ),
                     ),
                     if (_retryCount > 0) ...[
                       SizedBox(height: AppSpacing.sm),
                       Text(
                         'Preparing video... ($_retryCount/$_maxRetries)',
                         style: const TextStyle(
-                          color: Colors.white70,
+                          color: AppLightSurface.secondaryText,
                           fontSize: 12,
                         ),
                       ),
@@ -593,16 +597,16 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     // Show error state after all retries exhausted.
     if (_showError) {
       return Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.error_outline, color: Colors.white, size: 48),
+              const Icon(Icons.error_outline, color: AppLightSurface.mutedText, size: 48),
               SizedBox(height: AppSpacing.md),
               const Text(
                 'Failed to load video (server unavailable)',
-                style: TextStyle(color: Colors.white, fontSize: 16),
+                style: TextStyle(color: AppLightSurface.primaryText, fontSize: 16),
               ),
               SizedBox(height: AppSpacing.sm),
               TextButton(
@@ -615,7 +619,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
                 },
                 child: const Text(
                   'Retry',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppLightSurface.primaryText),
                 ),
               ),
             ],
@@ -627,7 +631,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
     // Show loading if not yet initialized
     if (!_isInitialized) {
       return Container(
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -650,7 +654,7 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
       child: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           children: [
             Positioned.fill(
@@ -713,10 +717,10 @@ class _ReelItemWidgetState extends State<ReelItemWidget>
         fit: BoxFit.cover,
         memCacheWidth: targetWidth,
         fadeInDuration: const Duration(milliseconds: 120),
-        placeholder: (_, _) => const ColoredBox(color: Colors.black),
-        errorWidget: (_, _, _) => const ColoredBox(color: Colors.black),
+        placeholder: (_, _) => const ColoredBox(color: AppLightSurface.background),
+        errorWidget: (_, _, _) => const ColoredBox(color: AppLightSurface.background),
       );
     }
-    return const ColoredBox(color: Colors.black);
+    return const ColoredBox(color: AppLightSurface.background);
   }
 }

@@ -1175,7 +1175,7 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
   Widget _buildUploadIndicator() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFF1A061E),
+      color: AppLightSurface.cardFill,
       child: Row(
         children: [
           const SizedBox(
@@ -1193,14 +1193,14 @@ class _ChatThreadScreenState extends State<ChatThreadScreen> {
               children: [
                 const Text(
                   'Sending media...',
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
+                  style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 13),
                 ),
                 const SizedBox(height: 4),
                 ClipRRect(
                   borderRadius: BorderRadius.circular(2),
                   child: LinearProgressIndicator(
                     value: _uploadProgress,
-                    backgroundColor: Colors.white12,
+                    backgroundColor: AppLightSurface.border,
                     color: AppColors.brandMagenta,
                     minHeight: 3,
                   ),

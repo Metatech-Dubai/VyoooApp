@@ -329,7 +329,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -450,7 +450,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
 
   Widget _buildVideoArea() {
     return Container(
-      color: Colors.black,
+      color: AppLightSurface.background,
       child: Stack(
         alignment: Alignment.center,
         children: [
@@ -469,11 +469,11 @@ class _EditVideoScreenState extends State<EditVideoScreen>
             const Center(
               child: Text(
                 'Could not load video',
-                style: TextStyle(color: Colors.white70, fontSize: 16),
+                style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 16),
               ),
             )
           else
-            const Center(child: CircularProgressIndicator(color: Colors.white54)),
+            const Center(child: CircularProgressIndicator(color: AppLightSurface.mutedText)),
         ],
       ),
     );
@@ -536,11 +536,11 @@ class _EditVideoScreenState extends State<EditVideoScreen>
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0020),
-        title: const Text('Discard changes?', style: TextStyle(color: Colors.white)),
+        backgroundColor: AppLightSurface.background,
+        title: const Text('Discard changes?', style: TextStyle(color: AppLightSurface.primaryText)),
         content: Text(
           'Remove edited video and show the original library clip again.',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.85), height: 1.35),
+          style: TextStyle(color: AppLightSurface.secondaryText, height: 1.35),
         ),
         actions: [
           TextButton(
@@ -597,14 +597,14 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               children: [
                 Text(
                   '${t.title} • ${t.artist}',
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
+                  style: const TextStyle(color: AppLightSurface.primaryText, fontSize: 13),
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
                 Text(
                   'Preview only — the uploaded video still uses the clip\'s original audio.',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: AppLightSurface.secondaryText,
                     fontSize: 11,
                     height: 1.25,
                   ),
@@ -618,7 +618,7 @@ class _EditVideoScreenState extends State<EditVideoScreen>
               setState(() => _selectedTrack = null);
               _controller?.setVolume(_muted ? 0 : 1);
             },
-            child: const Icon(Icons.close, color: Colors.white70, size: 18),
+            child: const Icon(Icons.close, color: AppLightSurface.mutedText, size: 18),
           ),
         ],
       ),

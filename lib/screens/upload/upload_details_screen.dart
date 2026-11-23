@@ -17,7 +17,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import '../../core/services/hashtag_generation_service.dart';
+import '../../core/services/r2_upload_service.dart';
 import '../../core/services/reels_service.dart';
+import '../../core/utils/vr_video_prepare.dart';
 import '../../core/theme/app_radius.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/theme/app_theme.dart';
@@ -28,8 +30,8 @@ import '../../core/navigation/post_upload_navigation.dart';
 import 'widgets/upload_post_chrome_buttons.dart';
 
 /// Upload Details screen: title, description, tags, 360 video options.
-/// Gets a direct upload URL from Cloud Function → uploads to Cloudflare Stream
-/// → saves reel doc to Firestore with Stream playback URL.
+/// Flat video goes to Cloudflare Stream. A 360 post uploads the original MP4
+/// to Cloudflare R2 and saves that file URL on the reel.
 ///
 /// When [additionalAssets] is non-empty the post is an Instagram-style
 /// carousel: every asset is uploaded and stored in `mediaItems[]`, while the
@@ -211,6 +213,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       // Photo/video edit overrides only ever exist for the single-asset flow,
       // so they apply to the first item only.
       final assets = _allAssets;
+      final immersive = _canConfigure360 && _is360Video;
       final mediaItems = <Map<String, dynamic>>[];
       for (var i = 0; i < assets.length; i++) {
         if (!mounted) return;
@@ -224,11 +227,20 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
         if (file == null) {
           throw Exception('Could not read selected media (item ${i + 1}).');
         }
-        final url = isVideo ? await _uploadVideo(file) : await _uploadPhoto(file);
+        final String url;
+        final String thumb;
+        if (isVideo && immersive) {
+          final uploaded = await _upload360Original(file);
+          url = uploaded.videoUrl;
+          thumb = uploaded.thumbnailUrl;
+        } else {
+          url = isVideo ? await _uploadVideo(file) : await _uploadPhoto(file);
+          thumb = isVideo ? _streamThumbnailFromVideoUrl(url) : url;
+        }
         mediaItems.add({
           'type': isVideo ? 'video' : 'image',
           'url': url,
-          'thumbnailUrl': isVideo ? _streamThumbnailFromVideoUrl(url) : url,
+          'thumbnailUrl': thumb,
         });
       }
       final first = mediaItems.first;
@@ -257,14 +269,16 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
       final tagsLine = _selectedTags.isEmpty ? '' : _selectedTags.map((t) => '#$t').join(' ');
       final caption = tagsLine.isNotEmpty ? '$title\n$tagsLine' : title;
 
-      var thumbnailUrl = firstIsVideo ? '' : mediaUrl;
-      if (firstIsVideo && _customThumbnailFile != null) {
+      var thumbnailUrl = firstIsVideo
+          ? ((first['thumbnailUrl'] as String?) ?? '').trim()
+          : mediaUrl;
+      if (firstIsVideo && _customThumbnailFile != null && !immersive) {
         thumbnailUrl = await _uploadCustomThumbnail(_customThumbnailFile!);
         mediaItems[0] = {...first, 'thumbnailUrl': thumbnailUrl};
       }
 
       final video360Meta = Video360Metadata.sanitize(
-        is360Video: _canConfigure360 && _is360Video,
+        is360Video: immersive,
         projectionType: _projectionType.firestoreValue,
         stereoMode: _stereoMode.firestoreValue,
       );
@@ -299,6 +313,7 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
         'authorAccountPrivate': authorAccountPrivate,
         ...video360Meta.toFirestore(),
         'isVR': video360Meta.is360Video,
+        if (immersive) 'videoStorage': 'r2',
         if (_selectedLocation != null)
           'location': _selectedLocation!.toMap(),
         'moderation': {
@@ -331,6 +346,42 @@ class _UploadDetailsScreenState extends State<UploadDetailsScreen> {
           behavior: SnackBarBehavior.floating,
         ),
       );
+    }
+  }
+
+  /// Original MP4 plus a JPEG poster, stored on R2. No Stream re-encode.
+  Future<({String videoUrl, String thumbnailUrl})> _upload360Original(File source) async {
+    final prepared = await VrVideoPrepare.faststartCopy(source);
+    File? generatedStill;
+    try {
+      final File poster;
+      final custom = _customThumbnailFile;
+      if (custom != null) {
+        generatedStill = await VrVideoPrepare.coverJpeg(custom);
+        poster = generatedStill;
+      } else {
+        generatedStill = await VrVideoPrepare.thumbnailJpeg(prepared);
+        poster = generatedStill;
+      }
+      final videoUrl = await R2UploadService.instance.put(
+        file: prepared,
+        kind: 'video',
+        contentType: 'video/mp4',
+      );
+      final thumbnailUrl = await R2UploadService.instance.put(
+        file: poster,
+        kind: 'thumbnail',
+        contentType: 'image/jpeg',
+      );
+      return (videoUrl: videoUrl, thumbnailUrl: thumbnailUrl);
+    } finally {
+      if (prepared.path != source.path) {
+        await prepared.delete().catchError((_) => prepared);
+      }
+      final still = generatedStill;
+      if (still != null) {
+        await still.delete().catchError((_) => still);
+      }
     }
   }
 

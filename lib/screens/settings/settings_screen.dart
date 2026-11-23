@@ -259,7 +259,7 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _push(
               context,
               const Scaffold(
-                backgroundColor: Colors.black,
+                backgroundColor: AppLightSurface.background,
                 body: WalletComingSoonView(),
               ),
             ),
@@ -270,7 +270,7 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _push(
               context,
               const Scaffold(
-                backgroundColor: Colors.black,
+                backgroundColor: AppLightSurface.background,
                 body: SafeArea(child: VrComingSoonView()),
               ),
             ),
@@ -283,7 +283,7 @@ class SettingsScreen extends StatelessWidget {
             onTap: () => _push(
               context,
               const Scaffold(
-                backgroundColor: Colors.black,
+                backgroundColor: AppLightSurface.background,
                 body: RevenueComingSoonView(),
               ),
             ),

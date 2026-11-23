@@ -57,7 +57,7 @@ class _EditPhotoScreenState extends State<EditPhotoScreen> {
             toolbarTitle: 'Crop',
             toolbarColor: Colors.black,
             toolbarWidgetColor: Colors.white,
-            backgroundColor: Colors.black,
+            backgroundColor: AppLightSurface.background,
             activeControlsWidgetColor: _pink,
             lockAspectRatio: false,
             hideBottomControls: false,
@@ -138,15 +138,15 @@ class _EditPhotoScreenState extends State<EditPhotoScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1A0020),
+        backgroundColor: AppLightSurface.background,
         title: const Text(
           'Discard changes?',
-          style: TextStyle(color: Colors.white),
+          style: TextStyle(color: AppLightSurface.primaryText),
         ),
         content: Text(
           'Remove edited photo and show the original library image again.',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.85),
+            color: AppLightSurface.secondaryText,
             height: 1.35,
           ),
         ),
@@ -198,7 +198,7 @@ class _EditPhotoScreenState extends State<EditPhotoScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -213,14 +213,14 @@ class _EditPhotoScreenState extends State<EditPhotoScreen> {
                   child: Text(
                     'Could not load photo',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 16,
                     ),
                   ),
                 );
               }
               return const Center(
-                child: CircularProgressIndicator(color: Colors.white54),
+                child: CircularProgressIndicator(color: AppLightSurface.mutedText),
               );
             },
           ),

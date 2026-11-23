@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_radius.dart';
@@ -159,7 +161,7 @@ class _LiveStreamGyroVideoViewState extends State<LiveStreamGyroVideoView> {
     _syncVideoController();
     final controller = _videoController;
     if (controller == null) {
-      return const ColoredBox(color: Colors.black);
+      return const ColoredBox(color: AppLightSurface.background);
     }
 
     final viewKey = ValueKey(
@@ -169,7 +171,7 @@ class _LiveStreamGyroVideoViewState extends State<LiveStreamGyroVideoView> {
     return Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: Colors.black),
+        const ColoredBox(color: AppLightSurface.background),
         SizedBox.expand(
           child: AgoraVideoView(
             key: viewKey,

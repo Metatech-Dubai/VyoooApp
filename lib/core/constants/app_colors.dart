@@ -66,8 +66,8 @@ class AppColors {
   /// Reel caption hashtags (Figma #B3B3B3).
   static const Color feedReelHashtag = Color(0xFFB3B3B3);
 
-  /// Bottom nav chrome behind the floating pill (Figma dark strip).
-  static const Color feedBottomChrome = Color(0xFF0C0C0C);
+  /// Bottom nav chrome strip behind the floating pill (light shell).
+  static const Color feedBottomChrome = Color(0xFFFFFFFF);
 
   /// Post-upload success toast on home feed (Figma dark translucent pill).
   static const Color uploadPostSuccessToastBackground = Color(0xE63A3A3C);

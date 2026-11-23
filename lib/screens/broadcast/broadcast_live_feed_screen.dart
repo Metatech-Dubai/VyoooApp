@@ -5,6 +5,8 @@ import 'dart:typed_data';
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -800,7 +802,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   Widget build(BuildContext context) {
     if (!_listReady) {
       return const ColoredBox(
-        color: Color(0xFF0A000F),
+        color: AppLightSurface.background,
         child: Center(
           child: CircularProgressIndicator(color: Colors.white),
         ),
@@ -832,7 +834,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
 
         return ColoredBox(
           color: createMenuOpen
-              ? Colors.black
+              ? AppLightSurface.background
               : AppColors.feedBottomChrome,
           child: Stack(
             fit: StackFit.expand,
@@ -918,9 +920,11 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
                 Positioned.fill(
                   bottom: shellBottomInset,
                   child: ColoredBox(
-                    color: const Color(0x880A000F),
+                    color: AppLightSurface.cardFill.withValues(alpha: 0.92),
                     child: const Center(
-                      child: CircularProgressIndicator(color: Colors.white),
+                      child: CircularProgressIndicator(
+                        color: AppColors.brandMagenta,
+                      ),
                     ),
                   ),
                 ),
@@ -935,7 +939,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
   /// Same rounded bottom edge as home reel feed (`feedPostBottomRadius`).
   Widget _buildFeedClipArea(Widget child) {
     return ColoredBox(
-      color: Colors.black,
+      color: AppLightSurface.background,
       child: child,
     );
   }
@@ -961,7 +965,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
           Positioned.fill(
             bottom: shellBottomInset,
             child: _buildFeedClipArea(
-              const ColoredBox(color: Color(0xFF0A000F)),
+              const ColoredBox(color: AppLightSurface.background),
             ),
           ),
           SafeArea(
@@ -1045,7 +1049,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
                           color: const Color(0xFFFF2D55),
                           borderRadius: BorderRadius.circular(9),
                           border: Border.all(
-                            color: const Color(0xFF14001F),
+                            color: AppLightSurface.cardFill,
                             width: 1,
                           ),
                         ),
@@ -1101,7 +1105,7 @@ class _BroadcastLiveFeedScreenState extends State<BroadcastLiveFeedScreen> {
 
   Widget _buildVideoPlaceholder(LiveStreamModel doc) {
     return ColoredBox(
-      color: const Color(0xFF0A000F),
+      color: AppLightSurface.background,
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,

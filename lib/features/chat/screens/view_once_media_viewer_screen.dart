@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_light_surface.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../../core/platform/screenshot_protection.dart';
@@ -107,7 +109,7 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
         if (!didPop) _markViewedAndPop();
       },
       child: Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         body: GestureDetector(
           onTap: _markViewedAndPop,
           child: Stack(
@@ -120,7 +122,7 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
                 child: IconButton(
                   icon: const Icon(
                     Icons.close,
-                    color: Colors.white,
+                    color: AppLightSurface.icon,
                     size: 28,
                   ),
                   onPressed: _markViewedAndPop,
@@ -140,7 +142,7 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
                   ),
                   child: const Text(
                     'View once',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 12),
                   ),
                 ),
               ),
@@ -154,7 +156,7 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
   Widget _buildImage() {
     final url = widget.message.mediaUrl ?? '';
     if (url.isEmpty) {
-      return const Icon(Icons.broken_image, color: Colors.white38, size: 64);
+      return const Icon(Icons.broken_image, color: AppLightSurface.mutedText, size: 64);
     }
     return Image.network(
       url,
@@ -187,11 +189,11 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
         return const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.error_outline, color: Colors.white38, size: 64),
+            Icon(Icons.error_outline, color: AppLightSurface.mutedText, size: 64),
             SizedBox(height: 12),
             Text(
               'Could not load media',
-              style: TextStyle(color: Colors.white54, fontSize: 15),
+              style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 15),
             ),
           ],
         );
@@ -204,11 +206,11 @@ class _ViewOnceMediaViewerScreenState extends State<ViewOnceMediaViewerScreen>
       return const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, color: Colors.white38, size: 64),
+          Icon(Icons.error_outline, color: AppLightSurface.mutedText, size: 64),
           SizedBox(height: 12),
           Text(
             'Could not load video',
-            style: TextStyle(color: Colors.white54, fontSize: 15),
+            style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 15),
           ),
         ],
       );

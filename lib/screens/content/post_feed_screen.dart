@@ -639,7 +639,7 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
                           child: Text(
                             'No posts found',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
+                              color: AppLightSurface.secondaryText,
                             ),
                           ),
                         )
@@ -713,7 +713,7 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
             onPressed: () => Navigator.of(context).pop(),
             icon: const Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
+              color: AppLightSurface.icon,
               size: 22,
             ),
             visualDensity: VisualDensity.compact,
@@ -725,7 +725,7 @@ class _PostFeedScreenState extends State<PostFeedScreen> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
-                color: Colors.white,
+                color: AppLightSurface.primaryText,
                 fontSize: 18,
                 fontWeight: FontWeight.w600,
               ),
@@ -877,6 +877,11 @@ class _PostCard extends StatelessWidget {
         if (fullText.isNotEmpty)
           CaptionWithHashtags(
             text: fullText,
+            style: const TextStyle(
+              color: AppLightSurface.primaryText,
+              fontSize: 14,
+              height: 1.33,
+            ),
             maxLines: 10,
             overflow: TextOverflow.ellipsis,
           ),
@@ -884,13 +889,17 @@ class _PostCard extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              const Icon(Icons.location_on, color: Colors.white70, size: 16),
+              const Icon(
+                Icons.location_on,
+                color: AppLightSurface.secondaryText,
+                size: 16,
+              ),
               const SizedBox(width: 4),
               Flexible(
                 child: Text(
                   locationName,
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: AppLightSurface.primaryText,
                     fontSize: 13,
                     fontWeight: FontWeight.w500,
                   ),
@@ -905,8 +914,8 @@ class _PostCard extends StatelessWidget {
               padding: const EdgeInsets.only(left: 20),
               child: Text(
                 locationAddress,
-                style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.5),
+                style: const TextStyle(
+                  color: AppLightSurface.mutedText,
                   fontSize: 12,
                 ),
                 maxLines: 1,
@@ -942,14 +951,14 @@ class _PostCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 radius: 19,
-                backgroundColor: Colors.white.withValues(alpha: 0.2),
+                backgroundColor: AppLightSurface.cardFill,
                 backgroundImage: avatarUrl.isNotEmpty
                     ? NetworkImage(avatarUrl)
                     : null,
                 child: avatarUrl.isEmpty
                     ? const Icon(
                         Icons.person_rounded,
-                        color: Colors.white,
+                        color: AppLightSurface.icon,
                         size: 18,
                       )
                     : null,
@@ -964,7 +973,7 @@ class _PostCard extends StatelessWidget {
                         Text(
                           creatorName,
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppLightSurface.primaryText,
                             fontSize: 17,
                             fontWeight: FontWeight.w600,
                           ),
@@ -975,7 +984,7 @@ class _PostCard extends StatelessWidget {
                           const Icon(
                             Icons.check_circle_rounded,
                             size: 16,
-                            color: Colors.white,
+                            color: AppLightSurface.icon,
                           ),
                         ],
                       ],
@@ -983,8 +992,8 @@ class _PostCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       _formatRelativeTime(post['createdAt']),
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                      style: const TextStyle(
+                        color: AppLightSurface.secondaryText,
                         fontSize: 12.5,
                       ),
                     ),
@@ -993,9 +1002,9 @@ class _PostCard extends StatelessWidget {
               ),
               IconButton(
                 onPressed: onMore,
-                icon: Icon(
+                icon: const Icon(
                   Icons.more_horiz_rounded,
-                  color: Colors.white.withValues(alpha: 0.8),
+                  color: AppLightSurface.icon,
                   size: 24,
                 ),
                 padding: EdgeInsets.zero,
@@ -1006,13 +1015,17 @@ class _PostCard extends StatelessWidget {
           if (ReelEngagement.isRepostStub(post)) ...[
             Row(
               children: [
-                const Icon(Icons.repeat_rounded, color: Colors.white70, size: 16),
+                const Icon(
+                  Icons.repeat_rounded,
+                  color: AppLightSurface.secondaryText,
+                  size: 16,
+                ),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
                     'Reposted from ${_asString(post['repostOfUsername']).isNotEmpty ? _asString(post['repostOfUsername']) : 'creator'}',
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.75),
+                    style: const TextStyle(
+                      color: AppLightSurface.secondaryText,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
                     ),
@@ -1111,9 +1124,9 @@ class _PostCard extends StatelessWidget {
           Row(
             children: [
               if (privacy.showViews()) ...[
-                Icon(
+                const Icon(
                   Icons.remove_red_eye_outlined,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppLightSurface.icon,
                   size: 20,
                 ),
                 const SizedBox(width: 4),
@@ -1122,8 +1135,8 @@ class _PostCard extends StatelessWidget {
                     ReelCountMetric.views,
                     _asInt(post['views']),
                   ),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  style: const TextStyle(
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12.5,
                   ),
                 ),
@@ -1137,7 +1150,7 @@ class _PostCard extends StatelessWidget {
                       : Icons.favorite_outline_rounded,
                   color: isLiked
                       ? const Color(0xFFF2486A)
-                      : Colors.white.withValues(alpha: 0.9),
+                      : AppLightSurface.icon,
                   size: 21,
                 ),
               ),
@@ -1148,8 +1161,8 @@ class _PostCard extends StatelessWidget {
                     ReelCountMetric.likes,
                     _asInt(post['likes']),
                   ),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  style: const TextStyle(
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12.5,
                   ),
                 ),
@@ -1157,9 +1170,9 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.lg),
               GestureDetector(
                 onTap: onComment,
-                child: Icon(
+                child: const Icon(
                   Icons.chat_bubble_outline_rounded,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppLightSurface.icon,
                   size: 20,
                 ),
               ),
@@ -1170,8 +1183,8 @@ class _PostCard extends StatelessWidget {
                     ReelCountMetric.comments,
                     _asInt(post['comments']),
                   ),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  style: const TextStyle(
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12.5,
                   ),
                 ),
@@ -1183,7 +1196,7 @@ class _PostCard extends StatelessWidget {
                   isSaved ? Icons.star_rounded : Icons.star_outline_rounded,
                   color: isSaved
                       ? const Color(0xFFFFD700)
-                      : Colors.white.withValues(alpha: 0.9),
+                      : AppLightSurface.icon,
                   size: 20,
                 ),
               ),
@@ -1194,8 +1207,8 @@ class _PostCard extends StatelessWidget {
                     ReelCountMetric.saves,
                     _asInt(post['saves']),
                   ),
-                  style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.9),
+                  style: const TextStyle(
+                    color: AppLightSurface.secondaryText,
                     fontSize: 12.5,
                   ),
                 ),
@@ -1208,7 +1221,7 @@ class _PostCard extends StatelessWidget {
                     Icons.repeat_rounded,
                     color: isReposted
                         ? const Color(0xFFF2486A)
-                        : Colors.white.withValues(alpha: 0.9),
+                        : AppLightSurface.icon,
                     size: 21,
                   ),
                 ),
@@ -1222,7 +1235,7 @@ class _PostCard extends StatelessWidget {
                     style: TextStyle(
                       color: isReposted
                           ? const Color(0xFFF2486A)
-                          : Colors.white.withValues(alpha: 0.9),
+                          : AppLightSurface.secondaryText,
                       fontSize: 12.5,
                     ),
                   ),
@@ -1231,9 +1244,9 @@ class _PostCard extends StatelessWidget {
               const SizedBox(width: AppSpacing.md),
               GestureDetector(
                 onTap: onShare,
-                child: Icon(
+                child: const Icon(
                   Icons.ios_share_rounded,
-                  color: Colors.white.withValues(alpha: 0.9),
+                  color: AppLightSurface.icon,
                   size: 20,
                 ),
               ),

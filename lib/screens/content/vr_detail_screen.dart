@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../core/theme/app_light_surface.dart';
+
 import '../../core/models/video_360_metadata.dart';
 import '../../core/theme/app_spacing.dart';
 import '../../core/utils/video_upload_policy.dart';
@@ -106,16 +108,10 @@ class _VRDetailScreenState extends State<VRDetailScreen>
   }
 
   Widget _buildMediaFallback() {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A1A1A), Color(0xFF050505)],
-        ),
-      ),
-      child: const Center(
-        child: Icon(Icons.vrpano_outlined, color: Colors.white38, size: 56),
+    return const ColoredBox(
+      color: AppLightSurface.background,
+      child: Center(
+        child: Icon(Icons.vrpano_outlined, color: AppLightSurface.mutedText, size: 56),
       ),
     );
   }
@@ -146,7 +142,7 @@ class _VRDetailScreenState extends State<VRDetailScreen>
   Widget build(BuildContext context) {
     final p = widget.payload ?? const VRDetailPayload();
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         fit: StackFit.expand,
         children: [

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
 import '../../core/navigation/app_route_observer.dart';
+import '../../core/theme/app_light_surface.dart';
 import '../../core/theme/app_spacing.dart';
 
 /// VR player for testing: plays a video fullscreen. Replace with real VR/streaming later.
@@ -144,10 +145,11 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppLightSurface.background,
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        color: Colors.black,
+        color: AppLightSurface.background,
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -176,23 +178,14 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
                   right: AppSpacing.md,
                   bottom: AppSpacing.sm,
                 ),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.black.withValues(alpha: 0.6),
-                      Colors.transparent,
-                    ],
-                  ),
-                ),
+                color: AppLightSurface.background.withValues(alpha: 0.92),
                 child: SafeArea(
                   bottom: false,
                   child: Row(
                     children: [
                       IconButton(
                         icon: const Icon(Icons.arrow_back_ios,
-                            color: Colors.white, size: 22),
+                            color: AppLightSurface.icon, size: 22),
                         onPressed: () => Navigator.of(context).pop(),
                       ),
                       const SizedBox(width: AppSpacing.sm),
@@ -200,7 +193,7 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
                         child: Text(
                           widget.title ?? 'VR',
                           style: const TextStyle(
-                            color: Colors.white,
+                            color: AppLightSurface.primaryText,
                             fontSize: 18,
                             fontWeight: FontWeight.w600,
                           ),
@@ -225,7 +218,7 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
                       _controller?.value.isPlaying == true
                           ? Icons.play_circle_filled
                           : Icons.pause_circle_filled,
-                      color: Colors.white,
+                      color: AppLightSurface.primaryText.withValues(alpha: 0.9),
                       size: 72,
                     ),
                   ),
@@ -243,12 +236,12 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            valueColor: AlwaysStoppedAnimation<Color>(AppLightSurface.mutedText),
           ),
           SizedBox(height: AppSpacing.md),
           Text(
             'Loading…',
-            style: TextStyle(color: Colors.white70, fontSize: 16),
+            style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 16),
           ),
         ],
       ),
@@ -262,11 +255,11 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.error_outline, color: Colors.white54, size: 48),
+            const Icon(Icons.error_outline, color: AppLightSurface.mutedText, size: 48),
             const SizedBox(height: AppSpacing.md),
             const Text(
               'Could not load video',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: AppLightSurface.primaryText, fontSize: 16),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: AppSpacing.sm),
@@ -275,7 +268,10 @@ class _VrPlayerScreenState extends State<VrPlayerScreen>
                 setState(() => _hasError = false);
                 _initializePlayer();
               },
-              child: const Text('Retry', style: TextStyle(color: Colors.white)),
+              child: const Text(
+                'Retry',
+                style: TextStyle(color: AppLightSurface.primaryText),
+              ),
             ),
           ],
         ),

@@ -85,11 +85,16 @@ class ReelMediaItem {
     ];
   }
 
-  /// Cloudflare Stream poster frame for an HLS playback URL ('' otherwise).
+  /// Cloudflare Stream poster frame for an HLS playback URL.
+  ///
+  /// Direct files (R2 originals) keep the thumbnail stored on the reel.
   static String streamThumbnailFromVideoUrl(String videoUrl) {
     if (videoUrl.isEmpty) return '';
     try {
       final uri = Uri.parse(videoUrl);
+      final host = uri.host.toLowerCase();
+      final isStream = host == 'videodelivery.net' || host.endsWith('.cloudflarestream.com');
+      if (!isStream) return '';
       final videoId = uri.pathSegments.isNotEmpty ? uri.pathSegments.first : '';
       if (videoId.isEmpty) return '';
       return 'https://videodelivery.net/$videoId/thumbnails/thumbnail.jpg';

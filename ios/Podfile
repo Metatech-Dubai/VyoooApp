@@ -37,6 +37,52 @@ target 'Runner' do
   end
 end
 
+# RevenueCat 5.68 (purchases_flutter 10.0.1) declares PaywallColor's designated
+# initializer in an extension. Xcode 27 then synthesizes
+# `init(stringRepresentation:)` and rejects the public initializer as a
+# redeclaration. RevenueCat fixed this in 5.78 by declaring that initializer
+# on the struct itself, which suppresses memberwise synthesis.
+def patch_revenuecat_paywall_color_for_xcode_27(installer)
+  file = File.join(installer.sandbox.root.to_s, 'RevenueCat', 'Sources', 'Paywalls', 'PaywallColor.swift')
+  return unless File.exist?(file)
+
+  contents = File.read(file)
+  public_mark = contents.index('// MARK: - Public constructors')
+  designated = 'private init(stringRepresentation: String, underlyingColor:'
+  designated_at = contents.index(designated)
+  return if public_mark && designated_at && designated_at < public_mark
+
+  old_init = [
+    '    /// "Designated" initializer',
+    '    private init(stringRepresentation: String, underlyingColor: (any Sendable)?) {',
+    '        self.stringRepresentation = stringRepresentation',
+    '        self._underlyingColor = underlyingColor',
+    '    }',
+    '',
+  ].join("\n")
+  new_init = [
+    '    /// "Designated" initializer',
+    '    /// Declared on the type so Xcode 27 does not synthesize a memberwise',
+    '    /// `init(stringRepresentation:)` that collides with the public initializer.',
+    '    private init(stringRepresentation: String, underlyingColor: (any Sendable)?) {',
+    '        self.stringRepresentation = stringRepresentation',
+    '        self._underlyingColor = underlyingColor',
+    '    }',
+    '',
+  ].join("\n")
+  property = "    fileprivate var _underlyingColor: (any Sendable)?\n\n"
+
+  unless contents.include?(property) && contents.include?(old_init)
+    Pod::UI.warn('RevenueCat PaywallColor.swift layout changed; Xcode 27 initializer patch was not applied.')
+    return
+  end
+
+  contents = contents.sub(property, property + new_init)
+  contents = contents.sub(old_init, '')
+  File.chmod(0o644, file)
+  File.write(file, contents)
+end
+
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_ios_build_settings(target)
@@ -53,4 +99,5 @@ post_install do |installer|
     end
   end
 
+  patch_revenuecat_paywall_color_for_xcode_27(installer)
 end

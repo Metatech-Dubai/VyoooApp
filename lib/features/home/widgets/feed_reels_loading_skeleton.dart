@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../core/theme/app_light_surface.dart';
 import '../../../core/theme/app_spacing.dart';
 
 /// Full-viewport placeholder shown while the feed has no cached/network reels yet.
@@ -40,12 +41,12 @@ class _FeedReelsLoadingSkeletonState extends State<FeedReelsLoadingSkeleton>
         builder: (context, child) {
           final t = Curves.easeInOut.transform(_pulse.value);
           final base = Color.lerp(
-            const Color(0xFF1A1A1A),
-            const Color(0xFF2E2E2E),
+            const Color(0xFFF0F0F0),
+            const Color(0xFFE0E0E0),
             t,
           )!;
           return ColoredBox(
-            color: Colors.black,
+            color: AppLightSurface.background,
             child: Stack(
               fit: StackFit.expand,
               children: [
@@ -75,7 +76,9 @@ class _FeedReelsLoadingSkeletonState extends State<FeedReelsLoadingSkeleton>
                         child: CircularProgressIndicator(
                           strokeWidth: 2.5,
                           valueColor: AlwaysStoppedAnimation<Color>(
-                            Colors.white.withValues(alpha: 0.55 + (0.2 * t)),
+                            AppLightSurface.mutedText.withValues(
+                              alpha: 0.55 + (0.2 * t),
+                            ),
                           ),
                         ),
                       ),
@@ -83,7 +86,9 @@ class _FeedReelsLoadingSkeletonState extends State<FeedReelsLoadingSkeleton>
                       Text(
                         'Loading your feed…',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.65),
+                          color: AppLightSurface.secondaryText.withValues(
+                            alpha: 0.85,
+                          ),
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                         ),

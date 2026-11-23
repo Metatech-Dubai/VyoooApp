@@ -2315,7 +2315,7 @@ class _UserProfileReelFeedScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         children: [
           PageView.builder(
@@ -2353,7 +2353,7 @@ class _UserProfileReelFeedScreenState
                 if (displayUrl.isNotEmpty) {
                   return SizedBox.expand(
                     child: ColoredBox(
-                      color: Colors.black,
+                      color: AppLightSurface.background,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -2373,7 +2373,7 @@ class _UserProfileReelFeedScreenState
               final videoUrl = (reel['videoUrl'] as String?)?.trim() ?? '';
               if (videoUrl.isEmpty) {
                 return const SizedBox.expand(
-                  child: ColoredBox(color: Colors.black),
+                  child: ColoredBox(color: AppLightSurface.background),
                 );
               }
               return Stack(

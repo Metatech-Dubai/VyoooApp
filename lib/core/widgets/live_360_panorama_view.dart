@@ -7,6 +7,8 @@ import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:dchs_motion_sensors/dchs_motion_sensors.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:flutter_cube/flutter_cube.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -481,7 +483,7 @@ class _Live360PanoramaViewState extends State<Live360PanoramaView>
     Widget sphere = Stack(
       fit: StackFit.expand,
       children: [
-        const ColoredBox(color: Colors.black),
+        const ColoredBox(color: AppLightSurface.background),
         Cube(
           key: const ValueKey('live360_cube'),
           interactive: false,

@@ -288,7 +288,7 @@ class _ChatCallScreenState extends State<ChatCallScreen> {
     }
 
     return Scaffold(
-      backgroundColor: _isVideo ? Colors.black : AppColors.chatBackground,
+      backgroundColor: AppColors.chatBackground,
       body: SafeArea(child: _isVideo ? _buildVideoUI() : _buildAudioUI()),
     );
   }

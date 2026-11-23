@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:photo_manager/photo_manager.dart';
 
 import 'edit_photo_screen.dart';
@@ -61,7 +63,7 @@ class _UploadPhotoPreviewScreenState extends State<UploadPhotoPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -76,14 +78,14 @@ class _UploadPhotoPreviewScreenState extends State<UploadPhotoPreviewScreen> {
                   child: Text(
                     'Could not load photo',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.8),
+                      color: AppLightSurface.secondaryText,
                       fontSize: 16,
                     ),
                   ),
                 );
               }
               return const Center(
-                child: CircularProgressIndicator(color: Colors.white54),
+                child: CircularProgressIndicator(color: AppLightSurface.mutedText),
               );
             },
           ),

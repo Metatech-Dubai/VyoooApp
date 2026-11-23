@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
+
+import '../../core/theme/app_light_surface.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
@@ -1511,10 +1513,10 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
         followingStoriesTop;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: Stack(
         children: [
-          const Positioned.fill(child: ColoredBox(color: Colors.black)),
+          const Positioned.fill(child: ColoredBox(color: AppLightSurface.background)),
           Positioned.fill(child: _buildReelsFeed()),
           _buildHeader(isFollowing: isFollowing, collapseT: collapseT),
             if (isFollowing)
@@ -1805,7 +1807,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
       onDoubleTap: () => _onDoubleTapLike(feedIndex),
       child: SizedBox.expand(
         child: ColoredBox(
-          color: Colors.black,
+          color: AppLightSurface.background,
           child: InteractiveViewer(
             minScale: 1.0,
             maxScale: 4.0,
@@ -2028,7 +2030,7 @@ class _HomeReelsScreenState extends State<HomeReelsScreen>
                     color: const Color(0xFFFF2D55),
                     borderRadius: BorderRadius.circular(9),
                     border: Border.all(
-                      color: const Color(0xFF14001F),
+                      color: AppLightSurface.cardFill,
                       width: 1,
                     ),
                   ),

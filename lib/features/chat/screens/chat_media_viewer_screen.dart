@@ -1,5 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+
+import '../../../core/theme/app_light_surface.dart';
 import 'package:video_player/video_player.dart';
 
 class ChatMediaViewerScreen extends StatefulWidget {
@@ -60,16 +62,16 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
   Widget build(BuildContext context) {
     if (widget.isViewOnce) {
       return Scaffold(
-        backgroundColor: Colors.black,
+        backgroundColor: AppLightSurface.background,
         body: Center(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.visibility_off, color: Colors.white38, size: 64),
+              const Icon(Icons.visibility_off, color: AppLightSurface.mutedText, size: 64),
               const SizedBox(height: 12),
               const Text(
                 'View-once media cannot be viewed here',
-                style: TextStyle(color: Colors.white54, fontSize: 15),
+                style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 15),
               ),
               const SizedBox(height: 24),
               TextButton(
@@ -82,7 +84,7 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
       );
     }
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppLightSurface.background,
       body: GestureDetector(
         onTap: () => setState(() => _showControls = !_showControls),
         child: Stack(
@@ -96,7 +98,7 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
                 child: IconButton(
                   icon: const Icon(
                     Icons.arrow_back,
-                    color: Colors.white,
+                    color: AppLightSurface.icon,
                     size: 28,
                   ),
                   onPressed: () => Navigator.of(context).pop(),
@@ -111,7 +113,7 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
 
   Widget _buildImage() {
     if (widget.mediaUrl.isEmpty) {
-      return const Icon(Icons.broken_image, color: Colors.white38, size: 64);
+      return const Icon(Icons.broken_image, color: AppLightSurface.mutedText, size: 64);
     }
     return InteractiveViewer(
       minScale: 0.5,
@@ -124,7 +126,7 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
           strokeWidth: 2,
         ),
         errorWidget: (_, _, _) =>
-            const Icon(Icons.broken_image, color: Colors.white38, size: 64),
+            const Icon(Icons.broken_image, color: AppLightSurface.mutedText, size: 64),
       ),
     );
   }
@@ -134,11 +136,11 @@ class _ChatMediaViewerScreenState extends State<ChatMediaViewerScreen> {
       return const Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, color: Colors.white38, size: 64),
+          Icon(Icons.error_outline, color: AppLightSurface.mutedText, size: 64),
           SizedBox(height: 12),
           Text(
             'Could not load video',
-            style: TextStyle(color: Colors.white54, fontSize: 15),
+            style: TextStyle(color: AppLightSurface.secondaryText, fontSize: 15),
           ),
         ],
       );

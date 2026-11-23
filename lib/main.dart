@@ -186,7 +186,7 @@ class VyoooApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Vyooo',
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
       builder: (context, child) {
         AppSystemUi.setEdgeToEdgeOverlayStyle();
         return child ?? const SizedBox.shrink();
